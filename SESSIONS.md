@@ -37,3 +37,17 @@ Close the four flow gaps in the chat (read back, prompt writing, retrieval, mode
 No write token was available in the session, so the GitHub description field could not be set from here. Paste this into the repo settings:
 
 > StellaXafe: a private AI gateway for enterprises. Runs a guided interview, reads only your company's approved knowledge, writes the prompt, then generates the file. Stops data leakage, cuts prompt iteration, and keeps every output on brand.
+
+---
+
+## Session 2: 2026-08-24
+
+- Merged PR #1. Main now holds the whole app.
+- Resolved a conflict: two commits had been made directly on main editing README.md, which left it empty. Kept the full README, nothing was lost.
+- Repo is private now. Description is set. Default branch is main.
+- Added `wrangler.jsonc` for the Cloudflare deploy. Assets only Worker, with single page application fallback so /chat and /admin resolve on a direct load.
+- Added the product principle to `CLAUDE.md`: no settings on the staff side, no plumbing exposed to the admin, plain words in every screen, and only two things stay visible (the read back, and which sources were used).
+- Applied it: the admin knowledge base now says Ready and Being read instead of Indexed and Indexing.
+- Confirmed from the Canva API that its export formats are PDF, JPG, PNG, PPTX, GIF, MP4, and CSV. No DOCX, no XLSX. Decks go through Canva, visual documents come back as PDF, and spreadsheets are always generated directly.
+
+Next: connect the repo in Cloudflare, then Supabase.

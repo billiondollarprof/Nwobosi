@@ -28,6 +28,19 @@ This file tells Claude how to work on this project. The product is StellaXafe, b
 - After building or changing any UI, take a screenshot and check it against the design (sleek, clean, premium feel) before calling it done.
 - Click through buttons and interactive elements yourself and confirm they work before calling it done.
 
+## The product principle
+
+The product should feel like an unfair advantage to someone who is not technical. Simple to set up, simple to use, working at full intelligence underneath. It should feel like cheating.
+
+That means:
+
+- **The staff side has no settings.** No model picker, no advanced options, no toggles. Every knob you show is a way to get it wrong, and a reminder they are operating machinery. They talk, it works.
+- **Admin setup never exposes the plumbing.** An admin should never need to understand embeddings, chunking, vectors, or retrieval. Setup is: upload your files, give each one a name and a line saying what it holds, invite your people. Everything technical happens out of sight.
+- **Plain words in every screen.** No indexed, embedding, vector, token, RAG, or model ID in anything a user reads. Say ready, being read, outside sources.
+- **Two things stay visible, because they build trust.** The read back, which proves it understood before spending someone's time. And which sources it used, which proves it is not inventing. Everything else hides.
+
+The advantage does not come from the model. It comes from the output already knowing the company's templates, numbers, and standards without the staff member supplying any of it. Build toward that.
+
 ## Project structure
 
 This project is not one big file. Each major part of the app is its own page, in its own file:

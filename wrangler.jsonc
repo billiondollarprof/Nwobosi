@@ -1,0 +1,21 @@
+{
+  // Cloudflare deploy config.
+  //
+  // This is an assets only Worker. There is no server code yet, so Cloudflare
+  // just serves the built app from dist/ across its network.
+  //
+  // "single-page-application" is the important line. Without it, loading
+  // /chat or /admin directly would 404, because those paths only exist
+  // inside the app. With it, every unknown path serves index.html and the
+  // app takes over from there.
+  //
+  // When the backend lands, add "main" pointing at the Worker entry and a
+  // "run_worker_first" list for the API routes.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "nwobosi",
+  "compatibility_date": "2026-08-24",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}
