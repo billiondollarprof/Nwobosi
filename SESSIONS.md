@@ -55,3 +55,6 @@ Next: connect the repo in Cloudflare, then Supabase.
 - Built the schema in four migrations: extensions, core tables, row level security, retrieval functions. Seven tables, RLS on all of them.
 - Security advisor flagged the two helper functions as REST endpoints. Moved them into a `private` schema. Advisors now return clean.
 - Installed `@supabase/supabase-js` and added `src/shared/supabase.js` with the client and both retrieval helpers. `.env.example` committed, `.env.local` gitignored.
+- Reworked the entry model. No sign in on the landing page. A company arrives with a single use access code, names itself, and gets its own workspace at /their-company plus /their-company/admin. Recorded in full in CURRENT.md.
+- Rebuilt the landing hero around an animated interlocked ring logo. Locked the H1 and subtext.
+- Built the logo twice. The first pass split navy from purple with dashed strokes, which left gaps and read as damage. Rebuilt it with a rotating SVG gradient, which keeps the tube unbroken and the colour seam soft. Verified the travel by comparing three frames three seconds apart.

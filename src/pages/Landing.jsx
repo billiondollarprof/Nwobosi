@@ -1,14 +1,17 @@
 /* ==========================================================================
    LANDING PAGE
-   The public entry point. Read top to bottom:
+   The public entry point. There is no sign in here on purpose. This is not
+   a sign up product. A company arrives with an access code and builds their
+   own workspace. Read top to bottom:
 
      1. Nav
      2. Hero
-     3. The problem
-     4. How it works
-     5. Security
-     6. Call to action
-     7. Footer
+     3. Works with
+     4. The problem
+     5. How it works
+     6. Security
+     7. Call to action
+     8. Footer
    ========================================================================== */
 
 import { useNavigate } from "react-router-dom";
@@ -25,6 +28,7 @@ import {
 } from "lucide-react";
 
 import { LogoMark } from "../shared/icons.jsx";
+import LogoAnimated from "../shared/LogoAnimated.jsx";
 import { BRAND, GRADIENTS, FONTS } from "../shared/tokens";
 import { PageShell, ThemeToggle, PrimaryButton, GhostButton, StatusPill } from "../shared/ui.jsx";
 import { PRODUCT, WORKFLOW_TOOLS } from "../shared/config.js";
@@ -33,6 +37,9 @@ import { PRODUCT, WORKFLOW_TOOLS } from "../shared/config.js";
    Page content
    Kept as data so the sections below stay readable.
    -------------------------------------------------------------------------- */
+
+/* The three objections an enterprise buyer raises before they will try it. */
+const TRUST_POINTS = ["Nothing leaves your walls", "No setup team", "Live in 10 minutes"];
 
 const PROBLEMS = [
   {
@@ -75,6 +82,16 @@ const STEPS = [
   },
 ];
 
+/* The second line of the headline. Same gradient as the logo, so the mark
+   and the words read as one system. Tuned to stay legible on true black
+   and on the light background. */
+const HEADLINE_ACCENT = {
+  background: "linear-gradient(90deg, #5870F8, #9F5AF5)",
+  WebkitBackgroundClip: "text",
+  backgroundClip: "text",
+  color: "transparent",
+};
+
 export default function Landing() {
   const navigate = useNavigate();
 
@@ -82,6 +99,7 @@ export default function Landing() {
     <PageShell scroll>
       {/* ====================================================================
           1. NAV
+          No sign in. The only way in is an access code.
           ==================================================================== */}
 
       <header className="shrink-0 relative z-20">
@@ -92,87 +110,106 @@ export default function Landing() {
               {PRODUCT.name}
             </span>
           </div>
-
-          <div className="flex items-center gap-2.5">
-            <ThemeToggle />
-            <PrimaryButton onClick={() => navigate("/auth")} className="text-[13.5px] px-4 py-2">
-              Sign in
-            </PrimaryButton>
-          </div>
+          <ThemeToggle />
         </div>
       </header>
 
       {/* ====================================================================
           2. HERO
+          The animated mark is the centrepiece. Everything else here earns
+          its place or it does not appear.
           ==================================================================== */}
 
       <section className="relative z-10 px-5 sm:px-8">
-        <div className="max-w-3xl mx-auto text-center pt-14 pb-16 sm:pt-20 sm:pb-24">
-          <div className="flex justify-center mb-6">
-            <StatusPill tone="accent">Private AI for enterprises</StatusPill>
+        <div className="max-w-3xl mx-auto text-center pt-10 pb-24 sm:pt-16 sm:pb-32">
+          <div className="flex justify-center mb-12 sm:mb-16">
+            <StatusPill tone="accent">Private AI, by invitation</StatusPill>
+          </div>
+
+          <div className="flex justify-center mb-12 sm:mb-16">
+            <LogoAnimated size={280} />
           </div>
 
           <h1
-            className="text-[36px] sm:text-[52px] font-bold leading-[1.08] tracking-tight mb-5"
+            className="text-[34px] sm:text-[52px] font-bold leading-[1.1] tracking-tight mb-7"
             style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
           >
-            Say what you need.
+            Your staff are using AI right now.
             <br />
-            Get the finished file.
+            <span style={HEADLINE_ACCENT}>You don't know what they've told it.</span>
           </h1>
 
           <p
-            className="text-[16px] sm:text-[18px] leading-relaxed max-w-xl mx-auto mb-9"
+            className="text-[16px] sm:text-[18px] leading-relaxed max-w-[560px] mx-auto mb-11"
             style={{ color: "var(--text-2)" }}
           >
-            {PRODUCT.name} interviews your staff, reads only your company's own material, writes the prompt,
-            and builds the deck, report, or document. Nothing leaves your walls.
+            Every day your people paste company numbers, client names, and contracts into tools you do not
+            control. {PRODUCT.name} gives them one you own. It reads only what you approve. Nothing leaves
+            your walls.
           </p>
 
-          <div className="flex flex-wrap items-center justify-center gap-3">
+          <div className="flex flex-wrap items-center justify-center gap-3 mb-9">
             <PrimaryButton
-              onClick={() => navigate("/auth")}
-              className="flex items-center gap-2 px-6 py-3 text-[15px]"
+              onClick={() => navigate("/setup")}
+              className="flex items-center gap-2 px-6 py-3.5 text-[15px]"
             >
-              Sign in
+              Build your company's AI
               <ArrowRight size={16} />
             </PrimaryButton>
-            <GhostButton onClick={() => navigate("/chat")} className="px-6 py-3 text-[15px]">
-              See the demo
+            <GhostButton onClick={() => navigate("/chat")} className="px-6 py-3.5 text-[15px]">
+              See it working
             </GhostButton>
           </div>
 
-          {/* Workflow tools it plugs into */}
-          <div className="mt-14">
-            <p
-              className="text-[11px] font-semibold uppercase tracking-wide mb-4"
-              style={{ color: "var(--text-3)" }}
-            >
-              Works with what you already use
-            </p>
-            <div className="flex items-center justify-center gap-3 flex-wrap">
-              {WORKFLOW_TOOLS.map((tool) => (
-                <div
-                  key={tool.id}
-                  className="flex items-center gap-2 rounded-full border px-3.5 py-2 backdrop-blur-xl"
-                  style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
-                >
-                  <tool.icon size={16} />
-                  <span className="text-[13px]" style={{ color: "var(--text-2)" }}>
-                    {tool.label}
-                  </span>
-                </div>
-              ))}
-            </div>
+          <div
+            className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-[12.5px]"
+            style={{ color: "var(--text-3)" }}
+          >
+            {TRUST_POINTS.map((point, i) => (
+              <span key={point} className="flex items-center gap-3">
+                {i > 0 && <span style={{ opacity: 0.4 }}>|</span>}
+                {point}
+              </span>
+            ))}
           </div>
         </div>
       </section>
 
       {/* ====================================================================
-          3. THE PROBLEM
+          3. WORKS WITH
+          Moved out of the hero. It is reassurance, not the headline.
           ==================================================================== */}
 
-      <section className="relative z-10 px-5 sm:px-8 pb-16 sm:pb-24">
+      <section className="relative z-10 px-5 sm:px-8 pb-20 sm:pb-28">
+        <div className="max-w-3xl mx-auto text-center">
+          <p
+            className="text-[11px] font-semibold uppercase tracking-wide mb-5"
+            style={{ color: "var(--text-3)" }}
+          >
+            Works with what you already use
+          </p>
+          <div className="flex items-center justify-center gap-3 flex-wrap">
+            {WORKFLOW_TOOLS.map((tool) => (
+              <div
+                key={tool.id}
+                className="flex items-center gap-2 rounded-full border px-3.5 py-2 backdrop-blur-xl"
+                style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
+              >
+                <tool.icon size={16} />
+                <span className="text-[13px]" style={{ color: "var(--text-2)" }}>
+                  {tool.label}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ====================================================================
+          4. THE PROBLEM
+          ==================================================================== */}
+
+      <section className="relative z-10 px-5 sm:px-8 pb-20 sm:pb-28">
         <div className="max-w-5xl mx-auto">
           <h2
             className="text-[26px] sm:text-[32px] font-bold text-center mb-3 tracking-tight"
@@ -213,10 +250,10 @@ export default function Landing() {
       </section>
 
       {/* ====================================================================
-          4. HOW IT WORKS
+          5. HOW IT WORKS
           ==================================================================== */}
 
-      <section className="relative z-10 px-5 sm:px-8 pb-16 sm:pb-24">
+      <section className="relative z-10 px-5 sm:px-8 pb-20 sm:pb-28">
         <div className="max-w-4xl mx-auto">
           <h2
             className="text-[26px] sm:text-[32px] font-bold text-center mb-3 tracking-tight"
@@ -225,7 +262,7 @@ export default function Landing() {
             How it works
           </h2>
           <p className="text-[15px] text-center mb-11 max-w-lg mx-auto" style={{ color: "var(--text-3)" }}>
-            Four steps. The staff member only takes part in the first one.
+            Four steps. Your staff member only takes part in the first one.
           </p>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -262,10 +299,10 @@ export default function Landing() {
       </section>
 
       {/* ====================================================================
-          5. SECURITY
+          6. SECURITY
           ==================================================================== */}
 
-      <section className="relative z-10 px-5 sm:px-8 pb-16 sm:pb-24">
+      <section className="relative z-10 px-5 sm:px-8 pb-20 sm:pb-28">
         <div className="max-w-3xl mx-auto">
           <div
             className="rounded-[20px] border p-8 sm:p-10 backdrop-blur-xl text-center"
@@ -289,7 +326,8 @@ export default function Landing() {
             <p className="text-[15px] leading-relaxed mb-7 max-w-xl mx-auto" style={{ color: "var(--text-3)" }}>
               Your admin decides what goes into the knowledge base. Every company fact in an output traces
               back to a source you approved. If something is missing, the assistant says so rather than
-              making it up.
+              making it up. Zero trust at the runtime layer, and your data never leaves boundaries you
+              control.
             </p>
 
             <div className="flex flex-wrap items-center justify-center gap-2.5">
@@ -309,32 +347,33 @@ export default function Landing() {
       </section>
 
       {/* ====================================================================
-          6. CALL TO ACTION
+          7. CALL TO ACTION
           ==================================================================== */}
 
-      <section className="relative z-10 px-5 sm:px-8 pb-20">
+      <section className="relative z-10 px-5 sm:px-8 pb-24">
         <div className="max-w-2xl mx-auto text-center">
           <h2
             className="text-[26px] sm:text-[34px] font-bold mb-4 tracking-tight"
             style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
           >
-            Ready when your team is
+            See it running on your own company
           </h2>
           <p className="text-[15px] mb-8" style={{ color: "var(--text-3)" }}>
-            Your admin sends the invite. You sign in and start building.
+            Bring your access code. Name your company, answer three questions, and watch it build something
+            that already sounds like you.
           </p>
           <PrimaryButton
-            onClick={() => navigate("/auth")}
-            className="flex items-center gap-2 px-7 py-3 text-[15px] mx-auto"
+            onClick={() => navigate("/setup")}
+            className="flex items-center gap-2 px-7 py-3.5 text-[15px] mx-auto"
           >
-            Sign in
+            Build your company's AI
             <ArrowRight size={16} />
           </PrimaryButton>
         </div>
       </section>
 
       {/* ====================================================================
-          7. FOOTER
+          8. FOOTER
           ==================================================================== */}
 
       <footer className="relative z-10 border-t mt-auto" style={{ borderColor: "var(--border)" }}>

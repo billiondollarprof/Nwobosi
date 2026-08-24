@@ -54,6 +54,57 @@ Production build passes clean: 257 KB JS, 75 KB gzipped.
 
 One layout bug was found and fixed during testing: `PageShell` used `min-h-screen`, so a long chat pushed the composer off screen. Pages that should behave like an app now use `h-screen overflow-hidden` with an inner scroll area, and document style pages use `min-h-screen`.
 
+## The entry model (this replaces the old sign in flow)
+
+This is not a sign up product. There is no sign in on the landing page. A company arrives with an access code and builds their own workspace.
+
+```
+Landing
+  "Build your company's AI"
+        ↓
+Access code                    single use, only the founder issues them
+        ↓
+Admin email and password       this becomes the admin account
+        ↓
+About your company             name, what you do, industry
+        ↓
+Brand and documents            optional
+        ↓
+Admin dashboard, ready
+        ↓  "Deploy your company AI"
+Live at /buildfest             staff app, branded as BuildFest AI
+       /buildfest/admin        their dashboard
+```
+
+**Deploy is not a real deploy.** Nothing spins up. The company's workspace becomes live at its own path on the same site. Both doors need a login: the admin uses the account made during setup, staff use their invited email.
+
+**The staff login page wears their brand**, not StellaXafe's. Their logo, their colours. That is the moment it stops feeling like a demo.
+
+**Access codes are single use.** The moment one is redeemed it is dead and cannot be passed on. That is the only thing that expires.
+
+**The workspace does not disappear.** Instead each demo company gets a usage budget, enforced server side. Recommendation: about $2, roughly five complete outputs. Store it as cents remaining and decrement by what the API actually reports.
+
+Show it to users as **outputs remaining**, never tokens or dollars. When it runs out, that screen is the sales moment, not a dead end: this was a temporary build, talk to StellaXafe about running it inside your own systems.
+
+The BuildFest workspace is exempt from the cap so judges can push it.
+
+**Not building expiry or the budget for the competition.** Plain single use codes now.
+
+### Setup fields
+
+Three required: company name, what the company does, industry. Everything else optional (logo, colours, staff roles, documents).
+
+One paragraph about the company is worth more than ten uploaded files. And documents must stay optional, because a client trying your proposal will not gather their brand guidelines first.
+
+### Landing page copy (locked)
+
+H1 line one: Your staff are using AI right now.
+H1 line two, in the blue to purple gradient: You don't know what they've told it.
+
+Sub: Every day your people paste company numbers, client names, and contracts into tools you do not control. StellaXafe gives them one you own. It reads only what you approve. Nothing leaves your walls.
+
+Button: Build your company's AI. Trust strip: Nothing leaves your walls, No setup team, Live in 10 minutes.
+
 ## Decisions made (confirmed with user)
 
 **Product name.** StellaXafe. BuildFest is the competition it was built for. The demo company inside the app is still branded BuildFest, driven by one value in `config.js`.

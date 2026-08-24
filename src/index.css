@@ -161,3 +161,46 @@ body {
     background-position: 300% 0;
   }
 }
+
+/* --------------------------------------------------------------------------
+   HERO LOGO
+   Two interlocked rings. The colour does not sit still on them: each ring
+   carries a navy half and a purple half, and the boundary walks around the
+   circular path so the two slowly trade places. Reads as flow, not as
+   animation. Circumference at r=38 is 238.76, so a full travel of that
+   distance is exactly one lap.
+   -------------------------------------------------------------------------- */
+
+@keyframes sx-ring-travel {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: -238.76;
+  }
+}
+
+@keyframes sx-ring-breathe {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.06);
+  }
+}
+
+/* Anyone who has asked their system to calm motion down gets a still logo. */
+@media (prefers-reduced-motion: reduce) {
+  [class*="sx-motion"],
+  [style*="sx-ring-travel"],
+  [style*="sx-ring-breathe"],
+  [style*="sx-glow"],
+  [style*="sx-nav-glow"],
+  [style*="sx-mic-spin"],
+  [style*="sx-mic-pulse"] {
+    animation: none !important;
+  }
+}
