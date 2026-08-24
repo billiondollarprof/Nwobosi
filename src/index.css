@@ -1,0 +1,163 @@
+@import url("https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ==========================================================================
+   BASE
+   ========================================================================== */
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: "DM Sans", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Thin, unobtrusive scrollbars. Keeps panels feeling light. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(140, 140, 160, 0.35) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: rgba(140, 140, 160, 0.35);
+  border-radius: 999px;
+}
+
+/* ==========================================================================
+   ANIMATIONS
+   Prefix sx- keeps these from colliding with anything else on the page.
+   ========================================================================== */
+
+@keyframes sx-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes sx-dot {
+  0%,
+  60%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes sx-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes sx-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes sx-glow-a {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: translate(-10%, -10%) scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: translate(-6%, -14%) scale(1.15);
+  }
+}
+
+@keyframes sx-glow-b {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: translate(8%, 10%) scale(1);
+  }
+  50% {
+    opacity: 0.75;
+    transform: translate(4%, 6%) scale(1.1);
+  }
+}
+
+@keyframes sx-mic-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.32), 0 0 0 0 rgba(20, 32, 160, 0.22);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(124, 58, 237, 0.1), 0 0 16px 5px rgba(20, 32, 160, 0.28);
+  }
+}
+
+@keyframes sx-mic-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes sx-nav-glow {
+  0%,
+  100% {
+    opacity: 0.8;
+    background-position: 0% 50%;
+  }
+  50% {
+    opacity: 1;
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes sx-skill-flash {
+  0% {
+    box-shadow: 0 0 0 0 rgba(88, 112, 248, 0.55);
+    transform: scale(1);
+  }
+  35% {
+    box-shadow: 0 0 0 6px rgba(88, 112, 248, 0);
+    transform: scale(1.06);
+  }
+  100% {
+    box-shadow: 0 0 0 6px rgba(88, 112, 248, 0);
+    transform: scale(1);
+  }
+}
+
+@keyframes sx-shimmer {
+  0% {
+    background-position: -300% 0;
+  }
+  100% {
+    background-position: 300% 0;
+  }
+}
