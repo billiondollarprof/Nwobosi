@@ -185,6 +185,22 @@ export const TextInput = forwardRef(function TextInput({ className = "", style =
   );
 });
 
+export const TextArea = forwardRef(function TextArea({ className = "", style = {}, ...rest }, ref) {
+  return (
+    <textarea
+      ref={ref}
+      className={`w-full rounded-[12px] border px-3.5 py-2.5 text-[14.5px] outline-none resize-none transition-shadow focus:ring-2 focus:ring-[rgba(20,32,160,0.35)] ${className}`}
+      style={{
+        backgroundColor: "var(--surface-solid)",
+        borderColor: "var(--border-2)",
+        color: "var(--text-1)",
+        ...style,
+      }}
+      {...rest}
+    />
+  );
+});
+
 export function SelectInput({ className = "", style = {}, children, ...rest }) {
   return (
     <select

@@ -16,13 +16,42 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Eye, EyeOff, KeyRound, Lock, ShieldCheck } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Building2,
+  Check,
+  Eye,
+  EyeOff,
+  KeyRound,
+  Lock,
+  ShieldCheck,
+} from "lucide-react";
 
 import LogoAnimated from "../shared/LogoAnimated.jsx";
 import { BRAND, FONTS } from "../shared/tokens";
-import { PageShell, ThemeToggle, PrimaryButton, Field, TextInput, Spinner } from "../shared/ui.jsx";
+import {
+  PageShell,
+  ThemeToggle,
+  PrimaryButton,
+  Field,
+  TextInput,
+  TextArea,
+  SelectInput,
+  Spinner,
+} from "../shared/ui.jsx";
 import { PRODUCT } from "../shared/config.js";
-import { checkAccessCode, normaliseCode, emailProblem, passwordProblem } from "../shared/setupApi.js";
+import {
+  checkAccessCode,
+  normaliseCode,
+  emailProblem,
+  passwordProblem,
+  companyNameProblem,
+  companyAboutProblem,
+  industryProblem,
+  slugify,
+  INDUSTRIES,
+} from "../shared/setupApi.js";
 
 const STEPS = ["Access code", "Your account", "Your company"];
 
@@ -34,12 +63,18 @@ export default function Setup() {
 
   const [code, setCode] = useState("");
   const [admin, setAdmin] = useState({ name: "", email: "", password: "" });
+  const [company, setCompany] = useState({ name: "", about: "", industry: "" });
+  const [companyReady, setCompanyReady] = useState(false);
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   function goBack() {
     setError("");
+    if (companyReady) {
+      setCompanyReady(false);
+      return;
+    }
     if (step === 0) navigate("/");
     else setStep((s) => s - 1);
   }
@@ -84,6 +119,26 @@ export default function Setup() {
 
     setError("");
     setStep(2);
+  }
+
+  /* ------------------------------------------------------------------------
+     4. COMPANY DETAILS
+     Three questions. This is the entire interview. Nothing here is sent
+     anywhere yet, it just moves to the review card.
+     ------------------------------------------------------------------------ */
+
+  function submitCompany(e) {
+    e.preventDefault();
+
+    const nameIssue = companyNameProblem(company.name);
+    if (nameIssue) return setError(nameIssue);
+    const aboutIssue = companyAboutProblem(company.about);
+    if (aboutIssue) return setError(aboutIssue);
+    const industryIssue = industryProblem(company.industry);
+    if (industryIssue) return setError(industryIssue);
+
+    setError("");
+    setCompanyReady(true);
   }
 
   return (
@@ -141,7 +196,16 @@ export default function Setup() {
               />
             )}
 
-            {step === 2 && <HoldingStep admin={admin} />}
+            {step === 2 && !companyReady && (
+              <CompanyStep
+                company={company}
+                error={error}
+                onChange={(patch) => setCompany((c) => ({ ...c, ...patch }))}
+                onSubmit={submitCompany}
+              />
+            )}
+
+            {step === 2 && companyReady && <ReviewStep admin={admin} company={company} />}
           </div>
 
           <p
@@ -346,31 +410,149 @@ function AccountStep({ admin, error, onChange, onSubmit }) {
 }
 
 /* ==========================================================================
-   4. HOLDING STEP
-   Company details go here next, then the workspace is created and deployed.
+   4. COMPANY DETAILS STEP
+   The whole interview. Three questions, and only these three are required.
+   Logo, colours, and documents come later inside the admin dashboard, not
+   here, so this never becomes the reason someone abandons setup.
    ========================================================================== */
 
-function HoldingStep({ admin }) {
+function CompanyStep({ company, error, onChange, onSubmit }) {
+  const nameRef = useRef(null);
+
+  useEffect(() => {
+    if (nameRef.current) nameRef.current.focus();
+  }, []);
+
+  const slug = slugify(company.name);
+
   return (
-    <div style={{ animation: "sx-rise 0.3s ease" }}>
+    <form onSubmit={onSubmit}>
+      <div
+        className="w-11 h-11 rounded-[12px] flex items-center justify-center mb-4"
+        style={{ backgroundColor: "rgba(20,32,160,0.12)" }}
+      >
+        <Building2 size={20} style={{ color: BRAND.accentSoft }} />
+      </div>
+
       <h1
         className="text-[21px] font-bold mb-1.5"
         style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
       >
         Tell us about your company
       </h1>
-      <p className="text-[13.5px] leading-relaxed mb-6" style={{ color: "var(--text-3)" }}>
-        Three questions: your company name, what it does, and the industry it is in. That is all
-        {" "}{PRODUCT.name} needs to start sounding like you.
+      <p className="text-[13.5px] mb-6 leading-relaxed" style={{ color: "var(--text-3)" }}>
+        Three questions. That is all {PRODUCT.name} needs to start sounding like you. Everything
+        else, logo, brand colours, documents, gets added later from the admin dashboard.
       </p>
 
+      <Field label="Company name" hint={slug ? `Your workspace will live at /${slug}` : undefined}>
+        <TextInput
+          ref={nameRef}
+          value={company.name}
+          onChange={(e) => onChange({ name: e.target.value })}
+          placeholder="Acme Logistics"
+        />
+      </Field>
+
+      <Field label="What does your company do?" hint="A sentence or two is enough.">
+        <TextArea
+          value={company.about}
+          onChange={(e) => onChange({ about: e.target.value })}
+          placeholder="We move freight across West Africa for mid sized retailers, and we run our own fleet."
+          rows={3}
+        />
+      </Field>
+
+      <Field label="Industry">
+        <SelectInput value={company.industry} onChange={(e) => onChange({ industry: e.target.value })}>
+          <option value="">Choose the closest fit</option>
+          {INDUSTRIES.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+        </SelectInput>
+      </Field>
+
+      {error && (
+        <p className="text-[12.5px] mb-4" style={{ color: BRAND.red }}>
+          {error}
+        </p>
+      )}
+
+      <PrimaryButton type="submit" className="w-full flex items-center justify-center gap-2">
+        Review
+        <ArrowRight size={15} />
+      </PrimaryButton>
+    </form>
+  );
+}
+
+/* ==========================================================================
+   5. REVIEW STEP
+   Nothing has been created yet anywhere. This is the last look before the
+   workspace and the admin account are actually made, which is why it reads
+   everything back rather than just saying done.
+   ========================================================================== */
+
+function ReviewStep({ admin, company }) {
+  const slug = slugify(company.name);
+
+  const rows = [
+    ["Admin", `${admin.name}, ${admin.email}`],
+    ["Company", company.name],
+    ["Industry", company.industry],
+    ["Workspace", `/${slug}`],
+  ];
+
+  return (
+    <div style={{ animation: "sx-rise 0.3s ease" }}>
       <div
-        className="rounded-[12px] px-4 py-3.5 text-[13px] leading-relaxed"
+        className="w-11 h-11 rounded-[12px] flex items-center justify-center mb-4"
+        style={{ backgroundColor: "rgba(22,176,74,0.12)" }}
+      >
+        <Check size={20} style={{ color: BRAND.green }} />
+      </div>
+
+      <h1
+        className="text-[21px] font-bold mb-1.5"
+        style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
+      >
+        Ready to build
+      </h1>
+      <p className="text-[13.5px] mb-6 leading-relaxed" style={{ color: "var(--text-3)" }}>
+        Check this over. Your access code is spent the moment you continue from here.
+      </p>
+
+      <div className="space-y-0 mb-6">
+        {rows.map(([label, value]) => (
+          <div key={label} className="flex gap-4 py-2.5 border-b" style={{ borderColor: "var(--border)" }}>
+            <span
+              className="w-20 shrink-0 text-[11px] font-semibold uppercase tracking-wide pt-0.5"
+              style={{ color: "var(--text-3)" }}
+            >
+              {label}
+            </span>
+            <span className="text-[14px] break-words" style={{ color: "var(--text-1)" }}>
+              {value}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      <p
+        className="rounded-[12px] px-4 py-3.5 text-[13px] leading-relaxed mb-5"
         style={{ backgroundColor: "var(--surface-2)", color: "var(--text-3)" }}
       >
-        Holding your details for {admin.email}. This step is being built next, along with creating
-        your workspace and putting it live.
-      </div>
+        {company.about}
+      </p>
+
+      <PrimaryButton disabled className="w-full flex items-center justify-center gap-2 mb-3">
+        Build my company's AI
+      </PrimaryButton>
+      <p className="text-[12px] text-center" style={{ color: "var(--text-3)" }}>
+        Creating the workspace is being wired up next.
+      </p>
     </div>
   );
 }

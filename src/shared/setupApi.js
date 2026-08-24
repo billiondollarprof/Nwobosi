@@ -68,3 +68,62 @@ export function emailProblem(email) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return "That email does not look right.";
   return null;
 }
+
+/* --------------------------------------------------------------------------
+   SECTION: Company details
+   Three required fields. This is the entire setup interview: name, what
+   the company does, and industry. Everything else is optional and comes
+   later. One good paragraph here does more for the output than ten
+   uploaded files would.
+   -------------------------------------------------------------------------- */
+
+export const INDUSTRIES = [
+  "Technology & software",
+  "Financial services",
+  "Healthcare",
+  "Retail & ecommerce",
+  "Manufacturing",
+  "Real estate",
+  "Professional services",
+  "Education",
+  "Media & entertainment",
+  "Hospitality & travel",
+  "Nonprofit",
+  "Other",
+];
+
+export function companyNameProblem(name) {
+  const value = (name || "").trim();
+  if (!value) return "Enter your company name.";
+  if (value.length < 2) return "That name looks too short.";
+  return null;
+}
+
+export function companyAboutProblem(about) {
+  const value = (about || "").trim();
+  if (!value) return "Tell us what your company does.";
+  if (value.split(/\s+/).filter(Boolean).length < 5) {
+    return "A sentence or two helps it sound like you. Add a bit more.";
+  }
+  return null;
+}
+
+export function industryProblem(industry) {
+  if (!industry) return "Pick the closest industry.";
+  return null;
+}
+
+/* --------------------------------------------------------------------------
+   SECTION: Slug
+   The path a workspace deploys to, derived from the company name. Shown
+   to the founder as a preview so nobody is surprised by their own URL.
+   -------------------------------------------------------------------------- */
+
+export function slugify(name) {
+  return (name || "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
+}

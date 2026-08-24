@@ -63,3 +63,7 @@ Next: connect the repo in Cloudflare, then Supabase.
 - `TextInput` now forwards its ref so the access code field can take focus on arrival.
 - All server calls for setup are isolated in `src/shared/setupApi.js`. `checkAccessCode` is the one function that becomes an edge function call.
 - Blocked: the Supabase connector dropped out of the session, so the access_codes migration and the check-access-code edge function could not be applied. Code validation is shape only until that is wired.
+- Built setup step 3: company name, what you do, industry. Three fields, all required, everything else deferred to the admin dashboard.
+- Added a review card between the form and the (not yet built) create step. Shows a live slug preview under the company name, reads back every answer, and states plainly that the access code is spent past this point. Build button is disabled until the backend exists.
+- Added `TextArea` to the shared UI primitives and validation helpers (companyNameProblem, companyAboutProblem, industryProblem, slugify) plus the industry list to setupApi.js.
+- Clicked through the whole three step flow in a browser: autofocus, each validation message, the live slug preview, back from review preserving what was typed, light theme. No console errors.
