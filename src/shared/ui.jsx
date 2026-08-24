@@ -4,7 +4,7 @@
    chat, admin, landing, and auth surfaces feel like one product.
    ========================================================================== */
 
-import { useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useRef, useState } from "react";
 import { Sun, Moon, Monitor, Check } from "lucide-react";
 import { useTheme } from "./theme.jsx";
 import { BRAND, GRADIENTS, FONTS } from "./tokens";
@@ -167,9 +167,12 @@ export function Field({ label, hint, children }) {
   );
 }
 
-export function TextInput({ className = "", style = {}, ...rest }) {
+/* Forwards its ref so callers can focus it. The setup flow puts the cursor
+   straight in the access code field. */
+export const TextInput = forwardRef(function TextInput({ className = "", style = {}, ...rest }, ref) {
   return (
     <input
+      ref={ref}
       className={`w-full rounded-[12px] border px-3.5 py-2.5 text-[14.5px] outline-none transition-shadow focus:ring-2 focus:ring-[rgba(20,32,160,0.35)] ${className}`}
       style={{
         backgroundColor: "var(--surface-solid)",
@@ -180,7 +183,7 @@ export function TextInput({ className = "", style = {}, ...rest }) {
       {...rest}
     />
   );
-}
+});
 
 export function SelectInput({ className = "", style = {}, children, ...rest }) {
   return (

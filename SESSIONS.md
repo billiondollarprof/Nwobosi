@@ -58,3 +58,8 @@ Next: connect the repo in Cloudflare, then Supabase.
 - Reworked the entry model. No sign in on the landing page. A company arrives with a single use access code, names itself, and gets its own workspace at /their-company plus /their-company/admin. Recorded in full in CURRENT.md.
 - Rebuilt the landing hero around an animated interlocked ring logo. Locked the H1 and subtext.
 - Built the logo twice. The first pass split navy from purple with dashed strokes, which left gaps and read as damage. Rebuilt it with a rotating SVG gradient, which keeps the tube unbroken and the colour seam soft. Verified the travel by comparing three frames three seconds apart.
+- Built setup screens 1 and 2: access code, then admin account. Three step progress bar, code auto formats as you type (sxa7k4m2pq becomes SX-A7K4-M2PQ), password rule shown inline, show password toggle, back walks the steps in reverse.
+- Nothing is created until the final step on purpose, so abandoning setup halfway does not burn someone's code.
+- `TextInput` now forwards its ref so the access code field can take focus on arrival.
+- All server calls for setup are isolated in `src/shared/setupApi.js`. `checkAccessCode` is the one function that becomes an edge function call.
+- Blocked: the Supabase connector dropped out of the session, so the access_codes migration and the check-access-code edge function could not be applied. Code validation is shape only until that is wired.
