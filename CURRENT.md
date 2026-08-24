@@ -4,13 +4,36 @@ This file holds the full state of work in progress. Update it at the end of ever
 
 ## Where things stand (2026-08-24)
 
-Files in the repo:
+The app is built and running as a single page application. Four pages, each its own file, each with labeled sections inside. They build into one app so switching is instant.
+
+```
+src/
+  main.jsx              entry point
+  App.jsx               routes, instant page switching
+  index.css             fonts, base styles, animations
+  shared/
+    tokens.js           colors, gradients, themes, type, shape
+    config.js           branding, skills, model tiers, workflow tools, limits
+    icons.jsx           product mark and connector glyphs
+    theme.jsx           theme provider and hook
+    ui.jsx              shared primitives every page builds from
+  pages/
+    Landing.jsx         public entry point
+    Auth.jsx            login, request access, OTP
+    Chat.jsx            the staff surface
+    Admin.jsx           the knowledge brain
+```
+
+Stack in place: Vite, React 18, Tailwind 3, react-router-dom 6, lucide-react. `public/_redirects` is there so client side routing works on Cloudflare Pages.
+
+Other files:
 
 - `buildfest_project_plan.pdf`: the full system plan, 8 pages. First written 2026-08-22, updated since. Read this before doing any real work.
-- `buildfestchat.jsx`: single file React prototype of the chat interface. The working UI reference.
-- `README.md`: rewritten as StellaXafe from the plan plus everything agreed in session 1.
+- `README.md`: written from the plan. The reference document.
 - `CLAUDE.md`: working rules.
-- `CURRENT.md` and `SESSIONS.md`: state and history.
+- `SESSIONS.md`: history.
+
+The old single file prototype `buildfestchat.jsx` is gone. Its content now lives in `src/`.
 
 Done so far:
 
@@ -18,13 +41,24 @@ Done so far:
 - Cloudflare account is connected. One unrelated worker exists (`amara-guest-page`). Nothing created for this project yet.
 - Supabase account exists, free plan. Nothing created for this project yet.
 
+## What is built and tested
+
+Driven in a real browser, screenshotted, and clicked through end to end:
+
+- **Landing.** Hero, three problems, four step flow, security panel, call to action, footer. Both themes.
+- **Auth.** Login, unrecognized email leading to no account found, request access, request sent, OTP with auto advance and paste support. Verified the full path in both directions.
+- **Chat.** Greeting typewriter, three step interview, skill badge with flash, brief read back card, generating state, result card, Library with Drive sync states and search, workflow tools under the plus control with working connect toggles, sidebar, profile with usage meter, both themes, mobile layout.
+- **Admin.** Four tabs. Knowledge base with upload area, add link form, and the indexed source list. Connectors. Access requests with working approve and decline. Invite form with model ceiling. Staff list with per person model ceiling and usage meters. Company defaults, the model tier ladder, and recent work history.
+
+Production build passes clean: 257 KB JS, 75 KB gzipped.
+
+One layout bug was found and fixed during testing: `PageShell` used `min-h-screen`, so a long chat pushed the composer off screen. Pages that should behave like an app now use `h-screen overflow-hidden` with an inner scroll area, and document style pages use `min-h-screen`.
+
 ## Decisions made (confirmed with user)
 
-**Product name.** StellaXafe. The README, repo description, and the app all use it. BuildFest is the competition it was built for.
+**Product name.** StellaXafe. BuildFest is the competition it was built for. The demo company inside the app is still branded BuildFest, driven by one value in `config.js`.
 
 **Architecture.** Single page application. Source split into page modules for clean reading. Builds into one app so section switching is instant.
-
-Pages: landing, auth (login, request access, OTP), chat, admin. Plus a shared design tokens module.
 
 **Stack.** Supabase for auth, database, row level security, and the RAG index via pgvector. Cloudflare Pages for hosting. Resend for email.
 
@@ -53,9 +87,7 @@ If a company needs sector material, the admin uploads or links those specific so
 
 Demo is capped at Sonnet 5.
 
-Model IDs and pricing per 1M tokens:
-
-| Model | ID | Input | Output | Context |
+| Model | ID | Input per 1M | Output per 1M | Context |
 | --- | --- | --- | --- | --- |
 | Haiku 4.5 | `claude-haiku-4-5` | $1 | $5 | 200K |
 | Sonnet 5 | `claude-sonnet-5` | $3 | $15 | 1M |
@@ -64,7 +96,7 @@ Model IDs and pricing per 1M tokens:
 
 Note: Opus 5 is cheaper than Fable 5. Sonnet 4.6 costs the same as Sonnet 5 with less capability, so do not use it.
 
-**Per staff model access.** Admin sets each person's model ceiling at invite or approval time. Default ceiling is Sonnet 5. Admin can raise it to Opus 5 or Fable 5 by role. Admin also sets a usage limit per day or week, with a company wide default they can raise or lower.
+**Per staff model access.** Admin sets each person's ceiling at invite or approval time. Default is Sonnet 5. Admin can raise it to Opus 5 or Fable 5 by role, and sets a usage limit per day or week, with a company default they can raise or lower. The admin UI for all of this is built.
 
 ## The core flow (this is the heart of the product)
 
@@ -82,20 +114,16 @@ StellaXafe is a prompt generator first. The full path:
 
 Why write the prompt down: the model does not drift, company facts carry their source so hallucination is blocked at generation time, and the prompt is an audit record.
 
-## What the prototype already covers
+## Gaps between the UI and the real flow
 
-Checked against `buildfestchat.jsx`:
+The front end is all seeded data. These steps from the flow above are not visible in the chat yet:
 
-- 3 step interview (what to build, audience, sources), then a summary card with Generate
-- Auto skill detection with a badge and flash animation. `guessProjectType` maps to ppt, excel, word
-- Generating state, result card, download button
-- Library in the sidebar with Drive sync states and search above a threshold
-- Workflow tools (Canva, Gmail, Drive, Slack) under the plus control, with upload file
-- Slash quick starts, typewriter greeting, dark and light and system themes
-- Floating glassy nav, animated ambient glow, rotating mic ring
-- Daily limit of 5 and 1 MB upload cap
+- No read back as a distinct confirm step. The summary card covers it but does not read as a confirmation.
+- No visible prompt writing stage in the generating card.
+- No retrieval step showing which knowledge base sources were pulled.
+- No real model routing, so no tier switching is shown.
 
-Gaps versus the flow above: no visible prompt writing stage, no read back as a separate confirm step before generation, no retrieval from an admin knowledge base, no real model routing.
+Closing these four is what makes the demo tell the real story.
 
 ## Open items
 
@@ -105,7 +133,7 @@ Gaps versus the flow above: no visible prompt writing stage, no read back as a s
 
 ## Next steps
 
-1. Split the prototype into page modules with clean sections.
-2. Design the admin dashboard.
-3. Set up Supabase (schema, RLS, pgvector) and Cloudflare Pages.
-4. Build auth, then the backend flow, then the connectors.
+1. Close the four flow gaps in the chat so the demo shows the prompt engine.
+2. Set up Supabase: schema, row level security, pgvector index.
+3. Deploy to Cloudflare Pages.
+4. Wire real auth, then the backend flow, then the connectors.

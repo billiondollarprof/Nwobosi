@@ -184,16 +184,45 @@ Shared design tokens, meaning colors, type scale, and spacing, live in their own
 | Design connector | Canva API, per staff OAuth | Decks, posters, and brand assets |
 | File storage | Google Drive API, per staff OAuth | Large files and every generated output |
 
-## Repository files
+## Repository layout
+
+```
+src/
+  main.jsx              entry point
+  App.jsx               routes, instant page switching
+  index.css             fonts, base styles, animations
+  shared/
+    tokens.js           colors, gradients, themes, type, shape
+    config.js           branding, skills, model tiers, workflow tools, limits
+    icons.jsx           product mark and connector glyphs
+    theme.jsx           theme provider and hook
+    ui.jsx              shared primitives every page builds from
+  pages/
+    Landing.jsx         public entry point
+    Auth.jsx            login, request access, OTP
+    Chat.jsx            the staff surface
+    Admin.jsx           the knowledge brain
+```
 
 | File | What it is |
 | --- | --- |
 | `buildfest_project_plan.pdf` | The full system plan. First written 2026-08-22, updated since |
-| `buildfestchat.jsx` | Working prototype of the chat interface |
 | `CLAUDE.md` | Working rules for this project |
 | `CURRENT.md` | Full state of work in progress |
 | `SESSIONS.md` | Log of past work sessions |
 
+## Running it
+
+```bash
+npm install
+npm run dev      # http://localhost:5173
+npm run build    # production build into dist/
+```
+
+Sign in with `anthony@buildfest.com` and any password to see the invited path. Use any other email to see the request access flow. Any six digits pass the OTP step.
+
 ## Status
 
-Early build. The chat interface prototype exists and covers the interview, the summary read back, generation, the Library, workflow tools, and theming. Next is splitting the app into its page modules, then the admin dashboard, then auth, the backend, and the connectors.
+The four pages are built and working. The interview, brief read back, generation, Library with Drive sync states, workflow tools, and both themes all run. The admin dashboard covers the knowledge base, connectors, access requests, invites, model ceilings, and usage.
+
+Everything is still front end with seeded data. Next is Supabase for auth, the database, and the pgvector index, then the real backend flow, then the connectors.
