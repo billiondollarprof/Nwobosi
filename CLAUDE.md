@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This file tells Claude how to work on this project. This is the BuildFest project.
+This file tells Claude how to work on this project. The product is StellaXafe, built for the BuildFest competition.
 
 ## How to talk to the user
 
@@ -40,3 +40,5 @@ This project is not one big file. Each major part of the app is its own page, in
 Inside each page, break the code into clearly labeled sections (for example, inside the auth page: login, signup, OTP verification). Each section should be easy to find and read top to bottom.
 
 These pages come together to form the app, but the source for each stays separate and clean.
+
+The app is a single page application. The separate page files are for reading and working on the code. They build into one app, so clicking between sections is instant with no page reload. Keep both sides of this true: split for reading, joined for speed.
