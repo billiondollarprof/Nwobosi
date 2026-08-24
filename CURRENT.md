@@ -125,15 +125,51 @@ The front end is all seeded data. These steps from the flow above are not visibl
 
 Closing these four is what makes the demo tell the real story.
 
-## Open items
+## Supabase (built)
 
-- Repo is public. Consider making it private, given the product is about data leakage.
-- Default branch is `claude/nwobosi-access-5mces1`, not `main`. Switch after PR #1 merges.
-- Repo description needs updating by hand. No write token available in the session. Text is in SESSIONS.md.
+Project `stellaxafe`, ref `cbunsqzkhidwjtxdsmxd`, eu-west-1, free tier. It sits in the StellaXafe Ecosystem org beside `billiondollarprof's Project`, which is the live Amara build and was left untouched.
+
+Seven tables, row level security on every one, zero security advisor warnings.
+
+| Table | Holds |
+| --- | --- |
+| `companies` | The tenant. Default model ceiling, daily limit, default storage. |
+| `staff` | One row per invited person, keyed to `auth.users`. Null ceiling or limit means fall back to the company default. |
+| `access_requests` | Raised from the login screen. Admin approves or declines. |
+| `knowledge_sources` | The assistant's entire world. Name and description drive retrieval. |
+| `knowledge_chunks` | Text plus a 1536 dimension embedding. `company_id` is carried here so the policy is one comparison. |
+| `work_history` | The memory. One row per finished output, plus an embedding. |
+| `connectors` | Company scope serves everyone, staff scope belongs to one person. |
+
+**Helpers live in a `private` schema, not `public`.** They have to be security definer or a policy on `staff` that reads `staff` recurses. Sitting in `public` also published them as REST endpoints, which the advisor flagged. Moving them to `private` keeps policies working and takes them off the API.
+
+**Retrieval functions** are `match_knowledge` and `match_work_history`, both security invoker, so row level security applies inside them. A caller physically cannot reach another company's rows.
+
+**`staff_effective_limits`** is a view that resolves the fall back to company defaults, so nothing in the app has to remember that rule.
+
+Decisions still open:
+
+- **Embedding model.** The vector columns are 1536, which matches OpenAI `text-embedding-3-small`. Anthropic does not do embeddings, and pairs with Voyage AI, whose dimensions differ. Changing this later means a migration, so pick before ingesting anything real.
+- **Connector tokens.** The columns exist but are plain text placeholders. Real tokens must go into Supabase Vault before any live OAuth flow.
+- **Access request inserts.** There is deliberately no insert policy, so requests must be created server side through an edge function. That keeps the table closed to anonymous spam.
+
+## App wiring
+
+- `@supabase/supabase-js` installed.
+- `src/shared/supabase.js` holds the client, `getCurrentStaff`, `matchKnowledge`, and `matchWorkHistory`.
+- `.env.example` is committed. `.env.local` holds the real values and is gitignored.
+- Nothing imports the client yet, so it tree shakes out of the bundle. That changes when auth is wired.
+
+## Cloudflare
+
+`wrangler.jsonc` is in the repo: assets only Worker, `not_found_handling` set to single page application so a direct load of `/chat` or `/admin` resolves.
+
+Not deployed yet. Pages is being sunset, so the path is Workers Builds. The dashboard connect is a one time manual step, and the same two `VITE_` variables have to be set as build environment variables there, because Vite reads them at build time.
 
 ## Next steps
 
-1. Close the four flow gaps in the chat so the demo shows the prompt engine.
-2. Set up Supabase: schema, row level security, pgvector index.
-3. Deploy to Cloudflare Pages.
-4. Wire real auth, then the backend flow, then the connectors.
+1. Connect the repo in Cloudflare Workers Builds and set the two build variables.
+2. Decide the embedding model, then ingestion for knowledge sources.
+3. Wire real auth against Supabase, replacing the seeded data in Auth and Admin.
+4. Close the four flow gaps in the chat so the demo shows the prompt engine.
+5. Connectors.

@@ -252,8 +252,8 @@ function KnowledgeSection() {
     <div className="space-y-5" style={{ animation: "sx-rise 0.3s ease" }}>
       {/* Summary */}
       <div className="grid gap-3 sm:grid-cols-3">
-        <StatTile label="Sources indexed" value={indexed} tone="ok" />
-        <StatTile label="Still indexing" value={pending} tone="pending" />
+        <StatTile label="Ready to use" value={indexed} tone="ok" />
+        <StatTile label="Being read" value={pending} tone="pending" />
         <StatTile label="Outside sources" value={0} tone="neutral" hint="The assistant reads nothing else" />
       </div>
 
@@ -355,12 +355,12 @@ function KnowledgeSection() {
               </div>
 
               {item.status === "indexed" ? (
-                <StatusPill tone="ok">Indexed</StatusPill>
+                <StatusPill tone="ok">Ready</StatusPill>
               ) : (
                 <span className="flex items-center gap-1.5 shrink-0">
                   <Spinner size={11} />
                   <span className="text-[11px]" style={{ color: BRAND.amber }}>
-                    Indexing
+                    Reading it
                   </span>
                 </span>
               )}
