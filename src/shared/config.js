@@ -173,11 +173,61 @@ export const QUICK_ACTIONS = [
    Called connectors internally. They serve two purposes: knowledge and
    storage. The admin connects company wide sources, each staff member
    connects their own.
+
+   `live` is the honest bit. In this build only Canva is really wired, and
+   it runs through StellaXafe's own Canva account rather than the viewer's,
+   because the integration sits in draft while it is being demonstrated.
+   Everything else shows what it does and says plainly that it is not
+   connected here.
+
+   That is deliberate rather than a shortcut. A connector that silently
+   pretends to connect reads as vapour the moment somebody probes it. One
+   that names the boundary and says what a real deployment gets reads as a
+   scoped piece of work, which is what StellaXafe actually sells.
    -------------------------------------------------------------------------- */
 
 export const WORKFLOW_TOOLS = [
-  { id: "canva", label: "Canva", icon: CanvaIconGlyph, hint: "Design and brand assets" },
-  { id: "email", label: "Gmail", icon: GmailIconGlyph, hint: "Search email for source material" },
-  { id: "drive", label: "Google Drive", icon: DriveIconGlyph, hint: "Point the assistant at a file" },
-  { id: "slack", label: "Slack", icon: SlackIconGlyph, hint: "Pull context from team channels" },
+  {
+    id: "canva",
+    label: "Canva",
+    icon: CanvaIconGlyph,
+    hint: "Design and brand assets",
+    live: true,
+  },
+  {
+    id: "drive",
+    label: "Google Drive",
+    icon: DriveIconGlyph,
+    hint: "Point the assistant at one of your files",
+    live: false,
+  },
+  {
+    id: "email",
+    label: "Gmail",
+    icon: GmailIconGlyph,
+    hint: "Search email for source material",
+    live: false,
+  },
+  {
+    id: "slack",
+    label: "Slack",
+    icon: SlackIconGlyph,
+    hint: "Pull context from team channels",
+    live: false,
+  },
+  {
+    id: "notion",
+    label: "Notion",
+    icon: NotionIconGlyph,
+    hint: "Read specs, briefs, and project pages",
+    live: false,
+  },
 ];
+
+/* Shown when someone taps a connector that is not wired in this build.
+   Says what it is, why it is off, and what a real deployment gets, in
+   that order. The last line is the point: the answer to "can it do X" is
+   yes, scoped and built for you, not a shrug. */
+export const DEMO_CONNECTOR_NOTE =
+  "Not connected in this demo. Live deployments connect your company's own account, " +
+  "with access scoped to exactly what your team approves. Ask StellaXafe to wire this one up.";

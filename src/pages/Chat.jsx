@@ -74,6 +74,7 @@ import {
   SKILL_META,
   QUICK_ACTIONS,
   WORKFLOW_TOOLS,
+  DEMO_CONNECTOR_NOTE,
 } from "../shared/config.js";
 
 /* ==========================================================================
@@ -145,6 +146,10 @@ export default function Chat() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const [workflowExpanded, setWorkflowExpanded] = useState(false);
+
+  /* Which cosmetic connector is currently explaining itself. One at a
+     time, so the menu does not turn into a wall of paragraphs. */
+  const [demoNoteFor, setDemoNoteFor] = useState(null);
 
   /* Connectors and skills */
   const [connectors, setConnectors] = useState({
@@ -925,21 +930,42 @@ export default function Chat() {
                 {workflowExpanded && (
                   <div className="pb-2" style={{ animation: "sx-rise 0.25s ease" }}>
                     {WORKFLOW_TOOLS.map((tool) => (
-                      <button
-                        key={tool.id}
-                        onClick={() => toggleConnector(tool.id)}
-                        className="w-full flex items-center justify-between pl-9 pr-4 py-2.5 hover:opacity-80 transition-opacity"
-                      >
-                        <span className="flex items-center gap-2.5">
-                          <tool.icon size={18} />
-                          <span className="text-[13.5px] text-left" style={{ color: "var(--text-1)" }}>
-                            {tool.label}
+                      <div key={tool.id}>
+                        <button
+                          onClick={() =>
+                            tool.live
+                              ? toggleConnector(tool.id)
+                              : setDemoNoteFor((open) => (open === tool.id ? null : tool.id))
+                          }
+                          className="w-full flex items-center justify-between pl-9 pr-4 py-2.5 hover:opacity-80 transition-opacity"
+                        >
+                          <span className="flex items-center gap-2.5">
+                            <tool.icon size={18} />
+                            <span className="text-[13.5px] text-left" style={{ color: "var(--text-1)" }}>
+                              {tool.label}
+                            </span>
                           </span>
-                        </span>
-                        <StatusPill tone={connectors[tool.id] ? "ok" : "neutral"}>
-                          {connectors[tool.id] ? "Connected" : "Connect"}
-                        </StatusPill>
-                      </button>
+                          {tool.live ? (
+                            <StatusPill tone={connectors[tool.id] ? "ok" : "neutral"}>
+                              {connectors[tool.id] ? "Connected" : "Connect"}
+                            </StatusPill>
+                          ) : (
+                            <StatusPill tone="neutral">Not in this demo</StatusPill>
+                          )}
+                        </button>
+
+                        {/* Says what it does, why it is off, and what a real
+                            deployment gets. Tapping it should feel like an
+                            answer, not a dead end. */}
+                        {demoNoteFor === tool.id && (
+                          <p
+                            className="pl-9 pr-4 pb-3 text-[12.5px] leading-relaxed"
+                            style={{ color: "var(--text-3)", animation: "sx-rise 0.2s ease" }}
+                          >
+                            {tool.hint}. {DEMO_CONNECTOR_NOTE}
+                          </p>
+                        )}
+                      </div>
                     ))}
                   </div>
                 )}

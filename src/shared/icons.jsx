@@ -141,6 +141,19 @@ export function SlackIconGlyph({ size = 18 }) {
   );
 }
 
+/* Notion's mark is a page with a hard edged N whose diagonal is drawn as a
+   solid wedge rather than a stroke. Keeping the white page behind it is
+   what makes it read as Notion on a dark background instead of a generic
+   letter in a box. */
+export function NotionIconGlyph({ size = 18 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24">
+      <rect x="2" y="2" width="20" height="20" rx="3" fill="#FFFFFF" stroke="#E3E3E1" />
+      <path d="M7.6 7.2v9.6h1.9V11l4.6 5.8h2.3V7.2h-1.9v5.6L9.9 7.2z" fill="#0F0F0F" />
+    </svg>
+  );
+}
+
 export function CanvaIconGlyph({ size = 18 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24">
