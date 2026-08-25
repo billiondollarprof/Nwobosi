@@ -200,14 +200,14 @@ body {
   0% {
     transform: scale(1, 1);
   }
-  35% {
-    transform: scale(1.055, 0.95);
+  32% {
+    transform: scale(1.1, 0.88);
   }
-  55% {
-    transform: scale(0.985, 1.015);
+  50% {
+    transform: scale(0.96, 1.05);
   }
-  75% {
-    transform: scale(1.012, 0.992);
+  70% {
+    transform: scale(1.03, 0.975);
   }
   100% {
     transform: scale(1, 1);
@@ -215,7 +215,7 @@ body {
 }
 
 .sx-mark-stretch {
-  animation: sx-ring-stretch 8s ease-in-out infinite;
+  animation: sx-ring-stretch 5s ease-in-out infinite;
 }
 
 /* The three blobs behind the hero mark. Same easing, different reach and

@@ -30,12 +30,26 @@ const RIGHT = { cx: 124, cy: 65 };
 const CROSS_X = (LEFT.cx + RIGHT.cx) / 2;
 const CROSS_Y = LEFT.cy - Math.sqrt(R * R - Math.pow((RIGHT.cx - LEFT.cx) / 2, 2));
 
-/* How far the notch cutout reaches from the top crossing. Generous enough to
-   cover the full width of the stroke overlap there, nowhere close to
-   reaching the bottom crossing, which sits about 59 units further down. */
-const NOTCH_REACH = STROKE * 1.6;
+/* The cutout that hides the right ring at the top crossing is a short arc
+   of the left ring's own stroke, not a plain round hole clipped down to
+   size. A round hole cutting a curved stroke can leave an uneven sliver at
+   its own edge depending on how a browser rasterises a clipPath nested
+   inside a mask, and that is exactly the kind of thing that can render
+   fine on one engine and show a hairline on another. An arc drawn with the
+   same centre and radius as the ring it is hiding cannot mismatch it, no
+   clipping involved, so there is nothing left for a renderer to get wrong. */
+const CROSS_ANGLE = Math.atan2(CROSS_Y - LEFT.cy, CROSS_X - LEFT.cx);
+const NOTCH_HALF_ANGLE = 0.55; // radians either side of the crossing, ~31 degrees
 
-const SPIN = 7; // seconds for the colour to travel one full lap
+function pointOnLeftRing(angle) {
+  return { x: LEFT.cx + R * Math.cos(angle), y: LEFT.cy + R * Math.sin(angle) };
+}
+
+const notchStart = pointOnLeftRing(CROSS_ANGLE - NOTCH_HALF_ANGLE);
+const notchEnd = pointOnLeftRing(CROSS_ANGLE + NOTCH_HALF_ANGLE);
+const NOTCH_PATH = `M ${notchStart.x} ${notchStart.y} A ${R} ${R} 0 0 1 ${notchEnd.x} ${notchEnd.y}`;
+
+const SPIN = 5.5; // seconds for the colour to travel one full lap
 
 /* --------------------------------------------------------------------------
    SECTION: Travelling gradient
@@ -54,7 +68,9 @@ function TravellingGradient({ id, cx, cy, from = 0 }) {
       y2={cy}
     >
       <stop offset="0%" stopColor={BRAND.navy} />
-      <stop offset="50%" stopColor={BRAND.purple} />
+      <stop offset="38%" stopColor={BRAND.purple} />
+      <stop offset="50%" stopColor={BRAND.accentSoft} />
+      <stop offset="62%" stopColor={BRAND.purple} />
       <stop offset="100%" stopColor={BRAND.navy} />
       <animateTransform
         attributeName="gradientTransform"
@@ -101,28 +117,15 @@ export default function LogoAnimated({ size = 260, className = "" }) {
           <TravellingGradient id="sx-grad-left" cx={LEFT.cx} cy={LEFT.cy} from={0} />
           <TravellingGradient id="sx-grad-right" cx={RIGHT.cx} cy={RIGHT.cy} from={140} />
 
-          {/* The hole in the right ring has to be shaped exactly like the
-              left ring's own stroke, or the seam between them shows as a
-              dent or a sliver of gap. A plain round hole never fits a
-              curved stroke edge cleanly. So the cutout is a copy of the
-              left ring itself, clipped down to a small patch around the
-              top crossing so it does not also blank out the bottom one. */}
-          <clipPath id="sx-notch-clip">
-            <circle cx={CROSS_X} cy={CROSS_Y} r={NOTCH_REACH} />
-          </clipPath>
-
           <mask id="sx-interlock">
             <rect x="0" y="0" width="200" height="130" fill="white" />
-            <g clipPath="url(#sx-notch-clip)">
-              <circle
-                cx={LEFT.cx}
-                cy={LEFT.cy}
-                r={R}
-                stroke="black"
-                strokeWidth={STROKE + 1.5}
-                fill="none"
-              />
-            </g>
+            <path
+              d={NOTCH_PATH}
+              stroke="black"
+              strokeWidth={STROKE + 1.5}
+              strokeLinecap="round"
+              fill="none"
+            />
           </mask>
 
           <filter id="sx-logo-glow" x="-60%" y="-60%" width="220%" height="220%">

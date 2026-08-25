@@ -40,6 +40,14 @@ Log of each work session. Newest at the top. Keep entries short.
 - Checked in a browser: dark and light, desktop and mobile, scrolled deep with the pill still pinned, clicked the theme toggle and confirmed the whole page including the pill's own tint switches. No console errors.
 - Hero copy, page structure, and the connectors section are still open, next up.
 
+**Live feedback round: quick fixes, the hero cloud, and a real merge**
+
+- User checked the live site and reported the gap still visible, the old placeholder nav mark, "See it working" still there. Turned out `main` had never received anything past the original Supabase and Cloudflare setup, session 2 onward all sat on the working branch only. Explained it, got permission, merged `claude/nwobosi-access-5mces1` into `main` and pushed (commit `95ee8e0`), both branches match now.
+- Quick fixes from the same feedback: removed "See it working" (one button on the hero now), removed "Read aloud" under chat replies (speech to text stays, real wiring still open), replaced the small nav `LogoMark` with the actual interlocked mark instead of the old two-discs placeholder, sped up the hero mark's colour travel from 11s to 7s a lap.
+- Built the hero cloud: a soft drifting wash above the mark, three blurred blobs on a shallow arc plus a wider faint layer, independent timing so it reads as smoke. Checked dark, light, mobile, and two frames six seconds apart to confirm the drift is actually live.
+- Started actually sending screenshots to the user as files instead of only describing them, per their reminder.
+- Still open from this feedback round: the ambient cloud was the only piece done, real speech to text wiring, the hero H1/subtext rewrite plus a shimmer on the second line, and a full viewport and orientation pass on both Landing and Chat are next.
+
 ---
 
 ## Session 1: 2026-08-24

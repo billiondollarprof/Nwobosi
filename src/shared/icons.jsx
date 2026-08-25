@@ -25,7 +25,6 @@ export function LogoMark({ size = 26 }) {
   const uid = useId();
   const left = `${uid}-left`;
   const right = `${uid}-right`;
-  const clip = `${uid}-clip`;
   const mask = `${uid}-mask`;
 
   return (
@@ -41,17 +40,18 @@ export function LogoMark({ size = 26 }) {
           <stop offset="50%" stopColor={BRAND.purple} />
           <stop offset="100%" stopColor={BRAND.navy} />
         </linearGradient>
-        {/* Same fuse as the hero mark and the favicon: the cutout is shaped
-            like the left ring's own stroke, not a plain round hole, so the
-            crossing reads as sealed instead of dented. */}
-        <clipPath id={clip}>
-          <circle cx="50" cy="30.79" r="13.6" />
-        </clipPath>
+        {/* Same fuse as the hero mark and the favicon: the cutout is a short
+            arc of the left ring's own stroke, same centre and radius, not a
+            round hole clipped to size, so nothing can render it a pixel off. */}
         <mask id={mask}>
           <rect x="0" y="0" width="100" height="100" fill="white" />
-          <g clipPath={`url(#${clip})`}>
-            <circle cx="34" cy="50" r="25" stroke="black" strokeWidth="10" fill="none" />
-          </g>
+          <path
+            d="M 37.6 25.261 A 25 25 0 0 1 57.681 41.987"
+            stroke="black"
+            strokeWidth="10"
+            strokeLinecap="round"
+            fill="none"
+          />
         </mask>
       </defs>
       <circle cx="34" cy="50" r="25" fill="none" stroke={`url(#${left})`} strokeWidth="8.5" />
