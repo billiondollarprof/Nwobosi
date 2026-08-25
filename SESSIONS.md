@@ -6,6 +6,14 @@ Log of each work session. Newest at the top. Keep entries short.
 
 ## Session 3: 2026-08-25
 
+**Speech to text, real this time**
+
+- Built `src/shared/useSpeechToText.js`, a small hook around the browser's own Web Speech API. Kept the recognition object in a ref, built once, not rebuilt on every render, rebuilding it mid sentence would have cut the session.
+- Wired it to the chat mic button: tap to start, whatever was already typed stays and the transcript lands after it, tap again or just stop talking to end. Distinct visuals for actually listening, a faster red pulse and a solid red button, instead of reusing the idle invitation-to-tap style.
+- Hides the mic entirely on a browser without the API, rather than a control that cannot work. Also auto stops if the control itself would disappear (step reaching 3), so a session never runs with nothing showing it is live.
+- Checked in a browser: idle and with typed text both render right, no console errors either way. Could not exercise an actual live transcript, this sandbox has no microphone and no route to the speech service a real browser would use, that needs a real phone to confirm.
+- Merged to `main` and pushed.
+
 **Logo settled**
 
 - Locked the brand colors: navy `#1420A0`, purple `#7C3AED`, unchanged from `tokens.js`.

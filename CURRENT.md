@@ -23,7 +23,9 @@ Not built yet, mentioned by the user as a "we are going to also build" item, not
 
 ## Landing page rebuild (spec, confirmed 2026-08-25)
 
-Confirmed with the user. Logo, navbar, and the hero cloud are done. Also done, from live UI feedback rather than the original spec: the "See it working" button is gone (one button on the hero now), the small nav mark matches the real logo instead of an old placeholder, the mark's colour travel is faster, and the "Read aloud" button under chat replies is gone (speech to text stays, real wiring is still open). Rest of the spec below is not yet built.
+Confirmed with the user. Logo, navbar, and the hero cloud are done. Also done, from live UI feedback rather than the original spec: the "See it working" button is gone (one button on the hero now), the small nav mark matches the real logo instead of an old placeholder, the mark's colour travel is faster, the "Read aloud" button under chat replies is gone, the Setup page's access code step is actually centered on a phone now, and speech to text on the chat mic is real (see below). Rest of the spec below is not yet built.
+
+**Speech to text, done.** `src/shared/useSpeechToText.js` wraps the browser's Web Speech API, no server or key. Wired to the mic button in `Chat.jsx`: tap to start, existing typed text stays and the transcript lands after it, distinct red pulsing style while actually listening, auto stops if the mic control would disappear (step reaching 3). Hides itself entirely on a browser without the API rather than showing a dead control. Verified the fallback path and that nothing crashes, could not exercise a live transcript from this sandbox (no microphone, no route to the speech service), worth a real tap on an actual phone.
 
 **Hero cloud, done.** A soft drifting wash of colour above the mark, three blurred blobs on a shallow arc plus a wider faint layer, each on its own timing (17s/20s/22s/26s) so it reads as smoke rather than one shape breathing. `HeroCloud` in `Landing.jsx`, keyframes `sx-cloud-drift-a/b/c` in `index.css`.
 
