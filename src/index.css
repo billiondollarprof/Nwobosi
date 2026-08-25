@@ -126,6 +126,21 @@ body {
   }
 }
 
+/* The ring while speech to text is actually recording. Quicker and redder
+   than the idle pulse on purpose, it needs to read as "live right now",
+   not as the same gentle invitation-to-tap as when nothing is happening. */
+@keyframes sx-mic-listening {
+  0%,
+  100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.18);
+  }
+}
+
 @keyframes sx-nav-glow {
   0%,
   100% {
@@ -260,6 +275,7 @@ body {
   [style*="sx-nav-glow"],
   [style*="sx-mic-spin"],
   [style*="sx-mic-pulse"],
+  [style*="sx-mic-listening"],
   .sx-mark-stretch,
   [style*="sx-cloud-drift"] {
     animation: none !important;
