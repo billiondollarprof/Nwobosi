@@ -240,10 +240,16 @@ Deno.serve(async (req: Request) => {
      section holds a company's identity rather than its filing cabinet. */
   const { data: sources } = await asUser
     .from("knowledge_sources")
-    .select("name, description")
+    .select("name, description, status")
     .eq("company_id", staff.company_id);
 
-  const system = buildSystemPrompt(company, sources ?? []);
+  /* Only sources that finished processing. Offering the model something
+     still being read would have it confidently ask for a source that
+     cannot answer, which reads to the staff member as the assistant
+     making things up. */
+  const readySources = (sources ?? []).filter((s) => s.status === "ready");
+
+  const system = buildSystemPrompt(company, readySources);
 
   /* ----------------------------------------------------------------------
      THE CALL
