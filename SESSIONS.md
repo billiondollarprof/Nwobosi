@@ -67,3 +67,12 @@ Next: connect the repo in Cloudflare, then Supabase.
 - Added a review card between the form and the (not yet built) create step. Shows a live slug preview under the company name, reads back every answer, and states plainly that the access code is spent past this point. Build button is disabled until the backend exists.
 - Added `TextArea` to the shared UI primitives and validation helpers (companyNameProblem, companyAboutProblem, industryProblem, slugify) plus the industry list to setupApi.js.
 - Clicked through the whole three step flow in a browser: autofocus, each validation message, the live slug preview, back from review preserving what was typed, light theme. No console errors.
+- Supabase connector was on at account level but toggled off for the chat. Diagnosed with ListConnectors (connected: true, enabledInChat: false).
+- Built the access code backend. `access_codes` table with RLS on and deliberately zero policies, which denies everyone except the service role.
+- Five lifecycle functions: peek (looks, does not spend), claim (atomic, one winner, five minute stale claim recovery), release, finalise, and create_company_workspace (company plus admin staff row in one transaction, with slug collision handling).
+- Had to move those from the `private` schema to `public`: PostgREST only publishes `public`, so an edge function could not reach them in `private`. Kept them safe by revoking execute from public/anon/authenticated and granting only to service_role. Published is not the same as callable.
+- Deployed the `check-access-code` edge function, verify_jwt off since the caller has no account yet. Rejects bad shapes before any query runs so brute force traffic costs nothing.
+- Generated six codes in the database. First attempt produced duplicates twice: a correlated subquery Postgres evaluated once, then LATERAL which it also cached. Fixed by referencing the outer row inside the subquery.
+- Wired setupApi.js to the live endpoint via supabase.functions.invoke.
+- Could not test the endpoint from the sandbox: egress proxy blocks supabase.co, same as pages.dev. Needs verifying in a browser.
+- Note: bundle went from 78 KB to 137 KB gzipped now that supabase-js is genuinely imported. Worth code splitting later so the landing page does not carry the auth client.

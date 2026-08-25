@@ -9,7 +9,10 @@
    function. A browser cannot read the code list or guess its way in.
    ========================================================================== */
 
-/* A code looks like SX-A7K4-M2PQ. Uppercase, two blocks of four. */
+import { supabase } from "./supabase.js";
+
+/* A code looks like SX-A7K4-M2PQ. Uppercase, two blocks of four.
+   Ambiguous characters are never issued: no O or 0, no I or 1, no S or 5. */
 const CODE_SHAPE = /^SX-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
 
 export function looksLikeCode(raw) {
@@ -30,25 +33,44 @@ export function normaliseCode(raw) {
 
 /* --------------------------------------------------------------------------
    SECTION: Check a code
-   Checks only. It does not redeem. A code is burned at the very end, when
-   the workspace is actually created, so someone who abandons setup halfway
-   has not lost their code.
+   Checks only. It does not redeem. A code is spent at the very end, when the
+   workspace is really created, so someone who abandons setup halfway has not
+   lost their code.
 
-   NOT WIRED YET. This is the one function that becomes a call to the
-   check-access-code edge function. Until then it validates shape only, so
-   the screens can be built and reviewed.
+   The real decision happens server side in the check-access-code edge
+   function. This browser cannot read the access_codes table: it has row
+   level security on with no policies at all, so only the service role
+   inside that function can see it. Nothing here can be bypassed by editing
+   the page.
    -------------------------------------------------------------------------- */
+
+const GENERIC_FAILURE = "That code is not right. Check it and try again.";
 
 export async function checkAccessCode(raw) {
   const code = normaliseCode(raw);
 
-  await new Promise((r) => setTimeout(r, 600));
-
+  /* Shape is checked here too, purely to save a pointless round trip.
+     The server checks it again and does not trust this one. */
   if (!looksLikeCode(code)) {
-    return { ok: false, reason: "That code is not right. Check it and try again." };
+    return { ok: false, reason: GENERIC_FAILURE };
   }
 
-  return { ok: true, code };
+  try {
+    const { data, error } = await supabase.functions.invoke("check-access-code", {
+      body: { code },
+    });
+
+    if (error) {
+      console.error("check-access-code failed", error);
+      return { ok: false, reason: "Could not reach the server. Check your connection and try again." };
+    }
+
+    if (data?.ok) return { ok: true, code: data.code ?? code };
+    return { ok: false, reason: data?.reason ?? GENERIC_FAILURE };
+  } catch (err) {
+    console.error("check-access-code threw", err);
+    return { ok: false, reason: "Could not reach the server. Check your connection and try again." };
+  }
 }
 
 /* --------------------------------------------------------------------------
