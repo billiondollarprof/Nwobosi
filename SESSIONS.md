@@ -33,6 +33,13 @@ Log of each work session. Newest at the top. Keep entries short.
 - Verified live in a browser, screenshotted the animated mark at four points across the cycle. Crossing stays fused in every frame, colour travel and stretch both visibly running. `npm run build` passes clean.
 - Navbar, hero copy, page structure, and the connectors section are still open, next up.
 
+**Navbar, second item on the landing list**
+
+- Turned out the floating glass pill the user wanted already existed: `FloatingNav` in `ui.jsx`, already shared by Chat and Admin, already theme aware through `--nav-surface` (dark glass in dark mode, white glass in light). Swapped Landing's plain header for it instead of building a new one.
+- Added an opt-in `sticky` prop to `FloatingNav`, on for Landing only, so the pill stays pinned while the page scrolls under it. Chat and Admin keep their old behaviour.
+- Checked in a browser: dark and light, desktop and mobile, scrolled deep with the pill still pinned, clicked the theme toggle and confirmed the whole page including the pill's own tint switches. No console errors.
+- Hero copy, page structure, and the connectors section are still open, next up.
+
 ---
 
 ## Session 1: 2026-08-24

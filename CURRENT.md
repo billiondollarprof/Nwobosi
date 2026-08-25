@@ -15,11 +15,11 @@ This file holds the full state of work in progress. Update it at the end of ever
 
 ## Landing page rebuild (spec, confirmed 2026-08-25)
 
-Confirmed with the user, not yet built. Do this next. Logo first, since the rest of the page sits under it.
+Confirmed with the user. Logo and navbar are done, the rest is not yet built.
 
-**Logo animation.** Stop the float and bounce. The mark stays put. The gradient keeps slowly trading navy and purple around each ring, that part stays. Fix needed: the interlock mask can leave a faint seam where it meets the ring stroke at the crossing. There must be zero visible gap there, the two rings read as fused, not just avoiding each other. Add a second motion on top of the gradient travel: a slow stretch and release, the tube looks pulled, then eases back to its resting shape, on a loop. Not floating. Breathing.
+**Logo animation, done.** Stop the float and bounce. The mark stays put. The gradient keeps slowly trading navy and purple around each ring, that part stays. Fix needed: the interlock mask can leave a faint seam where it meets the ring stroke at the crossing. There must be zero visible gap there, the two rings read as fused, not just avoiding each other. Add a second motion on top of the gradient travel: a slow stretch and release, the tube looks pulled, then eases back to its resting shape, on a loop. Not floating. Breathing.
 
-**Navbar.** A floating pill, theme aware. Dark mode: glassy, dark black, sleek. Light mode: glassy, white, sleek. Same shape and blur in both, only the tint flips with the theme.
+**Navbar, done.** Turned out to already exist: `FloatingNav` in `ui.jsx`, shared with Chat and Admin, already theme aware through `--nav-surface`. Swapped Landing's plain header for it and added an opt-in `sticky` mode so it stays pinned while the page scrolls, on for Landing only.
 
 **Hero.** Two lengths of subtext: short for mobile, longer for tablet and desktop, never the same copy at every width. The hero must end exactly at the fold on mobile, no sliver of the next section showing, it should never look cut off. A few technical terms in the hero copy, enough to sound like it knows what it is talking about, not a wall of jargon.
 
