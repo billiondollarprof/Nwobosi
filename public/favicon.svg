@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!--
+    Square, purpose built favicon. The hero mark is wide (200x130), which
+    wastes pixels when forced into a square tab icon, so this is its own
+    tighter composition at the same proportions: stroke to radius ratio,
+    and centre gap to radius ratio, both match the hero mark.
+
+    Frozen gradient, not travelling. A favicon is looked at for a fraction
+    of a second, it does not need to move. The interlock itself, one ring
+    passing through the other, is what carries the identity down to 16px.
+  -->
+  <defs>
+    <linearGradient id="gLeft" x1="9" y1="50" x2="59" y2="50" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1420A0" />
+      <stop offset="50%" stop-color="#7C3AED" />
+      <stop offset="100%" stop-color="#1420A0" />
+    </linearGradient>
+    <linearGradient id="gRight" x1="41" y1="50" x2="91" y2="50" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1420A0" />
+      <stop offset="50%" stop-color="#7C3AED" />
+      <stop offset="100%" stop-color="#1420A0" />
+    </linearGradient>
+    <!-- The hole in the right ring has to be shaped like the left ring's
+         own stroke, or the seam shows as a dent instead of a clean fuse.
+         So the cutout is a copy of the left ring, clipped to a small patch
+         around the top crossing only. -->
+    <clipPath id="notchClip">
+      <circle cx="50" cy="30.79" r="13.6" />
+    </clipPath>
+    <mask id="notch">
+      <rect x="0" y="0" width="100" height="100" fill="white" />
+      <g clip-path="url(#notchClip)">
+        <circle cx="34" cy="50" r="25" stroke="black" stroke-width="10" fill="none" />
+      </g>
+    </mask>
+  </defs>
+  <circle cx="34" cy="50" r="25" fill="none" stroke="url(#gLeft)" stroke-width="8.5" />
+  <g mask="url(#notch)">
+    <circle cx="66" cy="50" r="25" fill="none" stroke="url(#gRight)" stroke-width="8.5" />
+  </g>
+</svg>

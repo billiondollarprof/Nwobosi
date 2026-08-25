@@ -28,6 +28,33 @@ This file tells Claude how to work on this project. The product is StellaXafe, b
 - After building or changing any UI, take a screenshot and check it against the design (sleek, clean, premium feel) before calling it done.
 - Click through buttons and interactive elements yourself and confirm they work before calling it done.
 
+## Model choice
+
+Claude cannot switch its own model. Only the user can, with `/model`. So Claude names the tier before starting anything substantial, in one short line, and the user decides.
+
+Say it as the first line of the reply, before any work: "Sonnet is enough for this" or "this one is worth Opus".
+
+**Sonnet 5 is enough for:**
+
+- Building a screen from a spec already agreed
+- Adding a form, a field, a route
+- Wiring an API call whose shape is already known
+- Doc updates, session logs, commit messages
+- Screenshot runs and click through testing
+- Refactors with a clear target
+
+**Opus 5 earns its cost for:**
+
+- Architecture decisions, anything that shapes what comes after
+- Security code: row level security, auth, anything that redeems a code or spends money
+- Debugging something that is not obvious
+- Copy that has to land, like the headline
+- Anything where being wrong means rebuilding rather than editing
+
+Switching between tasks is free and keeps the whole conversation. Do not switch in the middle of one.
+
+The bigger cost in a long session is not the tier, it is the length of the conversation being resent every turn. When a chunk of work is finished and the next chunk is unrelated, a fresh session saves more than a tier change does.
+
 ## The product principle
 
 The product should feel like an unfair advantage to someone who is not technical. Simple to set up, simple to use, working at full intelligence underneath. It should feel like cheating.

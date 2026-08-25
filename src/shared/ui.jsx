@@ -4,7 +4,7 @@
    chat, admin, landing, and auth surfaces feel like one product.
    ========================================================================== */
 
-import { useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useRef, useState } from "react";
 import { Sun, Moon, Monitor, Check } from "lucide-react";
 import { useTheme } from "./theme.jsx";
 import { BRAND, GRADIENTS, FONTS } from "./tokens";
@@ -167,9 +167,12 @@ export function Field({ label, hint, children }) {
   );
 }
 
-export function TextInput({ className = "", style = {}, ...rest }) {
+/* Forwards its ref so callers can focus it. The setup flow puts the cursor
+   straight in the access code field. */
+export const TextInput = forwardRef(function TextInput({ className = "", style = {}, ...rest }, ref) {
   return (
     <input
+      ref={ref}
       className={`w-full rounded-[12px] border px-3.5 py-2.5 text-[14.5px] outline-none transition-shadow focus:ring-2 focus:ring-[rgba(20,32,160,0.35)] ${className}`}
       style={{
         backgroundColor: "var(--surface-solid)",
@@ -180,7 +183,23 @@ export function TextInput({ className = "", style = {}, ...rest }) {
       {...rest}
     />
   );
-}
+});
+
+export const TextArea = forwardRef(function TextArea({ className = "", style = {}, ...rest }, ref) {
+  return (
+    <textarea
+      ref={ref}
+      className={`w-full rounded-[12px] border px-3.5 py-2.5 text-[14.5px] outline-none resize-none transition-shadow focus:ring-2 focus:ring-[rgba(20,32,160,0.35)] ${className}`}
+      style={{
+        backgroundColor: "var(--surface-solid)",
+        borderColor: "var(--border-2)",
+        color: "var(--text-1)",
+        ...style,
+      }}
+      {...rest}
+    />
+  );
+});
 
 export function SelectInput({ className = "", style = {}, children, ...rest }) {
   return (
@@ -357,9 +376,11 @@ export function ThemeToggle() {
    The glassy pill with the halo behind it. Shared by chat and admin.
    -------------------------------------------------------------------------- */
 
-export function FloatingNav({ children, maxWidth = "max-w-3xl" }) {
+export function FloatingNav({ children, maxWidth = "max-w-3xl", sticky = false }) {
   return (
-    <div className="shrink-0 px-3 sm:px-5 pt-5 pb-3 relative z-20">
+    <div
+      className={`shrink-0 px-3 sm:px-5 pt-5 pb-3 relative z-20 ${sticky ? "sticky top-0" : ""}`}
+    >
       <div className={`relative ${maxWidth} mx-auto`}>
         <div
           className="absolute -inset-[14px] rounded-full pointer-events-none"

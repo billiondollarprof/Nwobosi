@@ -161,3 +161,107 @@ body {
     background-position: 300% 0;
   }
 }
+
+/* --------------------------------------------------------------------------
+   HERO LOGO
+   Two interlocked rings. The colour does not sit still on them: each ring
+   carries a navy half and a purple half, and the boundary walks around the
+   circular path so the two slowly trade places. Reads as flow, not as
+   animation. Circumference at r=38 is 238.76, so a full travel of that
+   distance is exactly one lap.
+   -------------------------------------------------------------------------- */
+
+@keyframes sx-ring-travel {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: -238.76;
+  }
+}
+
+@keyframes sx-ring-breathe {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.06);
+  }
+}
+
+/* The tube itself, stretched then let go. Both rings move as one piece so
+   the interlock never drifts out of place mid stretch. The extra stops
+   past the halfway point are the release: it overshoots slightly back
+   past its resting shape before settling, like elastic actually would. */
+@keyframes sx-ring-stretch {
+  0% {
+    transform: scale(1, 1);
+  }
+  35% {
+    transform: scale(1.055, 0.95);
+  }
+  55% {
+    transform: scale(0.985, 1.015);
+  }
+  75% {
+    transform: scale(1.012, 0.992);
+  }
+  100% {
+    transform: scale(1, 1);
+  }
+}
+
+.sx-mark-stretch {
+  animation: sx-ring-stretch 8s ease-in-out infinite;
+}
+
+/* The three blobs behind the hero mark. Same easing, different reach and
+   direction per blob, so together they read as smoke drifting rather than
+   one shape pulsing. Durations live on the element itself, not here. */
+@keyframes sx-cloud-drift-a {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-4%, 5%) scale(1.08);
+  }
+}
+
+@keyframes sx-cloud-drift-b {
+  0%,
+  100% {
+    transform: translate(-50%, 0) scale(1);
+  }
+  50% {
+    transform: translate(-50%, 6%) scale(1.1);
+  }
+}
+
+@keyframes sx-cloud-drift-c {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(4%, -4%) scale(1.06);
+  }
+}
+
+/* Anyone who has asked their system to calm motion down gets a still logo. */
+@media (prefers-reduced-motion: reduce) {
+  [class*="sx-motion"],
+  [style*="sx-ring-travel"],
+  [style*="sx-ring-breathe"],
+  [style*="sx-glow"],
+  [style*="sx-nav-glow"],
+  [style*="sx-mic-spin"],
+  [style*="sx-mic-pulse"],
+  .sx-mark-stretch,
+  [style*="sx-cloud-drift"] {
+    animation: none !important;
+  }
+}

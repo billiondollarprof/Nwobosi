@@ -5,25 +5,59 @@
    in both themes.
    ========================================================================== */
 
+import { useId } from "react";
 import { BRAND } from "./tokens";
 
 /* --------------------------------------------------------------------------
    SECTION: Product mark
-   Two overlapping discs. Screen blend keeps the overlap bright on dark.
+   The small still version of the hero mark, same interlocked rings, same
+   zero gap fuse at the crossing, just square and frozen. Used everywhere
+   the wordmark needs an icon beside it: nav bars, the chat sidebar, the
+   footer. It used to be two blend mode discs that only vaguely gestured at
+   the real logo, this is the actual thing at a small size, not a stand in.
+
+   IDs are namespaced with useId because this renders more than once on the
+   same page (nav and footer both show it), and SVG gradient/mask ids have
+   to be unique per document or the second copy can point at the wrong def.
    -------------------------------------------------------------------------- */
 
 export function LogoMark({ size = 26 }) {
+  const uid = useId();
+  const left = `${uid}-left`;
+  const right = `${uid}-right`;
+  const clip = `${uid}-clip`;
+  const mask = `${uid}-mask`;
+
   return (
-    <svg width={size} height={(size / 40) * 28} viewBox="0 0 40 28" fill="none">
-      <circle cx="15" cy="14" r="12" fill={BRAND.navy} fillOpacity="0.85" />
-      <circle
-        cx="25"
-        cy="14"
-        r="12"
-        fill={BRAND.purple}
-        fillOpacity="0.85"
-        style={{ mixBlendMode: "screen" }}
-      />
+    <svg width={size} height={size} viewBox="0 0 100 100" fill="none" role="img" aria-label="StellaXafe">
+      <defs>
+        <linearGradient id={left} x1="9" y1="50" x2="59" y2="50" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor={BRAND.navy} />
+          <stop offset="50%" stopColor={BRAND.purple} />
+          <stop offset="100%" stopColor={BRAND.navy} />
+        </linearGradient>
+        <linearGradient id={right} x1="41" y1="50" x2="91" y2="50" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor={BRAND.navy} />
+          <stop offset="50%" stopColor={BRAND.purple} />
+          <stop offset="100%" stopColor={BRAND.navy} />
+        </linearGradient>
+        {/* Same fuse as the hero mark and the favicon: the cutout is shaped
+            like the left ring's own stroke, not a plain round hole, so the
+            crossing reads as sealed instead of dented. */}
+        <clipPath id={clip}>
+          <circle cx="50" cy="30.79" r="13.6" />
+        </clipPath>
+        <mask id={mask}>
+          <rect x="0" y="0" width="100" height="100" fill="white" />
+          <g clipPath={`url(#${clip})`}>
+            <circle cx="34" cy="50" r="25" stroke="black" strokeWidth="10" fill="none" />
+          </g>
+        </mask>
+      </defs>
+      <circle cx="34" cy="50" r="25" fill="none" stroke={`url(#${left})`} strokeWidth="8.5" />
+      <g mask={`url(#${mask})`}>
+        <circle cx="66" cy="50" r="25" fill="none" stroke={`url(#${right})`} strokeWidth="8.5" />
+      </g>
     </svg>
   );
 }
