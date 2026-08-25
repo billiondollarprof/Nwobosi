@@ -92,6 +92,62 @@ const HEADLINE_ACCENT = {
   color: "transparent",
 };
 
+/* --------------------------------------------------------------------------
+   SECTION: Hero cloud
+   The hero read as too quiet on its own. This is a soft wash of colour
+   sitting above the mark, not behind it and not wrapped around it, three
+   blurred blobs traced along a shallow arc so the shape reads as a C
+   hovering overhead, plus a wider faint wash so it spreads out past its
+   own edges instead of stopping at a hard circle. Each blob drifts on its
+   own timing so it reads as smoke moving, not one shape breathing in sync.
+   -------------------------------------------------------------------------- */
+
+function HeroCloud() {
+  return (
+    <div
+      className="absolute inset-x-0 -top-16 sm:-top-24 h-[380px] sm:h-[460px] overflow-hidden pointer-events-none"
+      aria-hidden="true"
+    >
+      {/* Wide faint wash first, everything else drifts on top of it */}
+      <div
+        className="absolute left-1/2 top-[8%] w-[92%] max-w-[760px] h-[260px] rounded-full"
+        style={{
+          background: `radial-gradient(ellipse, ${BRAND.navy}26 0%, transparent 72%)`,
+          filter: "blur(70px)",
+          animation: "sx-cloud-drift-b 26s ease-in-out infinite",
+        }}
+      />
+      {/* Left of the arc */}
+      <div
+        className="absolute left-[10%] sm:left-[18%] top-[40%] w-[200px] h-[200px] sm:w-[260px] sm:h-[260px] rounded-full"
+        style={{
+          background: `radial-gradient(circle, ${BRAND.purple}59 0%, transparent 70%)`,
+          filter: "blur(50px)",
+          animation: "sx-cloud-drift-a 17s ease-in-out infinite",
+        }}
+      />
+      {/* Top of the arc, the highest point of the C */}
+      <div
+        className="absolute left-1/2 top-0 w-[260px] h-[260px] sm:w-[340px] sm:h-[340px] rounded-full"
+        style={{
+          background: `radial-gradient(circle, ${BRAND.accentSoft}4D 0%, transparent 70%)`,
+          filter: "blur(55px)",
+          animation: "sx-cloud-drift-b 20s ease-in-out infinite",
+        }}
+      />
+      {/* Right of the arc, mirrors the left */}
+      <div
+        className="absolute right-[10%] sm:right-[18%] top-[40%] w-[200px] h-[200px] sm:w-[260px] sm:h-[260px] rounded-full"
+        style={{
+          background: `radial-gradient(circle, ${BRAND.purpleDeep}59 0%, transparent 70%)`,
+          filter: "blur(50px)",
+          animation: "sx-cloud-drift-c 22s ease-in-out infinite",
+        }}
+      />
+    </div>
+  );
+}
+
 export default function Landing() {
   const navigate = useNavigate();
 
@@ -122,7 +178,9 @@ export default function Landing() {
           ==================================================================== */}
 
       <section className="relative z-10 px-5 sm:px-8">
-        <div className="max-w-3xl mx-auto text-center pt-10 pb-24 sm:pt-16 sm:pb-32">
+        <div className="relative max-w-3xl mx-auto text-center pt-10 pb-24 sm:pt-16 sm:pb-32">
+          <HeroCloud />
+
           <div className="flex justify-center mb-12 sm:mb-16">
             <StatusPill tone="accent">Private AI, by invitation</StatusPill>
           </div>

@@ -218,6 +218,39 @@ body {
   animation: sx-ring-stretch 8s ease-in-out infinite;
 }
 
+/* The three blobs behind the hero mark. Same easing, different reach and
+   direction per blob, so together they read as smoke drifting rather than
+   one shape pulsing. Durations live on the element itself, not here. */
+@keyframes sx-cloud-drift-a {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-4%, 5%) scale(1.08);
+  }
+}
+
+@keyframes sx-cloud-drift-b {
+  0%,
+  100% {
+    transform: translate(-50%, 0) scale(1);
+  }
+  50% {
+    transform: translate(-50%, 6%) scale(1.1);
+  }
+}
+
+@keyframes sx-cloud-drift-c {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(4%, -4%) scale(1.06);
+  }
+}
+
 /* Anyone who has asked their system to calm motion down gets a still logo. */
 @media (prefers-reduced-motion: reduce) {
   [class*="sx-motion"],
@@ -227,7 +260,8 @@ body {
   [style*="sx-nav-glow"],
   [style*="sx-mic-spin"],
   [style*="sx-mic-pulse"],
-  .sx-mark-stretch {
+  .sx-mark-stretch,
+  [style*="sx-cloud-drift"] {
     animation: none !important;
   }
 }
