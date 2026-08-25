@@ -5,7 +5,13 @@
    ========================================================================== */
 
 import { LayoutGrid, FileType, Sheet, Presentation, Brain, LineChart } from "lucide-react";
-import { CanvaIconGlyph, GmailIconGlyph, DriveIconGlyph, SlackIconGlyph } from "./icons.jsx";
+import {
+  CanvaIconGlyph,
+  GmailIconGlyph,
+  DriveIconGlyph,
+  SlackIconGlyph,
+  NotionIconGlyph,
+} from "./icons.jsx";
 
 /* --------------------------------------------------------------------------
    SECTION: Branding
