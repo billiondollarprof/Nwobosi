@@ -2,6 +2,17 @@
 
 This file holds the full state of work in progress. Update it at the end of every session so the next session can pick up without losing context.
 
+**Note (2026-08-25): a lot has moved since the section below was last written** (access codes, Setup.jsx, real Supabase backend, Cloudflare Pages is live, custom domain `stellaxafe.com`, Resend). See `SESSIONS.md` sessions 2 and 3 for what actually happened. This file needs a full rewrite to match; until then, treat SESSIONS.md as the source of truth where the two disagree.
+
+## Brand assets (settled, 2026-08-25)
+
+- `public/favicon.svg` — square, purpose built favicon. Same ratios as the hero mark, frozen gradient.
+- `public/favicon-32.png`, `public/apple-touch-icon.png` — rendered from the SVG above.
+- `public/logo-mark.png` — frozen (non-animated) full mark, 1024x666, transparent. For email headers and anywhere else the mark needs to sit still.
+- `index.html` now links the favicon and apple touch icon, and carries basic Open Graph/Twitter tags using `logo-mark.png`.
+- Still open: a real social share card with the wordmark and tagline in brand type (Sora/DM Sans). This sandbox cannot load Google Fonts in headless rendering, so it was not built here. Needs doing somewhere that can reach Google Fonts, or by hand.
+- Now unblocked: the per-company branding upload system (logo, brand color) in the admin dashboard, deferred until the master logo was settled.
+
 ## Where things stand (2026-08-24)
 
 The app is built and running as a single page application. Four pages, each its own file, each with labeled sections inside. They build into one app so switching is instant.

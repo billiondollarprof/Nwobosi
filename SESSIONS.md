@@ -4,6 +4,21 @@ Log of each work session. Newest at the top. Keep entries short.
 
 ---
 
+## Session 3: 2026-08-25
+
+**Logo settled**
+
+- Locked the brand colors: navy `#1420A0`, purple `#7C3AED`, unchanged from `tokens.js`.
+- Built `public/favicon.svg`: a new square composition, not a crop of the hero mark. Same stroke to radius ratio and same gap to radius ratio as the animated mark, so it reads as the same logo, just fitted to a square tab icon. Frozen gradient, same interlock mask trick as the hero mark.
+- The existing `LogoMark` in `icons.jsx` uses `mix-blend-mode: screen`, which lightens against whatever sits behind it. Fine on a dark nav bar, wrong for a favicon that has to sit on other people's tab colors, so it was not reused.
+- Rendered `favicon-32.png` and `apple-touch-icon.png` (180x180) from that SVG with headless Chromium, transparent background.
+- Built a frozen, non-animated version of the full hero mark (same geometry as `LogoAnimated.jsx`, gradients stopped rather than removed) and rendered `logo-mark.png` at 1024x666, transparent, for anywhere the mark needs to sit still: email headers, social previews.
+- Wired favicon and apple touch icon links into `index.html`, plus basic Open Graph and Twitter card tags using `logo-mark.png`.
+- Not done: a full social share card with the wordmark and tagline set in Sora and DM Sans. This sandbox cannot load Google Fonts during headless rendering, so any text-bearing image built here would silently fall back to system fonts. Shipped the ring mark alone as `og:image` instead of a low fidelity fallback. A proper share card needs building somewhere that can reach Google Fonts, or by hand in Canva/Figma.
+- `npm run build` passes clean.
+
+---
+
 ## Session 1: 2026-08-24
 
 **Setup and docs**
