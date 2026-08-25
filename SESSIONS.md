@@ -26,6 +26,13 @@ Log of each work session. Newest at the top. Keep entries short.
 - Flagged two open items: a staff-facing "picking up from last time" view (the `work_history` table exists, nothing shows it yet), and a real onboarding/migration spec for when an actual company signs on. Neither started.
 - Confirmed the copy voice rule: no em dashes and short sentences by default, but the system adapts to a company's own material when it already has a distinct voice.
 
+**Logo interlock fix, first item of the landing rebuild**
+
+- The old crossing used a plain round cutout to hide the right ring, which left a visible dent where a straight circle edge met a curved stroke. Replaced it with a cutout shaped like the covering ring's own stroke, clipped to a small patch around the top crossing only, so it does not also blank out the bottom one. Zero gap now, the two rings read as fused. Same fix carried into `favicon.svg` and the static mark, PNGs re-rendered.
+- Added the requested second motion: the whole mark stretches slightly then eases back with a small overshoot, an 8 second loop, on top of the existing colour travel. Both rings move as one piece so the crossing fix holds through the whole animation, not just at rest, scaling each ring separately would have let the hole drift.
+- Verified live in a browser, screenshotted the animated mark at four points across the cycle. Crossing stays fused in every frame, colour travel and stretch both visibly running. `npm run build` passes clean.
+- Navbar, hero copy, page structure, and the connectors section are still open, next up.
+
 ---
 
 ## Session 1: 2026-08-24
