@@ -4,6 +4,8 @@ This file holds the full state of work in progress. Update it at the end of ever
 
 **Note (2026-08-25): a lot has moved since the section below was last written** (access codes, Setup.jsx, real Supabase backend, Cloudflare Pages is live, custom domain `stellaxafe.com`, Resend). See `SESSIONS.md` sessions 2 and 3 for what actually happened. This file needs a full rewrite to match; until then, treat SESSIONS.md as the source of truth where the two disagree.
 
+**Important (2026-08-25): `main` was way behind.** Everything from session 2 onward had only ever been pushed to the working branch `claude/nwobosi-access-5mces1`, never merged into `main`. The live site builds from `main`, so none of it was actually visible there, which is why UI checks against the live site kept showing old behaviour. Merged into `main` and pushed this session, both branches now match as of commit `274b38d`. Keep merging as work lands, do not let this gap reopen.
+
 ## Brand assets (settled, 2026-08-25)
 
 - `public/favicon.svg` — square, purpose built favicon. Same ratios as the hero mark, frozen gradient.
@@ -15,7 +17,9 @@ This file holds the full state of work in progress. Update it at the end of ever
 
 ## Landing page rebuild (spec, confirmed 2026-08-25)
 
-Confirmed with the user. Logo and navbar are done, the rest is not yet built.
+Confirmed with the user. Logo, navbar, and the hero cloud are done. Also done, from live UI feedback rather than the original spec: the "See it working" button is gone (one button on the hero now), the small nav mark matches the real logo instead of an old placeholder, the mark's colour travel is faster, and the "Read aloud" button under chat replies is gone (speech to text stays, real wiring is still open). Rest of the spec below is not yet built.
+
+**Hero cloud, done.** A soft drifting wash of colour above the mark, three blurred blobs on a shallow arc plus a wider faint layer, each on its own timing (17s/20s/22s/26s) so it reads as smoke rather than one shape breathing. `HeroCloud` in `Landing.jsx`, keyframes `sx-cloud-drift-a/b/c` in `index.css`.
 
 **Logo animation, done.** Stop the float and bounce. The mark stays put. The gradient keeps slowly trading navy and purple around each ring, that part stays. Fix needed: the interlock mask can leave a faint seam where it meets the ring stroke at the crossing. There must be zero visible gap there, the two rings read as fused, not just avoiding each other. Add a second motion on top of the gradient travel: a slow stretch and release, the tube looks pulled, then eases back to its resting shape, on a loop. Not floating. Breathing.
 
