@@ -276,6 +276,7 @@ body {
   [style*="sx-mic-spin"],
   [style*="sx-mic-pulse"],
   [style*="sx-mic-listening"],
+  [style*="sx-shimmer"],
   .sx-mark-stretch,
   [style*="sx-cloud-drift"] {
     animation: none !important;

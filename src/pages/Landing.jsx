@@ -84,12 +84,17 @@ const STEPS = [
 
 /* The second line of the headline. Same gradient as the logo, so the mark
    and the words read as one system. Tuned to stay legible on true black
-   and on the light background. */
+   and on the light background. A light band is woven into the gradient
+   and slowly swept across with the existing sx-shimmer keyframe, so the
+   line catches light rather than just sitting there as a flat colour. */
 const HEADLINE_ACCENT = {
-  background: "linear-gradient(90deg, #5870F8, #9F5AF5)",
+  background:
+    "linear-gradient(90deg, #5870F8 0%, #9F5AF5 40%, #E4E9FF 50%, #9F5AF5 60%, #5870F8 100%)",
+  backgroundSize: "220% 100%",
   WebkitBackgroundClip: "text",
   backgroundClip: "text",
   color: "transparent",
+  animation: "sx-shimmer 6s linear infinite",
 };
 
 /* --------------------------------------------------------------------------
@@ -198,13 +203,25 @@ export default function Landing() {
             <span style={HEADLINE_ACCENT}>You don't know what they've told it.</span>
           </h1>
 
+          {/* Two lengths, not one squeezed down. Mobile gets the promise,
+              desktop and tablet get the scene that earns it, plus the one
+              technical term (row-level security) doing real work here:
+              StellaXafe, and the landing page, are allowed to sound like
+              they know what they are talking about. */}
           <p
-            className="text-[16px] sm:text-[18px] leading-relaxed max-w-[560px] mx-auto mb-11"
+            className="sm:hidden text-[16px] leading-relaxed max-w-[420px] mx-auto mb-11"
+            style={{ color: "var(--text-2)" }}
+          >
+            {PRODUCT.name} gives your staff an AI that reads only what your admin approves, and never lets
+            it leave your walls.
+          </p>
+          <p
+            className="hidden sm:block text-[18px] leading-relaxed max-w-[560px] mx-auto mb-11"
             style={{ color: "var(--text-2)" }}
           >
             Every day your people paste company numbers, client names, and contracts into tools you do not
-            control. {PRODUCT.name} gives them one you own. It reads only what you approve. Nothing leaves
-            your walls.
+            control. {PRODUCT.name} reads only the sources your admin approves, keeps every company isolated
+            with row-level security, and never lets any of it leave your walls.
           </p>
 
           {/* One button only. Setting up your own company's AI is the demo,

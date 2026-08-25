@@ -33,7 +33,7 @@ Confirmed with the user. Logo, navbar, and the hero cloud are done. Also done, f
 
 **Navbar, done.** Turned out to already exist: `FloatingNav` in `ui.jsx`, shared with Chat and Admin, already theme aware through `--nav-surface`. Swapped Landing's plain header for it and added an opt-in `sticky` mode so it stays pinned while the page scrolls, on for Landing only.
 
-**Hero.** Two lengths of subtext: short for mobile, longer for tablet and desktop, never the same copy at every width. The hero must end exactly at the fold on mobile, no sliver of the next section showing, it should never look cut off. A few technical terms in the hero copy, enough to sound like it knows what it is talking about, not a wall of jargon.
+**Hero copy and shimmer, done.** Mobile gets a short subtext (just the promise), tablet and desktop get the longer scene-setting version with one real technical term doing work in it, "row-level security," not a wall of jargon. The two live as separate `<p>` tags toggled with `sm:hidden` / `hidden sm:block`, not one string trimmed by CSS. `HEADLINE_ACCENT` on the second H1 line now carries a light band woven into its gradient, swept across with the `sx-shimmer` keyframe that already existed in `index.css` but had never been wired to anything. H1 lines themselves were left as they were, they already do the job in plain words, the technical language lives in the subtext where there is room to earn it. Still open: the hero ending exactly at the fold on mobile with nothing from the next section peeking up, not checked yet.
 
 **Page order below the hero:** Hero → Problem (backed by real statistics) → concrete examples (how staff and legal firms actually feel this) → Solution (how StellaXafe fixes it) → Projection (what changes once a company adopts it). Threaded through all of it: anyone who can read and write should get a great output, privacy, time and cost saved, and a smaller model performing like a much smarter one because it is pointed at the company's own material instead of running blind.
 
@@ -135,12 +135,14 @@ Three required: company name, what the company does, industry. Everything else o
 
 One paragraph about the company is worth more than ten uploaded files. And documents must stay optional, because a client trying your proposal will not gather their brand guidelines first.
 
-### Landing page copy (locked)
+### Landing page copy (locked, updated 2026-08-25)
 
 H1 line one: Your staff are using AI right now.
-H1 line two, in the blue to purple gradient: You don't know what they've told it.
+H1 line two, in the blue to purple gradient, now shimmering: You don't know what they've told it.
 
-Sub: Every day your people paste company numbers, client names, and contracts into tools you do not control. StellaXafe gives them one you own. It reads only what you approve. Nothing leaves your walls.
+Sub, mobile: StellaXafe gives your staff an AI that reads only what your admin approves, and never lets it leave your walls.
+
+Sub, tablet and desktop: Every day your people paste company numbers, client names, and contracts into tools you do not control. StellaXafe reads only the sources your admin approves, keeps every company isolated with row-level security, and never lets any of it leave your walls.
 
 Button: Build your company's AI. Trust strip: Nothing leaves your walls, No setup team, Live in 10 minutes.
 
