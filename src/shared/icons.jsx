@@ -6,7 +6,7 @@
    ========================================================================== */
 
 import { useId } from "react";
-import { BRAND } from "./tokens";
+import { BRAND, FONTS } from "./tokens";
 
 /* --------------------------------------------------------------------------
    SECTION: Product mark
@@ -59,6 +59,44 @@ export function LogoMark({ size = 26 }) {
         <circle cx="66" cy="50" r="25" fill="none" stroke={`url(#${right})`} strokeWidth="8.5" />
       </g>
     </svg>
+  );
+}
+
+/* --------------------------------------------------------------------------
+   SECTION: Lockup
+   The mark and the name together, with one rule about how they sit.
+
+   Anchored to a corner, they run side by side, mark first, the way the eye
+   reads a line. Centred, they stack, mark above the name. A centred
+   side-by-side pair has two competing middles, the middle of the pair and
+   the middle of the name, and neither lands where the eye expects. Stacking
+   gives the whole thing one shared centre line.
+
+   So: side by side in a corner, stacked in the middle. That is the whole
+   rule, and keeping it in one component is what stops it drifting.
+   -------------------------------------------------------------------------- */
+
+export function LogoLockup({ stacked = false, size = 26, textClass = "text-[16px]" }) {
+  const name = (
+    <span className={`font-bold tracking-tight ${textClass}`} style={{ fontFamily: FONTS.display }}>
+      StellaXafe
+    </span>
+  );
+
+  if (stacked) {
+    return (
+      <div className="flex flex-col items-center gap-1.5">
+        <LogoMark size={size} />
+        {name}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2.5">
+      <LogoMark size={size} />
+      {name}
+    </div>
   );
 }
 

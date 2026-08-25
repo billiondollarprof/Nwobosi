@@ -28,7 +28,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
-import { LogoMark } from "../shared/icons.jsx";
+import { LogoLockup } from "../shared/icons.jsx";
 import { BRAND, FONTS } from "../shared/tokens";
 import {
   PageShell,
@@ -41,8 +41,10 @@ import {
   Spinner,
 } from "../shared/ui.jsx";
 import { PRODUCT } from "../shared/config.js";
+import { supabase } from "../shared/supabase.js";
 import {
   checkAccessCode,
+  createWorkspace,
   normaliseCode,
   emailProblem,
   passwordProblem,
@@ -141,6 +143,43 @@ export default function Setup() {
     setCompanyReady(true);
   }
 
+  /* ------------------------------------------------------------------------
+     5. BUILD IT
+     The first and only call that changes anything. Everything typed across
+     all three steps is sent in one go, and the server does the whole thing
+     or none of it.
+     ------------------------------------------------------------------------ */
+
+  async function submitBuild() {
+    setError("");
+    setBusy(true);
+
+    const result = await createWorkspace({ code, admin, company });
+
+    if (!result.ok) {
+      setBusy(false);
+      setError(result.reason);
+      return;
+    }
+
+    /* The account was just created with these exact details, so sign in
+       with them and land the admin inside their own dashboard rather than
+       at a login screen asking for something they typed two minutes ago. */
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: admin.email.trim(),
+      password: admin.password,
+    });
+
+    if (signInError) {
+      /* The workspace is real either way. Send them on, the dashboard will
+         ask them to sign in and that is a recoverable place to be. */
+      console.error("workspace created but sign in failed", signInError);
+    }
+
+    setBusy(false);
+    navigate(`/${result.slug}/admin`);
+  }
+
   return (
     <PageShell scroll>
       {/* ====================================================================
@@ -164,12 +203,7 @@ export default function Setup() {
             <ArrowLeft size={16} />
             Back
           </button>
-          <div className="flex items-center gap-2">
-            <LogoMark size={22} />
-            <span className="font-bold text-[14.5px] tracking-tight" style={{ fontFamily: FONTS.display }}>
-              {PRODUCT.name}
-            </span>
-          </div>
+          <LogoLockup stacked size={20} textClass="text-[13px]" />
           <ThemeToggle />
         </div>
       </header>
@@ -214,7 +248,15 @@ export default function Setup() {
               />
             )}
 
-            {step === 2 && companyReady && <ReviewStep admin={admin} company={company} />}
+            {step === 2 && companyReady && (
+              <ReviewStep
+                admin={admin}
+                company={company}
+                busy={busy}
+                error={error}
+                onBuild={submitBuild}
+              />
+            )}
           </div>
 
           <p
@@ -512,7 +554,7 @@ function CompanyStep({ company, error, onChange, onSubmit }) {
    everything back rather than just saying done.
    ========================================================================== */
 
-function ReviewStep({ admin, company }) {
+function ReviewStep({ admin, company, busy, error, onBuild }) {
   const slug = slugify(company.name);
 
   const rows = [
@@ -564,11 +606,23 @@ function ReviewStep({ admin, company }) {
         {company.about}
       </p>
 
-      <PrimaryButton disabled className="w-full flex items-center justify-center gap-2 mb-3">
-        Build my company's AI
+      {error && (
+        <p className="text-[12.5px] mb-4" style={{ color: BRAND.red }}>
+          {error}
+        </p>
+      )}
+
+      <PrimaryButton
+        onClick={onBuild}
+        disabled={busy}
+        className="w-full flex items-center justify-center gap-2 mb-3"
+      >
+        {busy && <Spinner size={14} color="#fff" />}
+        {busy ? "Building your workspace" : "Build my company's AI"}
+        {!busy && <ArrowRight size={15} />}
       </PrimaryButton>
       <p className="text-[12px] text-center" style={{ color: "var(--text-3)" }}>
-        Creating the workspace is being wired up next.
+        {busy ? "This takes a few seconds. Do not close this tab." : `Your workspace will be live at /${slug}`}
       </p>
     </div>
   );

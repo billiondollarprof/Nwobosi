@@ -74,6 +74,59 @@ export async function checkAccessCode(raw) {
 }
 
 /* --------------------------------------------------------------------------
+   SECTION: Create the workspace
+   The only call in this file that changes anything. Everything before it
+   was a conversation, this is the moment the code is spent, the admin's
+   account exists, and the company becomes real.
+
+   All of it happens server side in one edge function, on purpose. The
+   browser cannot be trusted to run four steps in order and clean up after
+   itself if step three fails halfway.
+   -------------------------------------------------------------------------- */
+
+export async function createWorkspace({ code, admin, company }) {
+  try {
+    const { data, error } = await supabase.functions.invoke("create-workspace", {
+      body: {
+        code: normaliseCode(code),
+        adminName: admin.name.trim(),
+        email: admin.email.trim(),
+        password: admin.password,
+        companyName: company.name.trim(),
+        whatWeDo: company.about.trim(),
+        industry: company.industry,
+      },
+    });
+
+    if (error) {
+      /* A non 2xx from the function arrives here with the useful part
+         buried in the response body, so dig it out rather than showing
+         a generic failure over a message that actually explains itself. */
+      const detail = await readFunctionError(error);
+      console.error("create-workspace failed", error);
+      return { ok: false, reason: detail ?? "Could not reach the server. Check your connection and try again." };
+    }
+
+    if (data?.ok) return { ok: true, slug: data.slug };
+    return { ok: false, reason: data?.reason ?? "Could not build your workspace. Try again." };
+  } catch (err) {
+    console.error("create-workspace threw", err);
+    return { ok: false, reason: "Could not reach the server. Check your connection and try again." };
+  }
+}
+
+/* supabase-js wraps a failed function call in a FunctionsHttpError whose
+   real message is still sitting unread in the response stream. */
+async function readFunctionError(error) {
+  try {
+    const body = await error?.context?.json?.();
+    return typeof body?.reason === "string" ? body.reason : null;
+  } catch {
+    return null;
+  }
+}
+
+/* --------------------------------------------------------------------------
    SECTION: Password rules
    One rule, stated plainly, checked as they type.
    -------------------------------------------------------------------------- */

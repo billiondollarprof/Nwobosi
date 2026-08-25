@@ -59,8 +59,8 @@ export const MODEL_TIERS = {
     id: "claude-sonnet-5",
     label: "Sonnet 5",
     use: "Analysis, prompt writing, and output",
-    inputPer1M: 3,
-    outputPer1M: 15,
+    inputPer1M: 2,
+    outputPer1M: 10,
   },
   "opus-5": {
     id: "claude-opus-5",
