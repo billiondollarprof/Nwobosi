@@ -48,6 +48,7 @@ import {
 } from "lucide-react";
 
 import { LogoMark } from "../shared/icons.jsx";
+import { useSpeechToText } from "../shared/useSpeechToText.js";
 import { BRAND, GRADIENTS, FONTS } from "../shared/tokens";
 import {
   PageShell,
@@ -187,6 +188,26 @@ export default function Chat() {
   const fileInputRef = useRef(null);
   const profileRef = useRef(null);
 
+  /* Speech to text. What was already typed when the mic was tapped stays
+     put, the transcript lands after it, so talking never wipes out typing. */
+  const speechBaseRef = useRef("");
+  const { supported: micSupported, listening, start: startListening, stop: stopListening } = useSpeechToText({
+    onResult: (transcript, isFinal) => {
+      const base = speechBaseRef.current;
+      setInput(`${base}${base && transcript ? " " : ""}${transcript}`);
+      if (isFinal) speechBaseRef.current = `${base}${base && transcript ? " " : ""}${transcript}`;
+    },
+  });
+
+  function toggleListening() {
+    if (listening) {
+      stopListening();
+      return;
+    }
+    speechBaseRef.current = input.trim();
+    startListening();
+  }
+
   const conversationStarted = messages.length > 0;
 
   /* Slash quick starts, only at the very start of a conversation */
@@ -207,6 +228,12 @@ export default function Chat() {
   useEffect(() => {
     setHasGreetedBefore(true);
   }, []);
+
+  /* The mic control disappears once step reaches 3, stop listening with it
+     rather than leaving a session open with nothing showing it is live. */
+  useEffect(() => {
+    if (step >= 3 && listening) stopListening();
+  }, [step, listening, stopListening]);
 
   /* Keep the conversation pinned to the newest message */
   useEffect(() => {
@@ -953,7 +980,9 @@ export default function Chat() {
               }}
               rows={1}
               placeholder={
-                !conversationStarted
+                listening
+                  ? "Listening..."
+                  : !conversationStarted
                   ? `Ask ${ASSISTANT_NAME}, or type / for quick starts`
                   : step === 0
                   ? "Type what you want to build, or /"
@@ -965,35 +994,52 @@ export default function Chat() {
 
             {step < 3 && (
               <div className="flex items-center gap-1.5 shrink-0">
-                {/* Mic stays on screen at all times */}
-                <div className="relative w-9 h-9 shrink-0">
-                  {!(input.trim() || pendingAttachments.length > 0) && (
-                    <span
-                      className="absolute -inset-[4px] rounded-full pointer-events-none"
-                      style={{
-                        background: GRADIENTS.micRing,
-                        filter: "blur(3px)",
-                        opacity: 0.95,
-                        animation: "sx-mic-spin 4s linear infinite",
-                      }}
-                    />
-                  )}
-                  <button
-                    className="relative w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all hover:scale-105 active:scale-95"
-                    style={
-                      input.trim() || pendingAttachments.length > 0
-                        ? { backgroundColor: "var(--chip)", color: "var(--text-2)" }
-                        : {
-                            backgroundColor: "var(--surface-solid)",
-                            color: "var(--text-1)",
-                            animation: "sx-mic-pulse 2.4s ease-in-out infinite",
-                          }
-                    }
-                    aria-label="Voice input"
-                  >
-                    <Mic size={15} />
-                  </button>
-                </div>
+                {/* Mic stays on screen at all times, when the browser
+                    actually has speech recognition to offer. Nothing is
+                    worse than a control that looks live and cannot work. */}
+                {micSupported && (
+                  <div className="relative w-9 h-9 shrink-0">
+                    {listening ? (
+                      <span
+                        className="absolute -inset-[4px] rounded-full pointer-events-none"
+                        style={{
+                          background: `radial-gradient(circle, ${BRAND.red}55 0%, transparent 70%)`,
+                          animation: "sx-mic-listening 1s ease-in-out infinite",
+                        }}
+                      />
+                    ) : (
+                      !(input.trim() || pendingAttachments.length > 0) && (
+                        <span
+                          className="absolute -inset-[4px] rounded-full pointer-events-none"
+                          style={{
+                            background: GRADIENTS.micRing,
+                            filter: "blur(3px)",
+                            opacity: 0.95,
+                            animation: "sx-mic-spin 4s linear infinite",
+                          }}
+                        />
+                      )
+                    )}
+                    <button
+                      onClick={toggleListening}
+                      className="relative w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all hover:scale-105 active:scale-95"
+                      style={
+                        listening
+                          ? { backgroundColor: BRAND.red, color: "#fff" }
+                          : input.trim() || pendingAttachments.length > 0
+                          ? { backgroundColor: "var(--chip)", color: "var(--text-2)" }
+                          : {
+                              backgroundColor: "var(--surface-solid)",
+                              color: "var(--text-1)",
+                              animation: "sx-mic-pulse 2.4s ease-in-out infinite",
+                            }
+                      }
+                      aria-label={listening ? "Stop listening" : "Voice input"}
+                    >
+                      <Mic size={15} />
+                    </button>
+                  </div>
+                )}
 
                 {/* Send appears beside the mic rather than replacing it */}
                 {(input.trim() || pendingAttachments.length > 0) && (
