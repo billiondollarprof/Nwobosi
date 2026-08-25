@@ -6,6 +6,14 @@ Log of each work session. Newest at the top. Keep entries short.
 
 ## Session 3: 2026-08-25
 
+**Hero copy split, plus the shimmer**
+
+- Mobile now gets its own short subtext instead of the same long one shrunk down. Tablet and desktop keep the longer version, which now names "row-level security" directly, the one real technical term the landing page rule (added earlier this session) actually calls for.
+- Wired up `sx-shimmer`, a keyframe that already existed in `index.css` but had never been used anywhere. A light band lives inside the second headline line's gradient now, sweeping across slowly.
+- Confirmed the split renders right at mobile, tablet, and desktop widths, and caught the shimmer visibly moved between two shots 3.2 seconds apart.
+- H1 itself untouched, it already said the right thing in plain words. `npm run build` clean, merged to `main`.
+- Still open from the spec: the hero ending exactly at the fold on mobile, page structure below the hero, the connectors section. User's next stated priority is the "heavy" work, connectors and the real Anthropic API, flagged as Opus territory per CLAUDE.md when we get there.
+
 **Speech to text, real this time**
 
 - Built `src/shared/useSpeechToText.js`, a small hook around the browser's own Web Speech API. Kept the recognition object in a ref, built once, not rebuilt on every render, rebuilding it mid sentence would have cut the session.
