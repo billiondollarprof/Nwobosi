@@ -13,6 +13,22 @@ This file holds the full state of work in progress. Update it at the end of ever
 - Still open: a real social share card with the wordmark and tagline in brand type (Sora/DM Sans). This sandbox cannot load Google Fonts in headless rendering, so it was not built here. Needs doing somewhere that can reach Google Fonts, or by hand.
 - Now unblocked: the per-company branding upload system (logo, brand color) in the admin dashboard, deferred until the master logo was settled.
 
+## Landing page rebuild (spec, confirmed 2026-08-25)
+
+Confirmed with the user, not yet built. Do this next. Logo first, since the rest of the page sits under it.
+
+**Logo animation.** Stop the float and bounce. The mark stays put. The gradient keeps slowly trading navy and purple around each ring, that part stays. Fix needed: the interlock mask can leave a faint seam where it meets the ring stroke at the crossing. There must be zero visible gap there, the two rings read as fused, not just avoiding each other. Add a second motion on top of the gradient travel: a slow stretch and release, the tube looks pulled, then eases back to its resting shape, on a loop. Not floating. Breathing.
+
+**Navbar.** A floating pill, theme aware. Dark mode: glassy, dark black, sleek. Light mode: glassy, white, sleek. Same shape and blur in both, only the tint flips with the theme.
+
+**Hero.** Two lengths of subtext: short for mobile, longer for tablet and desktop, never the same copy at every width. The hero must end exactly at the fold on mobile, no sliver of the next section showing, it should never look cut off. A few technical terms in the hero copy, enough to sound like it knows what it is talking about, not a wall of jargon.
+
+**Page order below the hero:** Hero → Problem (backed by real statistics) → concrete examples (how staff and legal firms actually feel this) → Solution (how StellaXafe fixes it) → Projection (what changes once a company adopts it). Threaded through all of it: anyone who can read and write should get a great output, privacy, time and cost saved, and a smaller model performing like a much smarter one because it is pointed at the company's own material instead of running blind.
+
+**Connectors section.** Add Notion and Microsoft 365 (Outlook/Teams) to the existing Canva, Gmail, Drive, Slack. Real logos, not just names, laid out like an integrations strip, grid or marquee, plus a "+ more" note. Cards can animate on scroll, glow, sliding over each other, that does not need Opus.
+
+Reference for the overall polish level: the Xalom landing page the user shared. Clean hero, one clear call to action, generous white space. Test every breakpoint separately, mobile, tablet, desktop, screenshot each before calling it done, per the UI rule in CLAUDE.md.
+
 ## Where things stand (2026-08-24)
 
 The app is built and running as a single page application. Four pages, each its own file, each with labeled sections inside. They build into one app so switching is instant.
@@ -139,6 +155,12 @@ Enforced at generation time. The written prompt carries each retrieved fact with
 
 If a company needs sector material, the admin uploads or links those specific sources deliberately.
 
+**Data isolation and the migration promise, confirmed 2026-08-25.** No leakage is a real design goal, not a demo talking point. What is not real: local parsing, PII redaction, a "zero-trust runtime" or governance layer. Those got caught as invented in an earlier draft pitch and were dropped.
+
+What is real and belongs in the plan: once a company actually hires StellaXafe, moving them off shared Supabase onto their own private system, VPC or on-premise, should be close to seamless, under a week of work. A handful of security upgrades happen at that point specifically because the company is now paying for and running its own private infrastructure instead of sitting on a shared multi-tenant platform.
+
+Right now this build is simulating that intent ahead of being hired to build it for real. The demo runs on shared Supabase with row level security, which is genuine isolation between companies, just not physical isolation. The demo should still feel close to VPC grade, tight, nothing crossing between companies, even though the underlying infrastructure is shared. Say what is true (row level isolation, single use codes, scoped retrieval). Do not claim physical separation that is not there yet.
+
 **Model routing.**
 
 | Step | Tier |
@@ -148,6 +170,10 @@ If a company needs sector material, the admin uploads or links those specific so
 | Output and design | Sonnet 5 |
 
 Demo is capped at Sonnet 5.
+
+**Switch timing, confirmed 2026-08-25.** The tier switches up before the read-back gets written, not after the prompt. Analysis reads the retrieved sources on the higher tier first, so the read-back the user confirms reflects real understanding, not a cheap model's guess. If the switch waited until after the prompt was written, a misunderstanding from the cheap model would get locked into the prompt with nothing left to catch it.
+
+**After the read-back.** If the user comes back with a correction or an addition, that is conversation, not a fresh ask, so the system drops back down to the lower tier for that turn. It still has full access to everything already retrieved for this task. The admin metadata and any staff files pulled in are part of the working context, not something tied to which model happens to be reading it. So the lower tier is not working blind, it is editing inside an already scoped brief, which is exactly what a cheap model is good at. It only escalates back up if the correction changes what needs to be retrieved or the understanding materially, not for a wording tweak or an added detail.
 
 | Model | ID | Input per 1M | Output per 1M | Context |
 | --- | --- | --- | --- | --- |
@@ -176,6 +202,10 @@ StellaXafe is a prompt generator first. The full path:
 
 Why write the prompt down: the model does not drift, company facts carry their source so hallucination is blocked at generation time, and the prompt is an audit record.
 
+### Voice rules (confirmed 2026-08-25)
+
+Default: no em dashes, short simple or compound sentences, plain conversational language, no jargon. If the company's own uploaded material already uses long sentences, em dashes, or professional jargon, the system matches that instead of overriding it. Not a hard cap, a fallback for when the company has not already told us their own voice through what they gave us.
+
 ## Gaps between the UI and the real flow
 
 The front end is all seeded data. These steps from the flow above are not visible in the chat yet:
@@ -184,8 +214,9 @@ The front end is all seeded data. These steps from the flow above are not visibl
 - No visible prompt writing stage in the generating card.
 - No retrieval step showing which knowledge base sources were pulled.
 - No real model routing, so no tier switching is shown.
+- No staff-facing "picking up from last time" moment. `work_history` exists in the schema as a table, but nothing in `Chat.jsx` surfaces it yet. The pattern this coding project itself uses, `CURRENT.md` and `SESSIONS.md`, a saved state plus a running log, is the right model for it: a quiet, plain-language "last time you built X" on return, not a full audit trail dumped on the user. Not started.
 
-Closing these four is what makes the demo tell the real story.
+Closing these five is what makes the demo tell the real story.
 
 ## Supabase (built)
 
@@ -230,8 +261,12 @@ Not deployed yet. Pages is being sunset, so the path is Workers Builds. The dash
 
 ## Next steps
 
-1. Connect the repo in Cloudflare Workers Builds and set the two build variables.
-2. Decide the embedding model, then ingestion for knowledge sources.
-3. Wire real auth against Supabase, replacing the seeded data in Auth and Admin.
-4. Close the four flow gaps in the chat so the demo shows the prompt engine.
-5. Connectors.
+This list replaces the stale one that used to sit here (see the note at the top of the file). Current order:
+
+1. Landing page rebuild: logo fix first, then navbar, hero, page structure, connectors section. Spec is above.
+2. Build the `create-workspace` edge function so Setup's final step actually creates a company.
+3. Real email and OTP auth, no password, for both the admin setup step and staff login.
+4. Close the five flow gaps in the chat so the demo shows the real prompt engine end to end.
+5. Per-company branding upload (logo, colour) in the admin dashboard, unblocked now that the master logo is settled.
+6. Write the real-company onboarding spec: what setup looks like for a paying enterprise, the VPC/on-premise migration plan and timeline, which security upgrades apply once they are off shared Supabase. Not started.
+7. Design the staff-facing session continuity view described above. Not started.

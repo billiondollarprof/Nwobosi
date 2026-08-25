@@ -17,6 +17,15 @@ Log of each work session. Newest at the top. Keep entries short.
 - Not done: a full social share card with the wordmark and tagline set in Sora and DM Sans. This sandbox cannot load Google Fonts during headless rendering, so any text-bearing image built here would silently fall back to system fonts. Shipped the ring mark alone as `og:image` instead of a low fidelity fallback. A proper share card needs building somewhere that can reach Google Fonts, or by hand in Canva/Figma.
 - `npm run build` passes clean.
 
+**Landing page rebuild spec, and a round of fact checking**
+
+- User shared a reference landing page (Xalom) and asked for that level of polish, plus a fixed logo animation (no float, zero gap at the ring crossing, a stretch and release breathing motion), a theme aware glass pill navbar, split mobile/desktop hero subtext, a hero that never looks cut off on mobile, a five part page structure (hero, problem with stats, examples, solution, projection), and two more connector logos. Full spec written into `CURRENT.md`. Not built yet.
+- Confirmed the model switch happens before the read back, not after the prompt, matching what was already designed. Added the missing piece: after the read back, a user correction is conversation, so it drops back to the lower tier for that turn, still working inside the same already retrieved context. Only escalates back up if the correction changes what needs retrieving.
+- Fact checked two pitch texts the user had drafted elsewhere. First one had real invented capabilities in it: local parsing, PII redaction, a "zero-trust runtime" or "AI police" governance layer, none of that is built. Second one, a market research summary, checked out: verified the McKinsey pilot-purgatory figure, the IBM shadow AI breach cost premium, and the Samsung ChatGPT leak via web search, all real.
+- Clarified the no-leakage story: not claiming physical isolation today, that comes with the post-hire migration to a company's own VPC or on-premise system, meant to take under a week once a company is paying for private infrastructure instead of shared Supabase. The demo should still feel tight and locked down even while running on shared infra.
+- Flagged two open items: a staff-facing "picking up from last time" view (the `work_history` table exists, nothing shows it yet), and a real onboarding/migration spec for when an actual company signs on. Neither started.
+- Confirmed the copy voice rule: no em dashes and short sentences by default, but the system adapts to a company's own material when it already has a distinct voice.
+
 ---
 
 ## Session 1: 2026-08-24
