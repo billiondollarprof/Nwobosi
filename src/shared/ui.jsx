@@ -47,13 +47,19 @@ export function AmbientGlow() {
 /* `scroll` pages flow down the document like a normal page. Pages without
    it are pinned to the viewport, so an inner area does the scrolling and
    the composer or footer stays put. That is what makes chat feel like an
-   app rather than a document. */
+   app rather than a document.
+
+   dvh, not vh. On a phone, 100vh is the height of the screen with the
+   browser's address bar collapsed, which is taller than what is actually
+   on screen when it is not. Anything centered against vh sits low, and on
+   a fixed h-screen page the bottom can end up clipped under the address
+   bar. dvh tracks the real visible area as it changes. */
 export function PageShell({ children, scroll = false, className = "" }) {
   const { vars } = useTheme();
   return (
     <div
       className={`w-full flex flex-col relative isolate transition-colors duration-300 ${
-        scroll ? "min-h-screen" : "h-screen overflow-hidden"
+        scroll ? "min-h-dvh" : "h-dvh overflow-hidden"
       } ${className}`}
       style={{
         ...vars,

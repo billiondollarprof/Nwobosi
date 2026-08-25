@@ -28,7 +28,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
-import LogoAnimated from "../shared/LogoAnimated.jsx";
+import { LogoMark } from "../shared/icons.jsx";
 import { BRAND, FONTS } from "../shared/tokens";
 import {
   PageShell,
@@ -147,7 +147,14 @@ export default function Setup() {
           1. SHELL AND PROGRESS
           ==================================================================== */}
 
-      <header className="shrink-0 relative z-20">
+      {/* Floating, not in the document flow. A header that takes up its own
+          row pushes everything below it down, so even a block that centers
+          itself in "the rest of the page" is really centering in the rest
+          of the page after the header's height is subtracted, which sits
+          below the true middle of the screen. Floating it removes that tax
+          entirely: the block below now has the whole viewport to center
+          against, header included, not just what is left after it. */}
+      <header className="absolute top-0 inset-x-0 z-20">
         <div className="max-w-5xl mx-auto px-5 sm:px-8 py-6 flex items-center justify-between">
           <button
             onClick={goBack}
@@ -157,16 +164,18 @@ export default function Setup() {
             <ArrowLeft size={16} />
             Back
           </button>
+          <div className="flex items-center gap-2">
+            <LogoMark size={22} />
+            <span className="font-bold text-[14.5px] tracking-tight" style={{ fontFamily: FONTS.display }}>
+              {PRODUCT.name}
+            </span>
+          </div>
           <ThemeToggle />
         </div>
       </header>
 
-      <div className="flex-1 flex items-center justify-center px-5 py-10 relative z-10">
+      <div className="flex-1 flex items-center justify-center px-5 py-6 relative z-10">
         <div className="w-full max-w-[420px]">
-          <div className="flex justify-center mb-8">
-            <LogoAnimated size={150} />
-          </div>
-
           <StepBar step={step} />
 
           <div
@@ -317,7 +326,15 @@ function AccessCodeStep({ code, busy, error, onChange, onSubmit }) {
       </PrimaryButton>
 
       <p className="text-[12px] mt-5 text-center leading-relaxed" style={{ color: "var(--text-3)" }}>
-        No code? Ask whoever sent you the proposal. Codes are handed out one at a time.
+        No code? Ask whoever sent you the proposal, codes are handed out one at a time. Or{" "}
+        <a
+          href={`mailto:${PRODUCT.supportEmail}?subject=Access%20code%20request`}
+          className="underline underline-offset-2 hover:opacity-80"
+          style={{ color: "var(--text-2)" }}
+        >
+          request one from {PRODUCT.name}
+        </a>
+        .
       </p>
     </form>
   );

@@ -6,6 +6,12 @@ This file holds the full state of work in progress. Update it at the end of ever
 
 **Important (2026-08-25): `main` was way behind.** Everything from session 2 onward had only ever been pushed to the working branch `claude/nwobosi-access-5mces1`, never merged into `main`. The live site builds from `main`, so none of it was actually visible there, which is why UI checks against the live site kept showing old behaviour. Merged into `main` and pushed this session, both branches now match as of commit `274b38d`. Keep merging as work lands, do not let this gap reopen.
 
+## Access code requests (2026-08-25)
+
+`PRODUCT.supportEmail` in `config.js` is a placeholder (`anthony@stellaxafe.com`). The "no code" line on the setup screen's first step now mails that address directly, so someone without a code has a way to ask.
+
+Not built yet, mentioned by the user as a "we are going to also build" item, not an ask for right now: a real request form that lands in `access_codes`-adjacent state and sends an actual notification email through Resend when someone asks, rather than relying on their device having a mail client configured. The mailto link is the honest placeholder until that exists.
+
 ## Brand assets (settled, 2026-08-25)
 
 - `public/favicon.svg` — square, purpose built favicon. Same ratios as the hero mark, frozen gradient.

@@ -13,7 +13,9 @@ import { CanvaIconGlyph, GmailIconGlyph, DriveIconGlyph, SlackIconGlyph } from "
    called Acme sees "Acme AI" with no other change.
    -------------------------------------------------------------------------- */
 
-export const PRODUCT = { name: "StellaXafe" };
+/* Placeholder until the real StellaXafe inbox is routed. Update here once
+   that is live, this is the only place it needs to change. */
+export const PRODUCT = { name: "StellaXafe", supportEmail: "anthony@stellaxafe.com" };
 
 export const COMPANY = { name: "BuildFest" };
 
