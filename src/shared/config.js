@@ -180,16 +180,20 @@ export const QUICK_ACTIONS = [
    storage. The admin connects company wide sources, each staff member
    connects their own.
 
-   `live` is the honest bit. In this build only Canva is really wired, and
-   it runs through StellaXafe's own Canva account rather than the viewer's,
-   because the integration sits in draft while it is being demonstrated.
-   Everything else shows what it does and says plainly that it is not
-   connected here.
+   `state` has to tell the truth about three genuinely different things,
+   because showing the wrong one is worse than showing nothing:
 
-   That is deliberate rather than a shortcut. A connector that silently
-   pretends to connect reads as vapour the moment somebody probes it. One
-   that names the boundary and says what a real deployment gets reads as a
-   scoped piece of work, which is what StellaXafe actually sells.
+     connected   Already on and really working, but through StellaXafe's
+                 own account rather than the viewer's. Canva is here. The
+                 designs it makes are real and downloadable. Nobody can
+                 swap in their own Canva, so offering a Connect button
+                 would be a button that cannot work.
+     connectable Genuinely connectable by the person looking at it, with
+                 their own account. Drive lands here once its sign in
+                 flow is built, and it is the one place a viewer sees a
+                 real connection happen.
+     sample      Shown to say what the shape of a deployment looks like.
+                 Not wired, and says so.
    -------------------------------------------------------------------------- */
 
 export const WORKFLOW_TOOLS = [
@@ -198,42 +202,58 @@ export const WORKFLOW_TOOLS = [
     label: "Canva",
     icon: CanvaIconGlyph,
     hint: "Design and brand assets",
-    live: true,
+    state: "connected",
+    note:
+      "Running on StellaXafe's own Canva for this demo, in developer mode. The designs are " +
+      "real and yours to download. A deployment for your company connects your Canva instead, " +
+      "so work lands in your account and picks up your brand templates.",
   },
   {
+    /* Flip to "connectable" the moment the sign in flow is deployed. Until
+       then a Connect button here would be a button that does nothing, which
+       is the exact thing this whole file exists to avoid. */
     id: "drive",
     label: "Google Drive",
     icon: DriveIconGlyph,
-    hint: "Point the assistant at one of your files",
-    live: false,
+    hint: "Point the assistant at one of your files, and send finished work back",
+    state: "sample",
+    note:
+      "You can also just download whatever gets made. Connecting Drive is for when you would " +
+      "rather the finished file land straight in your own folders.",
   },
   {
     id: "email",
     label: "Gmail",
     icon: GmailIconGlyph,
     hint: "Search email for source material",
-    live: false,
+    state: "sample",
   },
   {
     id: "slack",
     label: "Slack",
     icon: SlackIconGlyph,
     hint: "Pull context from team channels",
-    live: false,
+    state: "sample",
   },
   {
     id: "notion",
     label: "Notion",
     icon: NotionIconGlyph,
     hint: "Read specs, briefs, and project pages",
-    live: false,
+    state: "sample",
   },
 ];
 
-/* Shown when someone taps a connector that is not wired in this build.
-   Says what it is, why it is off, and what a real deployment gets, in
-   that order. The last line is the point: the answer to "can it do X" is
-   yes, scoped and built for you, not a shrug. */
-export const DEMO_CONNECTOR_NOTE =
-  "Not connected in this demo. Live deployments connect your company's own account, " +
-  "with access scoped to exactly what your team approves. Ask StellaXafe to wire this one up.";
+/* Sits behind the info control under the tool list. Answers the question
+   a sharp person in the room is already forming: are these real, or is
+   this a picture of a product?
+
+   The answer is that the work is scoped and waiting on a name, which is
+   what StellaXafe sells. Not a shrug, and not a promise either. */
+export const WORKFLOW_PLAN_NOTE =
+  "These are samples, not the finished list. Your deployment connects the tools your people " +
+  "actually work in, these or others, scoped to exactly what your team approves. The specs are " +
+  "written and ready to build against. Tell us what your workflow runs on and it gets wired for you.";
+
+export const SAMPLE_CONNECTOR_NOTE =
+  "Not connected in this demo. Built for your company during setup.";

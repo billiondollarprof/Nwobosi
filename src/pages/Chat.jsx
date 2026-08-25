@@ -45,6 +45,7 @@ import {
   ExternalLink,
   Search,
   Shield,
+  Info,
 } from "lucide-react";
 
 import { LogoMark } from "../shared/icons.jsx";
@@ -74,7 +75,8 @@ import {
   SKILL_META,
   QUICK_ACTIONS,
   WORKFLOW_TOOLS,
-  DEMO_CONNECTOR_NOTE,
+  WORKFLOW_PLAN_NOTE,
+  SAMPLE_CONNECTOR_NOTE,
 } from "../shared/config.js";
 
 /* ==========================================================================
@@ -150,6 +152,7 @@ export default function Chat() {
   /* Which cosmetic connector is currently explaining itself. One at a
      time, so the menu does not turn into a wall of paragraphs. */
   const [demoNoteFor, setDemoNoteFor] = useState(null);
+  const [planNoteOpen, setPlanNoteOpen] = useState(false);
 
   /* Connectors and skills */
   const [connectors, setConnectors] = useState({
@@ -933,7 +936,7 @@ export default function Chat() {
                       <div key={tool.id}>
                         <button
                           onClick={() =>
-                            tool.live
+                            tool.state === "connectable"
                               ? toggleConnector(tool.id)
                               : setDemoNoteFor((open) => (open === tool.id ? null : tool.id))
                           }
@@ -945,28 +948,57 @@ export default function Chat() {
                               {tool.label}
                             </span>
                           </span>
-                          {tool.live ? (
-                            <StatusPill tone={connectors[tool.id] ? "ok" : "neutral"}>
-                              {connectors[tool.id] ? "Connected" : "Connect"}
-                            </StatusPill>
-                          ) : (
-                            <StatusPill tone="neutral">Not in this demo</StatusPill>
-                          )}
+
+                          <span className="flex items-center gap-1.5 shrink-0">
+                            {tool.state === "connected" && <StatusPill tone="ok">Connected</StatusPill>}
+                            {tool.state === "connectable" && (
+                              <StatusPill tone={connectors[tool.id] ? "ok" : "neutral"}>
+                                {connectors[tool.id] ? "Connected" : "Connect"}
+                              </StatusPill>
+                            )}
+                            {tool.state === "sample" && <StatusPill tone="neutral">Sample</StatusPill>}
+
+                            {/* Anything with more to say carries the info dot,
+                                including the connected one. Green on its own
+                                would imply the viewer's own Canva is attached. */}
+                            {(tool.note || tool.state !== "connectable") && (
+                              <Info size={13} style={{ color: "var(--text-3)" }} />
+                            )}
+                          </span>
                         </button>
 
-                        {/* Says what it does, why it is off, and what a real
-                            deployment gets. Tapping it should feel like an
-                            answer, not a dead end. */}
                         {demoNoteFor === tool.id && (
                           <p
                             className="pl-9 pr-4 pb-3 text-[12.5px] leading-relaxed"
                             style={{ color: "var(--text-3)", animation: "sx-rise 0.2s ease" }}
                           >
-                            {tool.hint}. {DEMO_CONNECTOR_NOTE}
+                            {tool.note ?? `${tool.hint}. ${SAMPLE_CONNECTOR_NOTE}`}
                           </p>
                         )}
                       </div>
                     ))}
+
+                    {/* The question a sharp person in the room is already
+                        forming: are these real, or is this a picture of a
+                        product. One control, one honest answer. */}
+                    <button
+                      onClick={() => setPlanNoteOpen((o) => !o)}
+                      className="w-full flex items-center gap-1.5 pl-9 pr-4 pt-1 pb-2 hover:opacity-80 transition-opacity"
+                    >
+                      <Info size={12} style={{ color: "var(--text-3)" }} />
+                      <span className="text-[12px]" style={{ color: "var(--text-3)" }}>
+                        About these tools
+                      </span>
+                    </button>
+
+                    {planNoteOpen && (
+                      <p
+                        className="pl-9 pr-4 pb-3 text-[12.5px] leading-relaxed"
+                        style={{ color: "var(--text-3)", animation: "sx-rise 0.2s ease" }}
+                      >
+                        {WORKFLOW_PLAN_NOTE}
+                      </p>
+                    )}
                   </div>
                 )}
               </div>

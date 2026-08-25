@@ -154,19 +154,33 @@ export function NotionIconGlyph({ size = 18 }) {
   );
 }
 
+/* Canva's app mark: the script C in white on their teal to purple
+   gradient, in a rounded square. The wordmark version of their logo is
+   unreadable at 18px, so this is the right one of the two to use here.
+
+   The C is drawn as a round capped arc opening to the right rather than
+   a filled letterform. Canva's real C tapers at both terminals, which a
+   single stroke cannot do, but at this size the round caps read the same
+   and the shape stays unmistakably theirs. */
 export function CanvaIconGlyph({ size = 18 }) {
+  const uid = useId();
+  const grad = `${uid}-canva`;
+
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24">
+    <svg width={size} height={size} viewBox="0 0 48 48" role="img" aria-label="Canva">
       <defs>
-        <linearGradient id="sx-canva-grad" x1="0" y1="0" x2="24" y2="24">
-          <stop offset="0%" stopColor="#8B3EFF" />
-          <stop offset="100%" stopColor="#00C4CC" />
+        <linearGradient id={grad} x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#00C4CC" />
+          <stop offset="100%" stopColor="#7D2AE8" />
         </linearGradient>
       </defs>
-      <circle cx="12" cy="12" r="11" fill="url(#sx-canva-grad)" />
+      <rect x="0" y="0" width="48" height="48" rx="11" fill={`url(#${grad})`} />
       <path
-        d="M7 13.2c0 2.1 1.6 3.4 3.6 3.4 1.1 0 2-.4 2.6-1v.7h1.9V9.6h-1.9v4.6c-.4.6-1.1 1-1.9 1-1 0-1.7-.6-1.7-1.9V9.6H7.6z"
-        fill="#fff"
+        d="M31.5 13.4 A 13 13 0 1 0 31.5 34.6"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth="6.4"
+        strokeLinecap="round"
       />
     </svg>
   );
