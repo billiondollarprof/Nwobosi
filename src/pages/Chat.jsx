@@ -36,7 +36,6 @@ import {
   Share2,
   Copy,
   MoreHorizontal,
-  Volume2,
   File as FileIcon,
   AlertCircle,
   UploadCloud,
@@ -1217,9 +1216,6 @@ function ChatBubble({ message, brief, onGenerate, onReset, feedback, onFeedback,
         </IconBtn>
         <IconBtn onClick={onCopy} label="Copy">
           <Copy size={14} />
-        </IconBtn>
-        <IconBtn label="Read aloud">
-          <Volume2 size={14} />
         </IconBtn>
         <IconBtn label="More">
           <MoreHorizontal size={14} />

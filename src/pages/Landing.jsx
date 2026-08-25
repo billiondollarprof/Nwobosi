@@ -30,14 +30,7 @@ import {
 import { LogoMark } from "../shared/icons.jsx";
 import LogoAnimated from "../shared/LogoAnimated.jsx";
 import { BRAND, GRADIENTS, FONTS } from "../shared/tokens";
-import {
-  PageShell,
-  FloatingNav,
-  ThemeToggle,
-  PrimaryButton,
-  GhostButton,
-  StatusPill,
-} from "../shared/ui.jsx";
+import { PageShell, FloatingNav, ThemeToggle, PrimaryButton, StatusPill } from "../shared/ui.jsx";
 import { PRODUCT, WORKFLOW_TOOLS } from "../shared/config.js";
 
 /* --------------------------------------------------------------------------
@@ -156,6 +149,8 @@ export default function Landing() {
             your walls.
           </p>
 
+          {/* One button only. Setting up your own company's AI is the demo,
+              there is nothing else to send someone to see. */}
           <div className="flex flex-wrap items-center justify-center gap-3 mb-9">
             <PrimaryButton
               onClick={() => navigate("/setup")}
@@ -164,9 +159,6 @@ export default function Landing() {
               Build your company's AI
               <ArrowRight size={16} />
             </PrimaryButton>
-            <GhostButton onClick={() => navigate("/chat")} className="px-6 py-3.5 text-[15px]">
-              See it working
-            </GhostButton>
           </div>
 
           <div

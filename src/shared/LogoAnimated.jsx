@@ -35,7 +35,7 @@ const CROSS_Y = LEFT.cy - Math.sqrt(R * R - Math.pow((RIGHT.cx - LEFT.cx) / 2, 2
    reaching the bottom crossing, which sits about 59 units further down. */
 const NOTCH_REACH = STROKE * 1.6;
 
-const SPIN = 11; // seconds for the colour to travel one full lap
+const SPIN = 7; // seconds for the colour to travel one full lap
 
 /* --------------------------------------------------------------------------
    SECTION: Travelling gradient
