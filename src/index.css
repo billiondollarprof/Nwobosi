@@ -192,6 +192,32 @@ body {
   }
 }
 
+/* The tube itself, stretched then let go. Both rings move as one piece so
+   the interlock never drifts out of place mid stretch. The extra stops
+   past the halfway point are the release: it overshoots slightly back
+   past its resting shape before settling, like elastic actually would. */
+@keyframes sx-ring-stretch {
+  0% {
+    transform: scale(1, 1);
+  }
+  35% {
+    transform: scale(1.055, 0.95);
+  }
+  55% {
+    transform: scale(0.985, 1.015);
+  }
+  75% {
+    transform: scale(1.012, 0.992);
+  }
+  100% {
+    transform: scale(1, 1);
+  }
+}
+
+.sx-mark-stretch {
+  animation: sx-ring-stretch 8s ease-in-out infinite;
+}
+
 /* Anyone who has asked their system to calm motion down gets a still logo. */
 @media (prefers-reduced-motion: reduce) {
   [class*="sx-motion"],
@@ -200,7 +226,8 @@ body {
   [style*="sx-glow"],
   [style*="sx-nav-glow"],
   [style*="sx-mic-spin"],
-  [style*="sx-mic-pulse"] {
+  [style*="sx-mic-pulse"],
+  .sx-mark-stretch {
     animation: none !important;
   }
 }
