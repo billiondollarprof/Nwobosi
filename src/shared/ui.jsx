@@ -376,9 +376,11 @@ export function ThemeToggle() {
    The glassy pill with the halo behind it. Shared by chat and admin.
    -------------------------------------------------------------------------- */
 
-export function FloatingNav({ children, maxWidth = "max-w-3xl" }) {
+export function FloatingNav({ children, maxWidth = "max-w-3xl", sticky = false }) {
   return (
-    <div className="shrink-0 px-3 sm:px-5 pt-5 pb-3 relative z-20">
+    <div
+      className={`shrink-0 px-3 sm:px-5 pt-5 pb-3 relative z-20 ${sticky ? "sticky top-0" : ""}`}
+    >
       <div className={`relative ${maxWidth} mx-auto`}>
         <div
           className="absolute -inset-[14px] rounded-full pointer-events-none"

@@ -30,7 +30,14 @@ import {
 import { LogoMark } from "../shared/icons.jsx";
 import LogoAnimated from "../shared/LogoAnimated.jsx";
 import { BRAND, GRADIENTS, FONTS } from "../shared/tokens";
-import { PageShell, ThemeToggle, PrimaryButton, GhostButton, StatusPill } from "../shared/ui.jsx";
+import {
+  PageShell,
+  FloatingNav,
+  ThemeToggle,
+  PrimaryButton,
+  GhostButton,
+  StatusPill,
+} from "../shared/ui.jsx";
 import { PRODUCT, WORKFLOW_TOOLS } from "../shared/config.js";
 
 /* --------------------------------------------------------------------------
@@ -99,20 +106,21 @@ export default function Landing() {
     <PageShell scroll>
       {/* ====================================================================
           1. NAV
-          No sign in. The only way in is an access code.
+          No sign in. The only way in is an access code. Same floating glass
+          pill as Chat and Admin, so the brand feels like one system from
+          the first screen. Dark glass in dark mode, white glass in light,
+          the surface colour comes from --nav-surface and flips on its own.
           ==================================================================== */}
 
-      <header className="shrink-0 relative z-20">
-        <div className="max-w-5xl mx-auto px-5 sm:px-8 py-6 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <LogoMark size={28} />
-            <span className="font-bold text-[17px] tracking-tight" style={{ fontFamily: FONTS.display }}>
-              {PRODUCT.name}
-            </span>
-          </div>
-          <ThemeToggle />
+      <FloatingNav maxWidth="max-w-3xl" sticky>
+        <div className="flex items-center gap-2.5">
+          <LogoMark size={26} />
+          <span className="font-bold text-[16px] tracking-tight" style={{ fontFamily: FONTS.display }}>
+            {PRODUCT.name}
+          </span>
         </div>
-      </header>
+        <ThemeToggle />
+      </FloatingNav>
 
       {/* ====================================================================
           2. HERO
