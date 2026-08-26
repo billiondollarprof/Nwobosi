@@ -127,6 +127,34 @@ function buildGreetingText(isFirstTime) {
     : `Hi, ${CURRENT_USER.name}. What's up? What are we building today?`;
 }
 
+/* A filename from the first thing the staff member asked for. Better than
+   "document" and better than making them name it before they have seen it. */
+function docTitle(messages) {
+  const first = messages.find((m) => m.role === "user" && m.content?.trim());
+  if (!first) return "Untitled";
+  return first.content.trim().replace(/\s+/g, " ").slice(0, 60);
+}
+
+function slugForFile(title) {
+  return title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 50) || "document";
+}
+
+/* Hands the finished document over as a real file. Built in the browser
+   from text already on screen, so there is no round trip and nothing to
+   store server side, which is the point: the chat is not a filing
+   cabinet. */
+function downloadDocument(title, content) {
+  const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${slugForFile(title)}.md`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 let idCounter = 0;
 function nextId() {
   idCounter += 1;
@@ -199,6 +227,9 @@ export default function Chat() {
   /* Lets a turn be cancelled. Leaving the page or sending again while one
      is still streaming would otherwise keep it running and billing. */
   const abortTurnRef = useRef(null);
+
+  /* Stops a second Build press stacking a second paid generation. */
+  const [generating, setGenerating] = useState(false);
 
   const scrollRef = useRef(null);
   const textareaRef = useRef(null);
@@ -384,26 +415,81 @@ export default function Chat() {
      written to their Drive rather than kept in the chat.
      ------------------------------------------------------------------------ */
 
+  /* The moment the conversation becomes a deliverable. Same function as
+     the interview, different stage, which is what moves it up to a model
+     that can actually write the thing.
+
+     The instruction is appended as a normal user turn rather than being
+     hidden in the system prompt, because everything agreed in the
+     conversation above is the brief. Restating it would risk contradicting
+     it. */
   function handleGenerate() {
+    if (generating) return;
+    setGenerating(true);
+
+    const resultId = nextId();
+    let started = false;
+
+    const history = toApiMessages([
+      ...messages,
+      {
+        role: "user",
+        content:
+          "Write the finished piece now, in full, based on everything agreed above. " +
+          "Output only the document itself, formatted with markdown headings and lists. " +
+          "No preamble, no explanation of what you are about to do, no closing commentary.",
+      },
+    ]);
+
     addMessage({ role: "assistant", type: "generating" });
 
-    setTimeout(() => {
-      setMessages((prev) => {
-        const withoutGenerating = prev.filter((m) => m.type !== "generating");
-        return [...withoutGenerating, { id: nextId(), role: "assistant", type: "result" }];
-      });
-      setDailyUsed((n) => Math.min(n + 1, DAILY_LIMIT));
+    abortTurnRef.current = sendTurn({
+      stage: "generate",
+      messages: history,
 
-      /* Add to the Library, then flip it to synced once the Drive write lands */
-      const fileId = nextId();
-      setLibraryFiles((prev) => [
-        { id: fileId, title: brief.template, skill: brief.skill, driveSynced: false, when: "Just now" },
-        ...prev,
-      ]);
-      setTimeout(() => {
-        setLibraryFiles((prev) => prev.map((f) => (f.id === fileId ? { ...f, driveSynced: true } : f)));
-      }, 1600);
-    }, 2200);
+      onMeta: ({ tier }) => setActiveTier(tier),
+
+      onText: (chunk) => {
+        if (!started) {
+          started = true;
+          setMessages((prev) => [
+            ...prev.filter((m) => m.type !== "generating"),
+            { id: resultId, role: "assistant", type: "result", content: "", title: docTitle(messages) },
+          ]);
+        }
+        setMessages((prev) =>
+          prev.map((m) => (m.id === resultId ? { ...m, content: m.content + chunk } : m))
+        );
+      },
+
+      onDone: () => {
+        setGenerating(false);
+        abortTurnRef.current = null;
+        setDailyUsed((n) => Math.min(n + 1, DAILY_LIMIT));
+
+        /* Into the library, so it is somewhere other than this one
+           conversation. driveSynced stays false because Drive is not
+           connected, and claiming otherwise would be a lie in the UI. */
+        setLibraryFiles((prev) => [
+          { id: nextId(), title: docTitle(messages), skill: autoSkill, driveSynced: false, when: "Just now" },
+          ...prev,
+        ]);
+      },
+
+      onError: ({ reason, message }) => {
+        setGenerating(false);
+        abortTurnRef.current = null;
+        setMessages((prev) => [
+          ...prev.filter((m) => m.type !== "generating"),
+          {
+            id: nextId(),
+            role: "assistant",
+            type: reason === "out_of_budget" ? "text" : "error",
+            content: message,
+          },
+        ]);
+      },
+    });
   }
 
   function handleNewChat() {
@@ -1039,6 +1125,27 @@ export default function Chat() {
             </>
           )}
 
+          {/* Build it. Appears once there is a conversation to build from,
+              and the staff member decides when that is. Trying to detect
+              readiness from the model's wording would guess wrong, and
+              guessing wrong here spends money. */}
+          {conversationStarted && !generating && (
+            <div className="flex justify-center pb-2.5">
+              <button
+                onClick={handleGenerate}
+                className="flex items-center gap-2 rounded-full border px-4 py-2 text-[13px] backdrop-blur-xl transition-opacity hover:opacity-80"
+                style={{
+                  backgroundColor: "var(--surface)",
+                  borderColor: "var(--border-2)",
+                  color: "var(--text-1)",
+                }}
+              >
+                <FileText size={14} style={{ color: BRAND.accentSoft }} />
+                Build it now
+              </button>
+            </div>
+          )}
+
           {/* Message box */}
           <div
             className="flex items-end gap-1.5 rounded-full border px-3 py-2 backdrop-blur-2xl shadow-xl transition-shadow focus-within:ring-2 focus-within:ring-[rgba(20,32,160,0.35)]"
@@ -1250,12 +1357,10 @@ function ChatBubble({ message, brief, onGenerate, onReset, feedback, onFeedback,
   }
 
   /* --- The finished file --- */
+  /* The real document, on screen, as it is written. No placeholder
+     preview: what is in this box is exactly what downloads. */
   if (message.type === "result") {
-    const meta = SKILL_META[brief.skill] || {
-      icon: FileText,
-      note: "Generated directly, no design connector needed",
-    };
-    const Icon = meta.icon;
+    const title = message.title || "Your document";
 
     return (
       <div style={riseStyle}>
@@ -1263,29 +1368,36 @@ function ChatBubble({ message, brief, onGenerate, onReset, feedback, onFeedback,
           className="rounded-[18px] border p-5 backdrop-blur-xl"
           style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
         >
-          <p className="text-[15.5px] mb-4" style={{ color: "var(--text-1)" }}>
-            Done. Here is your result.
-          </p>
-          <div
-            className="aspect-[4/3] rounded-[14px] border flex flex-col items-center justify-center gap-2 mb-2"
-            style={{
-              borderColor: "var(--border)",
-              background: "linear-gradient(135deg, var(--surface-2), var(--surface))",
-            }}
-          >
-            <Icon size={24} style={{ color: BRAND.navy }} />
-            <span className="text-[13px]" style={{ color: "var(--text-3)" }}>
-              {brief.template}
+          <div className="flex items-center gap-2 mb-3">
+            <FileText size={15} style={{ color: BRAND.accentSoft }} />
+            <span className="text-[13px] font-semibold truncate" style={{ color: "var(--text-1)" }}>
+              {title}
             </span>
           </div>
-          <p className="text-[11.5px] mb-4" style={{ color: "var(--text-3)" }}>
-            {meta.note}
-          </p>
-          <div className="flex gap-3">
-            <PrimaryButton className="flex items-center gap-2 text-[13.5px] px-4">
+
+          <div
+            className="rounded-[14px] border p-4 mb-4 max-h-[380px] overflow-y-auto"
+            style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-2)" }}
+          >
+            <pre
+              className="text-[13px] leading-relaxed whitespace-pre-wrap font-sans"
+              style={{ color: "var(--text-2)" }}
+            >
+              {message.content}
+            </pre>
+          </div>
+
+          <div className="flex flex-wrap gap-2.5">
+            <PrimaryButton
+              onClick={() => downloadDocument(title, message.content)}
+              className="flex items-center gap-2 text-[13.5px] px-4"
+            >
               <Download size={14} />
               Download
             </PrimaryButton>
+            <GhostButton onClick={() => navigator.clipboard?.writeText(message.content)}>
+              Copy
+            </GhostButton>
             <GhostButton onClick={onReset}>Start something new</GhostButton>
           </div>
         </div>
