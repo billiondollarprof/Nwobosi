@@ -281,10 +281,21 @@ Deno.serve(async (req: Request) => {
       send("meta", { tier, stage });
 
       try {
+        /* The system prompt is byte for byte identical on every turn for a
+           given company, which makes it the one thing worth caching. Marked
+           cacheable, it is charged at roughly a tenth on every turn after
+           the first, and an interview is many turns over the same prompt.
+
+           Caching is a prefix match, so this only holds while nothing above
+           it changes. Nothing is above it here, and the prompt itself is
+           built from company data that changes rarely, which is exactly the
+           shape caching rewards. A short prompt silently will not cache,
+           there is a minimum length, so a company with no sources yet gets
+           no benefit and no harm either. */
         const run = anthropic.messages.stream({
           model: MODEL_ID[tier],
           max_tokens: 8000,
-          system,
+          system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
           messages,
           ...thinkingExtras,
         });
@@ -299,9 +310,25 @@ Deno.serve(async (req: Request) => {
            because a staff member must not be able to write to their own
            company's budget, only spend against it.
            ------------------------------------------------------------ */
-        const inputTokens = final.usage?.input_tokens ?? 0;
+        /* Cached input is billed at about a tenth, and cache writes at a
+           little over full price. Counting a cache read as full price
+           would take roughly ten times too much off the company's budget,
+           which on a five dollar account is the difference between a
+           demo finishing and a demo stopping mid sentence. */
+        const cacheRead = final.usage?.cache_read_input_tokens ?? 0;
+        const cacheWrite = final.usage?.cache_creation_input_tokens ?? 0;
+        const freshInput = final.usage?.input_tokens ?? 0;
         const outputTokens = final.usage?.output_tokens ?? 0;
+
+        const inputTokens = freshInput + cacheWrite * 1.25 + cacheRead * 0.1;
         const cents = centsFor(tier, inputTokens, outputTokens);
+
+        /* If this stays at zero over a conversation, the cache is not
+           holding and something above the prompt is changing between
+           turns. Cheap to log, and the only way to notice. */
+        console.log(
+          `usage tier=${tier} fresh=${freshInput} cacheWrite=${cacheWrite} cacheRead=${cacheRead} out=${outputTokens} cents=${cents}`,
+        );
 
         if (!exempt && cents > 0) {
           const admin = createClient(
