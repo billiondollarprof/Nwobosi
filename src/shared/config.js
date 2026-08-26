@@ -19,9 +19,26 @@ import {
    called Acme sees "Acme AI" with no other change.
    -------------------------------------------------------------------------- */
 
-/* Placeholder until the real StellaXafe inbox is routed. Update here once
-   that is live, this is the only place it needs to change. */
 export const PRODUCT = { name: "StellaXafe", supportEmail: "anthony@stellaxafe.com" };
+
+/* --------------------------------------------------------------------------
+   SECTION: OAuth client ids
+   Public by design. A client id names the application, it does not
+   authorise anything, so it belongs in the bundle. The matching secrets
+   live in Supabase's secret store and are never in this repo.
+   -------------------------------------------------------------------------- */
+
+export const OAUTH_CLIENTS = {
+  canva: "OC-AaA6AM8XqQ_Z",
+  google: "575838735620-7rv1ibm8tlrj9djt3bs26j95g3r74g54.apps.googleusercontent.com",
+};
+
+/* Both providers send the browser back here after someone approves. It
+   points at Supabase rather than at stellaxafe.com because exchanging the
+   code for a token needs the client secret, and that must never be
+   somewhere a browser can read it. */
+export const OAUTH_REDIRECT_URI =
+  "https://cbunsqzkhidwjtxdsmxd.supabase.co/functions/v1/oauth-callback";
 
 export const COMPANY = { name: "BuildFest" };
 
