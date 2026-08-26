@@ -50,6 +50,7 @@ import {
 
 import { LogoMark } from "../shared/icons.jsx";
 import { useSpeechToText } from "../shared/useSpeechToText.js";
+import { sendTurn, toApiMessages } from "../shared/assistantApi.js";
 import { BRAND, GRADIENTS, FONTS } from "../shared/tokens";
 import {
   PageShell,
@@ -191,6 +192,14 @@ export default function Chat() {
   const [brief, setBrief] = useState({});
   const [typing, setTyping] = useState(false);
 
+  /* Which model actually ran the last turn, reported by the server rather
+     than assumed here. The ladder is a real feature, so it gets shown. */
+  const [activeTier, setActiveTier] = useState(null);
+
+  /* Lets a turn be cancelled. Leaving the page or sending again while one
+     is still streaming would otherwise keep it running and billing. */
+  const abortTurnRef = useRef(null);
+
   const scrollRef = useRef(null);
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -236,6 +245,10 @@ export default function Chat() {
   useEffect(() => {
     setHasGreetedBefore(true);
   }, []);
+
+  /* A stream left running after the page is gone still costs money and
+     still counts against the company's budget. Cut it. */
+  useEffect(() => () => abortTurnRef.current?.(), []);
 
   /* The mic control disappears once step reaches 3, stop listening with it
      rather than leaving a session open with nothing showing it is live. */
@@ -296,56 +309,73 @@ export default function Chat() {
     handleUserReply(seedText);
   }
 
+  /* The real thing. Everything the conversation has said so far goes to
+     the assistant function, which decides the model, checks the budget,
+     and answers as this company's assistant.
+
+     The interview is not scripted here any more. The system prompt tells
+     the model to ask only what it does not know and to read the brief
+     back before producing anything, so the questions come from the model
+     reading the room rather than from a fixed list of three. That is the
+     difference between an interview and a form. */
   function handleUserReply(text) {
-    /* Answer small talk, then steer straight back to the open question */
-    if (isSmallTalk(text) && step < 3) {
-      const pending =
-        step === 0
-          ? "What are we building today?"
-          : step === 1
-          ? "Anyway, who is this actually going to?"
-          : "Anyway, should I pull anything from a connected workflow tool, or do you already have everything I need?";
-      replyAfterDelay({ role: "assistant", type: "text", content: `${smallTalkAck(text)} ${pending}` });
-      return;
-    }
+    /* Skill detection still runs locally. It is a badge, not a decision,
+       and guessing it instantly beats waiting on a round trip to show it. */
+    const guessed = SKILL_BY_TYPE[guessProjectType(text)];
+    if (guessed && !autoSkill) setAutoSkill(guessed);
 
-    /* Step 0: what are we building */
-    if (step === 0) {
-      const type = guessProjectType(text);
-      const template = TEMPLATES[type];
-      const skillKey = SKILL_BY_TYPE[type];
-      setAutoSkill(skillKey);
-      setBrief({ project: text, template, skill: skillKey });
-      const label = type === "deck" ? "pitch deck" : type === "other" ? "new kind of project" : type;
-      replyAfterDelay({
-        role: "assistant",
-        type: "text",
-        content: `Got it. Sounds like a ${label} for ${COMPANY.name}. I will use "${template}" as the template unless you would rather use something else. Who is this actually going to?`,
-      });
-      setStep(1);
-      return;
-    }
+    setTyping(true);
 
-    /* Step 1: who is it for */
-    if (step === 1) {
-      setBrief((prev) => ({ ...prev, audience: text }));
-      replyAfterDelay({
-        role: "assistant",
-        type: "text",
-        content:
-          "Understood. Should I pull anything from a connected workflow tool, or do you already have everything I need?",
-      });
-      setStep(2);
-      return;
-    }
+    /* The bubble the reply streams into. Created empty and filled as
+       chunks arrive, so words appear rather than a spinner resolving into
+       a wall of text. */
+    const replyId = nextId();
+    let started = false;
 
-    /* Step 2: where the source material comes from, then read the brief back */
-    if (step === 2) {
-      const pulling = /yes|search|inbox|pull|email|drive|slack|canva/i.test(text) && !/no/i.test(text);
-      setBrief((prev) => ({ ...prev, source: pulling ? text : "Manual input only" }));
-      replyAfterDelay({ role: "assistant", type: "summary" });
-      setStep(3);
-    }
+    const history = toApiMessages([
+      ...messages,
+      { role: "user", content: text },
+    ]);
+
+    abortTurnRef.current = sendTurn({
+      stage: "interview",
+      messages: history,
+
+      onMeta: ({ tier }) => setActiveTier(tier),
+
+      onText: (chunk) => {
+        if (!started) {
+          started = true;
+          setTyping(false);
+          setMessages((prev) => [...prev, { id: replyId, role: "assistant", type: "text", content: "" }]);
+        }
+        setMessages((prev) =>
+          prev.map((m) => (m.id === replyId ? { ...m, content: m.content + chunk } : m))
+        );
+      },
+
+      onDone: () => {
+        setTyping(false);
+        abortTurnRef.current = null;
+      },
+
+      onError: ({ reason, message }) => {
+        setTyping(false);
+        abortTurnRef.current = null;
+
+        /* Running out is not a failure, it is the end of a trial, and the
+           message that comes back with it is written to say so. */
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: nextId(),
+            role: "assistant",
+            type: reason === "out_of_budget" ? "text" : "error",
+            content: message,
+          },
+        ]);
+      },
+    });
   }
 
   /* ------------------------------------------------------------------------
@@ -377,6 +407,10 @@ export default function Chat() {
   }
 
   function handleNewChat() {
+    abortTurnRef.current?.();
+    abortTurnRef.current = null;
+    setTyping(false);
+    setActiveTier(null);
     setMessages([]);
     setGreetingText(buildGreetingText(!hasGreetedBefore));
     setStep(0);
