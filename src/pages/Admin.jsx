@@ -226,6 +226,9 @@ function KnowledgeSection({ me, loading: loadingMe }) {
      happening rather than a page that looks stuck. */
   const [reading, setReading] = useState("");
 
+  /* Files chosen together and still waiting their turn. */
+  const [queue, setQueue] = useState([]);
+
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -249,15 +252,34 @@ function KnowledgeSection({ me, loading: loadingMe }) {
   const failed = items.filter((i) => i.status === "failed").length;
   const linkCount = items.filter((i) => i.kind === "link").length;
 
+  const errorRef = useRef(null);
+
+  /* Placing the message near the control is not enough on a phone, where
+     the control itself can be below the fold. Bring it into view, so a
+     refused file is something you are told rather than something you have
+     to go looking for. */
   function show(message) {
     setError(message);
-    setTimeout(() => setError(""), 6000);
+    requestAnimationFrame(() => {
+      errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+    setTimeout(() => setError(""), 9000);
   }
 
   async function pickFiles(e) {
-    const file = (e.target.files || [])[0];
+    const chosen = Array.from(e.target.files || []);
     e.target.value = "";
-    if (!file) return;
+    if (!chosen.length) return;
+
+    /* Several at once is normal, so take them all and work through them
+       one at a time. Each still gets its own name and description,
+       because those two lines are how the assistant decides which source
+       to open, and a batch cannot write them for you. */
+    setQueue(chosen.slice(1));
+    await stageFile(chosen[0]);
+  }
+
+  async function stageFile(file) {
 
     if (!canBecomeText(file.name)) {
       show(`${file.name} is not a kind of file this can read. PDF, Word, plain text, Markdown, CSV or JSON.`);
@@ -350,6 +372,15 @@ function KnowledgeSection({ me, loading: loadingMe }) {
     setItems((prev) => [result.source, ...prev]);
     setJustAdded(`${result.source.name}, ${result.chunks} ${result.chunks === 1 ? "piece" : "pieces"} of text`);
     setStaged(null);
+
+    /* Straight on to the next one they chose, so a batch feels like a
+       batch rather than something that quietly dropped everything after
+       the first file. */
+    const [next, ...rest] = queue;
+    if (next) {
+      setQueue(rest);
+      await stageFile(next);
+    }
   }
 
   /* The link goes to an edge function rather than being fetched here,
@@ -407,19 +438,10 @@ function KnowledgeSection({ me, loading: loadingMe }) {
         ref={fileInputRef}
         type="file"
         className="hidden"
+        multiple
         accept=".pdf,.docx,.txt,.md,.markdown,.csv,.tsv,.json,.log,.rtf,.xml,.html"
         onChange={pickFiles}
       />
-
-      {error && (
-        <div
-          className="flex items-start gap-2 rounded-[12px] px-3.5 py-3 text-[13px]"
-          style={{ backgroundColor: "rgba(229,62,62,0.1)", color: BRAND.red }}
-        >
-          <AlertCircle size={15} className="shrink-0 mt-0.5" />
-          {error}
-        </div>
-      )}
 
       {/* Summary */}
       <div className="grid gap-3 sm:grid-cols-3">
@@ -511,6 +533,11 @@ function KnowledgeSection({ me, loading: loadingMe }) {
         {staged ? (
           <div className="space-y-3">
             <p className="text-[13px]" style={{ color: "var(--text-3)" }}>
+              {queue.length > 0 && (
+                <span style={{ color: "var(--text-2)" }}>
+                  {queue.length + 1} files chosen. This one first.{" "}
+                </span>
+              )}
               Read {staged.fileName}
               {staged.truncated ? ", the first part of it, which was as much as fits" : ""}. Name it and
               say what it holds.
@@ -538,7 +565,14 @@ function KnowledgeSection({ me, loading: loadingMe }) {
                 {saving && <Spinner size={13} color="#fff" />}
                 {saving ? "Saving" : "Add to knowledge base"}
               </PrimaryButton>
-              <GhostButton onClick={() => setStaged(null)}>Cancel</GhostButton>
+              <GhostButton
+                onClick={() => {
+                  setStaged(null);
+                  setQueue([]);
+                }}
+              >
+                Cancel
+              </GhostButton>
             </div>
           </div>
         ) : (
@@ -568,6 +602,21 @@ function KnowledgeSection({ me, loading: loadingMe }) {
               </span>
             ) : (
               <GhostButton onClick={() => fileInputRef.current?.click()}>Browse files</GhostButton>
+            )}
+
+            {/* Right under the button that failed. It used to render at the
+                top of the page, which on a phone is a screen and a half
+                above where somebody is looking, so a refused file looked
+                like a button doing nothing at all. */}
+            {error && (
+              <div
+                ref={errorRef}
+                className="flex items-start gap-2 rounded-[12px] px-3.5 py-3 mt-4 text-[13px] text-left"
+                style={{ backgroundColor: "rgba(229,62,62,0.1)", color: BRAND.red }}
+              >
+                <AlertCircle size={15} className="shrink-0 mt-0.5" />
+                {error}
+              </div>
             )}
           </div>
         )}
