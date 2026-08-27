@@ -55,6 +55,7 @@ import {
   MAX_SOURCE_UPLOAD_KB,
   MAX_SOURCE_CHARS,
   WORKFLOW_TOOLS,
+  WORKFLOW_PLAN_NOTE,
   MODEL_TIERS,
   SKILL_LABELS,
   MODEL_ORDER,
@@ -664,12 +665,6 @@ function KnowledgeSection({ me, loading: loadingMe }) {
 }
 
 function ConnectorsSection() {
-  const [connected, setConnected] = useState({ canva: false, email: false, drive: true, slack: false });
-
-  function toggle(id) {
-    setConnected((prev) => ({ ...prev, [id]: !prev[id] }));
-  }
-
   return (
     <div className="space-y-5" style={{ animation: "sx-rise 0.3s ease" }}>
       <GlassPanel className="p-6">
@@ -695,24 +690,25 @@ function ConnectorsSection() {
                 <p className="text-[14px] font-medium" style={{ color: "var(--text-1)" }}>
                   {tool.label}
                 </p>
-                <p className="text-[12.5px]" style={{ color: "var(--text-3)" }}>
-                  {tool.hint}
+                <p className="text-[12.5px] leading-relaxed" style={{ color: "var(--text-3)" }}>
+                  {tool.note ?? tool.hint}
                 </p>
               </div>
 
-              <button
-                onClick={() => toggle(tool.id)}
-                className="rounded-full px-3.5 py-1.5 text-[12.5px] font-medium border transition-colors hover:opacity-80 shrink-0"
-                style={
-                  connected[tool.id]
-                    ? { borderColor: "rgba(22,176,74,0.35)", color: BRAND.green }
-                    : { borderColor: "var(--border-2)", color: "var(--text-2)" }
-                }
-              >
-                {connected[tool.id] ? "Connected" : "Connect"}
-              </button>
+              {/* No toggle. It used to flip to "Connected" while nothing
+                  happened behind it, which is a button that lies to the one
+                  person who most needs to know what is real. */}
+              {tool.state === "registered" ? (
+                <StatusPill tone="pending">Set up</StatusPill>
+              ) : (
+                <StatusPill tone="neutral">Example</StatusPill>
+              )}
             </div>
           ))}
+
+          <p className="text-[12.5px] leading-relaxed pt-1" style={{ color: "var(--text-3)" }}>
+            {WORKFLOW_PLAN_NOTE}
+          </p>
         </div>
       </GlassPanel>
 

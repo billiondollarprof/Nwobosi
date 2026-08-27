@@ -251,24 +251,22 @@ export const WORKFLOW_TOOLS = [
     label: "Canva",
     icon: CanvaIconGlyph,
     hint: "Design and brand assets",
-    state: "connected",
+    state: "registered",
     note:
-      "Running on StellaXafe's own Canva for this demo, in developer mode. The designs are " +
-      "real and yours to download. A deployment for your company connects your Canva instead, " +
-      "so work lands in your account and picks up your brand templates.",
+      "The Canva app is registered and its keys are in place, so the door is built. What is not " +
+      "built yet is the part that sends a design through it, so nothing here produces a Canva " +
+      "file today. That is the next piece of work, not a maybe.",
   },
   {
-    /* Flip to "connectable" the moment the sign in flow is deployed. Until
-       then a Connect button here would be a button that does nothing, which
-       is the exact thing this whole file exists to avoid. */
     id: "drive",
     label: "Google Drive",
     icon: DriveIconGlyph,
-    hint: "Point the assistant at one of your files, and send finished work back",
-    state: "sample",
+    hint: "Point the assistant at a file, and send finished work back",
+    state: "registered",
     note:
-      "You can also just download whatever gets made. Connecting Drive is for when you would " +
-      "rather the finished file land straight in your own folders.",
+      "Registered with Google and its keys are in place. The sign in that would let you connect " +
+      "your own Drive is the remaining piece. Until then, hand over a file here and download " +
+      "whatever gets made.",
   },
   {
     id: "email",
@@ -295,14 +293,15 @@ export const WORKFLOW_TOOLS = [
 
 /* Sits behind the info control under the tool list. Answers the question
    a sharp person in the room is already forming: are these real, or is
-   this a picture of a product?
-
-   The answer is that the work is scoped and waiting on a name, which is
-   what StellaXafe sells. Not a shrug, and not a promise either. */
+   this a picture of a product? */
 export const WORKFLOW_PLAN_NOTE =
-  "These are samples, not the finished list. Your deployment connects the tools your people " +
-  "actually work in, these or others, scoped to exactly what your team approves. The specs are " +
-  "written and ready to build against. Tell us what your workflow runs on and it gets wired for you.";
+  "Your deployment connects the tools your people actually work in, these or others, scoped to " +
+  "exactly what your team approves. Where one says registered, the account and keys are already " +
+  "in place and the remaining work is the wiring. Where it says example, the shape is drawn and " +
+  "the build is scoped. Tell us what your workflow runs on and it gets wired for you.";
+
+export const REGISTERED_CONNECTOR_NOTE =
+  "Set up on our side. Not doing work in this demo yet.";
 
 export const SAMPLE_CONNECTOR_NOTE =
   "Not connected in this demo. Built for your company during setup.";
