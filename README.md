@@ -8,6 +8,10 @@ Built for the 10Alytics Business AI BuildFest.
 > This repository is shared for review only. See [LICENSE](LICENSE). Reading it
 > grants no right to copy, reuse, or redistribute any part of it.
 
+**Two documents worth reading first:** [HOW-IT-WORKS.md](HOW-IT-WORKS.md)
+explains the product and its honest limits. [ROADMAP.md](ROADMAP.md) is the
+spec for everything not yet built.
+
 ## The problem it solves
 
 Three problems, in order of priority.
