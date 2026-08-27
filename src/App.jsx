@@ -22,8 +22,16 @@ export default function App() {
           <Route path="/" element={<Landing />} />
           <Route path="/setup" element={<Setup />} />
           <Route path="/auth" element={<Auth />} />
+
+          {/* The plain paths are the demo shortcuts. Real companies live at
+              their own slug, which is what setup sends people to. Static
+              paths above win over the slug pattern below, so /setup stays
+              /setup and never gets read as a company called "setup". */}
           <Route path="/chat" element={<Chat />} />
           <Route path="/admin" element={<Admin />} />
+          <Route path="/:slug" element={<Chat />} />
+          <Route path="/:slug/admin" element={<Admin />} />
+
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

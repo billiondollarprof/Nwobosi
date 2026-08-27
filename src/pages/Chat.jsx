@@ -45,10 +45,12 @@ import {
   ExternalLink,
   Search,
   Shield,
+  Info,
 } from "lucide-react";
 
 import { LogoMark } from "../shared/icons.jsx";
 import { useSpeechToText } from "../shared/useSpeechToText.js";
+import { sendTurn, toApiMessages } from "../shared/assistantApi.js";
 import { BRAND, GRADIENTS, FONTS } from "../shared/tokens";
 import {
   PageShell,
@@ -74,6 +76,8 @@ import {
   SKILL_META,
   QUICK_ACTIONS,
   WORKFLOW_TOOLS,
+  WORKFLOW_PLAN_NOTE,
+  SAMPLE_CONNECTOR_NOTE,
 } from "../shared/config.js";
 
 /* ==========================================================================
@@ -81,6 +85,35 @@ import {
    Small pure functions the interview leans on. Kept at the top so the
    component below reads as flow rather than plumbing.
    ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   HANDSHAKE MARKERS
+   The app cannot read the model's mind, so the model says when it is done
+   by ending its last message with a word nobody would type. That word is
+   never shown. It is stripped here, including while it is still arriving
+   one character at a time, so it never flashes on screen and then vanishes.
+   -------------------------------------------------------------------------- */
+
+const MARKER = {
+  interviewDone: "INTERVIEW_COMPLETE",
+  readbackDone: "READBACK_COMPLETE",
+};
+
+const MARKER_WORDS = Object.values(MARKER);
+
+function visibleText(raw) {
+  let out = raw;
+  for (const word of MARKER_WORDS) out = out.split(word).join("");
+
+  /* A marker arrives in pieces. Anything trailing that could still grow
+     into one is held back for a beat rather than shown and yanked away. */
+  const tail = out.match(/[A-Z_]+$/);
+  if (tail && MARKER_WORDS.some((word) => word.startsWith(tail[0]) && word !== tail[0])) {
+    out = out.slice(0, out.length - tail[0].length);
+  }
+
+  return out.replace(/\s+$/, "");
+}
 
 function guessProjectType(text) {
   const t = text.toLowerCase();
@@ -111,16 +144,38 @@ function timePhrase() {
   return { kind: "casual" };
 }
 
-function buildGreetingText(isFirstTime) {
+function buildGreetingText() {
   const phrase = timePhrase();
-  if (isFirstTime) {
-    return phrase.kind === "greeting"
-      ? `Welcome, ${CURRENT_USER.name}. ${phrase.word}. What are we building today?`
-      : `Welcome, ${CURRENT_USER.name}. Hi, what's up? What are we building today?`;
-  }
-  return phrase.kind === "greeting"
-    ? `${phrase.word}, ${CURRENT_USER.name}. What are we building today?`
-    : `Hi, ${CURRENT_USER.name}. What's up? What are we building today?`;
+  const opener = phrase.kind === "greeting" ? `${phrase.word}, ${CURRENT_USER.name}.` : `Hi ${CURRENT_USER.name}.`;
+  return `${opener} What are we working on today?`;
+}
+
+/* A filename from the first thing the staff member asked for. Better than
+   "document" and better than making them name it before they have seen it. */
+function docTitle(messages) {
+  const first = messages.find((m) => m.role === "user" && m.content?.trim());
+  if (!first) return "Untitled";
+  return first.content.trim().replace(/\s+/g, " ").slice(0, 60);
+}
+
+function slugForFile(title) {
+  return title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 50) || "document";
+}
+
+/* Hands the finished document over as a real file. Built in the browser
+   from text already on screen, so there is no round trip and nothing to
+   store server side, which is the point: the chat is not a filing
+   cabinet. */
+function downloadDocument(title, content) {
+  const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${slugForFile(title)}.md`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 let idCounter = 0;
@@ -146,6 +201,11 @@ export default function Chat() {
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const [workflowExpanded, setWorkflowExpanded] = useState(false);
 
+  /* Which cosmetic connector is currently explaining itself. One at a
+     time, so the menu does not turn into a wall of paragraphs. */
+  const [demoNoteFor, setDemoNoteFor] = useState(null);
+  const [planNoteOpen, setPlanNoteOpen] = useState(false);
+
   /* Connectors and skills */
   const [connectors, setConnectors] = useState({
     canva: false,
@@ -158,7 +218,7 @@ export default function Chat() {
 
   /* Greeting */
   const [hasGreetedBefore, setHasGreetedBefore] = useState(false);
-  const [greetingText, setGreetingText] = useState(() => buildGreetingText(true));
+  const [greetingText, setGreetingText] = useState(() => buildGreetingText());
 
   /* Usage and feedback */
   const [dailyUsed, setDailyUsed] = useState(0);
@@ -182,6 +242,29 @@ export default function Chat() {
   const [step, setStep] = useState(0);
   const [brief, setBrief] = useState({});
   const [typing, setTyping] = useState(false);
+
+  /* Which model actually ran the last turn, reported by the server rather
+     than assumed here. The ladder is a real feature, so it gets shown. */
+  const [activeTier, setActiveTier] = useState(null);
+
+  /* Lets a turn be cancelled. Leaving the page or sending again while one
+     is still streaming would otherwise keep it running and billing. */
+  const abortTurnRef = useRef(null);
+
+  /* Stops a second Build press stacking a second paid generation. */
+  const [generating, setGenerating] = useState(false);
+
+  /* Where the conversation is in the flow. This is the stage the next turn
+     runs at, which is also what decides the model, so it is the difference
+     between a cheap question and an expensive one.
+
+       interview  the cheap model, asking a few short questions
+       analyse    the stronger model, reading the company sources, either
+                  coming back for something missing or reading the brief back
+
+     It moves up by itself the moment the interview model says it is done.
+     Nobody presses anything to make that happen. */
+  const [flowStage, setFlowStage] = useState("interview");
 
   const scrollRef = useRef(null);
   const textareaRef = useRef(null);
@@ -228,6 +311,10 @@ export default function Chat() {
   useEffect(() => {
     setHasGreetedBefore(true);
   }, []);
+
+  /* A stream left running after the page is gone still costs money and
+     still counts against the company's budget. Cut it. */
+  useEffect(() => () => abortTurnRef.current?.(), []);
 
   /* The mic control disappears once step reaches 3, stop listening with it
      rather than leaving a session open with nothing showing it is live. */
@@ -288,56 +375,95 @@ export default function Chat() {
     handleUserReply(seedText);
   }
 
+  /* The real thing. Everything the conversation has said so far goes to
+     the assistant function, which decides the model, checks the budget,
+     and answers as this company's assistant.
+
+     One function runs every turn, whatever stage it is. The stage is what
+     changes: it picks the model and the instruction, and the server caps it
+     against what this staff member is allowed. */
+  function runTurn(stage, history) {
+    setTyping(true);
+
+    /* The bubble the reply streams into. Created empty and filled as
+       chunks arrive, so words appear rather than a spinner resolving into
+       a wall of text. */
+    const replyId = nextId();
+    let started = false;
+    let raw = "";
+
+    abortTurnRef.current = sendTurn({
+      stage,
+      messages: history,
+
+      onMeta: ({ tier }) => setActiveTier(tier),
+
+      onText: (chunk) => {
+        raw += chunk;
+        if (!started) {
+          started = true;
+          setTyping(false);
+          setMessages((prev) => [...prev, { id: replyId, role: "assistant", type: "text", content: "" }]);
+        }
+        const shown = visibleText(raw);
+        setMessages((prev) => prev.map((m) => (m.id === replyId ? { ...m, content: shown } : m)));
+      },
+
+      onDone: () => {
+        setTyping(false);
+        abortTurnRef.current = null;
+
+        const clean = visibleText(raw);
+        setMessages((prev) => prev.map((m) => (m.id === replyId ? { ...m, content: clean } : m)));
+
+        /* The interview said it has enough. Move up a tier and go straight
+           into the check, without the staff member pressing anything. From
+           their side they answered a question and got a read back. */
+        if (stage === "interview" && raw.includes(MARKER.interviewDone)) {
+          setFlowStage("analyse");
+          runTurn("analyse", [...history, { role: "assistant", content: clean }]);
+          return;
+        }
+
+        /* The stronger model has read the sources. Either it came back for
+           something only this person can supply, in which case their answer
+           goes back to it at the same tier, or it read the brief back and
+           earned the Build card. */
+        if (stage === "analyse" && raw.includes(MARKER.readbackDone)) {
+          setMessages((prev) => [...prev, { id: nextId(), role: "assistant", type: "build" }]);
+        }
+      },
+
+      onError: ({ reason, message }) => {
+        setTyping(false);
+        abortTurnRef.current = null;
+
+        /* Running out is not a failure, it is the end of a trial, and the
+           message that comes back with it is written to say so. */
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: nextId(),
+            role: "assistant",
+            type: reason === "out_of_budget" ? "text" : "error",
+            content: message,
+          },
+        ]);
+      },
+    });
+  }
+
   function handleUserReply(text) {
-    /* Answer small talk, then steer straight back to the open question */
-    if (isSmallTalk(text) && step < 3) {
-      const pending =
-        step === 0
-          ? "What are we building today?"
-          : step === 1
-          ? "Anyway, who is this actually going to?"
-          : "Anyway, should I pull anything from a connected workflow tool, or do you already have everything I need?";
-      replyAfterDelay({ role: "assistant", type: "text", content: `${smallTalkAck(text)} ${pending}` });
-      return;
-    }
+    /* Skill detection still runs locally. It is a badge, not a decision,
+       and guessing it instantly beats waiting on a round trip to show it. */
+    const guessed = SKILL_BY_TYPE[guessProjectType(text)];
+    if (guessed && !autoSkill) setAutoSkill(guessed);
 
-    /* Step 0: what are we building */
-    if (step === 0) {
-      const type = guessProjectType(text);
-      const template = TEMPLATES[type];
-      const skillKey = SKILL_BY_TYPE[type];
-      setAutoSkill(skillKey);
-      setBrief({ project: text, template, skill: skillKey });
-      const label = type === "deck" ? "pitch deck" : type === "other" ? "new kind of project" : type;
-      replyAfterDelay({
-        role: "assistant",
-        type: "text",
-        content: `Got it. Sounds like a ${label} for ${COMPANY.name}. I will use "${template}" as the template unless you would rather use something else. Who is this actually going to?`,
-      });
-      setStep(1);
-      return;
-    }
+    /* Anything typed after a read back is a correction, so the Build card
+       stops being true. It comes back when the read back does. */
+    setMessages((prev) => prev.filter((m) => m.type !== "build"));
 
-    /* Step 1: who is it for */
-    if (step === 1) {
-      setBrief((prev) => ({ ...prev, audience: text }));
-      replyAfterDelay({
-        role: "assistant",
-        type: "text",
-        content:
-          "Understood. Should I pull anything from a connected workflow tool, or do you already have everything I need?",
-      });
-      setStep(2);
-      return;
-    }
-
-    /* Step 2: where the source material comes from, then read the brief back */
-    if (step === 2) {
-      const pulling = /yes|search|inbox|pull|email|drive|slack|canva/i.test(text) && !/no/i.test(text);
-      setBrief((prev) => ({ ...prev, source: pulling ? text : "Manual input only" }));
-      replyAfterDelay({ role: "assistant", type: "summary" });
-      setStep(3);
-    }
+    runTurn(flowStage, toApiMessages([...messages, { role: "user", content: text }]));
   }
 
   /* ------------------------------------------------------------------------
@@ -346,31 +472,92 @@ export default function Chat() {
      written to their Drive rather than kept in the chat.
      ------------------------------------------------------------------------ */
 
+  /* The moment the conversation becomes a deliverable. Same function as
+     the interview, different stage, which is what moves it up to a model
+     that can actually write the thing.
+
+     The instruction is appended as a normal user turn rather than being
+     hidden in the system prompt, because everything agreed in the
+     conversation above is the brief. Restating it would risk contradicting
+     it. */
   function handleGenerate() {
+    if (generating) return;
+    setGenerating(true);
+    setMessages((prev) => prev.filter((m) => m.type !== "build"));
+
+    const resultId = nextId();
+    let started = false;
+
+    const history = toApiMessages([
+      ...messages,
+      {
+        role: "user",
+        content:
+          "Write the finished piece now, in full, based on everything agreed above. " +
+          "Output only the document itself, formatted with markdown headings and lists. " +
+          "No preamble, no explanation of what you are about to do, no closing commentary.",
+      },
+    ]);
+
     addMessage({ role: "assistant", type: "generating" });
 
-    setTimeout(() => {
-      setMessages((prev) => {
-        const withoutGenerating = prev.filter((m) => m.type !== "generating");
-        return [...withoutGenerating, { id: nextId(), role: "assistant", type: "result" }];
-      });
-      setDailyUsed((n) => Math.min(n + 1, DAILY_LIMIT));
+    abortTurnRef.current = sendTurn({
+      stage: "generate",
+      messages: history,
 
-      /* Add to the Library, then flip it to synced once the Drive write lands */
-      const fileId = nextId();
-      setLibraryFiles((prev) => [
-        { id: fileId, title: brief.template, skill: brief.skill, driveSynced: false, when: "Just now" },
-        ...prev,
-      ]);
-      setTimeout(() => {
-        setLibraryFiles((prev) => prev.map((f) => (f.id === fileId ? { ...f, driveSynced: true } : f)));
-      }, 1600);
-    }, 2200);
+      onMeta: ({ tier }) => setActiveTier(tier),
+
+      onText: (chunk) => {
+        if (!started) {
+          started = true;
+          setMessages((prev) => [
+            ...prev.filter((m) => m.type !== "generating"),
+            { id: resultId, role: "assistant", type: "result", content: "", title: docTitle(messages) },
+          ]);
+        }
+        setMessages((prev) =>
+          prev.map((m) => (m.id === resultId ? { ...m, content: m.content + chunk } : m))
+        );
+      },
+
+      onDone: () => {
+        setGenerating(false);
+        abortTurnRef.current = null;
+        setDailyUsed((n) => Math.min(n + 1, DAILY_LIMIT));
+
+        /* Into the library, so it is somewhere other than this one
+           conversation. driveSynced stays false because Drive is not
+           connected, and claiming otherwise would be a lie in the UI. */
+        setLibraryFiles((prev) => [
+          { id: nextId(), title: docTitle(messages), skill: autoSkill, driveSynced: false, when: "Just now" },
+          ...prev,
+        ]);
+      },
+
+      onError: ({ reason, message }) => {
+        setGenerating(false);
+        abortTurnRef.current = null;
+        setMessages((prev) => [
+          ...prev.filter((m) => m.type !== "generating"),
+          {
+            id: nextId(),
+            role: "assistant",
+            type: reason === "out_of_budget" ? "text" : "error",
+            content: message,
+          },
+        ]);
+      },
+    });
   }
 
   function handleNewChat() {
+    abortTurnRef.current?.();
+    abortTurnRef.current = null;
+    setTyping(false);
+    setActiveTier(null);
     setMessages([]);
-    setGreetingText(buildGreetingText(!hasGreetedBefore));
+    setGreetingText(buildGreetingText());
+    setFlowStage("interview");
     setStep(0);
     setBrief({});
     setAutoSkill(null);
@@ -925,22 +1112,72 @@ export default function Chat() {
                 {workflowExpanded && (
                   <div className="pb-2" style={{ animation: "sx-rise 0.25s ease" }}>
                     {WORKFLOW_TOOLS.map((tool) => (
-                      <button
-                        key={tool.id}
-                        onClick={() => toggleConnector(tool.id)}
-                        className="w-full flex items-center justify-between pl-9 pr-4 py-2.5 hover:opacity-80 transition-opacity"
-                      >
-                        <span className="flex items-center gap-2.5">
-                          <tool.icon size={18} />
-                          <span className="text-[13.5px] text-left" style={{ color: "var(--text-1)" }}>
-                            {tool.label}
+                      <div key={tool.id}>
+                        <button
+                          onClick={() =>
+                            tool.state === "connectable"
+                              ? toggleConnector(tool.id)
+                              : setDemoNoteFor((open) => (open === tool.id ? null : tool.id))
+                          }
+                          className="w-full flex items-center justify-between pl-9 pr-4 py-2.5 hover:opacity-80 transition-opacity"
+                        >
+                          <span className="flex items-center gap-2.5">
+                            <tool.icon size={18} />
+                            <span className="text-[13.5px] text-left" style={{ color: "var(--text-1)" }}>
+                              {tool.label}
+                            </span>
                           </span>
-                        </span>
-                        <StatusPill tone={connectors[tool.id] ? "ok" : "neutral"}>
-                          {connectors[tool.id] ? "Connected" : "Connect"}
-                        </StatusPill>
-                      </button>
+
+                          <span className="flex items-center gap-1.5 shrink-0">
+                            {tool.state === "connected" && <StatusPill tone="ok">Connected</StatusPill>}
+                            {tool.state === "connectable" && (
+                              <StatusPill tone={connectors[tool.id] ? "ok" : "neutral"}>
+                                {connectors[tool.id] ? "Connected" : "Connect"}
+                              </StatusPill>
+                            )}
+                            {tool.state === "sample" && <StatusPill tone="neutral">Sample</StatusPill>}
+
+                            {/* Anything with more to say carries the info dot,
+                                including the connected one. Green on its own
+                                would imply the viewer's own Canva is attached. */}
+                            {(tool.note || tool.state !== "connectable") && (
+                              <Info size={13} style={{ color: "var(--text-3)" }} />
+                            )}
+                          </span>
+                        </button>
+
+                        {demoNoteFor === tool.id && (
+                          <p
+                            className="pl-9 pr-4 pb-3 text-[12.5px] leading-relaxed"
+                            style={{ color: "var(--text-3)", animation: "sx-rise 0.2s ease" }}
+                          >
+                            {tool.note ?? `${tool.hint}. ${SAMPLE_CONNECTOR_NOTE}`}
+                          </p>
+                        )}
+                      </div>
                     ))}
+
+                    {/* The question a sharp person in the room is already
+                        forming: are these real, or is this a picture of a
+                        product. One control, one honest answer. */}
+                    <button
+                      onClick={() => setPlanNoteOpen((o) => !o)}
+                      className="w-full flex items-center gap-1.5 pl-9 pr-4 pt-1 pb-2 hover:opacity-80 transition-opacity"
+                    >
+                      <Info size={12} style={{ color: "var(--text-3)" }} />
+                      <span className="text-[12px]" style={{ color: "var(--text-3)" }}>
+                        About these tools
+                      </span>
+                    </button>
+
+                    {planNoteOpen && (
+                      <p
+                        className="pl-9 pr-4 pb-3 text-[12.5px] leading-relaxed"
+                        style={{ color: "var(--text-3)", animation: "sx-rise 0.2s ease" }}
+                      >
+                        {WORKFLOW_PLAN_NOTE}
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
@@ -1120,6 +1357,32 @@ function ChatBubble({ message, brief, onGenerate, onReset, feedback, onFeedback,
     );
   }
 
+  /* --- Ready to build ---
+     Only ever rendered after a read back the person has just seen, so it
+     is the one moment where pressing a button spends real money on their
+     behalf and they know exactly what for. */
+  if (message.type === "build") {
+    return (
+      <div style={riseStyle}>
+        <div
+          className="rounded-[18px] border p-5 backdrop-blur-xl"
+          style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
+        >
+          <p className="text-[14.5px] mb-4 leading-relaxed" style={{ color: "var(--text-2)" }}>
+            If that is right, I will build it now.
+          </p>
+          <PrimaryButton onClick={onGenerate} className="w-full flex items-center justify-center gap-2">
+            <FileText size={15} />
+            Build it
+          </PrimaryButton>
+          <p className="text-[12.5px] text-center mt-3" style={{ color: "var(--text-3)" }}>
+            Or tell me what to change.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   /* --- Building it now --- */
   if (message.type === "generating") {
     const stepLabel =
@@ -1158,12 +1421,10 @@ function ChatBubble({ message, brief, onGenerate, onReset, feedback, onFeedback,
   }
 
   /* --- The finished file --- */
+  /* The real document, on screen, as it is written. No placeholder
+     preview: what is in this box is exactly what downloads. */
   if (message.type === "result") {
-    const meta = SKILL_META[brief.skill] || {
-      icon: FileText,
-      note: "Generated directly, no design connector needed",
-    };
-    const Icon = meta.icon;
+    const title = message.title || "Your document";
 
     return (
       <div style={riseStyle}>
@@ -1171,29 +1432,36 @@ function ChatBubble({ message, brief, onGenerate, onReset, feedback, onFeedback,
           className="rounded-[18px] border p-5 backdrop-blur-xl"
           style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
         >
-          <p className="text-[15.5px] mb-4" style={{ color: "var(--text-1)" }}>
-            Done. Here is your result.
-          </p>
-          <div
-            className="aspect-[4/3] rounded-[14px] border flex flex-col items-center justify-center gap-2 mb-2"
-            style={{
-              borderColor: "var(--border)",
-              background: "linear-gradient(135deg, var(--surface-2), var(--surface))",
-            }}
-          >
-            <Icon size={24} style={{ color: BRAND.navy }} />
-            <span className="text-[13px]" style={{ color: "var(--text-3)" }}>
-              {brief.template}
+          <div className="flex items-center gap-2 mb-3">
+            <FileText size={15} style={{ color: BRAND.accentSoft }} />
+            <span className="text-[13px] font-semibold truncate" style={{ color: "var(--text-1)" }}>
+              {title}
             </span>
           </div>
-          <p className="text-[11.5px] mb-4" style={{ color: "var(--text-3)" }}>
-            {meta.note}
-          </p>
-          <div className="flex gap-3">
-            <PrimaryButton className="flex items-center gap-2 text-[13.5px] px-4">
+
+          <div
+            className="rounded-[14px] border p-4 mb-4 max-h-[380px] overflow-y-auto"
+            style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-2)" }}
+          >
+            <pre
+              className="text-[13px] leading-relaxed whitespace-pre-wrap font-sans"
+              style={{ color: "var(--text-2)" }}
+            >
+              {message.content}
+            </pre>
+          </div>
+
+          <div className="flex flex-wrap gap-2.5">
+            <PrimaryButton
+              onClick={() => downloadDocument(title, message.content)}
+              className="flex items-center gap-2 text-[13.5px] px-4"
+            >
               <Download size={14} />
               Download
             </PrimaryButton>
+            <GhostButton onClick={() => navigator.clipboard?.writeText(message.content)}>
+              Copy
+            </GhostButton>
             <GhostButton onClick={onReset}>Start something new</GhostButton>
           </div>
         </div>

@@ -5,7 +5,13 @@
    ========================================================================== */
 
 import { LayoutGrid, FileType, Sheet, Presentation, Brain, LineChart } from "lucide-react";
-import { CanvaIconGlyph, GmailIconGlyph, DriveIconGlyph, SlackIconGlyph } from "./icons.jsx";
+import {
+  CanvaIconGlyph,
+  GmailIconGlyph,
+  DriveIconGlyph,
+  SlackIconGlyph,
+  NotionIconGlyph,
+} from "./icons.jsx";
 
 /* --------------------------------------------------------------------------
    SECTION: Branding
@@ -13,9 +19,26 @@ import { CanvaIconGlyph, GmailIconGlyph, DriveIconGlyph, SlackIconGlyph } from "
    called Acme sees "Acme AI" with no other change.
    -------------------------------------------------------------------------- */
 
-/* Placeholder until the real StellaXafe inbox is routed. Update here once
-   that is live, this is the only place it needs to change. */
 export const PRODUCT = { name: "StellaXafe", supportEmail: "anthony@stellaxafe.com" };
+
+/* --------------------------------------------------------------------------
+   SECTION: OAuth client ids
+   Public by design. A client id names the application, it does not
+   authorise anything, so it belongs in the bundle. The matching secrets
+   live in Supabase's secret store and are never in this repo.
+   -------------------------------------------------------------------------- */
+
+export const OAUTH_CLIENTS = {
+  canva: "OC-AaA6AM8XqQ_Z",
+  google: "575838735620-7rv1ibm8tlrj9djt3bs26j95g3r74g54.apps.googleusercontent.com",
+};
+
+/* Both providers send the browser back here after someone approves. It
+   points at Supabase rather than at stellaxafe.com because exchanging the
+   code for a token needs the client secret, and that must never be
+   somewhere a browser can read it. */
+export const OAUTH_REDIRECT_URI =
+  "https://cbunsqzkhidwjtxdsmxd.supabase.co/functions/v1/oauth-callback";
 
 export const COMPANY = { name: "BuildFest" };
 
@@ -59,8 +82,8 @@ export const MODEL_TIERS = {
     id: "claude-sonnet-5",
     label: "Sonnet 5",
     use: "Analysis, prompt writing, and output",
-    inputPer1M: 3,
-    outputPer1M: 15,
+    inputPer1M: 2,
+    outputPer1M: 10,
   },
   "opus-5": {
     id: "claude-opus-5",
@@ -173,11 +196,81 @@ export const QUICK_ACTIONS = [
    Called connectors internally. They serve two purposes: knowledge and
    storage. The admin connects company wide sources, each staff member
    connects their own.
+
+   `state` has to tell the truth about three genuinely different things,
+   because showing the wrong one is worse than showing nothing:
+
+     connected   Already on and really working, but through StellaXafe's
+                 own account rather than the viewer's. Canva is here. The
+                 designs it makes are real and downloadable. Nobody can
+                 swap in their own Canva, so offering a Connect button
+                 would be a button that cannot work.
+     connectable Genuinely connectable by the person looking at it, with
+                 their own account. Drive lands here once its sign in
+                 flow is built, and it is the one place a viewer sees a
+                 real connection happen.
+     sample      Shown to say what the shape of a deployment looks like.
+                 Not wired, and says so.
    -------------------------------------------------------------------------- */
 
 export const WORKFLOW_TOOLS = [
-  { id: "canva", label: "Canva", icon: CanvaIconGlyph, hint: "Design and brand assets" },
-  { id: "email", label: "Gmail", icon: GmailIconGlyph, hint: "Search email for source material" },
-  { id: "drive", label: "Google Drive", icon: DriveIconGlyph, hint: "Point the assistant at a file" },
-  { id: "slack", label: "Slack", icon: SlackIconGlyph, hint: "Pull context from team channels" },
+  {
+    id: "canva",
+    label: "Canva",
+    icon: CanvaIconGlyph,
+    hint: "Design and brand assets",
+    state: "connected",
+    note:
+      "Running on StellaXafe's own Canva for this demo, in developer mode. The designs are " +
+      "real and yours to download. A deployment for your company connects your Canva instead, " +
+      "so work lands in your account and picks up your brand templates.",
+  },
+  {
+    /* Flip to "connectable" the moment the sign in flow is deployed. Until
+       then a Connect button here would be a button that does nothing, which
+       is the exact thing this whole file exists to avoid. */
+    id: "drive",
+    label: "Google Drive",
+    icon: DriveIconGlyph,
+    hint: "Point the assistant at one of your files, and send finished work back",
+    state: "sample",
+    note:
+      "You can also just download whatever gets made. Connecting Drive is for when you would " +
+      "rather the finished file land straight in your own folders.",
+  },
+  {
+    id: "email",
+    label: "Gmail",
+    icon: GmailIconGlyph,
+    hint: "Search email for source material",
+    state: "sample",
+  },
+  {
+    id: "slack",
+    label: "Slack",
+    icon: SlackIconGlyph,
+    hint: "Pull context from team channels",
+    state: "sample",
+  },
+  {
+    id: "notion",
+    label: "Notion",
+    icon: NotionIconGlyph,
+    hint: "Read specs, briefs, and project pages",
+    state: "sample",
+  },
 ];
+
+/* Sits behind the info control under the tool list. Answers the question
+   a sharp person in the room is already forming: are these real, or is
+   this a picture of a product?
+
+   The answer is that the work is scoped and waiting on a name, which is
+   what StellaXafe sells. Not a shrug, and not a promise either. */
+export const WORKFLOW_PLAN_NOTE =
+  "These are samples, not the finished list. Your deployment connects the tools your people " +
+  "actually work in, these or others, scoped to exactly what your team approves. The specs are " +
+  "written and ready to build against. Tell us what your workflow runs on and it gets wired for you.";
+
+export const SAMPLE_CONNECTOR_NOTE =
+  "Not connected in this demo. Built for your company during setup.";
