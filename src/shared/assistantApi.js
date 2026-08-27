@@ -71,8 +71,62 @@ export function sendTurn({ stage = "interview", messages, onMeta, onText, onDone
       });
     } catch (err) {
       if (err?.name === "AbortError") return;
-      console.error("assistant fetch failed", err);
-      onError?.({ reason: "network", message: "Could not reach the assistant. Check your connection." });
+      console.error("assistant stream request failed", err);
+
+      /* The streamed request did not even get a reply. That is almost
+         never the person's connection: it is the browser refusing the
+         response, or the function failing before it could answer. Ask the
+         same question again through the SDK, which is not streamed and so
+         is not subject to the same refusal. If that works they get their
+         answer anyway, and if it does not, its error says what is really
+         wrong instead of blaming their wifi. */
+      const { data, error } = await supabase.functions.invoke("assistant", {
+        body: { stage, messages },
+      });
+
+      if (error) {
+        console.error("assistant fallback failed", error);
+        onError?.({
+          reason: "network",
+          message: `The assistant did not answer. ${error.message ?? "No reason given."}`,
+        });
+        return;
+      }
+
+      /* invoke gives the whole body at once. It arrives as the same event
+         stream, so it is read with the same parser rather than a second
+         one that could drift from it. */
+      /* invoke decides how to unwrap the body from its content type, and
+         an event stream is not a shape it knows, so it can arrive as
+         text, a Blob, or bytes. Read all three rather than assume. */
+      let whole = "";
+      if (typeof data === "string") whole = data;
+      else if (data instanceof Blob) whole = await data.text();
+      else if (data instanceof ArrayBuffer) whole = new TextDecoder().decode(data);
+      else if (data) whole = String(data);
+
+      if (!whole.includes("event:")) {
+        console.error("assistant fallback returned an unreadable body", data);
+        onError?.({ reason: "network", message: "The assistant did not answer. Check the function logs." });
+        return;
+      }
+
+      for (const block of whole.split("\n\n")) {
+        const eventLine = block.split("\n").find((l) => l.startsWith("event:"));
+        const dataLine = block.split("\n").find((l) => l.startsWith("data:"));
+        if (!eventLine || !dataLine) continue;
+        let parsed;
+        try {
+          parsed = JSON.parse(dataLine.slice(5).trim());
+        } catch {
+          continue;
+        }
+        const event = eventLine.slice(6).trim();
+        if (event === "meta") onMeta?.(parsed);
+        else if (event === "text") onText?.(parsed.text);
+        else if (event === "done") onDone?.(parsed);
+        else if (event === "error") onError?.({ reason: "failed", message: parsed.reason });
+      }
       return;
     }
 
@@ -89,7 +143,10 @@ export function sendTurn({ stage = "interview", messages, onMeta, onText, onDone
       }
       onError?.({
         reason: payload?.reason ?? "failed",
-        message: payload?.message ?? payload?.reason ?? "The assistant could not answer. Try again.",
+        message:
+          payload?.message ??
+          payload?.reason ??
+          `The assistant answered with ${response.status}. Check the function logs.`,
       });
       return;
     }
