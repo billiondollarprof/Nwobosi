@@ -44,6 +44,17 @@ under **ofilifire@gmail.com**.
   sources and either asks for what is missing (drops back to the cheap
   model for that conversation) or reads the brief back. Only a read back
   puts the Build card up. Corrections re-enter the same loop.
+- **The interview cannot write the document.** Each stage has its own
+  output ceiling: 700 tokens for the interview, 4000 for the analysis,
+  8000 for the writing. It used to be 8000 everywhere, and asked to "just
+  build it" the cheap model wrote the whole one pager on the spot, never
+  sent the marker, and the flow never reached the read back or the
+  download. A ceiling, not a rule.
+- **The interview ends three ways**, all identical, all ending in the
+  marker: it has enough, the person tells it to get on with it, or the
+  person points it at the company sources. Five questions is enforced by
+  the app, not trusted to the model, and the model is warned on its last
+  turn so it closes cleanly instead of being cut off.
 - **The knowledge base.** Files and pasted text are read, chunked, stored
   in `knowledge_sources` and `knowledge_chunks`, and their **contents**
   reach the model from the analysis stage onward.
