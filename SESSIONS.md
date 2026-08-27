@@ -138,3 +138,113 @@ Next: connect the repo in Cloudflare, then Supabase.
 - Wired setupApi.js to the live endpoint via supabase.functions.invoke.
 - Could not test the endpoint from the sandbox: egress proxy blocks supabase.co, same as pages.dev. Needs verifying in a browser.
 - Note: bundle went from 78 KB to 137 KB gzipped now that supabase-js is genuinely imported. Worth code splitting later so the landing page does not carry the auth client.
+
+---
+
+## Session 4, 2026-08-27, the day before submission
+
+Opus for the flow and the security work, and it needed to be.
+
+The theme of the session: several things that looked finished were not,
+and finding them mattered more than building new ones.
+
+### The stage flow, rebuilt to the user's correction
+
+- Interview capped at three to five questions rather than open ended. It
+  ends its last message with `INTERVIEW_COMPLETE`, which the app strips
+  and never shows, including while the marker is still arriving one
+  character at a time.
+- That marker hands straight over to Sonnet. Nobody presses anything.
+- Sonnet does one of two things and only one. If something is missing it
+  says so, ends with `NEED_INPUT`, and the app drops **back to the cheap
+  model** for that conversation, because anything needing a person is a
+  conversation and should not be charged at analysis rates. When it has
+  everything it reads the brief back and ends with `READBACK_COMPLETE`.
+- Only a read back puts the Build card up. It asks "Did I get that
+  right?" and offers Build or "Something is missing", and the second one
+  re-enters the same loop. The correction path needed no special case,
+  which is how you know the loop was right.
+- Drove the whole machine in a browser against a stand-in backend. Ten
+  checks, all pass, including a marker split across two chunks.
+
+### Things that were quietly lying
+
+Each of these was found by looking, not by being reported.
+
+- **The file upload was theatre.** It staged the file, showed a green
+  "42% smaller" badge, and never sent a byte. Someone could hand over
+  their brand guide, watch it confirm, and get a draft written from
+  nothing. Now really read, with the chip saying Read, Part read or
+  Cannot read.
+- **The admin knowledge base was a mockup.** Five invented rows in local
+  state, a Browse files button with no handler at all, and no write to
+  `knowledge_sources` ever. Nothing an admin added had ever reached the
+  assistant, and could not have.
+- **Sign in was a `setTimeout`** against two email addresses hardcoded in
+  the source. A workspace lasted exactly as long as its browser tab.
+- **The chat greeted everyone as Anthony** and called itself BuildFest AI
+  whatever company the workspace was for.
+- **The library shipped two invented files** marked as synced to a Drive
+  nobody has connected.
+- **Canva said Connected** and claimed its designs were real and yours to
+  download. Nothing sends anything to Canva.
+- **The admin Connect button** flipped to Connected while nothing
+  happened behind it.
+- **Retry, Share and More** under every reply did nothing.
+
+All fixed or removed. Nothing in the app now says Connected.
+
+### What became real
+
+- Knowledge base writes to `knowledge_sources` and `knowledge_chunks`,
+  and the assistant receives the **contents** from the analysis stage on,
+  capped at 60k characters. The interview still gets names only.
+- PDF and Word parsed in the browser with pdfjs-dist and mammoth, loaded
+  on demand. Scanned PDFs refused with an explanation.
+- Paste box above the file area, because most company material lives in
+  formats that cannot be copied out cleanly and telling someone to
+  convert their own document is a bad answer.
+- `add-link` fetches a page once, server side, admin only.
+- Images in the chat shrunk to 1568px and sent as image blocks. Measured:
+  1179x2556 becomes 723x1568, 47KB, about 1500 tokens.
+- Password sign in, routed to the right workspace by role.
+- `work_history` persistence, so finished work survives a refresh.
+- LICENSE, proprietary, plus a notice in the README.
+
+### Security
+
+- **SSRF in `add-link`.** It fetched whatever address an admin typed,
+  including private ones. Now refuses private, loopback, link local and
+  bare internal names, and follows redirects by hand so a public address
+  cannot bounce to a private one after the check passed.
+- **Verified RLS against the live database.** Every table on, every policy
+  scoped by company, `with_check` on every write policy, `access_codes`
+  with zero policies. `private.current_company_id()` reads `staff` by
+  `auth.uid()` and is `SECURITY DEFINER` with a pinned `search_path`.
+  The tenant isolation claim is true.
+- **`verify_jwt` turned OFF on every function, deliberately.** The toggle
+  verifies against the *legacy* secret and this project uses the new key
+  system, so ON could have rejected every real user token. Each function
+  checks the caller itself.
+
+### Two bugs the build did not catch
+
+- `NotionIconGlyph` imported nowhere but referenced. Compiled clean.
+- `SKILL_LABELS` used in the usage panel and never imported. Compiled
+  clean, would have thrown a blank tab.
+- `doc.destroy` removed from pdf.js v6, so a PDF that had been read
+  perfectly threw on the way out and vanished silently.
+
+A green build is not evidence a page renders. Drive the app.
+
+### Not done, and named as not done
+
+Canva, Drive sign in, Resend, email OTP, staff invites, real file formats,
+images in the knowledge base. All listed in `CURRENT.md` with what each
+would take.
+
+### Blocked all session
+
+Could not reach `supabase.co`: the environment's network policy answers
+403 on connect. So nothing has been tested against the real backend, and
+the access code SX-4M8G-T4P3 is still unspent.
