@@ -139,12 +139,18 @@ export function sendTurn({ stage = "interview", messages, onMeta, onText, onDone
    SECTION: Turning chat state into what the API wants
    The page keeps richer message objects than the API takes, so this is
    the one place that shape is translated. Anything the model should not
-   see, ids, feedback, attachments, is dropped here rather than being
-   quietly carried along.
+   see, ids and feedback, is dropped here rather than being quietly
+   carried along.
+
+   `apiContent` is the exception, and the reason this is not a one liner.
+   A turn where someone attached a file shows them a short line and a file
+   chip, while the model needs that line plus the file's actual contents.
+   Preferring apiContent is what keeps a handed over file readable on every
+   later turn, not just the one it arrived on.
    -------------------------------------------------------------------------- */
 
 export function toApiMessages(messages) {
   return messages
-    .filter((m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim())
-    .map((m) => ({ role: m.role, content: m.content }));
+    .map((m) => ({ role: m.role, content: m.apiContent ?? m.content }))
+    .filter((m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim());
 }

@@ -115,6 +115,51 @@ function visibleText(raw) {
   return out.replace(/\s+$/, "");
 }
 
+/* --------------------------------------------------------------------------
+   FILES HANDED OVER IN THE CHAT
+   One of the ways a fact is allowed to reach a draft. The others are the
+   company's own approved sources and what the person types. There is no
+   fourth: the assistant cannot search, cannot open a link, and cannot go
+   and fetch anything.
+
+   So a file only counts once its text is actually in the turn. Anything
+   this cannot read says so on the chip rather than sitting there looking
+   attached, because a file that appears attached but never arrives is how
+   a confident, invented draft gets written.
+   -------------------------------------------------------------------------- */
+
+/* Formats a browser can turn into text on its own. A PDF or a Word file
+   needs a parser that does not exist here yet, and pretending otherwise
+   would be the exact lie this is guarding against. */
+const READABLE_EXTENSIONS = ["txt", "md", "markdown", "csv", "tsv", "json", "log", "rtf"];
+
+/* Roughly ten thousand tokens per file. Enough for anything a person
+   pastes in during a conversation, small enough that four of them cannot
+   quietly eat the context or the budget. */
+const MAX_FILE_CHARS = 40000;
+
+function isReadableFile(name) {
+  const ext = name.split(".").pop()?.toLowerCase() ?? "";
+  return READABLE_EXTENSIONS.includes(ext);
+}
+
+/* The turn as the model receives it: what they typed, then the contents of
+   whatever they handed over, each one fenced and named so the model can
+   cite it back by filename. */
+function withAttachedText(text, attachments) {
+  const readable = attachments.filter((a) => a.status === "ready" && a.text);
+  if (!readable.length) return text;
+
+  const blocks = readable.map(
+    (a) =>
+      `--- FILE: ${a.name}${a.truncated ? " (first part only, it was too long to include in full)" : ""} ---\n` +
+      `${a.text}\n` +
+      "--- END FILE ---"
+  );
+
+  return [text, ...blocks].filter(Boolean).join("\n\n");
+}
+
 function guessProjectType(text) {
   const t = text.toLowerCase();
   if (t.includes("pitch") || t.includes("deck") || t.includes("presentation")) return "deck";
@@ -358,11 +403,21 @@ export default function Chat() {
   function handleSend() {
     const text = input.trim();
     if (!text && pendingAttachments.length === 0) return;
-    addMessage({ role: "user", type: "text", content: text, attachments: pendingAttachments });
+
+    /* Two versions of the same turn. `content` is what the person sees, a
+       short line and a file chip. `apiContent` is that plus the actual
+       contents of anything readable they attached, which is the only way a
+       file they handed over becomes something the model can work from
+       rather than a name it has to guess about. */
+    const attachments = pendingAttachments;
+    const apiContent = withAttachedText(text, attachments);
+
+    addMessage({ role: "user", type: "text", content: text, apiContent, attachments });
     setInput("");
     setPendingAttachments([]);
     if (textareaRef.current) textareaRef.current.style.height = "auto";
-    if (text) handleUserReply(text);
+
+    if (apiContent) handleUserReply(text, apiContent);
   }
 
   function quickStart(seedText) {
@@ -453,7 +508,7 @@ export default function Chat() {
     });
   }
 
-  function handleUserReply(text) {
+  function handleUserReply(text, apiContent = text) {
     /* Skill detection still runs locally. It is a badge, not a decision,
        and guessing it instantly beats waiting on a round trip to show it. */
     const guessed = SKILL_BY_TYPE[guessProjectType(text)];
@@ -463,7 +518,7 @@ export default function Chat() {
        stops being true. It comes back when the read back does. */
     setMessages((prev) => prev.filter((m) => m.type !== "build"));
 
-    runTurn(flowStage, toApiMessages([...messages, { role: "user", content: text }]));
+    runTurn(flowStage, toApiMessages([...messages, { role: "user", content: apiContent }]));
   }
 
   /* ------------------------------------------------------------------------
@@ -588,22 +643,48 @@ export default function Chat() {
 
       if (sizeKB > MAX_UPLOAD_KB) {
         setUploadError(
-          `${file.name} is ${(sizeKB / 1024).toFixed(1)} MB, over the 1 MB direct upload limit. Connect Google Drive from workflow tools and point me at it instead.`
+          `${file.name} is ${(sizeKB / 1024).toFixed(1)} MB, over the 1 MB limit. Paste the part that matters instead, or split it up.`
         );
         setTimeout(() => setUploadError(""), 5500);
         return;
       }
 
       const id = nextId();
-      setPendingAttachments((prev) => [...prev, { id, name: file.name, sizeKB, status: "processing" }]);
 
-      /* Files are described and cached once so later references reuse it */
-      setTimeout(() => {
-        const reducedPct = 30 + Math.round(Math.random() * 25);
+      /* A file type nothing here can actually open. Saying so now is the
+         whole point: a chip that claims a file is ready when its contents
+         never reach the model is how a draft ends up invented. */
+      if (!isReadableFile(file.name)) {
+        setPendingAttachments((prev) => [
+          ...prev,
+          { id, name: file.name, sizeKB, status: "unreadable" },
+        ]);
+        return;
+      }
+
+      setPendingAttachments((prev) => [...prev, { id, name: file.name, sizeKB, status: "reading" }]);
+
+      const reader = new FileReader();
+
+      reader.onload = () => {
+        const full = String(reader.result ?? "");
+        const text = full.slice(0, MAX_FILE_CHARS);
         setPendingAttachments((prev) =>
-          prev.map((a) => (a.id === id ? { ...a, status: "cached", reducedPct } : a))
+          prev.map((a) =>
+            a.id === id
+              ? { ...a, status: "ready", text, truncated: full.length > MAX_FILE_CHARS }
+              : a
+          )
         );
-      }, 900 + Math.random() * 700);
+      };
+
+      reader.onerror = () => {
+        setPendingAttachments((prev) =>
+          prev.map((a) => (a.id === id ? { ...a, status: "unreadable" } : a))
+        );
+      };
+
+      reader.readAsText(file);
     });
   }
 
@@ -1012,12 +1093,16 @@ export default function Chat() {
                 >
                   <FileIcon size={13} style={{ color: "var(--text-3)" }} />
                   <span className="max-w-[110px] truncate">{a.name}</span>
-                  {a.status === "processing" ? (
+                  {a.status === "reading" ? (
                     <Spinner size={12} />
-                  ) : (
+                  ) : a.status === "ready" ? (
                     <span className="flex items-center gap-1 shrink-0" style={{ color: BRAND.green }}>
                       <Check size={12} />
-                      {a.reducedPct}% smaller
+                      {a.truncated ? "Part read" : "Read"}
+                    </span>
+                  ) : (
+                    <span className="shrink-0" style={{ color: BRAND.amber }}>
+                      Cannot read
                     </span>
                   )}
                   <button
