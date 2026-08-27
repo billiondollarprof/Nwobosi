@@ -168,24 +168,52 @@ export default function Admin() {
   const navigate = useNavigate();
   const [tab, setTab] = useState("knowledge");
 
+  /* Loaded once here and passed down, rather than each section asking
+     again. Who is signed in decides what every tab is allowed to show, so
+     it belongs at the top. */
+  const [me, setMe] = useState(null);
+  const [loadingMe, setLoadingMe] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const who = await loadMe();
+      if (!alive) return;
+      setMe(who);
+      setLoadingMe(false);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const companyName = me?.company?.name ?? COMPANY.name;
+
   return (
     <PageShell scroll>
       <FloatingNav maxWidth="max-w-5xl">
         <div className="flex items-center gap-2.5">
+          {/* An admin is already a real account with a real password, so
+              they never request access to their own workspace. This is
+              the door, and it says so rather than being an arrow you have
+              to guess at. */}
           <button
-            onClick={() => navigate("/chat")}
-            className="w-9 h-9 rounded-[10px] flex items-center justify-center border transition-colors hover:opacity-80"
+            onClick={() => navigate(me?.company?.slug ? `/${me.company.slug}` : "/chat")}
+            className="h-9 rounded-[10px] flex items-center gap-1.5 px-2.5 border transition-colors hover:opacity-80 shrink-0"
             style={{ borderColor: "var(--border-2)", backgroundColor: "var(--surface)" }}
-            aria-label="Back to chat"
+            aria-label="Open the assistant"
           >
             <ArrowLeft size={16} style={{ color: "var(--text-2)" }} />
+            <span className="text-[13px] hidden sm:inline" style={{ color: "var(--text-2)" }}>
+              Assistant
+            </span>
           </button>
           <div className="flex items-center gap-2">
             <LogoMark size={22} />
             <span className="font-bold text-[15px] tracking-tight" style={{ fontFamily: FONTS.display }}>
               Admin
             </span>
-            <StatusPill tone="accent">{COMPANY.name}</StatusPill>
+            <StatusPill tone="accent">{companyName}</StatusPill>
           </div>
         </div>
 
@@ -222,7 +250,7 @@ export default function Admin() {
             })}
           </div>
 
-          {tab === "knowledge" && <KnowledgeSection />}
+          {tab === "knowledge" && <KnowledgeSection me={me} loading={loadingMe} />}
           {tab === "connectors" && <ConnectorsSection />}
           {tab === "access" && <AccessSection />}
           {tab === "usage" && <UsageSection />}
@@ -239,8 +267,7 @@ export default function Admin() {
    only what a task needs instead of sweeping everything.
    ========================================================================== */
 
-function KnowledgeSection() {
-  const [me, setMe] = useState(null);
+function KnowledgeSection({ me, loading: loadingMe }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -259,18 +286,20 @@ function KnowledgeSection() {
   const fileInputRef = useRef(null);
 
   useEffect(() => {
+    if (loadingMe) return;
     let alive = true;
     (async () => {
-      const who = await loadMe();
-      if (!alive) return;
-      setMe(who);
-      if (who?.company?.id) setItems(await listSources(who.company.id));
+      if (me?.company?.id) {
+        const rows = await listSources(me.company.id);
+        if (!alive) return;
+        setItems(rows);
+      }
       setLoading(false);
     })();
     return () => {
       alive = false;
     };
-  }, []);
+  }, [loadingMe, me?.company?.id]);
 
   const ready = items.filter((i) => i.status === "ready").length;
   const pending = items.filter((i) => i.status === "pending").length;
@@ -366,7 +395,7 @@ function KnowledgeSection() {
     else show("Could not remove that. Try again.");
   }
 
-  if (loading) {
+  if (loading || loadingMe) {
     return (
       <div className="flex items-center gap-2.5 py-10 justify-center" style={{ color: "var(--text-3)" }}>
         <Spinner size={16} />

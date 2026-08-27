@@ -166,3 +166,52 @@ export async function removeSource(id) {
   if (error) console.error("could not remove source", error);
   return !error;
 }
+
+/* --------------------------------------------------------------------------
+   SECTION: Finished work
+   A document that only exists in a browser tab is a document one refresh
+   away from gone. Every finished piece is written to work_history against
+   the person who made it, so the library survives the tab, the laptop and
+   the day.
+
+   Nothing else about a conversation is stored. The talking is not the
+   deliverable, and keeping every draft of every chat would be storing a
+   company's thinking without anybody asking for that.
+   -------------------------------------------------------------------------- */
+
+export async function listWork(companyId) {
+  const { data, error } = await supabase
+    .from("work_history")
+    .select("id, title, skill, summary, created_at")
+    .eq("company_id", companyId)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (error) {
+    console.error("could not list work", error);
+    return [];
+  }
+  return data ?? [];
+}
+
+export async function saveWork({ companyId, staffId, title, skill, content, sourcesUsed = [], credits = 0 }) {
+  const { data, error } = await supabase
+    .from("work_history")
+    .insert({
+      company_id: companyId,
+      staff_id: staffId,
+      title,
+      skill,
+      summary: content,
+      sources_used: sourcesUsed,
+      credits,
+    })
+    .select("id, title, skill, summary, created_at")
+    .single();
+
+  if (error) {
+    console.error("could not save work", error);
+    return null;
+  }
+  return data;
+}
