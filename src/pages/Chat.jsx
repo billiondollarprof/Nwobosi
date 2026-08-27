@@ -96,6 +96,7 @@ import {
 
 const MARKER = {
   interviewDone: "INTERVIEW_COMPLETE",
+  needInput: "NEED_INPUT",
   readbackDone: "READBACK_COMPLETE",
 };
 
@@ -471,21 +472,32 @@ export default function Chat() {
         const clean = visibleText(raw);
         setMessages((prev) => prev.map((m) => (m.id === replyId ? { ...m, content: clean } : m)));
 
-        /* The interview said it has enough. Move up a tier and go straight
-           into the check, without the staff member pressing anything. From
-           their side they answered a question and got a read back. */
+        /* The conversation has what it came for. Move up a tier and go
+           straight into the check, without the staff member pressing
+           anything. From their side they answered a question and the next
+           thing they see is a read back. */
         if (stage === "interview" && raw.includes(MARKER.interviewDone)) {
           setFlowStage("analyse");
           runTurn("analyse", [...history, { role: "assistant", content: clean }]);
           return;
         }
 
-        /* The stronger model has read the sources. Either it came back for
-           something only this person can supply, in which case their answer
-           goes back to it at the same tier, or it read the brief back and
-           earned the Build card. */
-        if (stage === "analyse" && raw.includes(MARKER.readbackDone)) {
-          setMessages((prev) => [...prev, { id: nextId(), role: "assistant", type: "build" }]);
+        if (stage === "analyse") {
+          /* It read the sources and found a hole. Anything that needs a
+             person is a conversation, so it drops back to the cheap model
+             for the back and forth rather than charging Sonnet rates to
+             collect a file name. It comes back up the moment that
+             conversation says it is done. */
+          if (raw.includes(MARKER.needInput)) {
+            setFlowStage("interview");
+            return;
+          }
+
+          /* Nothing missing. This is the read back, and it is the only
+             thing that earns the Build card. */
+          if (raw.includes(MARKER.readbackDone)) {
+            setMessages((prev) => [...prev, { id: nextId(), role: "assistant", type: "build" }]);
+          }
         }
       },
 
@@ -514,11 +526,15 @@ export default function Chat() {
     const guessed = SKILL_BY_TYPE[guessProjectType(text)];
     if (guessed && !autoSkill) setAutoSkill(guessed);
 
-    /* Anything typed after a read back is a correction, so the Build card
-       stops being true. It comes back when the read back does. */
+    /* Anything typed after a read back is a correction, and a correction is
+       a conversation, so it drops back to the cheap model. Working it out
+       here rather than reading it back off state matters: setting state
+       does not change it in time for the line below. */
     setMessages((prev) => prev.filter((m) => m.type !== "build"));
+    const stage = flowStage === "analyse" ? "interview" : flowStage;
+    if (stage !== flowStage) setFlowStage(stage);
 
-    runTurn(flowStage, toApiMessages([...messages, { role: "user", content: apiContent }]));
+    runTurn(stage, toApiMessages([...messages, { role: "user", content: apiContent }]));
   }
 
   /* ------------------------------------------------------------------------
@@ -603,6 +619,16 @@ export default function Chat() {
         ]);
       },
     });
+  }
+
+  /* "Something needs changing" is not a stage of its own. It just takes the
+     card away, puts them back in conversation, and hands them the cursor.
+     What they type next is the correction, and the loop carries it back up
+     to the analysis by itself. */
+  function handleAdjust() {
+    setMessages((prev) => prev.filter((m) => m.type !== "build"));
+    setFlowStage("interview");
+    textareaRef.current?.focus();
   }
 
   function handleNewChat() {
@@ -1049,6 +1075,7 @@ export default function Chat() {
                 message={m}
                 brief={brief}
                 onGenerate={handleGenerate}
+                onAdjust={handleAdjust}
                 onReset={handleNewChat}
                 feedback={feedback[m.id]}
                 onFeedback={(kind) => toggleFeedback(m.id, kind)}
@@ -1401,7 +1428,7 @@ export default function Chat() {
    avatar, staff messages sit in a neutral capsule on the right.
    ========================================================================== */
 
-function ChatBubble({ message, brief, onGenerate, onReset, feedback, onFeedback, onCopy }) {
+function ChatBubble({ message, brief, onGenerate, onAdjust, onReset, feedback, onFeedback, onCopy }) {
   const isUser = message.role === "user";
   const riseStyle = { animation: "sx-rise 0.35s ease" };
 
@@ -1460,9 +1487,13 @@ function ChatBubble({ message, brief, onGenerate, onReset, feedback, onFeedback,
             <FileText size={15} />
             Build it
           </PrimaryButton>
-          <p className="text-[12.5px] text-center mt-3" style={{ color: "var(--text-3)" }}>
-            Or tell me what to change.
-          </p>
+          <button
+            onClick={onAdjust}
+            className="w-full mt-2.5 rounded-[12px] border py-2.5 text-[13.5px] transition-opacity hover:opacity-80"
+            style={{ borderColor: "var(--border-2)", color: "var(--text-2)" }}
+          >
+            Something needs changing
+          </button>
         </div>
       </div>
     );
@@ -1579,7 +1610,7 @@ function ChatBubble({ message, brief, onGenerate, onReset, feedback, onFeedback,
           )}
           {message.content && (
             <div
-              className="rounded-[20px] px-4 py-2.5 text-[15.5px] leading-relaxed border"
+              className="rounded-[20px] px-4 py-2.5 text-[15.5px] leading-relaxed border whitespace-pre-wrap"
               style={{
                 backgroundColor: "var(--chip)",
                 borderColor: "var(--border)",
@@ -1594,10 +1625,16 @@ function ChatBubble({ message, brief, onGenerate, onReset, feedback, onFeedback,
     );
   }
 
-  /* --- Assistant text --- */
+  /* --- Assistant text ---
+     Line breaks are kept. A read back is a list of four short things, and
+     collapsing it into one paragraph is what turns the moment that proves
+     it understood into a block nobody reads. */
   return (
     <div style={riseStyle}>
-      <p className="text-[15.5px] leading-relaxed max-w-[85%]" style={{ color: "var(--text-1)" }}>
+      <p
+        className="text-[15.5px] leading-relaxed max-w-[85%] whitespace-pre-wrap"
+        style={{ color: "var(--text-1)" }}
+      >
         {message.content}
       </p>
       <div className="flex items-center gap-1 mt-2.5 -ml-1.5">
