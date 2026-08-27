@@ -43,6 +43,7 @@ import {
   StatusPill,
   Field,
   TextInput,
+  TextArea,
   SelectInput,
   Spinner,
 } from "../shared/ui.jsx";
@@ -208,6 +209,15 @@ function KnowledgeSection({ me, loading: loadingMe }) {
   const [linkNote, setLinkNote] = useState("");
   const [justAdded, setJustAdded] = useState("");
 
+  /* Pasting is the main way in, not the fallback. Most company material
+     lives in a PDF or a Word file that nothing here can open yet, and
+     telling somebody to convert a document before they can use their own
+     product is a worse answer than a box they can paste into. */
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const [pasteName, setPasteName] = useState("");
+  const [pasteNote, setPasteNote] = useState("");
+  const [pasteText, setPasteText] = useState("");
+
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -261,6 +271,39 @@ function KnowledgeSection({ me, loading: loadingMe }) {
     };
     reader.onerror = () => show(`Could not read ${file.name}.`);
     reader.readAsText(file);
+  }
+
+  async function savePasted(e) {
+    e.preventDefault();
+    if (!me?.company?.id) return;
+
+    if (!pasteName.trim() || !pasteNote.trim() || !pasteText.trim()) {
+      show("Give it a name, one line saying what it holds, and the text itself.");
+      return;
+    }
+
+    setSaving(true);
+    const result = await addTextSource({
+      companyId: me.company.id,
+      userId: me.user.id,
+      name: pasteName.trim(),
+      description: pasteNote.trim(),
+      text: pasteText,
+      kind: "file",
+    });
+    setSaving(false);
+
+    if (!result.ok) {
+      show(result.reason);
+      return;
+    }
+
+    setItems((prev) => [result.source, ...prev]);
+    setJustAdded(`${result.source.name}, ${result.chunks} ${result.chunks === 1 ? "piece" : "pieces"} of text`);
+    setPasteName("");
+    setPasteNote("");
+    setPasteText("");
+    setPasteOpen(false);
   }
 
   async function saveStaged() {
@@ -373,9 +416,78 @@ function KnowledgeSection({ me, loading: loadingMe }) {
 
       {/* Upload */}
       <GlassPanel className="p-6">
-        <SectionHeading hint="Brand guidelines, templates, letterheads, past work, and reference material. Give every file a clear name and a one line description so the assistant can find it.">
+        <SectionHeading hint="Brand guidelines, templates, past work, anything the assistant should write from. Give each one a clear name and a line saying what it holds, because that is how it decides which to open.">
           Add company knowledge
         </SectionHeading>
+
+        {/* Paste first, because it is the path that always works. A file
+            only helps if it is a format a browser can read as text, and
+            most of a company's material is not. */}
+        {!staged && (
+          <div className="mb-4">
+            {pasteOpen ? (
+              <form onSubmit={savePasted} className="space-y-3">
+                <Field label="Name">
+                  <TextInput
+                    value={pasteName}
+                    onChange={(e) => setPasteName(e.target.value)}
+                    placeholder="Brand voice guide"
+                  />
+                </Field>
+                <Field label="What it holds">
+                  <TextInput
+                    value={pasteNote}
+                    onChange={(e) => setPasteNote(e.target.value)}
+                    placeholder="How we write, the words we use and avoid"
+                  />
+                </Field>
+                <Field label="The text">
+                  <TextArea
+                    value={pasteText}
+                    onChange={(e) => setPasteText(e.target.value)}
+                    rows={8}
+                    placeholder="Paste it here. Straight out of a PDF, a Word file, an email, anywhere."
+                  />
+                </Field>
+                {/* Full width primary, everything else on its own line
+                    below. Three things side by side wrapped the button
+                    onto two lines on a phone. */}
+                <PrimaryButton
+                  type="submit"
+                  disabled={saving}
+                  className="w-full flex items-center gap-2 justify-center"
+                >
+                  {saving && <Spinner size={13} color="#fff" />}
+                  {saving ? "Saving" : "Add to knowledge base"}
+                </PrimaryButton>
+
+                <div className="flex items-center justify-between">
+                  <GhostButton
+                    onClick={() => {
+                      setPasteOpen(false);
+                      setPasteText("");
+                    }}
+                  >
+                    Cancel
+                  </GhostButton>
+                  {pasteText.trim() && (
+                    <span className="text-[12.5px]" style={{ color: "var(--text-3)" }}>
+                      {pasteText.trim().length.toLocaleString()} characters
+                    </span>
+                  )}
+                </div>
+              </form>
+            ) : (
+              <button
+                onClick={() => setPasteOpen(true)}
+                className="w-full rounded-[14px] border border-dashed py-4 text-[14px] transition-colors hover:opacity-80"
+                style={{ borderColor: "var(--border-2)", color: "var(--text-1)" }}
+              >
+                Paste text instead
+              </button>
+            )}
+          </div>
+        )}
 
         {staged ? (
           <div className="space-y-3">
@@ -422,10 +534,11 @@ function KnowledgeSection({ me, loading: loadingMe }) {
               </div>
             </div>
             <p className="text-[14.5px] font-medium mb-1" style={{ color: "var(--text-1)" }}>
-              Choose a file
+              Or choose a file
             </p>
             <p className="text-[13px] mb-4" style={{ color: "var(--text-3)" }}>
-              Plain text, Markdown, CSV or JSON, up to {MAX_TEXT_UPLOAD_KB} KB
+              Plain text, Markdown, CSV or JSON, up to {MAX_TEXT_UPLOAD_KB} KB. PDF and Word
+              cannot be read yet, so paste from those instead.
             </p>
             <GhostButton onClick={() => fileInputRef.current?.click()}>Browse files</GhostButton>
           </div>
