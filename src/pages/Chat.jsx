@@ -49,6 +49,7 @@ import {
 import { LogoMark } from "../shared/icons.jsx";
 import { useSpeechToText } from "../shared/useSpeechToText.js";
 import { sendTurn, toApiMessages } from "../shared/assistantApi.js";
+import { loadMe, listWork, saveWork } from "../shared/session.js";
 import { BRAND, GRADIENTS, FONTS } from "../shared/tokens";
 import {
   PageShell,
@@ -273,9 +274,9 @@ function timePhrase() {
   return { kind: "casual" };
 }
 
-function buildGreetingText() {
+function buildGreetingText(name = CURRENT_USER.name) {
   const phrase = timePhrase();
-  const opener = phrase.kind === "greeting" ? `${phrase.word}, ${CURRENT_USER.name}.` : `Hi ${CURRENT_USER.name}.`;
+  const opener = phrase.kind === "greeting" ? `${phrase.word}, ${name}.` : `Hi ${name}.`;
   return `${opener} What are we working on today?`;
 }
 
@@ -396,6 +397,18 @@ export default function Chat() {
      Nobody presses anything to make that happen. */
   const [flowStage, setFlowStage] = useState("interview");
 
+  /* Who is actually signed in, and which company this workspace belongs
+     to. Until this arrives the page falls back to the config defaults, so
+     it renders rather than flashing empty, but a real session replaces
+     both. Without it a workspace built for Amara greeted its own admin as
+     a different company entirely. */
+  const [me, setMe] = useState(null);
+
+  const companyName = me?.company?.name ?? COMPANY.name;
+  const assistantName = companyName ? `${companyName.split(" ")[0]} AI` : ASSISTANT_NAME;
+  const personName = me?.staff?.name?.split(" ")[0] ?? CURRENT_USER.name;
+  const personRole = me?.staff?.role ?? CURRENT_USER.role;
+
   const scrollRef = useRef(null);
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -440,6 +453,37 @@ export default function Chat() {
 
   useEffect(() => {
     setHasGreetedBefore(true);
+  }, []);
+
+  /* Identity first, then everything this person has already made. The
+     library used to live only in this tab, so a refresh threw away work
+     somebody had spent real money generating. */
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const who = await loadMe();
+      if (!alive || !who) return;
+      setMe(who);
+      setGreetingText(buildGreetingText(who.staff?.name?.split(" ")[0]));
+
+      if (who.company?.id) {
+        const work = await listWork(who.company.id);
+        if (!alive) return;
+        setLibraryFiles(
+          work.map((w) => ({
+            id: w.id,
+            title: w.title,
+            skill: w.skill,
+            driveSynced: false,
+            when: new Date(w.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+            content: w.summary,
+          }))
+        );
+      }
+    })();
+    return () => {
+      alive = false;
+    };
   }, []);
 
   /* A stream left running after the page is gone still costs money and
@@ -685,17 +729,26 @@ export default function Chat() {
         /* Into the library, so it is somewhere other than this one
            conversation. driveSynced stays false because Drive is not
            connected, and claiming otherwise would be a lie in the UI. */
+        const title = docTitle(messages);
+
         setLibraryFiles((prev) => [
-          {
-            id: nextId(),
-            title: docTitle(messages),
-            skill: autoSkill,
-            driveSynced: false,
-            when: "Just now",
-            content: finished,
-          },
+          { id: nextId(), title, skill: autoSkill, driveSynced: false, when: "Just now", content: finished },
           ...prev,
         ]);
+
+        /* And to the database, so it is still there tomorrow. Written
+           under this person's own identity, which is what the row level
+           security expects, so a failure here is a permission problem
+           worth seeing in the console rather than a silent loss. */
+        if (me?.company?.id && me?.user?.id) {
+          saveWork({
+            companyId: me.company.id,
+            staffId: me.user.id,
+            title,
+            skill: autoSkill,
+            content: finished,
+          });
+        }
       },
 
       onError: ({ reason, message }) => {
@@ -925,7 +978,7 @@ export default function Chat() {
           <div className="flex items-center gap-2">
             <LogoMark size={20} />
             <span className="font-bold text-[14px]" style={{ fontFamily: FONTS.display }}>
-              {ASSISTANT_NAME}
+              {assistantName}
             </span>
           </div>
           <button
@@ -1119,7 +1172,7 @@ export default function Chat() {
               className="font-bold text-[15px] tracking-tight truncate"
               style={{ fontFamily: FONTS.display }}
             >
-              {ASSISTANT_NAME}
+              {assistantName}
             </span>
             {autoSkill && (
               <span
@@ -1147,7 +1200,7 @@ export default function Chat() {
               style={{ background: GRADIENTS.brand }}
               aria-label="Profile"
             >
-              {CURRENT_USER.name.charAt(0)}
+              {personName.charAt(0)}
             </button>
             {profileOpen && (
               <div
@@ -1155,10 +1208,10 @@ export default function Chat() {
                 style={{ backgroundColor: "var(--surface-solid)", borderColor: "var(--border)" }}
               >
                 <p className="text-[14.5px] font-semibold" style={{ color: "var(--text-1)" }}>
-                  {CURRENT_USER.name}
+                  {personName}
                 </p>
                 <p className="text-[12.5px] mb-3" style={{ color: "var(--text-3)" }}>
-                  {CURRENT_USER.role} at {COMPANY.name}
+                  {personRole} at {companyName}
                 </p>
                 <div
                   className="mb-1 flex items-center justify-between text-[12px]"
@@ -1491,7 +1544,7 @@ export default function Chat() {
                 listening
                   ? "Listening..."
                   : !conversationStarted
-                  ? `Ask ${ASSISTANT_NAME}, or type / for quick starts`
+                  ? `Ask ${assistantName}, or type / for quick starts`
                   : step === 0
                   ? "Type what you want to build, or /"
                   : "Type your answer"
@@ -1571,7 +1624,7 @@ export default function Chat() {
           <div className="flex items-center justify-center mt-2.5">
             <p className="flex items-center gap-1.5 text-[11px]" style={{ color: "var(--text-3)" }}>
               <Lock size={10} />
-              {ASSISTANT_NAME} can make mistakes
+              {assistantName} can make mistakes
             </p>
           </div>
         </div>
