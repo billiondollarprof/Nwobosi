@@ -13,6 +13,7 @@
    ========================================================================== */
 
 import { supabase } from "./supabase.js";
+import { FUNCTIONS } from "./config.js";
 
 const FUNCTIONS_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
 
@@ -31,7 +32,7 @@ export async function fetchLinkSource({ url, description }) {
 
   let response;
   try {
-    response = await fetch(`${FUNCTIONS_BASE}/add-link`, {
+    response = await fetch(`${FUNCTIONS_BASE}/${FUNCTIONS.addLink}`, {
       method: "POST",
       headers: {
         apikey: PUBLISHABLE_KEY,

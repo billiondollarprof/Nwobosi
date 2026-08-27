@@ -15,6 +15,7 @@
    ========================================================================== */
 
 import { supabase } from "./supabase.js";
+import { FUNCTIONS } from "./config.js";
 
 const FUNCTIONS_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
 
@@ -59,7 +60,7 @@ export function sendTurn({ stage = "interview", messages, onMeta, onText, onDone
 
     let response;
     try {
-      response = await fetch(`${FUNCTIONS_BASE}/assistant`, {
+      response = await fetch(`${FUNCTIONS_BASE}/${FUNCTIONS.assistant}`, {
         method: "POST",
         headers: {
           apikey: PUBLISHABLE_KEY,
@@ -80,7 +81,7 @@ export function sendTurn({ stage = "interview", messages, onMeta, onText, onDone
          is not subject to the same refusal. If that works they get their
          answer anyway, and if it does not, its error says what is really
          wrong instead of blaming their wifi. */
-      const { data, error } = await supabase.functions.invoke("assistant", {
+      const { data, error } = await supabase.functions.invoke(FUNCTIONS.assistant, {
         body: { stage, messages },
       });
 

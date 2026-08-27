@@ -37,6 +37,26 @@ export const OAUTH_CLIENTS = {
    points at Supabase rather than at stellaxafe.com because exchanging the
    code for a token needs the client secret, and that must never be
    somewhere a browser can read it. */
+/* --------------------------------------------------------------------------
+   SECTION: Edge function slugs
+   The name shown in the Supabase dashboard and the slug in the URL are two
+   different things. Renaming a function does not rename its slug: the
+   dashboard says so under the Name field, and this project has an
+   `assistant-` that was created with a trailing hyphen and displays as
+   "assistant".
+
+   Calling the wrong slug is a 404 with no CORS headers on it, which a
+   browser reports as a send failure rather than a not found, so it looks
+   like a network problem and sends everybody hunting in the wrong place.
+   The slugs live here, named, so the next person sees them.
+   -------------------------------------------------------------------------- */
+
+export const FUNCTIONS = {
+  assistant: "assistant-",
+  addLink: "add-link",
+  inviteStaff: "invite-staff",
+};
+
 export const OAUTH_REDIRECT_URI =
   "https://cbunsqzkhidwjtxdsmxd.supabase.co/functions/v1/oauth-callback";
 
