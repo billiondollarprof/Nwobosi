@@ -86,6 +86,35 @@ import {
    component below reads as flow rather than plumbing.
    ========================================================================== */
 
+/* --------------------------------------------------------------------------
+   HANDSHAKE MARKERS
+   The app cannot read the model's mind, so the model says when it is done
+   by ending its last message with a word nobody would type. That word is
+   never shown. It is stripped here, including while it is still arriving
+   one character at a time, so it never flashes on screen and then vanishes.
+   -------------------------------------------------------------------------- */
+
+const MARKER = {
+  interviewDone: "INTERVIEW_COMPLETE",
+  readbackDone: "READBACK_COMPLETE",
+};
+
+const MARKER_WORDS = Object.values(MARKER);
+
+function visibleText(raw) {
+  let out = raw;
+  for (const word of MARKER_WORDS) out = out.split(word).join("");
+
+  /* A marker arrives in pieces. Anything trailing that could still grow
+     into one is held back for a beat rather than shown and yanked away. */
+  const tail = out.match(/[A-Z_]+$/);
+  if (tail && MARKER_WORDS.some((word) => word.startsWith(tail[0]) && word !== tail[0])) {
+    out = out.slice(0, out.length - tail[0].length);
+  }
+
+  return out.replace(/\s+$/, "");
+}
+
 function guessProjectType(text) {
   const t = text.toLowerCase();
   if (t.includes("pitch") || t.includes("deck") || t.includes("presentation")) return "deck";
@@ -115,16 +144,10 @@ function timePhrase() {
   return { kind: "casual" };
 }
 
-function buildGreetingText(isFirstTime) {
+function buildGreetingText() {
   const phrase = timePhrase();
-  if (isFirstTime) {
-    return phrase.kind === "greeting"
-      ? `Welcome, ${CURRENT_USER.name}. ${phrase.word}. What are we building today?`
-      : `Welcome, ${CURRENT_USER.name}. Hi, what's up? What are we building today?`;
-  }
-  return phrase.kind === "greeting"
-    ? `${phrase.word}, ${CURRENT_USER.name}. What are we building today?`
-    : `Hi, ${CURRENT_USER.name}. What's up? What are we building today?`;
+  const opener = phrase.kind === "greeting" ? `${phrase.word}, ${CURRENT_USER.name}.` : `Hi ${CURRENT_USER.name}.`;
+  return `${opener} What are we working on today?`;
 }
 
 /* A filename from the first thing the staff member asked for. Better than
@@ -195,7 +218,7 @@ export default function Chat() {
 
   /* Greeting */
   const [hasGreetedBefore, setHasGreetedBefore] = useState(false);
-  const [greetingText, setGreetingText] = useState(() => buildGreetingText(true));
+  const [greetingText, setGreetingText] = useState(() => buildGreetingText());
 
   /* Usage and feedback */
   const [dailyUsed, setDailyUsed] = useState(0);
@@ -230,6 +253,18 @@ export default function Chat() {
 
   /* Stops a second Build press stacking a second paid generation. */
   const [generating, setGenerating] = useState(false);
+
+  /* Where the conversation is in the flow. This is the stage the next turn
+     runs at, which is also what decides the model, so it is the difference
+     between a cheap question and an expensive one.
+
+       interview  the cheap model, asking a few short questions
+       analyse    the stronger model, reading the company sources, either
+                  coming back for something missing or reading the brief back
+
+     It moves up by itself the moment the interview model says it is done.
+     Nobody presses anything to make that happen. */
+  const [flowStage, setFlowStage] = useState("interview");
 
   const scrollRef = useRef(null);
   const textareaRef = useRef(null);
@@ -344,17 +379,10 @@ export default function Chat() {
      the assistant function, which decides the model, checks the budget,
      and answers as this company's assistant.
 
-     The interview is not scripted here any more. The system prompt tells
-     the model to ask only what it does not know and to read the brief
-     back before producing anything, so the questions come from the model
-     reading the room rather than from a fixed list of three. That is the
-     difference between an interview and a form. */
-  function handleUserReply(text) {
-    /* Skill detection still runs locally. It is a badge, not a decision,
-       and guessing it instantly beats waiting on a round trip to show it. */
-    const guessed = SKILL_BY_TYPE[guessProjectType(text)];
-    if (guessed && !autoSkill) setAutoSkill(guessed);
-
+     One function runs every turn, whatever stage it is. The stage is what
+     changes: it picks the model and the instruction, and the server caps it
+     against what this staff member is allowed. */
+  function runTurn(stage, history) {
     setTyping(true);
 
     /* The bubble the reply streams into. Created empty and filled as
@@ -362,32 +390,48 @@ export default function Chat() {
        a wall of text. */
     const replyId = nextId();
     let started = false;
-
-    const history = toApiMessages([
-      ...messages,
-      { role: "user", content: text },
-    ]);
+    let raw = "";
 
     abortTurnRef.current = sendTurn({
-      stage: "interview",
+      stage,
       messages: history,
 
       onMeta: ({ tier }) => setActiveTier(tier),
 
       onText: (chunk) => {
+        raw += chunk;
         if (!started) {
           started = true;
           setTyping(false);
           setMessages((prev) => [...prev, { id: replyId, role: "assistant", type: "text", content: "" }]);
         }
-        setMessages((prev) =>
-          prev.map((m) => (m.id === replyId ? { ...m, content: m.content + chunk } : m))
-        );
+        const shown = visibleText(raw);
+        setMessages((prev) => prev.map((m) => (m.id === replyId ? { ...m, content: shown } : m)));
       },
 
       onDone: () => {
         setTyping(false);
         abortTurnRef.current = null;
+
+        const clean = visibleText(raw);
+        setMessages((prev) => prev.map((m) => (m.id === replyId ? { ...m, content: clean } : m)));
+
+        /* The interview said it has enough. Move up a tier and go straight
+           into the check, without the staff member pressing anything. From
+           their side they answered a question and got a read back. */
+        if (stage === "interview" && raw.includes(MARKER.interviewDone)) {
+          setFlowStage("analyse");
+          runTurn("analyse", [...history, { role: "assistant", content: clean }]);
+          return;
+        }
+
+        /* The stronger model has read the sources. Either it came back for
+           something only this person can supply, in which case their answer
+           goes back to it at the same tier, or it read the brief back and
+           earned the Build card. */
+        if (stage === "analyse" && raw.includes(MARKER.readbackDone)) {
+          setMessages((prev) => [...prev, { id: nextId(), role: "assistant", type: "build" }]);
+        }
       },
 
       onError: ({ reason, message }) => {
@@ -409,6 +453,19 @@ export default function Chat() {
     });
   }
 
+  function handleUserReply(text) {
+    /* Skill detection still runs locally. It is a badge, not a decision,
+       and guessing it instantly beats waiting on a round trip to show it. */
+    const guessed = SKILL_BY_TYPE[guessProjectType(text)];
+    if (guessed && !autoSkill) setAutoSkill(guessed);
+
+    /* Anything typed after a read back is a correction, so the Build card
+       stops being true. It comes back when the read back does. */
+    setMessages((prev) => prev.filter((m) => m.type !== "build"));
+
+    runTurn(flowStage, toApiMessages([...messages, { role: "user", content: text }]));
+  }
+
   /* ------------------------------------------------------------------------
      4. GENERATION
      Runs once the staff member confirms the brief. The finished file is
@@ -426,6 +483,7 @@ export default function Chat() {
   function handleGenerate() {
     if (generating) return;
     setGenerating(true);
+    setMessages((prev) => prev.filter((m) => m.type !== "build"));
 
     const resultId = nextId();
     let started = false;
@@ -498,7 +556,8 @@ export default function Chat() {
     setTyping(false);
     setActiveTier(null);
     setMessages([]);
-    setGreetingText(buildGreetingText(!hasGreetedBefore));
+    setGreetingText(buildGreetingText());
+    setFlowStage("interview");
     setStep(0);
     setBrief({});
     setAutoSkill(null);
@@ -1125,27 +1184,6 @@ export default function Chat() {
             </>
           )}
 
-          {/* Build it. Appears once there is a conversation to build from,
-              and the staff member decides when that is. Trying to detect
-              readiness from the model's wording would guess wrong, and
-              guessing wrong here spends money. */}
-          {conversationStarted && !generating && (
-            <div className="flex justify-center pb-2.5">
-              <button
-                onClick={handleGenerate}
-                className="flex items-center gap-2 rounded-full border px-4 py-2 text-[13px] backdrop-blur-xl transition-opacity hover:opacity-80"
-                style={{
-                  backgroundColor: "var(--surface)",
-                  borderColor: "var(--border-2)",
-                  color: "var(--text-1)",
-                }}
-              >
-                <FileText size={14} style={{ color: BRAND.accentSoft }} />
-                Build it now
-              </button>
-            </div>
-          )}
-
           {/* Message box */}
           <div
             className="flex items-end gap-1.5 rounded-full border px-3 py-2 backdrop-blur-2xl shadow-xl transition-shadow focus-within:ring-2 focus-within:ring-[rgba(20,32,160,0.35)]"
@@ -1314,6 +1352,32 @@ function ChatBubble({ message, brief, onGenerate, onReset, feedback, onFeedback,
             ))}
           </div>
           <PrimaryButton onClick={onGenerate}>Generate</PrimaryButton>
+        </div>
+      </div>
+    );
+  }
+
+  /* --- Ready to build ---
+     Only ever rendered after a read back the person has just seen, so it
+     is the one moment where pressing a button spends real money on their
+     behalf and they know exactly what for. */
+  if (message.type === "build") {
+    return (
+      <div style={riseStyle}>
+        <div
+          className="rounded-[18px] border p-5 backdrop-blur-xl"
+          style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
+        >
+          <p className="text-[14.5px] mb-4 leading-relaxed" style={{ color: "var(--text-2)" }}>
+            If that is right, I will build it now.
+          </p>
+          <PrimaryButton onClick={onGenerate} className="w-full flex items-center justify-center gap-2">
+            <FileText size={15} />
+            Build it
+          </PrimaryButton>
+          <p className="text-[12.5px] text-center mt-3" style={{ color: "var(--text-3)" }}>
+            Or tell me what to change.
+          </p>
         </div>
       </div>
     );
