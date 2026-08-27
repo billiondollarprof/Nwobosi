@@ -35,6 +35,7 @@ import {
   RotateCw,
   Copy,
   File as FileIcon,
+  User,
   AlertCircle,
   UploadCloud,
   LayoutGrid,
@@ -64,9 +65,7 @@ import {
   StatusPill,
 } from "../shared/ui.jsx";
 import {
-  ASSISTANT_NAME,
-  COMPANY,
-  CURRENT_USER,
+  assistantNameFor,
   DAILY_LIMIT,
   MAX_TEXT_UPLOAD_KB,
   MAX_IMAGE_UPLOAD_KB,
@@ -274,9 +273,13 @@ function timePhrase() {
   return { kind: "casual" };
 }
 
-function buildGreetingText(name = CURRENT_USER.name) {
+/* Short, and it uses their name only when it knows it. "Good evening,
+   Anthony." once signed in, "Good evening." while the page is still
+   finding out. Never a stranger's name, and never a paragraph. */
+function buildGreetingText(name) {
   const phrase = timePhrase();
-  const opener = phrase.kind === "greeting" ? `${phrase.word}, ${name}.` : `Hi ${name}.`;
+  const greeting = phrase.kind === "greeting" ? phrase.word : "Hi";
+  const opener = name ? `${greeting}, ${name}.` : `${greeting}.`;
   return `${opener} What are we working on today?`;
 }
 
@@ -404,10 +407,10 @@ export default function Chat() {
      a different company entirely. */
   const [me, setMe] = useState(null);
 
-  const companyName = me?.company?.name ?? COMPANY.name;
-  const assistantName = companyName ? `${companyName.split(" ")[0]} AI` : ASSISTANT_NAME;
-  const personName = me?.staff?.name?.split(" ")[0] ?? CURRENT_USER.name;
-  const personRole = me?.staff?.role ?? CURRENT_USER.role;
+  const companyName = me?.company?.name ?? "";
+  const assistantName = assistantNameFor(companyName);
+  const personName = me?.staff?.name?.split(" ")[0] ?? "";
+  const personRole = me?.staff?.role ?? "";
 
   const scrollRef = useRef(null);
   const textareaRef = useRef(null);
@@ -1200,7 +1203,7 @@ export default function Chat() {
               style={{ background: GRADIENTS.brand }}
               aria-label="Profile"
             >
-              {personName.charAt(0)}
+              {personName ? personName.charAt(0) : <User size={15} />}
             </button>
             {profileOpen && (
               <div
@@ -1211,7 +1214,7 @@ export default function Chat() {
                   {personName}
                 </p>
                 <p className="text-[12.5px] mb-3" style={{ color: "var(--text-3)" }}>
-                  {personRole} at {companyName}
+                  {[personRole, companyName].filter(Boolean).join(" at ")}
                 </p>
                 <div
                   className="mb-1 flex items-center justify-between text-[12px]"

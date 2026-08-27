@@ -215,3 +215,20 @@ export async function saveWork({ companyId, staffId, title, skill, content, sour
   }
   return data;
 }
+
+/* The people on this company. Email is deliberately absent: it lives in
+   the auth tables, which a browser cannot read, and a staff list is about
+   who has access and how far they may go, not about contact details. */
+export async function listStaff(companyId) {
+  const { data, error } = await supabase
+    .from("staff_effective_limits")
+    .select("id, name, role, access_level, model_ceiling, daily_limit")
+    .eq("company_id", companyId)
+    .order("name", { ascending: true });
+
+  if (error) {
+    console.error("could not list staff", error);
+    return [];
+  }
+  return data ?? [];
+}

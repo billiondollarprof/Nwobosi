@@ -40,22 +40,25 @@ export const OAUTH_CLIENTS = {
 export const OAUTH_REDIRECT_URI =
   "https://cbunsqzkhidwjtxdsmxd.supabase.co/functions/v1/oauth-callback";
 
-export const COMPANY = { name: "BuildFest" };
-
-export const ASSISTANT_NAME = COMPANY.name
-  ? `${COMPANY.name.split(" ")[0]} AI`
-  : `${PRODUCT.name} AI`;
-
 /* --------------------------------------------------------------------------
-   SECTION: Demo identity
-   Stands in for the signed in staff member until auth is wired up.
+   SECTION: Naming
+   There is deliberately no company name and no person's name in this file.
+
+   Every deployment belongs to a different company and every screen is
+   read by a different person, and both come from the database once
+   somebody signs in. A default here would be a stranger's name greeting
+   someone in their own workspace, which is the exact opposite of what
+   this product claims to be.
+
+   These are what a screen shows while it is still finding out, and they
+   name nobody.
    -------------------------------------------------------------------------- */
 
-export const CURRENT_USER = {
-  name: "Anthony",
-  role: "Marketing associate",
-  modelCeiling: "sonnet-5",
-};
+export const ASSISTANT_FALLBACK = "Assistant";
+
+export function assistantNameFor(companyName) {
+  return companyName ? `${companyName.split(" ")[0]} AI` : ASSISTANT_FALLBACK;
+}
 
 /* --------------------------------------------------------------------------
    SECTION: Limits

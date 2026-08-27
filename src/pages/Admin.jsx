@@ -46,14 +46,14 @@ import {
   SelectInput,
   Spinner,
 } from "../shared/ui.jsx";
-import { loadMe, listSources, addTextSource, removeSource } from "../shared/session.js";
+import { loadMe, listSources, addTextSource, removeSource, listStaff, listWork } from "../shared/session.js";
 import { fetchLinkSource } from "../shared/linkApi.js";
 import {
   PRODUCT,
-  COMPANY,
   MAX_TEXT_UPLOAD_KB,
   WORKFLOW_TOOLS,
   MODEL_TIERS,
+  SKILL_LABELS,
   MODEL_ORDER,
   DEFAULT_MODEL_CEILING,
 } from "../shared/config.js";
@@ -63,85 +63,10 @@ import {
    Stands in for Supabase until the backend is wired up.
    -------------------------------------------------------------------------- */
 
-const SEED_KNOWLEDGE = [
-  {
-    id: 1,
-    name: "Brand guidelines 2026",
-    description: "Colors, fonts, logo rules, and tone of voice",
-    kind: "file",
-    status: "indexed",
-  },
-  {
-    id: 2,
-    name: "Investor Pitch Deck v3",
-    description: "Approved deck template and slide order",
-    kind: "file",
-    status: "indexed",
-  },
-  {
-    id: 3,
-    name: "Company profile",
-    description: "What we do, our sector, positioning, and the words we use",
-    kind: "file",
-    status: "indexed",
-  },
-  {
-    id: 4,
-    name: "Finance Report Q series",
-    description: "Quarterly report layout and standard tables",
-    kind: "file",
-    status: "indexed",
-  },
-  {
-    id: 5,
-    name: "buildfest.com/about",
-    description: "Public company description, kept in sync",
-    kind: "link",
-    status: "indexed",
-  },
-];
-
-const SEED_STAFF = [
-  {
-    id: 1,
-    name: "Anthony Okafor",
-    email: "anthony@buildfest.com",
-    role: "Marketing associate",
-    ceiling: "sonnet-5",
-    limit: 5,
-    used: 2,
-  },
-  {
-    id: 2,
-    name: "Grace Ade",
-    email: "grace@buildfest.com",
-    role: "Head of finance",
-    ceiling: "opus-5",
-    limit: 12,
-    used: 7,
-  },
-  {
-    id: 3,
-    name: "Daniel Eze",
-    email: "daniel@buildfest.com",
-    role: "Sales lead",
-    ceiling: "sonnet-5",
-    limit: 5,
-    used: 5,
-  },
-];
-
-const SEED_REQUESTS = [
-  { id: 1, name: "Chidi Nwosu", email: "chidi@buildfest.com", when: "2 hours ago" },
-  { id: 2, name: "Ife Bello", email: "ife@buildfest.com", when: "Yesterday" },
-];
-
-const SEED_HISTORY = [
-  { id: 1, who: "Grace Ade", task: "Q3 finance report", credits: 34, when: "Today, 09:12" },
-  { id: 2, who: "Anthony Okafor", task: "Investor pitch deck", credits: 58, when: "Today, 08:40" },
-  { id: 3, who: "Daniel Eze", task: "Client one pager", credits: 19, when: "Yesterday, 16:22" },
-  { id: 4, who: "Grace Ade", task: "Board summary", credits: 41, when: "Yesterday, 11:05" },
-];
+/* No seeded people, and no invented usage. A dashboard that opens
+   showing four strangers and their spending is a dashboard nobody can
+   trust the numbers on. These load from the database or they show
+   nothing. */
 
 /* What the admin side can turn into text on its own. Same list as the
    chat, and the same reason: a PDF needs a parser that does not exist
@@ -187,7 +112,7 @@ export default function Admin() {
     };
   }, []);
 
-  const companyName = me?.company?.name ?? COMPANY.name;
+  const companyName = me?.company?.name ?? "";
 
   return (
     <PageShell scroll>
@@ -213,7 +138,7 @@ export default function Admin() {
             <span className="font-bold text-[15px] tracking-tight" style={{ fontFamily: FONTS.display }}>
               Admin
             </span>
-            <StatusPill tone="accent">{companyName}</StatusPill>
+            {companyName && <StatusPill tone="accent">{companyName}</StatusPill>}
           </div>
         </div>
 
@@ -252,8 +177,8 @@ export default function Admin() {
 
           {tab === "knowledge" && <KnowledgeSection me={me} loading={loadingMe} />}
           {tab === "connectors" && <ConnectorsSection />}
-          {tab === "access" && <AccessSection />}
-          {tab === "usage" && <UsageSection />}
+          {tab === "access" && <AccessSection me={me} />}
+          {tab === "usage" && <UsageSection me={me} />}
         </div>
       </div>
     </PageShell>
@@ -692,9 +617,37 @@ function ConnectorsSection() {
    list. Nobody gets in without an invite or an approved request.
    ========================================================================== */
 
-function AccessSection() {
-  const [requests, setRequests] = useState(SEED_REQUESTS);
-  const [staff, setStaff] = useState(SEED_STAFF);
+function AccessSection({ me }) {
+  const [requests, setRequests] = useState([]);
+  const [staff, setStaff] = useState([]);
+
+  /* The real people on this company, read under the admin's own
+     identity so row level security decides who is visible. Email is not
+     here on purpose: it lives in the auth tables, which the browser
+     cannot read, and inventing one to fill the row would be worse than
+     leaving it out. */
+  useEffect(() => {
+    if (!me?.company?.id) return;
+    let alive = true;
+    (async () => {
+      const rows = await listStaff(me.company.id);
+      if (!alive) return;
+      setStaff(
+        rows.map((r) => ({
+          id: r.id,
+          name: r.name ?? "Unnamed",
+          email: "",
+          role: r.role ?? "Not set",
+          ceiling: r.model_ceiling ?? DEFAULT_MODEL_CEILING,
+          limit: r.daily_limit ?? 5,
+          used: 0,
+        }))
+      );
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [me?.company?.id]);
   const [inviteName, setInviteName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("");
@@ -781,7 +734,7 @@ function AccessSection() {
                     {req.name}
                   </p>
                   <p className="text-[12.5px] truncate" style={{ color: "var(--text-3)" }}>
-                    {req.email}, {req.when}
+                    {[req.email, req.when].filter(Boolean).join(", ")}
                   </p>
                 </div>
 
@@ -921,7 +874,25 @@ function AccessSection() {
    Company defaults, the model ladder, and what each person has spent.
    ========================================================================== */
 
-function UsageSection() {
+function UsageSection({ me }) {
+  /* Real work, or nothing. A usage panel showing invented spend is the
+     one number an admin would act on, so it is the last place to put a
+     placeholder. */
+  const [history, setHistory] = useState([]);
+
+  useEffect(() => {
+    if (!me?.company?.id) return;
+    let alive = true;
+    (async () => {
+      const rows = await listWork(me.company.id);
+      if (!alive) return;
+      setHistory(rows);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [me?.company?.id]);
+
   const [defaultLimit, setDefaultLimit] = useState(5);
   const [defaultCeiling, setDefaultCeiling] = useState(DEFAULT_MODEL_CEILING);
 
@@ -994,7 +965,13 @@ function UsageSection() {
         </SectionHeading>
 
         <div className="space-y-2">
-          {SEED_HISTORY.map((row) => (
+          {history.length === 0 && (
+            <p className="text-[13.5px] py-4" style={{ color: "var(--text-3)" }}>
+              Nothing made yet.
+            </p>
+          )}
+
+          {history.map((row) => (
             <div
               key={row.id}
               className="flex flex-wrap items-center gap-3 rounded-[12px] px-3.5 py-3 border"
@@ -1009,14 +986,14 @@ function UsageSection() {
 
               <div className="flex-1 min-w-[150px]">
                 <p className="text-[14px] font-medium truncate" style={{ color: "var(--text-1)" }}>
-                  {row.task}
+                  {row.title}
                 </p>
                 <p className="text-[12.5px] truncate" style={{ color: "var(--text-3)" }}>
-                  {row.who}, {row.when}
+                  {new Date(row.created_at).toLocaleString()}
                 </p>
               </div>
 
-              <StatusPill tone="neutral">{row.credits} credits</StatusPill>
+              <StatusPill tone="neutral">{SKILL_LABELS[row.skill] ?? "Document"}</StatusPill>
             </div>
           ))}
         </div>
