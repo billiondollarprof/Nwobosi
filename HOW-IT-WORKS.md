@@ -20,14 +20,11 @@ public AI tools every day. There is no policy that survives a deadline.
 repeat. Every round costs time and tokens, and the result still does not
 match how the company writes.
 
-**Nothing looks like it came from the same company.** Two people asking for
-the same document get two different documents.
+General AI models hallucinate by pulling unverified external data or making assumptions outside company context.
 
 ## The answer
+One secure workspace per company, isolated to its own internal data. The AI interviews users before generation to refine requirements and create optimized prompts, reducing guesswork, token waste, hallucinations, and inaccurate outputs. It can run locally or in a private cloud/VPC, with external web access restricted so sensitive company data stays within its secure boundary.
 
-One workspace per company. The assistant is scoped to that company's own
-material and nothing else. The iteration happens **before** generation, in
-cheap conversation, instead of after it in expensive output.
 
 ---
 
