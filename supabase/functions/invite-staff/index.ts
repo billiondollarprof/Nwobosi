@@ -16,8 +16,12 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, accept, accept-profile, content-profile, x-supabase-api-version, range",
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+  "Access-Control-Expose-Headers": "content-length, content-type",
+  "Access-Control-Max-Age": "86400",
+  Vary: "Origin",
 };
 
 function json(body: unknown, status = 200) {
@@ -32,7 +36,18 @@ function json(body: unknown, status = 200) {
 const ALLOWED_CEILINGS = ["haiku-4-5", "sonnet-5"];
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+  /* The preflight. A browser asks before it will send a request carrying
+     an Authorization or apikey header, and if this answer is not exactly
+     right it refuses to send anything at all, which looks from inside the
+     app like the network is down. Echoing back whatever headers it asked
+     about means a header added later cannot quietly break it again. */
+  if (req.method === "OPTIONS") {
+    const asked = req.headers.get("access-control-request-headers");
+    return new Response(null, {
+      status: 204,
+      headers: asked ? { ...CORS, "Access-Control-Allow-Headers": asked } : CORS,
+    });
+  }
   if (req.method !== "POST") return json({ ok: false, reason: "Use POST." }, 405);
 
   const authHeader = req.headers.get("Authorization") ?? "";
