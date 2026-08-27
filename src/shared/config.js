@@ -66,20 +66,30 @@ export function assistantNameFor(companyName) {
 
 export const DAILY_LIMIT = 5;
 
-/* Two upload caps, because a megabyte of text and a megabyte of picture
-   are not the same thing at all.
+/* Upload caps, split by what the file actually costs.
 
-   Text is capped low, at half a megabyte. Only forty thousand characters
-   of any one file reach the model, which is about twenty pages, so a file
-   much larger than this would be accepted and then mostly ignored.
-   Refusing it says so honestly instead of quietly dropping the rest.
+   A PDF or a Word file is mostly structure. Ten megabytes of PDF might be
+   twenty pages of prose, so the megabyte figure says almost nothing about
+   what reaches the model. The character cap below is the one that binds,
+   and it is applied after the text comes out.
 
-   Images are capped high, at five megabytes, because a phone screenshot is
-   large on disk and tiny once shrunk. The browser scales it down to the
-   size the model works at anyway before it leaves the device, so what
-   arrives is around fifty kilobytes whatever came in. */
+   Plain text is different: every byte is a byte the model would carry, so
+   it is capped tighter.
+
+   Images are capped generously because a phone screenshot is large on
+   disk and tiny once shrunk. The browser scales it down to the size the
+   model works at anyway before it leaves the device. */
 export const MAX_TEXT_UPLOAD_KB = 500;
 export const MAX_IMAGE_UPLOAD_KB = 5120;
+
+/* A document going into the company knowledge base. Ten megabytes covers
+   a real brand guide or an annual report. */
+export const MAX_SOURCE_UPLOAD_KB = 10240;
+
+/* How much of any one document is kept. Around sixty pages, which is more
+   than any single source needs to be useful and still small enough that a
+   handful of them fit in one conversation. */
+export const MAX_SOURCE_CHARS = 120000;
 
 /* Four files per message. Past that it stops being a person handing over
    what matters and starts being a folder, and a folder is what pointing at

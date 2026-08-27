@@ -48,10 +48,12 @@ import {
   Spinner,
 } from "../shared/ui.jsx";
 import { loadMe, listSources, addTextSource, removeSource, listStaff, listWork } from "../shared/session.js";
+import { readFileAsText, canBecomeText } from "../shared/readFile.js";
 import { fetchLinkSource } from "../shared/linkApi.js";
 import {
   PRODUCT,
-  MAX_TEXT_UPLOAD_KB,
+  MAX_SOURCE_UPLOAD_KB,
+  MAX_SOURCE_CHARS,
   WORKFLOW_TOOLS,
   MODEL_TIERS,
   SKILL_LABELS,
@@ -68,16 +70,6 @@ import {
    showing four strangers and their spending is a dashboard nobody can
    trust the numbers on. These load from the database or they show
    nothing. */
-
-/* What the admin side can turn into text on its own. Same list as the
-   chat, and the same reason: a PDF needs a parser that does not exist
-   here yet, and a source that lists a file it never actually read is
-   worse than no source at all. */
-const ADMIN_READABLE = ["txt", "md", "markdown", "csv", "tsv", "json", "log"];
-
-function isReadableAdminFile(name) {
-  return ADMIN_READABLE.includes(name.split(".").pop()?.toLowerCase() ?? "");
-}
 
 const TABS = [
   { id: "knowledge", label: "Knowledge", icon: BookOpen },
@@ -218,6 +210,10 @@ function KnowledgeSection({ me, loading: loadingMe }) {
   const [pasteNote, setPasteNote] = useState("");
   const [pasteText, setPasteText] = useState("");
 
+  /* Which file is being pulled apart right now, so a big PDF shows work
+     happening rather than a page that looks stuck. */
+  const [reading, setReading] = useState("");
+
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -246,31 +242,41 @@ function KnowledgeSection({ me, loading: loadingMe }) {
     setTimeout(() => setError(""), 6000);
   }
 
-  function pickFiles(e) {
+  async function pickFiles(e) {
     const file = (e.target.files || [])[0];
     e.target.value = "";
     if (!file) return;
 
-    if (!isReadableAdminFile(file.name)) {
-      show(`${file.name} is not a kind of file this can read yet. Plain text, Markdown, CSV or JSON.`);
+    if (!canBecomeText(file.name)) {
+      show(`${file.name} is not a kind of file this can read. PDF, Word, plain text, Markdown, CSV or JSON.`);
       return;
     }
-    if (file.size > MAX_TEXT_UPLOAD_KB * 1024) {
-      show(`${file.name} is over the ${MAX_TEXT_UPLOAD_KB} KB limit. Split it up, or paste the part that matters.`);
+    if (file.size > MAX_SOURCE_UPLOAD_KB * 1024) {
+      show(
+        `${file.name} is ${(file.size / 1024 / 1024).toFixed(1)} MB, over the ` +
+          `${Math.round(MAX_SOURCE_UPLOAD_KB / 1024)} MB limit. Split it up, or paste the part that matters.`
+      );
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      setStaged({
-        fileName: file.name,
-        name: file.name.replace(/\.[^.]+$/, ""),
-        description: "",
-        text: String(reader.result ?? ""),
-      });
-    };
-    reader.onerror = () => show(`Could not read ${file.name}.`);
-    reader.readAsText(file);
+    /* A large PDF takes a moment to pull apart, and a dead button while
+       that happens reads as broken. */
+    setReading(file.name);
+    const result = await readFileAsText(file, { maxChars: MAX_SOURCE_CHARS });
+    setReading("");
+
+    if (!result.ok) {
+      show(result.reason);
+      return;
+    }
+
+    setStaged({
+      fileName: file.name,
+      name: file.name.replace(/\.[^.]+$/, ""),
+      description: "",
+      text: result.text,
+      truncated: result.truncated,
+    });
   }
 
   async function savePasted(e) {
@@ -388,7 +394,7 @@ function KnowledgeSection({ me, loading: loadingMe }) {
         ref={fileInputRef}
         type="file"
         className="hidden"
-        accept=".txt,.md,.markdown,.csv,.tsv,.json,.log"
+        accept=".pdf,.docx,.txt,.md,.markdown,.csv,.tsv,.json,.log,.rtf,.xml,.html"
         onChange={pickFiles}
       />
 
@@ -492,7 +498,9 @@ function KnowledgeSection({ me, loading: loadingMe }) {
         {staged ? (
           <div className="space-y-3">
             <p className="text-[13px]" style={{ color: "var(--text-3)" }}>
-              Read {staged.fileName}. Name it and say what it holds.
+              Read {staged.fileName}
+              {staged.truncated ? ", the first part of it, which was as much as fits" : ""}. Name it and
+              say what it holds.
             </p>
             <Field label="Name">
               <TextInput
@@ -537,10 +545,17 @@ function KnowledgeSection({ me, loading: loadingMe }) {
               Or choose a file
             </p>
             <p className="text-[13px] mb-4" style={{ color: "var(--text-3)" }}>
-              Plain text, Markdown, CSV or JSON, up to {MAX_TEXT_UPLOAD_KB} KB. PDF and Word
-              cannot be read yet, so paste from those instead.
+              PDF, Word, plain text, Markdown, CSV or JSON, up to{" "}
+              {Math.round(MAX_SOURCE_UPLOAD_KB / 1024)} MB
             </p>
-            <GhostButton onClick={() => fileInputRef.current?.click()}>Browse files</GhostButton>
+            {reading ? (
+              <span className="inline-flex items-center gap-2 text-[13.5px]" style={{ color: "var(--text-2)" }}>
+                <Spinner size={14} />
+                Reading {reading}
+              </span>
+            ) : (
+              <GhostButton onClick={() => fileInputRef.current?.click()}>Browse files</GhostButton>
+            )}
           </div>
         )}
       </GlassPanel>
