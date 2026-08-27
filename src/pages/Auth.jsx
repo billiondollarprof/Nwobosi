@@ -13,7 +13,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Lock, MailCheck, ShieldAlert, UserPlus } from "lucide-react";
+import { ArrowLeft, ArrowRight, Eye, EyeOff, Lock, MailCheck, ShieldAlert, UserPlus } from "lucide-react";
 
 import { LogoMark } from "../shared/icons.jsx";
 import { BRAND, FONTS } from "../shared/tokens";
@@ -79,11 +79,13 @@ export default function Auth() {
         return;
       }
 
-      /* A wrong password and an email nobody has registered land in the
-         same place on purpose. Telling them apart would turn this box
-         into a way of finding out who has an account here. Offering to
-         request access covers both without confirming either. */
-      setMode("notfound");
+      /* Says what actually happened. It used to send every failure to a
+         "no account found" screen, which told somebody their setup had
+         failed when in fact they had mistyped a password, and that is a
+         working system reading as a broken one. The message still names
+         neither the email nor the password as the wrong half, so it does
+         not become a way of finding out who has an account here. */
+      setError("That email and password do not match. Check both and try again.");
       return;
     }
 
@@ -93,7 +95,11 @@ export default function Auth() {
     setBusy(false);
 
     if (!me?.company?.slug) {
-      setError("Signed in, but your account is not on a workspace yet. Ask your admin.");
+      /* Signed in, and on nobody's company. Sign them back out so they
+         are not left holding a session that opens nothing and cannot be
+         cleared from any screen. */
+      await supabase.auth.signOut();
+      setError("That account is signed in but not on a workspace yet. Ask whoever set it up to add you.");
       return;
     }
 
@@ -234,6 +240,8 @@ export default function Auth() {
    ========================================================================== */
 
 function LoginSection({ email, password, busy, error, onEmail, onPassword, onSubmit }) {
+  const [show, setShow] = useState(false);
+
   return (
     <form onSubmit={onSubmit}>
       <h1 className="text-[22px] font-bold mb-1" style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}>
@@ -254,13 +262,28 @@ function LoginSection({ email, password, busy, error, onEmail, onPassword, onSub
       </Field>
 
       <Field label="Password">
-        <TextInput
-          type="password"
-          value={password}
-          onChange={(e) => onPassword(e.target.value)}
-          placeholder="Your password"
-          autoComplete="current-password"
-        />
+        <div className="relative">
+          <TextInput
+            type={show ? "text" : "password"}
+            value={password}
+            onChange={(e) => onPassword(e.target.value)}
+            placeholder="Your password"
+            autoComplete="current-password"
+            className="pr-11"
+          />
+          <button
+            type="button"
+            onClick={() => setShow((v) => !v)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 transition-opacity hover:opacity-70"
+            aria-label={show ? "Hide password" : "Show password"}
+          >
+            {show ? (
+              <EyeOff size={16} style={{ color: "var(--text-3)" }} />
+            ) : (
+              <Eye size={16} style={{ color: "var(--text-3)" }} />
+            )}
+          </button>
+        </div>
       </Field>
 
       {error && (
