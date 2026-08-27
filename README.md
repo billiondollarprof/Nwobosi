@@ -4,6 +4,10 @@ A private AI gateway for enterprises. Staff describe what they need in plain lan
 
 Built for the 10Alytics Business AI BuildFest.
 
+> **Proprietary.** Copyright (c) 2026 Okechukwu Nwobosi. All rights reserved.
+> This repository is shared for review only. See [LICENSE](LICENSE). Reading it
+> grants no right to copy, reuse, or redistribute any part of it.
+
 ## The problem it solves
 
 Three problems, in order of priority.
