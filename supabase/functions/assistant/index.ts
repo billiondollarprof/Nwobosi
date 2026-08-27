@@ -109,8 +109,14 @@ function buildBasePrompt(
     `Industry: ${company.industry}`,
     "",
     "HOW YOU WRITE",
-    "Conversational by default. Short, simple sentences, plain language, no jargon,",
-    "no em dashes. Write the way a sharp colleague talks, not the way a manual reads.",
+    "Conversational by default. Short, simple sentences, plain language, no jargon.",
+    "Write the way a sharp colleague talks, not the way a manual reads.",
+    "",
+    "Never use an em dash or an en dash. Not one, anywhere, in a chat message or in a",
+    "finished document. Where you would reach for one, use a full stop and start a new",
+    "sentence, or a comma, or a colon. A hyphen inside a word that genuinely needs one",
+    "is fine. This is not a preference to weigh against the house style below. It holds",
+    "even when the company's own material is full of them.",
     "",
     "That is a starting point, not a rule. If this person writes formally, match them.",
     "If the company's own material uses longer sentences, professional terms, or a",
@@ -197,6 +203,33 @@ function buildBasePrompt(
   return lines.join("\n");
 }
 
+/* How much room each stage gets to answer in.
+
+   This is the line that stops the cheap conversation writing the document.
+   The interview used to be told not to produce the work and given eight
+   thousand tokens to disobey in, and when somebody said "just build it" it
+   wrote the whole one pager on the spot: no read back, no confirmation, no
+   file to download, because the app never learned the interview had ended.
+
+   A question is two hundred tokens. A one pager is fifteen hundred. Seven
+   hundred is generous for the first and impossible for the second, so the
+   interview no longer has the room to skip the flow even if it wants to.
+   The analysis gets more because thinking tokens are counted here too, and
+   only the writing stage gets everything.
+
+   Same idea as having no search. Not a rule it may talk itself out of,
+   a ceiling it cannot cross. */
+const MAX_OUTPUT: Record<string, number> = {
+  interview: 700,
+  analyse: 4000,
+  generate: 8000,
+};
+
+/* The interview gets five questions. The prompt asks for three to five and
+   the app enforces the ceiling, but a model that knows its last turn has
+   arrived closes cleanly instead of being cut off mid question. */
+const MAX_INTERVIEW_TURNS = 5;
+
 /* What this particular turn is for. Appended after the cached base so the
    prefix above stays byte identical across stages. */
 const STAGE_PROMPT: Record<string, string> = {
@@ -204,7 +237,13 @@ const STAGE_PROMPT: Record<string, string> = {
     "",
     "RIGHT NOW: INTERVIEW",
     "Work out what they actually need. One question at a time, like a colleague would.",
-    "Do not produce the work yet.",
+    "",
+    "YOU DO NOT WRITE THE WORK IN THIS STAGE. NOT A DRAFT, NOT AN OUTLINE, NOT A",
+    "FIRST SECTION, NOT EVEN IF THEY ASK YOU TO RIGHT NOW. Writing it is a separate",
+    "stage that runs on a stronger model, after a check you cannot do and a read back",
+    "they have to confirm. If you write it here they never see the read back, they",
+    "never get a file to download, and the work never reaches the model that can read",
+    "the company sources. Handing off IS how you build it for them.",
     "",
     "Keep it to three to five questions in total, and fewer if their first message",
     "already answered some of them. This is a short conversation, not an interrogation.",
@@ -212,23 +251,48 @@ const STAGE_PROMPT: Record<string, string> = {
     "who reads it, and the one or two decisions only they can make. Never ask something",
     "they already told you, and never ask something you could reasonably decide yourself.",
     "",
-    "Do not try to close every gap here. A stronger model reads the company material",
-    "after you and will come back for anything genuinely missing, so stopping early",
-    "costs nothing and asking too much costs their patience.",
+    "If you asked more than one thing and they answered only some of it, do not move",
+    "on and do not treat silence as an answer. Name the ones still open and ask again,",
+    "once, plainly. If they skip them a second time, that is their answer: let it go",
+    "and hand off.",
     "",
-    "If material would help, ask them to name a file or paste what matters. Company",
-    "sources listed above are yours to choose from without asking.",
+    "Do not try to close every gap here. A stronger model reads the company material",
+    "after you and comes back for anything genuinely missing, so stopping early costs",
+    "nothing and asking too much costs their patience.",
+    "",
+    "TWO DIFFERENT KINDS OF MATERIAL, AND YOU MUST NOT CONFUSE THEM",
+    "",
+    "The company sources listed above belong to the company, and this person should",
+    "never have to know a single file name in there. If they point you at them in any",
+    "words at all, the knowledge base, the admin files, our documents, our brand guide,",
+    "the stuff you already have, that is not a request you refuse and it is not a file",
+    "name to ask for. You cannot read those contents yourself. The stronger model can,",
+    "and it chooses which ones matter. So that is a handoff, immediately.",
+    "",
+    "Their own material is the other kind: something on their laptop, something only",
+    "they have, something they went and checked. That, and only that, is when you ask",
+    "them to attach it or paste what matters.",
+    "",
+    "HOW THIS STAGE ENDS",
+    "Three ways, and all three end exactly the same. Say one short line, then",
+    "INTERVIEW_COMPLETE on its own final line, and nothing else.",
+    "",
+    "  1. You have enough to hand over.",
+    "  2. They tell you to get on with it. Just build it, do not worry, go ahead, you",
+    "     decide, whatever wording they use. Their instruction beats your question",
+    "     list. Do not argue, do not ask one more, and above all do not start writing.",
+    "     Say you will work with what you have, and hand off.",
+    "  3. They point you at the company sources, as described above.",
     "",
     "YOU MAY HAVE BEEN HANDED SOMETHING SPECIFIC",
     "Read back up the conversation first. If a message above already says what is",
     "missing, or the person asked to change something after seeing a read back, that is",
     "your whole job this time. Do not start a fresh interview and do not re-ask what was",
     "already settled. Collect exactly what was asked for, help them get it if they do",
-    "not know where to look, and stop the moment you have it.",
+    "not know where to look, and hand off the moment you have it.",
     "",
-    "Once you have enough to hand back, stop asking and end your message with",
-    "INTERVIEW_COMPLETE on its own final line. Do not explain the marker, do not mention",
-    "it, do not use it while a real question is still open.",
+    "Do not explain the marker, do not mention it, and do not use it while a real",
+    "question of yours is still open and they have not waved you on.",
   ].join("\n"),
 
   analyse: [
@@ -240,6 +304,15 @@ const STAGE_PROMPT: Record<string, string> = {
     "",
     "If you have already done this earlier in the same conversation, do not start over.",
     "The sources you picked then still stand. Fold in whatever is new and move on.",
+    "",
+    "FIRST, CHECK THE THINGS A DOCUMENT CANNOT EXIST WITHOUT",
+    "The interview before you is short on purpose and it routinely misses these:",
+    "  - whose name goes on this, and their title",
+    "  - who it is addressed to, by name where a name matters",
+    "  - which company it is for, and which company it is from",
+    "  - a date or a deadline, where the document carries one",
+    "A missing name is not a detail you may decide yourself. If the company sources",
+    "answer it, use them and say which. If nothing answers it, it is missing.",
     "",
     "You now do one of two things, and only one.",
     "",
@@ -433,7 +506,27 @@ Deno.serve(async (req: Request) => {
      instruction. That order is what lets the base be cached: the cache is
      a prefix match, so anything that varies has to come after it. */
   const base = buildBasePrompt(company, staff.name ?? "a staff member", readySources);
-  const stageInstruction = STAGE_PROMPT[stage] ?? STAGE_PROMPT.interview;
+
+  /* On the last question the interview is allowed, tell it so. The app
+     moves the work up whether it agrees or not, and a model that knows the
+     turn is its last closes cleanly rather than being cut off partway
+     through asking something nobody will get to answer. */
+  const assistantTurns = messages.filter((m: unknown) =>
+    typeof m === "object" && m !== null && (m as { role?: string }).role === "assistant"
+  ).length;
+
+  const lastQuestion =
+    stage === "interview" && assistantTurns >= MAX_INTERVIEW_TURNS - 1
+      ? [
+          "",
+          "",
+          "THIS IS YOUR LAST TURN IN THIS STAGE",
+          "You have used the questions this interview gets. Do not ask another one.",
+          "Say in one line what you will be working with, then hand off.",
+        ].join("\n")
+      : "";
+
+  const stageInstruction = (STAGE_PROMPT[stage] ?? STAGE_PROMPT.interview) + lastQuestion;
 
   /* ----------------------------------------------------------------------
      THE CONTENTS THEMSELVES
@@ -527,7 +620,7 @@ Deno.serve(async (req: Request) => {
            no benefit and no harm either. */
         const run = anthropic.messages.stream({
           model: MODEL_ID[tier],
-          max_tokens: 8000,
+          max_tokens: MAX_OUTPUT[stage] ?? MAX_OUTPUT.generate,
           system: [
             { type: "text", text: base, cache_control: { type: "ephemeral" } },
             ...(sourceContents ? [{ type: "text" as const, text: sourceContents }] : []),
