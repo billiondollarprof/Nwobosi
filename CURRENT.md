@@ -53,6 +53,10 @@ under **ofilifire@gmail.com**.
   private addresses refused and every redirect hop checked.
 - **Images** in the chat are shrunk to 1568px and sent as image blocks.
 - **Finished work** is saved to `work_history` and survives a refresh.
+- **Conversations are saved** to `conversations`, the last three per
+  person, so a brief someone is halfway through survives a closed tab or
+  a different phone. The sidebar offers them under "Pick up where you left
+  off" and resuming restores the stage as well as the messages.
 - **RLS** is tight. Every table on, every policy scoped by
   `private.current_company_id()`, which reads `staff` by `auth.uid()`.
   `access_codes` has RLS on and zero policies, so only the service role
@@ -80,7 +84,6 @@ under **ofilifire@gmail.com**.
   model as text in the system prompt, and an image cannot go there.
   Converting an image to PDF does not help: PDF extraction returns text,
   and a PDF of a picture has none.
-- **The conversation is not persisted.** Only finished documents are.
 
 ---
 
