@@ -282,9 +282,12 @@ const STAGE_PROMPT: Record<string, string> = {
 
 /* -------------------------------------------------------------------------- */
 
-/* Twenty megabytes. Four shrunk screenshots plus a conversation come in
-   well under this; anything past it is not a person working. */
-const MAX_REQUEST_BYTES = 20 * 1024 * 1024;
+/* Five megabytes. Real traffic is nowhere near it: four shrunk screenshots
+   and a long conversation together come to well under one. This is not a
+   budget, it is a tripwire for a request that did not come from the app at
+   all, since the shrinking happens in a browser and a browser is not
+   something a server may trust. */
+const MAX_REQUEST_BYTES = 5 * 1024 * 1024;
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
