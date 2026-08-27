@@ -1035,7 +1035,10 @@ function AccessSection({ me }) {
               ))}
             </SelectInput>
           </Field>
-          <Field label="Model ceiling" hint="How far up the assistant may go for this person.">
+          <Field
+            label="Model ceiling"
+            hint="How far up the assistant may go for this person. Opus 5, Fable 5 and other providers such as Gemini, GPT or DeepSeek are held back in this demo to keep credit costs down. Your own deployment runs whichever models you choose."
+          >
             <SelectInput value={inviteCeiling} onChange={(e) => setInviteCeiling(e.target.value)}>
               {/* Only what this deployment actually allows. Opus and Fable
                   were listed and choosing one would have been accepted by a
