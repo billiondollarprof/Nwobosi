@@ -64,7 +64,7 @@ export default function Setup() {
   const [step, setStep] = useState(0);
 
   const [code, setCode] = useState("");
-  const [admin, setAdmin] = useState({ name: "", email: "", password: "" });
+  const [admin, setAdmin] = useState({ name: "", email: "", password: "", confirm: "" });
   const [company, setCompany] = useState({ name: "", about: "", industry: "" });
   const [companyReady, setCompanyReady] = useState(false);
 
@@ -118,6 +118,13 @@ export default function Setup() {
     if (emailIssue) return setError(emailIssue);
     const passwordIssue = passwordProblem(admin.password);
     if (passwordIssue) return setError(passwordIssue);
+
+    /* Typed twice, because this password is the only way back into the
+       workspace afterwards. There is no reset email yet, so a typo here
+       is a workspace nobody can open again. */
+    if (admin.password !== admin.confirm) {
+      return setError("The two passwords do not match.");
+    }
 
     setError("");
     setStep(2);
@@ -451,6 +458,26 @@ function AccountStep({ admin, error, onChange, onSubmit }) {
               <Eye size={16} style={{ color: "var(--text-3)" }} />
             )}
           </button>
+        </div>
+      </Field>
+
+      <Field
+        label="Type it again"
+        hint={
+          admin.confirm && admin.confirm !== admin.password
+            ? "These do not match yet."
+            : "This password is the only way back in, so it is worth checking."
+        }
+      >
+        <div className="relative">
+          <TextInput
+            type={showPassword ? "text" : "password"}
+            value={admin.confirm}
+            onChange={(e) => onChange({ confirm: e.target.value })}
+            placeholder="Same password again"
+            autoComplete="new-password"
+            className="pr-11"
+          />
         </div>
       </Field>
 
