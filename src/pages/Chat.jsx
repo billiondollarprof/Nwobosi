@@ -50,7 +50,14 @@ import {
 import { LogoMark } from "../shared/icons.jsx";
 import { useSpeechToText } from "../shared/useSpeechToText.js";
 import { sendTurn, toApiMessages } from "../shared/assistantApi.js";
-import { loadMe, listWork, saveWork } from "../shared/session.js";
+import {
+  loadMe,
+  listWork,
+  saveWork,
+  listConversations,
+  loadConversation,
+  saveConversation,
+} from "../shared/session.js";
 import { readFileAsText, fileKind } from "../shared/readFile.js";
 import { BRAND, GRADIENTS, FONTS } from "../shared/tokens";
 import {
@@ -392,6 +399,17 @@ export default function Chat() {
      a different company entirely. */
   const [me, setMe] = useState(null);
 
+  /* The row this conversation is being written to, and the few most
+     recent ones offered in the sidebar. Held in a ref as well as state
+     because a save fires from inside a stream callback, where reading
+     state would give whatever it was when the turn started. */
+  const conversationIdRef = useRef(null);
+  const [recentChats, setRecentChats] = useState([]);
+
+  /* The current conversation, readable from inside a stream callback
+     without going through a state updater. */
+  const messagesRef = useRef([]);
+
   const companyName = me?.company?.name ?? "";
   const assistantName = assistantNameFor(companyName);
   const personName = me?.staff?.name?.split(" ")[0] ?? "";
@@ -462,6 +480,9 @@ export default function Chat() {
       setMe(who);
       setGreetingText(buildGreetingText(who.staff?.name?.split(" ")[0]));
 
+      const recent = await listConversations(who.user.id);
+      if (alive) setRecentChats(recent);
+
       if (who.company?.id) {
         const work = await listWork(who.company.id);
         if (!alive) return;
@@ -513,8 +534,20 @@ export default function Chat() {
      finished brief to the summary card for the staff member to confirm.
      ------------------------------------------------------------------------ */
 
+  /* One way in, and the ref is updated in the same breath as the state.
+     React batches state, so a stream callback reading `messages` sees
+     whatever it was when the turn started, and a save built from that is
+     a save that is one turn short. This is the fix, and it is why nothing
+     below calls setMessages directly. */
+  function updateMessages(next) {
+    const value = typeof next === "function" ? next(messagesRef.current) : next;
+    messagesRef.current = value;
+    setMessages(value);
+    return value;
+  }
+
   function addMessage(msg) {
-    setMessages((prev) => [...prev, { id: nextId(), ...msg }]);
+    updateMessages((prev) => [...prev, { id: nextId(), ...msg }]);
   }
 
   function replyAfterDelay(msg, delay = 700) {
@@ -583,10 +616,10 @@ export default function Chat() {
         if (!started) {
           started = true;
           setTyping(false);
-          setMessages((prev) => [...prev, { id: replyId, role: "assistant", type: "text", content: "" }]);
+          updateMessages((prev) => [...prev, { id: replyId, role: "assistant", type: "text", content: "" }]);
         }
         const shown = visibleText(raw);
-        setMessages((prev) => prev.map((m) => (m.id === replyId ? { ...m, content: shown } : m)));
+        updateMessages((prev) => prev.map((m) => (m.id === replyId ? { ...m, content: shown } : m)));
       },
 
       onDone: () => {
@@ -594,7 +627,15 @@ export default function Chat() {
         abortTurnRef.current = null;
 
         const clean = visibleText(raw);
-        setMessages((prev) => prev.map((m) => (m.id === replyId ? { ...m, content: clean } : m)));
+
+        /* Built from the ref rather than inside a state updater. An
+           updater has to be pure, and React deliberately calls it twice
+           in development to catch exactly this: a save fired from inside
+           one wrote the conversation to the database twice. */
+        const next = updateMessages((prev) =>
+          prev.map((m) => (m.id === replyId ? { ...m, content: clean } : m))
+        );
+        persist(next, stage);
 
         /* The conversation has what it came for. Move up a tier and go
            straight into the check, without the staff member pressing
@@ -620,7 +661,7 @@ export default function Chat() {
           /* Nothing missing. This is the read back, and it is the only
              thing that earns the Build card. */
           if (raw.includes(MARKER.readbackDone)) {
-            setMessages((prev) => [...prev, { id: nextId(), role: "assistant", type: "build" }]);
+            updateMessages((prev) => [...prev, { id: nextId(), role: "assistant", type: "build" }]);
           }
         }
       },
@@ -631,7 +672,7 @@ export default function Chat() {
 
         /* Running out is not a failure, it is the end of a trial, and the
            message that comes back with it is written to say so. */
-        setMessages((prev) => [
+        updateMessages((prev) => [
           ...prev,
           {
             id: nextId(),
@@ -644,6 +685,51 @@ export default function Chat() {
     });
   }
 
+  /* Everything worth resuming, and nothing else. Attachment contents ride
+     along in apiContent so a file handed over on turn one is still there
+     after a reload, but ids and feedback are page state and are dropped. */
+  async function persist(list, stage) {
+    if (!me?.company?.id || !me?.user?.id) return;
+
+    const keepable = list.filter((m) => m.role === "user" || m.role === "assistant");
+    if (!keepable.length) return;
+
+    const id = await saveConversation({
+      id: conversationIdRef.current,
+      companyId: me.company.id,
+      staffId: me.user.id,
+      title: docTitle(list),
+      stage,
+      messages: keepable.map((m) => ({
+        role: m.role,
+        type: m.type,
+        content: m.content,
+        apiContent: m.apiContent,
+        title: m.title,
+      })),
+    });
+
+    if (id && !conversationIdRef.current) conversationIdRef.current = id;
+    if (id) setRecentChats(await listConversations(me.user.id));
+  }
+
+  /* Pick a conversation back up exactly where it stopped, including which
+     model was about to run next. */
+  async function resumeChat(id) {
+    const row = await loadConversation(id);
+    if (!row) return;
+
+    abortTurnRef.current?.();
+    abortTurnRef.current = null;
+    setTyping(false);
+    setGenerating(false);
+    setSidebarOpen(false);
+
+    conversationIdRef.current = row.id;
+    setFlowStage(row.stage ?? "interview");
+    updateMessages((row.messages ?? []).map((m) => ({ id: nextId(), ...m })));
+  }
+
   function handleUserReply(text, apiContent = text) {
     /* Skill detection still runs locally. It is a badge, not a decision,
        and guessing it instantly beats waiting on a round trip to show it. */
@@ -654,7 +740,7 @@ export default function Chat() {
        a conversation, so it drops back to the cheap model. Working it out
        here rather than reading it back off state matters: setting state
        does not change it in time for the line below. */
-    setMessages((prev) => prev.filter((m) => m.type !== "build"));
+    updateMessages((prev) => prev.filter((m) => m.type !== "build"));
     const stage = flowStage === "analyse" ? "interview" : flowStage;
     if (stage !== flowStage) setFlowStage(stage);
 
@@ -678,7 +764,7 @@ export default function Chat() {
   function handleGenerate() {
     if (generating) return;
     setGenerating(true);
-    setMessages((prev) => prev.filter((m) => m.type !== "build"));
+    updateMessages((prev) => prev.filter((m) => m.type !== "build"));
 
     const resultId = nextId();
     let started = false;
@@ -707,12 +793,12 @@ export default function Chat() {
         finished += chunk;
         if (!started) {
           started = true;
-          setMessages((prev) => [
+          updateMessages((prev) => [
             ...prev.filter((m) => m.type !== "generating"),
             { id: resultId, role: "assistant", type: "result", content: "", title: docTitle(messages) },
           ]);
         }
-        setMessages((prev) =>
+        updateMessages((prev) =>
           prev.map((m) => (m.id === resultId ? { ...m, content: m.content + chunk } : m))
         );
       },
@@ -750,7 +836,7 @@ export default function Chat() {
       onError: ({ reason, message }) => {
         setGenerating(false);
         abortTurnRef.current = null;
-        setMessages((prev) => [
+        updateMessages((prev) => [
           ...prev.filter((m) => m.type !== "generating"),
           {
             id: nextId(),
@@ -772,7 +858,7 @@ export default function Chat() {
     if (index < 0) return;
 
     const before = messages.slice(0, index);
-    setMessages(before);
+    updateMessages(before);
     runTurn(flowStage, toApiMessages(before));
   }
 
@@ -781,7 +867,7 @@ export default function Chat() {
      What they type next is the correction, and the loop carries it back up
      to the analysis by itself. */
   function handleAdjust() {
-    setMessages((prev) => prev.filter((m) => m.type !== "build"));
+    updateMessages((prev) => prev.filter((m) => m.type !== "build"));
     setFlowStage("interview");
     textareaRef.current?.focus();
   }
@@ -789,9 +875,10 @@ export default function Chat() {
   function handleNewChat() {
     abortTurnRef.current?.();
     abortTurnRef.current = null;
+    conversationIdRef.current = null;
     setTyping(false);
     setActiveTier(null);
-    setMessages([]);
+    updateMessages([]);
     setGreetingText(buildGreetingText());
     setFlowStage("interview");
     setStep(0);
@@ -990,6 +1077,43 @@ export default function Chat() {
             Start new chat
           </button>
         </div>
+
+        {/* Pick up where you left off. Only the last few, because
+            somebody wants to resume a brief, not browse a year of their
+            own talking. */}
+        {recentChats.length > 0 && (
+          <div className="px-3 pb-1">
+            <p
+              className="text-[11px] font-semibold uppercase tracking-wide px-1 pb-1.5"
+              style={{ color: "var(--text-3)" }}
+            >
+              Pick up where you left off
+            </p>
+            {recentChats.map((chat) => (
+              <button
+                key={chat.id}
+                onClick={() => resumeChat(chat.id)}
+                className="w-full flex items-start gap-2.5 rounded-[10px] px-2.5 py-2 text-left transition-colors hover:opacity-80"
+                style={{ backgroundColor: "var(--surface)" }}
+              >
+                <RotateCw size={13} className="shrink-0 mt-1" style={{ color: "var(--text-3)" }} />
+                <span className="min-w-0">
+                  <span className="block text-[13px] truncate" style={{ color: "var(--text-1)" }}>
+                    {chat.title}
+                  </span>
+                  <span className="block text-[11.5px]" style={{ color: "var(--text-3)" }}>
+                    {chat.stage === "analyse" ? "Ready to build" : "Still talking"}
+                    {" · "}
+                    {new Date(chat.updated_at).toLocaleDateString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  </span>
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Library */}
         <div className="px-3">

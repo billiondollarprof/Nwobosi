@@ -232,3 +232,87 @@ export async function listStaff(companyId) {
   }
   return data ?? [];
 }
+
+/* --------------------------------------------------------------------------
+   SECTION: Conversations
+   A brief someone is halfway through is worth as much as a finished one,
+   and it used to live only in a browser tab. Close the tab, change phone,
+   run out of battery, and four questions of work were gone.
+
+   Only the last few are kept. A staff member wants to pick up where they
+   left off, not browse a year of their own talking, and storing every
+   conversation forever is storing a company's thinking without anybody
+   asking for that.
+   -------------------------------------------------------------------------- */
+
+export const KEEP_RECENT = 3;
+
+export async function listConversations(staffId) {
+  const { data, error } = await supabase
+    .from("conversations")
+    .select("id, title, stage, updated_at")
+    .eq("staff_id", staffId)
+    .order("updated_at", { ascending: false })
+    .limit(KEEP_RECENT);
+
+  if (error) {
+    console.error("could not list conversations", error);
+    return [];
+  }
+  return data ?? [];
+}
+
+export async function loadConversation(id) {
+  const { data, error } = await supabase
+    .from("conversations")
+    .select("id, title, stage, messages")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) {
+    console.error("could not load conversation", error);
+    return null;
+  }
+  return data;
+}
+
+/* Insert on the first save, update after that, so one conversation stays
+   one row however many turns it runs to. Returns the id so the caller can
+   hold on to it. */
+export async function saveConversation({ id, companyId, staffId, title, stage, messages }) {
+  const row = {
+    company_id: companyId,
+    staff_id: staffId,
+    title,
+    stage,
+    messages,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (id) {
+    const { error } = await supabase.from("conversations").update(row).eq("id", id);
+    if (error) console.error("could not update conversation", error);
+    return id;
+  }
+
+  const { data, error } = await supabase.from("conversations").insert(row).select("id").single();
+  if (error) {
+    console.error("could not save conversation", error);
+    return null;
+  }
+
+  /* Anything past the few we keep is dropped as soon as a new one is
+     made, rather than by a job nobody remembers to run. */
+  const { data: extra } = await supabase
+    .from("conversations")
+    .select("id")
+    .eq("staff_id", staffId)
+    .order("updated_at", { ascending: false })
+    .range(KEEP_RECENT, KEEP_RECENT + 50);
+
+  if (extra?.length) {
+    await supabase.from("conversations").delete().in("id", extra.map((r) => r.id));
+  }
+
+  return data?.id ?? null;
+}
