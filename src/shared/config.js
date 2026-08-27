@@ -63,17 +63,20 @@ export const CURRENT_USER = {
 
 export const DAILY_LIMIT = 5;
 
-/* Five megabytes, which is generous for a phone screenshot and still small
-   enough that a slow connection does not stall.
+/* Two upload caps, because a megabyte of text and a megabyte of picture
+   are not the same thing at all.
 
-   Megabytes are not really what binds, though. What binds is how much of a
-   file reaches the model, because every turn resends the whole
-   conversation. A megabyte of text is roughly a quarter of a million
-   tokens, more than the cheap model can hold at all. So the real guards
-   live in the chat page: images are shrunk before they are sent, text is
-   capped by characters, and both are capped by how many files one message
-   may carry. This number only stops something absurd arriving. */
-export const MAX_UPLOAD_KB = 5120;
+   Text is capped low, at half a megabyte. Only forty thousand characters
+   of any one file reach the model, which is about twenty pages, so a file
+   much larger than this would be accepted and then mostly ignored.
+   Refusing it says so honestly instead of quietly dropping the rest.
+
+   Images are capped high, at five megabytes, because a phone screenshot is
+   large on disk and tiny once shrunk. The browser scales it down to the
+   size the model works at anyway before it leaves the device, so what
+   arrives is around fifty kilobytes whatever came in. */
+export const MAX_TEXT_UPLOAD_KB = 500;
+export const MAX_IMAGE_UPLOAD_KB = 5120;
 
 /* Four files per message. Past that it stops being a person handing over
    what matters and starts being a folder, and a folder is what pointing at

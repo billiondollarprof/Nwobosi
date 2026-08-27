@@ -69,7 +69,8 @@ import {
   COMPANY,
   CURRENT_USER,
   DAILY_LIMIT,
-  MAX_UPLOAD_KB,
+  MAX_TEXT_UPLOAD_KB,
+  MAX_IMAGE_UPLOAD_KB,
   MAX_FILES_PER_MESSAGE,
   TEMPLATES,
   SKILL_BY_TYPE,
@@ -763,18 +764,27 @@ export default function Chat() {
       if (room <= 0) return;
 
       const sizeKB = Math.round(file.size / 1024);
-      if (sizeKB > MAX_UPLOAD_KB) {
+      const kind = fileKind(file.name);
+
+      /* Pictures get the generous cap and text gets the strict one. A
+         picture shrinks to almost nothing before it is sent, so its size
+         on disk barely matters. Text does not shrink, so a file far past
+         what we can read would be accepted and then mostly ignored, and
+         being told no is better than being quietly half heard. */
+      const capKB = kind === "image" ? MAX_IMAGE_UPLOAD_KB : MAX_TEXT_UPLOAD_KB;
+      if (kind !== "unreadable" && sizeKB > capKB) {
         showUploadError(
-          `${file.name} is ${(sizeKB / 1024).toFixed(1)} MB, over the ${Math.round(
-            MAX_UPLOAD_KB / 1024
-          )} MB limit. Paste the part that matters instead, or split it up.`
+          kind === "image"
+            ? `${file.name} is ${(sizeKB / 1024).toFixed(1)} MB, over the ${Math.round(
+                capKB / 1024
+              )} MB limit for a picture.`
+            : `${file.name} is ${sizeKB} KB, over the ${capKB} KB limit for a text file. Paste the part that matters instead, or split it up.`
         );
         return;
       }
 
       room -= 1;
       const id = nextId();
-      const kind = fileKind(file.name);
 
       /* A file type nothing here can actually open. Saying so now is the
          whole point: a chip that claims a file is ready when its contents
