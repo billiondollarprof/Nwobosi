@@ -248,3 +248,55 @@ would take.
 Could not reach `supabase.co`: the environment's network policy answers
 403 on connect. So nothing has been tested against the real backend, and
 the access code SX-4M8G-T4P3 is still unspent.
+
+---
+
+## 2026-08-27, late. The interview was writing the document
+
+The chat was live and talking well, so the next thing found was the flow
+underneath it.
+
+Asked to "just build it", the assistant wrote the entire one pager there
+and then, on the cheap model, in the interview stage. No marker, so the
+app never moved up. No analysis, no read back, no Build card, no file to
+download. It looked like a chatbot because for that turn it was one.
+
+Two causes, both mine.
+
+`max_tokens` was 8000 on every stage. The interview was told not to
+produce the work and handed all the room it needed to ignore that. Now
+each stage has its own ceiling: 700, 4000, 8000. A question is two hundred
+tokens and a one pager is fifteen hundred, so the interview is now
+incapable of the thing it was only being asked not to do. Same principle
+as having no search.
+
+The interview prompt said "ask them to name a file or paste what matters".
+So when the user pointed it at the company knowledge base, it said it had
+no access and asked for a file name. A staff member should never need to
+know a file name in their own company's knowledge base. Pointing at the
+sources is now a handoff, because only the higher model can read them.
+Their own material, on their own laptop, is the only case where it asks
+for an attachment.
+
+Also this session:
+
+- Five questions is now enforced by the app. It was a sentence in a prompt.
+- Partial answers get asked again, once, instead of read as agreement.
+- The analysis stage checks for the things a document cannot exist
+  without: whose name is on it, who it is for, which company. The
+  interview is short on purpose and misses them.
+- Enter makes a new line on a touch screen. There is no Shift to hold on a
+  phone, so Enter sending left no way to write a second line.
+- The greeting typed itself twice. It was built with no name, then again
+  with one, and the typewriter read that as new text. A new chat also lost
+  the name. Both fixed.
+- Copy says "Copied", and says so when it cannot.
+- Em dashes kept appearing because the rule sat one line above "match the
+  company's house style", which the model read as permission. Stated as an
+  absolute now.
+- Mic was never broken. It hides where the browser has no speech
+  recognition, which is honest. Confirmed working in Chrome.
+
+**The lesson, again.** Every one of these was a rule written in a prompt
+where a limit belonged. A rule is a suggestion to a cheap model under
+pressure from a user instruction. Give it a ceiling instead.
