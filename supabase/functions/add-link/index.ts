@@ -126,6 +126,46 @@ function splitIntoChunks(text: string) {
   return chunks.filter((c) => c.trim());
 }
 
+/* Addresses that are not out on the internet at all. A server fetching a
+   URL on someone's behalf will happily fetch its own neighbourhood, so
+   without this an admin could type a private address and use this
+   function as a window into whatever sits behind it. That is server side
+   request forgery, and the fix is to refuse rather than to trust that
+   nobody will try.
+
+   Names are checked as written rather than resolved first, because
+   resolving here and fetching later is two lookups that can disagree.
+   This blocks the obvious shapes; a public hostname that resolves to a
+   private address anyway is a residual risk worth naming rather than
+   hiding, and the isolated runtime this lives in has little on those
+   addresses to reach. */
+function isPrivateHost(hostname: string) {
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
+
+  if (host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local")) return true;
+  if (host === "::1" || host === "0.0.0.0") return true;
+
+  /* No dot at all means a bare machine name on some internal network,
+     never a site out on the public internet. */
+  if (!host.includes(".") && !host.includes(":")) return true;
+
+  const v4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (v4) {
+    const a = Number(v4[1]);
+    const b = Number(v4[2]);
+    if (a === 10 || a === 127 || a === 0) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+    if (a === 169 && b === 254) return true;
+    if (a === 100 && b >= 64 && b <= 127) return true;
+    if (a >= 224) return true;
+  }
+
+  if (/^(fc|fd|fe80)/.test(host)) return true;
+
+  return false;
+}
+
 /* An address a person typed, made into one a server can fetch. Bare
    hostnames are what people actually write, so assume https rather than
    refusing. Anything that is not http or https is refused outright:
@@ -140,6 +180,7 @@ function normaliseUrl(raw: string) {
     return null;
   }
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+  if (isPrivateHost(parsed.hostname)) return null;
   return parsed.toString();
 }
 
@@ -168,7 +209,9 @@ Deno.serve(async (req) => {
 
   const url = normaliseUrl(String(body?.url ?? ""));
   const description = String(body?.description ?? "").trim();
-  if (!url) return json({ ok: false, reason: "That does not look like a web address." }, 400);
+  if (!url) {
+    return json({ ok: false, reason: "That does not look like a public web address." }, 400);
+  }
   if (!description) return json({ ok: false, reason: "Say in one line what the page holds." }, 400);
 
   /* Who they are, read under their own identity so the database decides
@@ -195,12 +238,39 @@ Deno.serve(async (req) => {
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-    const pageResponse = await fetch(url, {
-      signal: controller.signal,
-      redirect: "follow",
-      headers: { "User-Agent": "StellaXafe/1.0 (knowledge base import)" },
-    });
+    /* Redirects are followed by hand, checking every hop. Letting fetch
+       follow them would allow a public address to bounce straight to a
+       private one, which is the hole the check above just closed,
+       reopened by the fetch itself. */
+    let current = url;
+    let pageResponse: Response | null = null;
+
+    for (let hop = 0; hop < 5; hop += 1) {
+      pageResponse = await fetch(current, {
+        signal: controller.signal,
+        redirect: "manual",
+        headers: { "User-Agent": "StellaXafe/1.0 (knowledge base import)" },
+      });
+
+      if (pageResponse.status < 300 || pageResponse.status >= 400) break;
+
+      const next = pageResponse.headers.get("location");
+      if (!next) break;
+
+      const resolved = normaliseUrl(new URL(next, current).toString());
+      if (!resolved) {
+        clearTimeout(timer);
+        return json({ ok: false, reason: "That address redirects somewhere this will not follow." }, 400);
+      }
+      current = resolved;
+      pageResponse = null;
+    }
+
     clearTimeout(timer);
+
+    if (!pageResponse) {
+      return json({ ok: false, reason: "That address redirected too many times." }, 400);
+    }
 
     if (!pageResponse.ok) {
       return json({ ok: false, reason: `That page answered with ${pageResponse.status}. Check the address.` }, 400);
