@@ -1599,19 +1599,25 @@ function ChatBubble({ message, brief, onGenerate, onAdjust, onReset, feedback, o
           className="rounded-[18px] border p-5 backdrop-blur-xl"
           style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
         >
-          <p className="text-[14.5px] mb-4 leading-relaxed" style={{ color: "var(--text-2)" }}>
-            If that is right, I will build it now.
+          {/* The question first, then what each answer does, then the two
+              buttons in the same words. Someone who has never seen this
+              screen should not have to work out what the buttons mean. */}
+          <p className="text-[15.5px] font-semibold mb-1" style={{ color: "var(--text-1)" }}>
+            Did I get that right?
+          </p>
+          <p className="text-[13.5px] mb-4 leading-relaxed" style={{ color: "var(--text-3)" }}>
+            If yes, go ahead and build. If not, tell me what is missing.
           </p>
           <PrimaryButton onClick={onGenerate} className="w-full flex items-center justify-center gap-2">
             <FileText size={15} />
-            Build it
+            Go ahead, build it
           </PrimaryButton>
           <button
             onClick={onAdjust}
             className="w-full mt-2.5 rounded-[12px] border py-2.5 text-[13.5px] transition-opacity hover:opacity-80"
             style={{ borderColor: "var(--border-2)", color: "var(--text-2)" }}
           >
-            Something needs changing
+            Something is missing
           </button>
         </div>
       </div>
