@@ -18,7 +18,7 @@ import { ArrowLeft, ArrowRight, Lock, MailCheck, ShieldAlert, UserPlus } from "l
 import { LogoMark } from "../shared/icons.jsx";
 import { BRAND, FONTS } from "../shared/tokens";
 import { PageShell, ThemeToggle, PrimaryButton, GhostButton, Field, TextInput, Spinner } from "../shared/ui.jsx";
-import { PRODUCT, COMPANY, ASSISTANT_NAME } from "../shared/config.js";
+import { PRODUCT } from "../shared/config.js";
 import { supabase } from "../shared/supabase.js";
 import { loadMe } from "../shared/session.js";
 
@@ -260,9 +260,6 @@ function LoginSection({ email, password, busy, error, onEmail, onPassword, onSub
         {busy ? "Checking" : "Continue"}
       </PrimaryButton>
 
-      <p className="text-[12.5px] mt-5 text-center" style={{ color: "var(--text-3)" }}>
-        Try anthony@buildfest.com to see the invited path, or any other email to see the request flow.
-      </p>
     </form>
   );
 }
@@ -317,7 +314,7 @@ function RequestAccessSection({ name, email, busy, error, onName, onEmail, onSub
         Request access
       </h1>
       <p className="text-[13.5px] mb-6 leading-relaxed" style={{ color: "var(--text-3)" }}>
-        Your admin at {COMPANY.name} reviews every request. You will get an email once they decide.
+        Your admin reviews every request. You will get an email once they decide.
       </p>
 
       <Field label="Full name">
@@ -381,7 +378,7 @@ function RequestSentSection({ email, onBack }) {
         Request sent
       </h1>
       <p className="text-[13.5px] mb-6 leading-relaxed" style={{ color: "var(--text-3)" }}>
-        The admin at {COMPANY.name} has your request. We will email {email} as soon as they approve it.
+        Your admin has your request. We will email {email} as soon as they approve it.
       </p>
 
       <GhostButton onClick={onBack} className="w-full">
@@ -532,7 +529,7 @@ function OtpSection({ email, onVerified, onBack }) {
       </button>
 
       <p className="text-[12px] mt-4 text-center" style={{ color: "var(--text-3)" }}>
-        Any six digits work in this demo. {ASSISTANT_NAME} is waiting on the other side.
+        Any six digits work in this demo.
       </p>
     </form>
   );
