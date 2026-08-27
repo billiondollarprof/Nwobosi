@@ -18,6 +18,15 @@ import { supabase } from "./supabase.js";
 
 const FUNCTIONS_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
 
+/* Supabase's gateway wants both headers on every call to an edge
+   function: the publishable key to say which project, and the caller's
+   token to say who they are. supabase.functions.invoke adds the first
+   one for you, and this file uses raw fetch so it can stream, so it has
+   to add it itself. Leaving it out gets the request refused at the door,
+   which the browser then reports as a connection problem, sending
+   everybody looking at their wifi instead of at this line. */
+const PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
 /* --------------------------------------------------------------------------
    SECTION: Send a turn
    Calls back as things happen rather than resolving once at the end.
@@ -53,6 +62,7 @@ export function sendTurn({ stage = "interview", messages, onMeta, onText, onDone
       response = await fetch(`${FUNCTIONS_BASE}/assistant`, {
         method: "POST",
         headers: {
+          apikey: PUBLISHABLE_KEY,
           Authorization: `Bearer ${session.access_token}`,
           "Content-Type": "application/json",
         },

@@ -672,7 +672,7 @@ export default function Chat() {
 
         /* Running out is not a failure, it is the end of a trial, and the
            message that comes back with it is written to say so. */
-        updateMessages((prev) => [
+        const next = updateMessages((prev) => [
           ...prev,
           {
             id: nextId(),
@@ -681,6 +681,11 @@ export default function Chat() {
             content: message,
           },
         ]);
+
+        /* Saved even though the turn failed. What somebody typed is
+           theirs, and losing it because the answer never arrived punishes
+           them for a fault that was not theirs. */
+        persist(next, stage);
       },
     });
   }

@@ -138,6 +138,12 @@ export const MODEL_ORDER = ["haiku-4-5", "sonnet-5", "opus-5", "fable-5"];
 
 export const DEFAULT_MODEL_CEILING = "sonnet-5";
 
+/* What an admin may actually hand out. Opus and Fable exist in the ladder
+   and the server will run them, but this deployment does not offer them,
+   and a selector listing a choice the server refuses is a promise the
+   product cannot keep. */
+export const INVITABLE_CEILINGS = ["haiku-4-5", "sonnet-5"];
+
 /* --------------------------------------------------------------------------
    SECTION: Skills
    Skills spin up from the task. The staff member never picks one.

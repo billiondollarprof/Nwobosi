@@ -159,7 +159,11 @@ export function IconBtn({ children, onClick, active, activeColor = BRAND.navy, l
    SECTION: Form fields
    -------------------------------------------------------------------------- */
 
-export function Field({ label, hint, children }) {
+/* `required` puts a red asterisk on the label. It is the one mark
+   everybody already reads as "you cannot skip this", and pairing it with
+   a button that stays dim until the form is complete means nobody has to
+   press something to find out what is missing. */
+export function Field({ label, hint, required = false, children }) {
   return (
     <label className="block mb-4">
       <span
@@ -167,6 +171,11 @@ export function Field({ label, hint, children }) {
         style={{ color: "var(--text-3)" }}
       >
         {label}
+        {required && (
+          <span className="ml-1" style={{ color: BRAND.red }} aria-hidden="true">
+            *
+          </span>
+        )}
       </span>
       {children}
       {hint && (

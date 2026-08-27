@@ -50,6 +50,7 @@ import {
 import { loadMe, listSources, addTextSource, removeSource, listStaff, listWork } from "../shared/session.js";
 import { readFileAsText, canBecomeText } from "../shared/readFile.js";
 import { fetchLinkSource } from "../shared/linkApi.js";
+import { inviteStaff } from "../shared/inviteApi.js";
 import {
   PRODUCT,
   MAX_SOURCE_UPLOAD_KB,
@@ -59,6 +60,7 @@ import {
   MODEL_TIERS,
   SKILL_LABELS,
   MODEL_ORDER,
+  INVITABLE_CEILINGS,
   DEFAULT_MODEL_CEILING,
 } from "../shared/config.js";
 
@@ -178,6 +180,21 @@ export default function Admin() {
               );
             })}
           </div>
+
+          {/* The way into the thing they just set up. The arrow in the
+              corner was not enough: somebody who has finished setup is
+              looking for a door, not an icon. */}
+          {me?.company?.slug && (
+            <div className="mb-5">
+              <PrimaryButton
+                onClick={() => navigate(`/${me.company.slug}`)}
+                className="w-full sm:w-auto flex items-center justify-center gap-2"
+              >
+                <Sparkles size={15} />
+                Open {me.company.name} AI
+              </PrimaryButton>
+            </div>
+          )}
 
           {tab === "knowledge" && <KnowledgeSection me={me} loading={loadingMe} />}
           {tab === "connectors" && <ConnectorsSection />}
@@ -468,21 +485,21 @@ function KnowledgeSection({ me, loading: loadingMe }) {
           <div className="mb-4">
             {pasteOpen ? (
               <form onSubmit={savePasted} className="space-y-3">
-                <Field label="Name">
+                <Field label="Name" required>
                   <TextInput
                     value={pasteName}
                     onChange={(e) => setPasteName(e.target.value)}
                     placeholder="Brand voice guide"
                   />
                 </Field>
-                <Field label="What it holds">
+                <Field label="What it holds" required>
                   <TextInput
                     value={pasteNote}
                     onChange={(e) => setPasteNote(e.target.value)}
                     placeholder="How we write, the words we use and avoid"
                   />
                 </Field>
-                <Field label="The text">
+                <Field label="The text" required>
                   <TextArea
                     value={pasteText}
                     onChange={(e) => setPasteText(e.target.value)}
@@ -495,7 +512,7 @@ function KnowledgeSection({ me, loading: loadingMe }) {
                     onto two lines on a phone. */}
                 <PrimaryButton
                   type="submit"
-                  disabled={saving}
+                  disabled={saving || !pasteName.trim() || !pasteNote.trim() || !pasteText.trim()}
                   className="w-full flex items-center gap-2 justify-center"
                 >
                   {saving && <Spinner size={13} color="#fff" />}
@@ -542,14 +559,14 @@ function KnowledgeSection({ me, loading: loadingMe }) {
               {staged.truncated ? ", the first part of it, which was as much as fits" : ""}. Name it and
               say what it holds.
             </p>
-            <Field label="Name">
+            <Field label="Name" required>
               <TextInput
                 value={staged.name}
                 onChange={(e) => setStaged({ ...staged, name: e.target.value })}
                 placeholder="Brand guidelines 2026"
               />
             </Field>
-            <Field label="What it holds">
+            <Field label="What it holds" required>
               <TextInput
                 value={staged.description}
                 onChange={(e) => setStaged({ ...staged, description: e.target.value })}
@@ -559,7 +576,7 @@ function KnowledgeSection({ me, loading: loadingMe }) {
             <div className="flex gap-2">
               <PrimaryButton
                 onClick={saveStaged}
-                disabled={saving}
+                disabled={saving || !staged.name.trim() || !staged.description.trim()}
                 className="flex items-center gap-2 justify-center"
               >
                 {saving && <Spinner size={13} color="#fff" />}
@@ -629,14 +646,14 @@ function KnowledgeSection({ me, loading: loadingMe }) {
         </SectionHeading>
 
         <form onSubmit={addLink} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
-          <Field label="Address">
+          <Field label="Address" required>
             <TextInput
               value={linkUrl}
               onChange={(e) => setLinkUrl(e.target.value)}
               placeholder="company.com/about"
             />
           </Field>
-          <Field label="What it holds">
+          <Field label="What it holds" required>
             <TextInput
               value={linkNote}
               onChange={(e) => setLinkNote(e.target.value)}
@@ -646,7 +663,7 @@ function KnowledgeSection({ me, loading: loadingMe }) {
           <div className="mb-4">
             <PrimaryButton
               type="submit"
-              disabled={saving}
+              disabled={saving || !linkUrl.trim() || !linkNote.trim()}
               className="flex items-center gap-2 w-full sm:w-auto justify-center"
             >
               {saving ? <Spinner size={14} color="#fff" /> : <Plus size={15} />}
@@ -837,6 +854,15 @@ function AccessSection({ me }) {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("");
   const [inviteCeiling, setInviteCeiling] = useState(DEFAULT_MODEL_CEILING);
+  const [inviteLimit, setInviteLimit] = useState(5);
+  const [inviting, setInviting] = useState(false);
+  const [inviteError, setInviteError] = useState("");
+  const [invited, setInvited] = useState(null);
+
+  /* Every required box filled. The button reads this rather than waiting
+     for a press to tell somebody what they missed. */
+  const inviteReady =
+    inviteName.trim() && inviteEmail.trim().includes("@") && inviteRole.trim();
 
   function approve(req) {
     setRequests((prev) => prev.filter((r) => r.id !== req.id));
@@ -858,25 +884,53 @@ function AccessSection({ me }) {
     setRequests((prev) => prev.filter((r) => r.id !== req.id));
   }
 
-  function sendInvite(e) {
+  async function sendInvite(e) {
     e.preventDefault();
-    if (!inviteName.trim() || !inviteEmail.trim()) return;
-    setStaff((prev) => [
-      ...prev,
-      {
-        id: Date.now(),
-        name: inviteName.trim(),
-        email: inviteEmail.trim(),
-        role: inviteRole.trim() || "Not set",
-        ceiling: inviteCeiling,
-        limit: 5,
-        used: 0,
-      },
-    ]);
+    if (!inviteReady || inviting) return;
+
+    setInviting(true);
+    setInviteError("");
+    setInvited(null);
+
+    const result = await inviteStaff({
+      name: inviteName.trim(),
+      email: inviteEmail.trim(),
+      role: inviteRole.trim(),
+      ceiling: inviteCeiling,
+      dailyLimit: Number(inviteLimit) || 5,
+    });
+
+    setInviting(false);
+
+    if (!result.ok) {
+      setInviteError(result.reason);
+      return;
+    }
+
+    /* The account is real, so the list is reloaded from the database
+       rather than having a row pushed into memory that disappears the
+       moment somebody changes tab. */
+    if (me?.company?.id) {
+      const rows = await listStaff(me.company.id);
+      setStaff(
+        rows.map((r) => ({
+          id: r.id,
+          name: r.name ?? "Unnamed",
+          email: "",
+          role: r.role ?? "Not set",
+          ceiling: r.model_ceiling ?? DEFAULT_MODEL_CEILING,
+          limit: r.daily_limit ?? 5,
+          used: 0,
+        }))
+      );
+    }
+
+    setInvited(result);
     setInviteName("");
     setInviteEmail("");
     setInviteRole("");
     setInviteCeiling(DEFAULT_MODEL_CEILING);
+    setInviteLimit(5);
   }
 
   function revoke(id) {
@@ -954,10 +1008,10 @@ function AccessSection({ me }) {
         </SectionHeading>
 
         <form onSubmit={sendInvite} className="grid gap-3 sm:grid-cols-2">
-          <Field label="Full name">
+          <Field label="Full name" required>
             <TextInput value={inviteName} onChange={(e) => setInviteName(e.target.value)} placeholder="Their name" />
           </Field>
-          <Field label="Work email">
+          <Field label="Work email" required>
             <TextInput
               type="email"
               value={inviteEmail}
@@ -965,16 +1019,29 @@ function AccessSection({ me }) {
               placeholder="them@company.com"
             />
           </Field>
-          <Field label="Job role">
+          <Field label="Job role" required>
             <TextInput
               value={inviteRole}
               onChange={(e) => setInviteRole(e.target.value)}
               placeholder="Marketing associate"
             />
           </Field>
+          <Field label="Outputs a day" hint="How many finished pieces this person may make each day.">
+            <SelectInput value={inviteLimit} onChange={(e) => setInviteLimit(e.target.value)}>
+              {[3, 5, 10, 20, 50].map((n) => (
+                <option key={n} value={n}>
+                  {n} a day
+                </option>
+              ))}
+            </SelectInput>
+          </Field>
           <Field label="Model ceiling" hint="How far up the assistant may go for this person.">
             <SelectInput value={inviteCeiling} onChange={(e) => setInviteCeiling(e.target.value)}>
-              {MODEL_ORDER.map((key) => (
+              {/* Only what this deployment actually allows. Opus and Fable
+                  were listed and choosing one would have been accepted by a
+                  screen and refused by the server, which is a promise the
+                  product cannot keep. */}
+              {INVITABLE_CEILINGS.map((key) => (
                 <option key={key} value={key}>
                   {MODEL_TIERS[key].label}
                 </option>
@@ -983,17 +1050,45 @@ function AccessSection({ me }) {
           </Field>
 
           <div className="sm:col-span-2">
-            <PrimaryButton type="submit" className="flex items-center gap-2">
-              <Plus size={15} />
-              Send invite
+            <PrimaryButton
+              type="submit"
+              disabled={!inviteReady || inviting}
+              className="flex items-center gap-2"
+            >
+              {inviting ? <Spinner size={14} color="#fff" /> : <Plus size={15} />}
+              {inviting ? "Creating the account" : "Send invite"}
             </PrimaryButton>
+
+            {inviteError && (
+              <p className="text-[13px] mt-3" style={{ color: BRAND.red }}>
+                {inviteError}
+              </p>
+            )}
+
+            {/* There is no invitation email yet, so the password is shown
+                once, here, for the admin to pass on. Saying nothing and
+                creating an account nobody can open would be worse. */}
+            {invited && (
+              <div
+                className="rounded-[12px] px-3.5 py-3 mt-3 text-[13px] leading-relaxed"
+                style={{ backgroundColor: "rgba(22,176,74,0.1)", color: "var(--text-1)" }}
+              >
+                <span className="font-semibold" style={{ color: BRAND.green }}>
+                  {invited.name} can sign in now.
+                </span>
+                <br />
+                Give them this password. It is shown once and cannot be recovered:
+                <br />
+                <code className="text-[13.5px] font-semibold">{invited.temporary}</code>
+              </div>
+            )}
           </div>
         </form>
       </GlassPanel>
 
       {/* Staff list */}
       <GlassPanel className="p-6">
-        <SectionHeading hint="Change anyone's model ceiling at any time, or revoke their access.">
+        <SectionHeading hint="Change anyone's model ceiling or their daily limit at any time, or revoke their access. You cannot revoke yourself.">
           Staff
         </SectionHeading>
 
@@ -1027,7 +1122,7 @@ function AccessSection({ me }) {
                   className="py-1.5 text-[12.5px]"
                   aria-label={`Model ceiling for ${person.name}`}
                 >
-                  {MODEL_ORDER.map((key) => (
+                  {INVITABLE_CEILINGS.map((key) => (
                     <option key={key} value={key}>
                       {MODEL_TIERS[key].label}
                     </option>
@@ -1039,6 +1134,10 @@ function AccessSection({ me }) {
                 <UsageMeter used={person.used} limit={person.limit} />
               </div>
 
+              {/* An admin cannot revoke themselves. Doing so would lock the
+                  only person who can let anybody back in out of their own
+                  company, with no way to undo it from any screen. */}
+              {person.id !== me?.user?.id && (
               <button
                 onClick={() => revoke(person.id)}
                 className="rounded-full px-3 py-1.5 text-[12.5px] font-medium border transition-colors hover:opacity-80 shrink-0"
@@ -1046,6 +1145,7 @@ function AccessSection({ me }) {
               >
                 Revoke
               </button>
+              )}
             </div>
           ))}
         </div>

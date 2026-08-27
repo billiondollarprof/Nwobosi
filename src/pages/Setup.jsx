@@ -339,7 +339,7 @@ function AccessCodeStep({ code, busy, error, onChange, onSubmit }) {
         {PRODUCT.name} is by invitation. Your code was sent to you directly, and it works once.
       </p>
 
-      <Field label="Access code">
+      <Field label="Access code" required>
         <TextInput
           ref={inputRef}
           value={code}
@@ -417,7 +417,7 @@ function AccountStep({ admin, error, onChange, onSubmit }) {
         someone else.
       </p>
 
-      <Field label="Your name">
+      <Field label="Your name" required>
         <TextInput
           value={admin.name}
           onChange={(e) => onChange({ name: e.target.value })}
@@ -426,7 +426,7 @@ function AccountStep({ admin, error, onChange, onSubmit }) {
         />
       </Field>
 
-      <Field label="Work email">
+      <Field label="Work email" required>
         <TextInput
           type="email"
           value={admin.email}
@@ -436,7 +436,7 @@ function AccountStep({ admin, error, onChange, onSubmit }) {
         />
       </Field>
 
-      <Field label="Password" hint={passwordIssue || "At least 10 characters."}>
+      <Field label="Password" required hint={passwordIssue || "At least 10 characters."}>
         <div className="relative">
           <TextInput
             type={showPassword ? "text" : "password"}
@@ -531,7 +531,7 @@ function CompanyStep({ company, error, onChange, onSubmit }) {
         else, logo, brand colours, documents, gets added later from the admin dashboard.
       </p>
 
-      <Field label="Company name" hint={slug ? `Your workspace will live at /${slug}` : undefined}>
+      <Field label="Company name" required hint={slug ? `Your workspace will live at /${slug}` : undefined}>
         <TextInput
           ref={nameRef}
           value={company.name}
@@ -549,7 +549,7 @@ function CompanyStep({ company, error, onChange, onSubmit }) {
         />
       </Field>
 
-      <Field label="Industry">
+      <Field label="Industry" required>
         <SelectInput value={company.industry} onChange={(e) => onChange({ industry: e.target.value })}>
           <option value="">Choose the closest fit</option>
           {INDUSTRIES.map((name) => (
