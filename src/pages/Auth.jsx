@@ -251,7 +251,7 @@ function LoginSection({ email, password, busy, error, onEmail, onPassword, onSub
         Use the email your admin invited.
       </p>
 
-      <Field label="Work email">
+      <Field label="Work email" required>
         <TextInput
           type="email"
           value={email}
@@ -261,7 +261,7 @@ function LoginSection({ email, password, busy, error, onEmail, onPassword, onSub
         />
       </Field>
 
-      <Field label="Password">
+      <Field label="Password" required>
         <div className="relative">
           <TextInput
             type={show ? "text" : "password"}
@@ -292,7 +292,11 @@ function LoginSection({ email, password, busy, error, onEmail, onPassword, onSub
         </p>
       )}
 
-      <PrimaryButton type="submit" className="w-full flex items-center justify-center gap-2" disabled={busy}>
+      <PrimaryButton
+        type="submit"
+        className="w-full flex items-center justify-center gap-2"
+        disabled={busy || !email.trim() || !password}
+      >
         {busy ? <Spinner size={14} color="#fff" /> : null}
         {busy ? "Checking" : "Continue"}
       </PrimaryButton>
@@ -363,7 +367,7 @@ function RequestAccessSection({ name, email, busy, error, onName, onEmail, onSub
         />
       </Field>
 
-      <Field label="Work email">
+      <Field label="Work email" required>
         <TextInput
           type="email"
           value={email}
