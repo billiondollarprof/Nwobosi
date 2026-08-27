@@ -97,7 +97,21 @@ export default function Auth() {
       return;
     }
 
-    navigate(me.staff?.access_level === "admin" ? `/${me.company.slug}/admin` : `/${me.company.slug}`);
+    /* Back to whatever they were trying to open, when that is a page on
+       their own workspace. Anything else, including a workspace that is
+       not theirs, falls back to their own front door. */
+    const wanted = new URLSearchParams(window.location.search).get("next");
+    const ownPrefix = `/${me.company.slug}`;
+    const safe = wanted && (wanted === ownPrefix || wanted.startsWith(`${ownPrefix}/`));
+
+    navigate(
+      safe
+        ? wanted
+        : me.staff?.access_level === "admin"
+        ? `${ownPrefix}/admin`
+        : ownPrefix,
+      { replace: true },
+    );
   }
 
   /* ------------------------------------------------------------------------

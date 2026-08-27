@@ -98,13 +98,23 @@ export default function Admin() {
     (async () => {
       const who = await loadMe();
       if (!alive) return;
+
+      /* Nobody signed in on this browser. Send them to the sign in page
+         rather than showing a panel that says "sign in" and then offers
+         no way to. A session lives in one browser; the workspace lives in
+         the database and is waiting for them. */
+      if (!who) {
+        navigate(`/auth?next=${encodeURIComponent(window.location.pathname)}`, { replace: true });
+        return;
+      }
+
       setMe(who);
       setLoadingMe(false);
     })();
     return () => {
       alive = false;
     };
-  }, []);
+  }, [navigate]);
 
   const companyName = me?.company?.name ?? "";
 
@@ -187,6 +197,7 @@ export default function Admin() {
    ========================================================================== */
 
 function KnowledgeSection({ me, loading: loadingMe }) {
+  const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -382,9 +393,10 @@ function KnowledgeSection({ me, loading: loadingMe }) {
   if (!me?.company?.id) {
     return (
       <GlassPanel className="p-6">
-        <p className="text-[14.5px]" style={{ color: "var(--text-2)" }}>
-          Sign in as an admin of this workspace to manage its knowledge base.
+        <p className="text-[14.5px] mb-4" style={{ color: "var(--text-2)" }}>
+          This account is not on a workspace yet. Ask whoever set it up to add you.
         </p>
+        <GhostButton onClick={() => navigate("/auth")}>Sign in as someone else</GhostButton>
       </GlassPanel>
     );
   }

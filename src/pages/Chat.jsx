@@ -450,7 +450,15 @@ export default function Chat() {
     let alive = true;
     (async () => {
       const who = await loadMe();
-      if (!alive || !who) return;
+      if (!alive) return;
+
+      /* No session in this browser. The workspace is real and waiting in
+         the database; what is missing is proof of who is asking. */
+      if (!who) {
+        navigate(`/auth?next=${encodeURIComponent(window.location.pathname)}`, { replace: true });
+        return;
+      }
+
       setMe(who);
       setGreetingText(buildGreetingText(who.staff?.name?.split(" ")[0]));
 
@@ -472,7 +480,7 @@ export default function Chat() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [navigate]);
 
   /* A stream left running after the page is gone still costs money and
      still counts against the company's budget. Cut it. */
