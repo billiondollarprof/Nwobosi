@@ -58,7 +58,12 @@ export function PageShell({ children, scroll = false, className = "" }) {
   const { vars } = useTheme();
   return (
     <div
-      className={`w-full flex flex-col relative isolate transition-colors duration-300 ${
+      /* overflow-x-clip, not overflow-x-hidden. Both stop the page sliding
+         sideways when a decorative glow spills a couple of pixels past the
+         edge, but hidden makes this a scroll container, which silently
+         kills `position: sticky` on everything inside it, including the
+         landing page's floating nav. clip does not. */
+      className={`w-full flex flex-col relative isolate overflow-x-clip transition-colors duration-300 ${
         scroll ? "min-h-dvh" : "h-dvh overflow-hidden"
       } ${className}`}
       style={{

@@ -5,7 +5,8 @@
    reload.
    ========================================================================== */
 
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { useEffect } from "react";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { ThemeProvider } from "./shared/theme.jsx";
 
 import Landing from "./pages/Landing.jsx";
@@ -14,10 +15,26 @@ import Auth from "./pages/Auth.jsx";
 import Chat from "./pages/Chat.jsx";
 import Admin from "./pages/Admin.jsx";
 
+/* Every page opens at its top.
+
+   Without this, moving between pages keeps whatever scroll position the
+   last one had, so someone arriving at the admin page lands halfway down
+   it and never sees the heading that tells them what the page is for.
+   The browser does this on purpose for back and forward, which is right,
+   but a router does not distinguish the two, so it has to be handled here. */
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+}
+
 export default function App() {
   return (
     <ThemeProvider>
       <BrowserRouter>
+        <ScrollToTop />
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/setup" element={<Setup />} />
