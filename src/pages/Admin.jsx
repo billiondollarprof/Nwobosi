@@ -10,7 +10,7 @@
      5. Permissions and usage
    ========================================================================== */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -25,6 +25,7 @@ import {
   UploadCloud,
   Users,
   Gauge,
+  AlertCircle,
   X,
   Sparkles,
 } from "lucide-react";
@@ -45,9 +46,12 @@ import {
   SelectInput,
   Spinner,
 } from "../shared/ui.jsx";
+import { loadMe, listSources, addTextSource, removeSource } from "../shared/session.js";
+import { fetchLinkSource } from "../shared/linkApi.js";
 import {
   PRODUCT,
   COMPANY,
+  MAX_TEXT_UPLOAD_KB,
   WORKFLOW_TOOLS,
   MODEL_TIERS,
   MODEL_ORDER,
@@ -139,6 +143,16 @@ const SEED_HISTORY = [
   { id: 4, who: "Grace Ade", task: "Board summary", credits: 41, when: "Yesterday, 11:05" },
 ];
 
+/* What the admin side can turn into text on its own. Same list as the
+   chat, and the same reason: a PDF needs a parser that does not exist
+   here yet, and a source that lists a file it never actually read is
+   worse than no source at all. */
+const ADMIN_READABLE = ["txt", "md", "markdown", "csv", "tsv", "json", "log"];
+
+function isReadableAdminFile(name) {
+  return ADMIN_READABLE.includes(name.split(".").pop()?.toLowerCase() ?? "");
+}
+
 const TABS = [
   { id: "knowledge", label: "Knowledge", icon: BookOpen },
   { id: "connectors", label: "Connectors", icon: Link2 },
@@ -226,42 +240,181 @@ export default function Admin() {
    ========================================================================== */
 
 function KnowledgeSection() {
-  const [items, setItems] = useState(SEED_KNOWLEDGE);
+  const [me, setMe] = useState(null);
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  /* A file waiting for its name and description. The admin has to write
+     both, because those two lines are how the assistant decides whether a
+     source is worth opening. A file called final_v3.txt with no
+     description is a file the assistant will never choose. */
+  const [staged, setStaged] = useState(null);
+  const [saving, setSaving] = useState(false);
+
   const [linkUrl, setLinkUrl] = useState("");
   const [linkNote, setLinkNote] = useState("");
-
-  /* Says so where they are looking. The list of everything added is far
-     enough down the page that without this, someone presses Add, the two
-     boxes empty, and nothing tells them whether that worked. */
   const [justAdded, setJustAdded] = useState("");
 
-  const indexed = items.filter((i) => i.status === "indexed").length;
-  const pending = items.filter((i) => i.status === "indexing").length;
+  const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const who = await loadMe();
+      if (!alive) return;
+      setMe(who);
+      if (who?.company?.id) setItems(await listSources(who.company.id));
+      setLoading(false);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const ready = items.filter((i) => i.status === "ready").length;
+  const pending = items.filter((i) => i.status === "pending").length;
+  const failed = items.filter((i) => i.status === "failed").length;
   const linkCount = items.filter((i) => i.kind === "link").length;
 
-  function addLink(e) {
-    e.preventDefault();
-    if (!linkUrl.trim() || !linkNote.trim()) return;
-    setItems((prev) => [
-      { id: Date.now(), name: linkUrl.trim(), description: linkNote.trim(), kind: "link", status: "indexing" },
-      ...prev,
-    ]);
-    setLinkUrl("");
-    setLinkNote("");
-    setJustAdded(linkUrl.trim());
+  function show(message) {
+    setError(message);
+    setTimeout(() => setError(""), 6000);
   }
 
-  function remove(id) {
-    setItems((prev) => prev.filter((i) => i.id !== id));
+  function pickFiles(e) {
+    const file = (e.target.files || [])[0];
+    e.target.value = "";
+    if (!file) return;
+
+    if (!isReadableAdminFile(file.name)) {
+      show(`${file.name} is not a kind of file this can read yet. Plain text, Markdown, CSV or JSON.`);
+      return;
+    }
+    if (file.size > MAX_TEXT_UPLOAD_KB * 1024) {
+      show(`${file.name} is over the ${MAX_TEXT_UPLOAD_KB} KB limit. Split it up, or paste the part that matters.`);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setStaged({
+        fileName: file.name,
+        name: file.name.replace(/\.[^.]+$/, ""),
+        description: "",
+        text: String(reader.result ?? ""),
+      });
+    };
+    reader.onerror = () => show(`Could not read ${file.name}.`);
+    reader.readAsText(file);
+  }
+
+  async function saveStaged() {
+    if (!staged || !me?.company?.id) return;
+    if (!staged.name.trim() || !staged.description.trim()) {
+      show("Give it a name and one line saying what it holds.");
+      return;
+    }
+
+    setSaving(true);
+    const result = await addTextSource({
+      companyId: me.company.id,
+      userId: me.user.id,
+      name: staged.name.trim(),
+      description: staged.description.trim(),
+      text: staged.text,
+      kind: "file",
+    });
+    setSaving(false);
+
+    if (!result.ok) {
+      show(result.reason);
+      return;
+    }
+
+    setItems((prev) => [result.source, ...prev]);
+    setJustAdded(`${result.source.name}, ${result.chunks} ${result.chunks === 1 ? "piece" : "pieces"} of text`);
+    setStaged(null);
+  }
+
+  /* The link goes to an edge function rather than being fetched here,
+     because a browser cannot read another site's page and a server can.
+     That split is the whole design: a link is read once, by the server,
+     when an admin vouches for it. The assistant never fetches anything. */
+  async function addLink(e) {
+    e.preventDefault();
+    if (!linkUrl.trim() || !linkNote.trim() || !me?.company?.id) return;
+
+    setSaving(true);
+    const result = await fetchLinkSource({ url: linkUrl.trim(), description: linkNote.trim() });
+    setSaving(false);
+
+    if (!result.ok) {
+      show(result.message);
+      return;
+    }
+
+    setItems(await listSources(me.company.id));
+    setJustAdded(result.name);
+    setLinkUrl("");
+    setLinkNote("");
+  }
+
+  async function remove(id) {
+    const ok = await removeSource(id);
+    if (ok) setItems((prev) => prev.filter((i) => i.id !== id));
+    else show("Could not remove that. Try again.");
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2.5 py-10 justify-center" style={{ color: "var(--text-3)" }}>
+        <Spinner size={16} />
+        <span className="text-[14px]">Loading your knowledge base</span>
+      </div>
+    );
+  }
+
+  if (!me?.company?.id) {
+    return (
+      <GlassPanel className="p-6">
+        <p className="text-[14.5px]" style={{ color: "var(--text-2)" }}>
+          Sign in as an admin of this workspace to manage its knowledge base.
+        </p>
+      </GlassPanel>
+    );
   }
 
   return (
     <div className="space-y-5" style={{ animation: "sx-rise 0.3s ease" }}>
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        accept=".txt,.md,.markdown,.csv,.tsv,.json,.log"
+        onChange={pickFiles}
+      />
+
+      {error && (
+        <div
+          className="flex items-start gap-2 rounded-[12px] px-3.5 py-3 text-[13px]"
+          style={{ backgroundColor: "rgba(229,62,62,0.1)", color: BRAND.red }}
+        >
+          <AlertCircle size={15} className="shrink-0 mt-0.5" />
+          {error}
+        </div>
+      )}
+
       {/* Summary */}
       <div className="grid gap-3 sm:grid-cols-3">
-        <StatTile label="Ready to use" value={indexed} tone="ok" />
+        <StatTile label="Ready to use" value={ready} tone="ok" />
         <StatTile label="Being read" value={pending} tone="pending" />
-        <StatTile label="Outside sources" value={0} tone="neutral" hint="The assistant reads nothing else" />
+        <StatTile
+          label={failed ? "Could not be read" : "Outside sources"}
+          value={failed || 0}
+          tone={failed ? "pending" : "neutral"}
+          hint={failed ? "Remove these and add them again" : "The assistant reads nothing else"}
+        />
       </div>
 
       {/* Upload */}
@@ -270,31 +423,64 @@ function KnowledgeSection() {
           Add company knowledge
         </SectionHeading>
 
-        <div
-          className="rounded-[14px] border border-dashed p-8 text-center transition-colors"
-          style={{ borderColor: "var(--border-2)", backgroundColor: "var(--surface-2)" }}
-        >
-          <div className="flex justify-center mb-3">
-            <div
-              className="w-11 h-11 rounded-[12px] flex items-center justify-center"
-              style={{ backgroundColor: "rgba(20,32,160,0.12)" }}
-            >
-              <UploadCloud size={20} style={{ color: BRAND.accentSoft }} />
+        {staged ? (
+          <div className="space-y-3">
+            <p className="text-[13px]" style={{ color: "var(--text-3)" }}>
+              Read {staged.fileName}. Name it and say what it holds.
+            </p>
+            <Field label="Name">
+              <TextInput
+                value={staged.name}
+                onChange={(e) => setStaged({ ...staged, name: e.target.value })}
+                placeholder="Brand guidelines 2026"
+              />
+            </Field>
+            <Field label="What it holds">
+              <TextInput
+                value={staged.description}
+                onChange={(e) => setStaged({ ...staged, description: e.target.value })}
+                placeholder="Colors, fonts, logo rules, and tone of voice"
+              />
+            </Field>
+            <div className="flex gap-2">
+              <PrimaryButton
+                onClick={saveStaged}
+                disabled={saving}
+                className="flex items-center gap-2 justify-center"
+              >
+                {saving && <Spinner size={13} color="#fff" />}
+                {saving ? "Saving" : "Add to knowledge base"}
+              </PrimaryButton>
+              <GhostButton onClick={() => setStaged(null)}>Cancel</GhostButton>
             </div>
           </div>
-          <p className="text-[14.5px] font-medium mb-1" style={{ color: "var(--text-1)" }}>
-            Drop files here
-          </p>
-          <p className="text-[13px] mb-4" style={{ color: "var(--text-3)" }}>
-            PDF, Word, Excel, PowerPoint, or plain text
-          </p>
-          <GhostButton>Browse files</GhostButton>
-        </div>
+        ) : (
+          <div
+            className="rounded-[14px] border border-dashed p-8 text-center transition-colors"
+            style={{ borderColor: "var(--border-2)", backgroundColor: "var(--surface-2)" }}
+          >
+            <div className="flex justify-center mb-3">
+              <div
+                className="w-11 h-11 rounded-[12px] flex items-center justify-center"
+                style={{ backgroundColor: "rgba(20,32,160,0.12)" }}
+              >
+                <UploadCloud size={20} style={{ color: BRAND.accentSoft }} />
+              </div>
+            </div>
+            <p className="text-[14.5px] font-medium mb-1" style={{ color: "var(--text-1)" }}>
+              Choose a file
+            </p>
+            <p className="text-[13px] mb-4" style={{ color: "var(--text-3)" }}>
+              Plain text, Markdown, CSV or JSON, up to {MAX_TEXT_UPLOAD_KB} KB
+            </p>
+            <GhostButton onClick={() => fileInputRef.current?.click()}>Browse files</GhostButton>
+          </div>
+        )}
       </GlassPanel>
 
       {/* Add a link */}
       <GlassPanel className="p-6">
-        <SectionHeading hint="Point the assistant at a page it may read. It reads only what you add here.">
+        <SectionHeading hint="Give the assistant a page to learn from. It is read once, now, and what it says is saved here. The assistant never opens a link itself.">
           Add a link
         </SectionHeading>
 
@@ -314,16 +500,21 @@ function KnowledgeSection() {
             />
           </Field>
           <div className="mb-4">
-            <PrimaryButton type="submit" className="flex items-center gap-2 w-full sm:w-auto justify-center">
-              <Plus size={15} />
-              Add
+            <PrimaryButton
+              type="submit"
+              disabled={saving}
+              className="flex items-center gap-2 w-full sm:w-auto justify-center"
+            >
+              {saving ? <Spinner size={14} color="#fff" /> : <Plus size={15} />}
+              {saving ? "Reading it" : "Add"}
             </PrimaryButton>
           </div>
         </form>
 
         {justAdded && (
           <p className="text-[13px] mt-1" style={{ color: BRAND.green }}>
-            Added {justAdded}. {linkCount} {linkCount === 1 ? "link" : "links"} in the knowledge base.
+            Added {justAdded}. {items.length} {items.length === 1 ? "source" : "sources"} in the knowledge base,{" "}
+            {linkCount} {linkCount === 1 ? "link" : "links"}.
           </p>
         )}
       </GlassPanel>
@@ -358,7 +549,7 @@ function KnowledgeSection() {
                 )}
               </span>
 
-              <div className="flex-1 min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="text-[14px] font-medium truncate" style={{ color: "var(--text-1)" }}>
                   {item.name}
                 </p>
@@ -367,23 +558,20 @@ function KnowledgeSection() {
                 </p>
               </div>
 
-              {item.status === "indexed" ? (
+              {item.status === "ready" ? (
                 <StatusPill tone="ok">Ready</StatusPill>
+              ) : item.status === "failed" ? (
+                <StatusPill tone="error">Could not read</StatusPill>
               ) : (
-                <span className="flex items-center gap-1.5 shrink-0">
-                  <Spinner size={11} />
-                  <span className="text-[11px]" style={{ color: BRAND.amber }}>
-                    Reading it
-                  </span>
-                </span>
+                <StatusPill tone="pending">Being read</StatusPill>
               )}
 
               <button
                 onClick={() => remove(item.id)}
-                className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors hover:opacity-70"
+                className="shrink-0 p-1.5 rounded-[8px] transition-opacity hover:opacity-70"
                 aria-label={`Remove ${item.name}`}
               >
-                <Trash2 size={14} style={{ color: "var(--text-3)" }} />
+                <Trash2 size={15} style={{ color: "var(--text-3)" }} />
               </button>
             </div>
           ))}
@@ -392,12 +580,6 @@ function KnowledgeSection() {
     </div>
   );
 }
-
-/* ==========================================================================
-   3. CONNECTORS
-   Company wide sources. Staff connect their own personal ones from the
-   chat, under the plus control.
-   ========================================================================== */
 
 function ConnectorsSection() {
   const [connected, setConnected] = useState({ canva: false, email: false, drive: true, slack: false });

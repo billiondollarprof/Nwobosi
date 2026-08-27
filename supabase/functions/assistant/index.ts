@@ -289,6 +289,13 @@ const STAGE_PROMPT: Record<string, string> = {
    something a server may trust. */
 const MAX_REQUEST_BYTES = 5 * 1024 * 1024;
 
+/* Sixty thousand characters of company material, about fifteen thousand
+   tokens, roughly thirty pages. Enough to carry a brand guide, a template
+   and a company profile at once. It rides on the analysis and the writing
+   only, never the interview, so a conversation pays for it twice rather
+   than on every question. */
+const MAX_SOURCE_CHARS = 60000;
+
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -393,26 +400,74 @@ Deno.serve(async (req: Request) => {
 
   const tier = resolveTier(stage, staff.model_ceiling ?? null);
 
-  /* The source catalogue: names and one line descriptions only, never the
-     contents. The whole catalogue is small by design, because the admin
-     section holds a company's identity rather than its filing cabinet. */
+  /* The catalogue: names and one line descriptions. This is what the
+     interview sees, and it is enough to talk about what exists without
+     paying to carry any of it. */
   const { data: sources } = await asUser
     .from("knowledge_sources")
-    .select("name, description, status")
+    .select("id, name, description, status")
     .eq("company_id", staff.company_id);
 
-  /* Only sources that finished processing. Offering the model something
-     still being read would have it confidently ask for a source that
-     cannot answer, which reads to the staff member as the assistant
-     making things up. */
+  /* Only sources that finished being read. Offering the model something
+     still processing would have it confidently name a source that cannot
+     answer, which reads to the staff member as the assistant making
+     things up. */
   const readySources = (sources ?? []).filter((s) => s.status === "ready");
 
-  /* Base first and unchanging, stage instruction after. That order is
-     what lets the base be cached: the cache is a prefix match, so
-     anything that varies by stage has to come last or it would break the
-     prefix on every switch. */
+  /* Base first and unchanging, then contents, then the stage
+     instruction. That order is what lets the base be cached: the cache is
+     a prefix match, so anything that varies has to come after it. */
   const base = buildBasePrompt(company, staff.name ?? "a staff member", readySources);
   const stageInstruction = STAGE_PROMPT[stage] ?? STAGE_PROMPT.interview;
+
+  /* ----------------------------------------------------------------------
+     THE CONTENTS THEMSELVES
+     The interview never sees these. It is a conversation about what the
+     person wants, and carrying a company's entire brand guide through
+     every question would cost real money to answer "who is this for".
+
+     From the analysis onward it does see them, because that is the whole
+     promise: the output already knows the company's templates and numbers
+     without the staff member supplying any of it. A name and a
+     description cannot deliver that. Only the words can.
+     ---------------------------------------------------------------------- */
+
+  let sourceContents = "";
+
+  if (stage !== "interview" && readySources.length) {
+    const { data: chunks } = await asUser
+      .from("knowledge_chunks")
+      .select("source_id, content")
+      .in("source_id", readySources.map((s) => s.id))
+      .order("created_at", { ascending: true });
+
+    if (chunks?.length) {
+      const byName = new Map(readySources.map((s) => [s.id, s.name]));
+      const parts: string[] = [];
+      let budget = MAX_SOURCE_CHARS;
+
+      for (const chunk of chunks) {
+        if (budget <= 0) break;
+        const slice = String(chunk.content ?? "").slice(0, budget);
+        if (!slice.trim()) continue;
+        budget -= slice.length;
+        parts.push(`--- FROM: ${byName.get(chunk.source_id) ?? "a company source"} ---\n${slice}`);
+      }
+
+      if (parts.length) {
+        sourceContents = [
+          "",
+          "WHAT THOSE SOURCES ACTUALLY SAY",
+          "The text of the company material listed above. This is theirs, it is",
+          "approved, and you may use it as fact and match its voice. Say which source",
+          "something came from when it matters. If what you need is not in here, it is",
+          "missing, and missing is handled the way the rules above describe.",
+          "",
+          ...parts,
+        ].join("\n");
+      }
+    }
+  }
 
   /* ----------------------------------------------------------------------
      THE CALL
@@ -460,6 +515,7 @@ Deno.serve(async (req: Request) => {
           max_tokens: 8000,
           system: [
             { type: "text", text: base, cache_control: { type: "ephemeral" } },
+            ...(sourceContents ? [{ type: "text" as const, text: sourceContents }] : []),
             { type: "text", text: stageInstruction },
           ],
           messages,
