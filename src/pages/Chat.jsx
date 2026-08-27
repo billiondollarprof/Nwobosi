@@ -51,6 +51,7 @@ import { LogoMark } from "../shared/icons.jsx";
 import { useSpeechToText } from "../shared/useSpeechToText.js";
 import { sendTurn, toApiMessages } from "../shared/assistantApi.js";
 import { loadMe, listWork, saveWork } from "../shared/session.js";
+import { readFileAsText, fileKind } from "../shared/readFile.js";
 import { BRAND, GRADIENTS, FONTS } from "../shared/tokens";
 import {
   PageShell,
@@ -67,7 +68,7 @@ import {
 import {
   assistantNameFor,
   DAILY_LIMIT,
-  MAX_TEXT_UPLOAD_KB,
+  MAX_SOURCE_UPLOAD_KB,
   MAX_IMAGE_UPLOAD_KB,
   MAX_FILES_PER_MESSAGE,
   TEMPLATES,
@@ -129,15 +130,6 @@ function visibleText(raw) {
    a confident, invented draft gets written.
    -------------------------------------------------------------------------- */
 
-/* Formats a browser can turn into text on its own. A PDF or a Word file
-   needs a parser that does not exist here yet, and pretending otherwise
-   would be the exact lie this is guarding against. */
-const READABLE_EXTENSIONS = ["txt", "md", "markdown", "csv", "tsv", "json", "log", "rtf"];
-
-/* Images the model can genuinely see. This is what makes "screenshot the
-   part that shows the figure" a real instruction rather than a dead end. */
-const IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "gif", "bmp"];
-
 /* Roughly ten thousand tokens per file, and sixty thousand characters
    across one message however the files are split. Enough for anything a
    person pastes in during a conversation, small enough that four of them
@@ -156,13 +148,6 @@ const MAX_TURN_CHARS = 60000;
    fifteen hundred. */
 const MAX_IMAGE_EDGE = 1568;
 const IMAGE_QUALITY = 0.85;
-
-function fileKind(name) {
-  const ext = name.split(".").pop()?.toLowerCase() ?? "";
-  if (READABLE_EXTENSIONS.includes(ext)) return "text";
-  if (IMAGE_EXTENSIONS.includes(ext)) return "image";
-  return "unreadable";
-}
 
 /* Draws the image smaller and re-encodes it. Done here, in the browser,
    because a five megabyte photo that becomes two hundred kilobytes before
@@ -842,20 +827,19 @@ export default function Chat() {
 
       const sizeKB = Math.round(file.size / 1024);
       const kind = fileKind(file.name);
+      const isDocument = kind === "text" || kind === "pdf" || kind === "docx";
 
       /* Pictures get the generous cap and text gets the strict one. A
          picture shrinks to almost nothing before it is sent, so its size
          on disk barely matters. Text does not shrink, so a file far past
          what we can read would be accepted and then mostly ignored, and
          being told no is better than being quietly half heard. */
-      const capKB = kind === "image" ? MAX_IMAGE_UPLOAD_KB : MAX_TEXT_UPLOAD_KB;
+      const capKB = kind === "image" ? MAX_IMAGE_UPLOAD_KB : MAX_SOURCE_UPLOAD_KB;
       if (kind !== "unreadable" && sizeKB > capKB) {
         showUploadError(
-          kind === "image"
-            ? `${file.name} is ${(sizeKB / 1024).toFixed(1)} MB, over the ${Math.round(
-                capKB / 1024
-              )} MB limit for a picture.`
-            : `${file.name} is ${sizeKB} KB, over the ${capKB} KB limit for a text file. Paste the part that matters instead, or split it up.`
+          `${file.name} is ${(sizeKB / 1024).toFixed(1)} MB, over the ${Math.round(
+            capKB / 1024
+          )} MB limit. Split it up, or paste the part that matters.`
         );
         return;
       }
@@ -891,27 +875,22 @@ export default function Chat() {
         return;
       }
 
-      const reader = new FileReader();
-
-      reader.onload = () => {
-        const full = String(reader.result ?? "");
-        const text = full.slice(0, MAX_FILE_CHARS);
-        setPendingAttachments((prev) =>
-          prev.map((a) =>
-            a.id === id
-              ? { ...a, status: "ready", text, truncated: full.length > MAX_FILE_CHARS }
-              : a
-          )
-        );
-      };
-
-      reader.onerror = () => {
-        setPendingAttachments((prev) =>
-          prev.map((a) => (a.id === id ? { ...a, status: "unreadable" } : a))
-        );
-      };
-
-      reader.readAsText(file);
+      if (isDocument) {
+        readFileAsText(file, { maxChars: MAX_FILE_CHARS }).then((result) => {
+          if (!result.ok) {
+            showUploadError(result.reason);
+            setPendingAttachments((prev) => prev.filter((a) => a.id !== id));
+            return;
+          }
+          setPendingAttachments((prev) =>
+            prev.map((a) =>
+              a.id === id
+                ? { ...a, status: "ready", text: result.text, truncated: result.truncated }
+                : a
+            )
+          );
+        });
+      }
     });
   }
 
