@@ -33,9 +33,7 @@ import {
   ThumbsUp,
   ThumbsDown,
   RotateCw,
-  Share2,
   Copy,
-  MoreHorizontal,
   File as FileIcon,
   AlertCircle,
   UploadCloud,
@@ -362,10 +360,11 @@ export default function Chat() {
   /* Library */
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [librarySearch, setLibrarySearch] = useState("");
-  const [libraryFiles, setLibraryFiles] = useState([
-    { id: "seed-1", title: "Finance Report Q series", skill: "excel", driveSynced: true, when: "Aug 20" },
-    { id: "seed-2", title: "Investor Pitch Deck v3", skill: "ppt", driveSynced: true, when: "Aug 18" },
-  ]);
+  /* Starts empty on purpose. It used to hold two invented files marked as
+     synced to a Drive nobody has connected, which is a small lie sitting
+     in the sidebar of a product whose whole argument is that it does not
+     make things up. */
+  const [libraryFiles, setLibraryFiles] = useState([]);
 
   /* Conversation */
   const [messages, setMessages] = useState([]);
@@ -643,6 +642,7 @@ export default function Chat() {
 
     const resultId = nextId();
     let started = false;
+    let finished = "";
 
     const history = toApiMessages([
       ...messages,
@@ -664,6 +664,7 @@ export default function Chat() {
       onMeta: ({ tier }) => setActiveTier(tier),
 
       onText: (chunk) => {
+        finished += chunk;
         if (!started) {
           started = true;
           setMessages((prev) => [
@@ -685,7 +686,14 @@ export default function Chat() {
            conversation. driveSynced stays false because Drive is not
            connected, and claiming otherwise would be a lie in the UI. */
         setLibraryFiles((prev) => [
-          { id: nextId(), title: docTitle(messages), skill: autoSkill, driveSynced: false, when: "Just now" },
+          {
+            id: nextId(),
+            title: docTitle(messages),
+            skill: autoSkill,
+            driveSynced: false,
+            when: "Just now",
+            content: finished,
+          },
           ...prev,
         ]);
       },
@@ -704,6 +712,19 @@ export default function Chat() {
         ]);
       },
     });
+  }
+
+  /* Throw away a reply and ask for another one. Everything before it is
+     untouched, so this is the same turn again rather than a new question,
+     which is what a person means when they press it. */
+  function handleRetry(messageId) {
+    if (typing || generating) return;
+    const index = messages.findIndex((m) => m.id === messageId);
+    if (index < 0) return;
+
+    const before = messages.slice(0, index);
+    setMessages(before);
+    runTurn(flowStage, toApiMessages(before));
   }
 
   /* "Something needs changing" is not a stage of its own. It just takes the
@@ -990,9 +1011,10 @@ export default function Chat() {
               return (
                 <button
                   key={f.id}
+                  onClick={() => downloadDocument(f.title, f.content)}
                   className="w-full flex items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-left transition-colors hover:opacity-80"
                   style={{ backgroundColor: "var(--surface)" }}
-                  title={f.driveSynced ? "Synced to Drive, open there" : "Saving to Drive"}
+                  title="Download again"
                 >
                   <span
                     className="w-7 h-7 rounded-[8px] flex items-center justify-center shrink-0"
@@ -1206,6 +1228,7 @@ export default function Chat() {
                 onGenerate={handleGenerate}
                 onAdjust={handleAdjust}
                 onReset={handleNewChat}
+                onRetry={() => handleRetry(m.id)}
                 feedback={feedback[m.id]}
                 onFeedback={(kind) => toggleFeedback(m.id, kind)}
                 onCopy={() => copyText(m.content)}
@@ -1557,7 +1580,7 @@ export default function Chat() {
    avatar, staff messages sit in a neutral capsule on the right.
    ========================================================================== */
 
-function ChatBubble({ message, brief, onGenerate, onAdjust, onReset, feedback, onFeedback, onCopy }) {
+function ChatBubble({ message, brief, onGenerate, onAdjust, onReset, onRetry, feedback, onFeedback, onCopy }) {
   const isUser = message.role === "user";
   const riseStyle = { animation: "sx-rise 0.35s ease" };
 
@@ -1779,17 +1802,11 @@ function ChatBubble({ message, brief, onGenerate, onAdjust, onReset, feedback, o
         <IconBtn active={feedback === "down"} onClick={() => onFeedback("down")} activeColor={BRAND.red} label="Bad response">
           <ThumbsDown size={14} />
         </IconBtn>
-        <IconBtn label="Retry">
+        <IconBtn onClick={onRetry} label="Try that again">
           <RotateCw size={14} />
-        </IconBtn>
-        <IconBtn label="Share">
-          <Share2 size={14} />
         </IconBtn>
         <IconBtn onClick={onCopy} label="Copy">
           <Copy size={14} />
-        </IconBtn>
-        <IconBtn label="More">
-          <MoreHorizontal size={14} />
         </IconBtn>
       </div>
     </div>

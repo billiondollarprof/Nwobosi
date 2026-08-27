@@ -86,7 +86,7 @@ const SEED_KNOWLEDGE = [
     name: "Finance Report Q series",
     description: "Quarterly report layout and standard tables",
     kind: "file",
-    status: "indexing",
+    status: "indexed",
   },
   {
     id: 5,
@@ -230,8 +230,14 @@ function KnowledgeSection() {
   const [linkUrl, setLinkUrl] = useState("");
   const [linkNote, setLinkNote] = useState("");
 
+  /* Says so where they are looking. The list of everything added is far
+     enough down the page that without this, someone presses Add, the two
+     boxes empty, and nothing tells them whether that worked. */
+  const [justAdded, setJustAdded] = useState("");
+
   const indexed = items.filter((i) => i.status === "indexed").length;
   const pending = items.filter((i) => i.status === "indexing").length;
+  const linkCount = items.filter((i) => i.kind === "link").length;
 
   function addLink(e) {
     e.preventDefault();
@@ -242,6 +248,7 @@ function KnowledgeSection() {
     ]);
     setLinkUrl("");
     setLinkNote("");
+    setJustAdded(linkUrl.trim());
   }
 
   function remove(id) {
@@ -313,6 +320,12 @@ function KnowledgeSection() {
             </PrimaryButton>
           </div>
         </form>
+
+        {justAdded && (
+          <p className="text-[13px] mt-1" style={{ color: BRAND.green }}>
+            Added {justAdded}. {linkCount} {linkCount === 1 ? "link" : "links"} in the knowledge base.
+          </p>
+        )}
       </GlassPanel>
 
       {/* What is in the index */}
