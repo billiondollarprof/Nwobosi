@@ -110,6 +110,26 @@ const MARKER = {
 
 const MARKER_WORDS = Object.values(MARKER);
 
+/* --------------------------------------------------------------------------
+   WHAT THE RETURN KEY DOES
+   At a laptop, Enter sends and Shift Enter makes a new line, which is what
+   anybody typing at a keyboard expects. A phone has no Shift to hold, so
+   Enter sending there leaves no way at all to write a second line. On a
+   touch screen Enter makes the line, and the send button is the only thing
+   that sends.
+   -------------------------------------------------------------------------- */
+
+const HAS_KEYBOARD =
+  typeof window !== "undefined" &&
+  typeof window.matchMedia === "function" &&
+  window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+
+/* How many questions the interview gets before the app takes the decision
+   out of its hands. The prompt asks for three to five. This is the line
+   that makes it true: a model that keeps finding one more thing to ask is
+   stopped here rather than trusted to stop itself. */
+const MAX_INTERVIEW_TURNS = 5;
+
 function visibleText(raw) {
   let out = raw;
   for (const word of MARKER_WORDS) out = out.split(word).join("");
@@ -343,11 +363,15 @@ export default function Chat() {
 
   /* Greeting */
   const [hasGreetedBefore, setHasGreetedBefore] = useState(false);
-  const [greetingText, setGreetingText] = useState(() => buildGreetingText());
+  /* Empty until we know who is signed in. It used to start without a name
+     and be set again a moment later with one, and the typewriter took that
+     as new text and typed the whole greeting a second time. */
+  const [greetingText, setGreetingText] = useState("");
 
   /* Usage and feedback */
   const [dailyUsed, setDailyUsed] = useState(0);
   const [feedback, setFeedback] = useState({});
+  const [toast, setToast] = useState("");
 
   /* Attachments */
   const [pendingAttachments, setPendingAttachments] = useState([]);
@@ -376,6 +400,12 @@ export default function Chat() {
   /* Lets a turn be cancelled. Leaving the page or sending again while one
      is still streaming would otherwise keep it running and billing. */
   const abortTurnRef = useRef(null);
+
+  /* How many questions the interview has asked in this run. Reset every
+     time the work moves up a stage, so a correction after a read back
+     gets its own short conversation rather than inheriting a spent
+     allowance. */
+  const interviewTurnsRef = useRef(0);
 
   /* Stops a second Build press stacking a second paid generation. */
   const [generating, setGenerating] = useState(false);
@@ -527,6 +557,14 @@ export default function Chat() {
     if (step >= 3 && listening) stopListening();
   }, [step, listening, stopListening]);
 
+  /* The toast takes itself off screen. Long enough to read one word,
+     short enough that it is gone before it is in the way. */
+  useEffect(() => {
+    if (!toast) return undefined;
+    const id = setTimeout(() => setToast(""), 2200);
+    return () => clearTimeout(id);
+  }, [toast]);
+
   /* Keep the conversation pinned to the newest message */
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -651,11 +689,14 @@ export default function Chat() {
         );
         persist(next, stage);
 
+        if (stage === "interview") interviewTurnsRef.current += 1;
+
         /* The conversation has what it came for. Move up a tier and go
            straight into the check, without the staff member pressing
            anything. From their side they answered a question and the next
            thing they see is a read back. */
         if (stage === "interview" && raw.includes(MARKER.interviewDone)) {
+          interviewTurnsRef.current = 0;
           setFlowStage("analyse");
           runTurn("analyse", [...history, { role: "assistant", content: clean }]);
           return;
@@ -668,6 +709,9 @@ export default function Chat() {
              collect a file name. It comes back up the moment that
              conversation says it is done. */
           if (raw.includes(MARKER.needInput)) {
+            /* A fresh, specific ask, so it gets its own allowance rather
+               than inheriting one the first interview already spent. */
+            interviewTurnsRef.current = 0;
             setFlowStage("interview");
             return;
           }
@@ -760,7 +804,16 @@ export default function Chat() {
        here rather than reading it back off state matters: setting state
        does not change it in time for the line below. */
     updateMessages((prev) => prev.filter((m) => m.type !== "build"));
-    const stage = flowStage === "analyse" ? "interview" : flowStage;
+    let stage = flowStage === "analyse" ? "interview" : flowStage;
+
+    /* The interview has had its questions. Whatever the model thinks, the
+       work moves up now. Three to five questions is the promise, and a
+       promise a model can talk itself out of is not one. */
+    if (stage === "interview" && interviewTurnsRef.current >= MAX_INTERVIEW_TURNS) {
+      stage = "analyse";
+      interviewTurnsRef.current = 0;
+    }
+
     if (stage !== flowStage) setFlowStage(stage);
 
     runTurn(stage, toApiMessages([...messages, { role: "user", content: apiContent }]));
@@ -898,7 +951,8 @@ export default function Chat() {
     setTyping(false);
     setActiveTier(null);
     updateMessages([]);
-    setGreetingText(buildGreetingText());
+    setGreetingText(buildGreetingText(me?.staff?.name?.split(" ")[0]));
+    interviewTurnsRef.current = 0;
     setFlowStage("interview");
     setStep(0);
     setBrief({});
@@ -1025,8 +1079,17 @@ export default function Chat() {
     setFeedback((prev) => ({ ...prev, [id]: prev[id] === kind ? null : kind }));
   }
 
+  /* A copy that says nothing is a copy you check by pasting somewhere to
+     see whether it worked. Say so, and say it when it did not. */
   function copyText(text) {
-    if (navigator.clipboard) navigator.clipboard.writeText(text).catch(() => {});
+    if (!navigator.clipboard) {
+      setToast("This browser will not allow copying. Select the text instead.");
+      return;
+    }
+    navigator.clipboard.writeText(text).then(
+      () => setToast("Copied"),
+      () => setToast("Could not copy. Select the text instead."),
+    );
   }
 
   function handleLogout() {
@@ -1672,7 +1735,7 @@ export default function Chat() {
               value={input}
               onChange={handleTextareaInput}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
+                if (e.key === "Enter" && !e.shiftKey && HAS_KEYBOARD) {
                   e.preventDefault();
                   handleSend();
                 }
@@ -1758,6 +1821,25 @@ export default function Chat() {
               </div>
             )}
           </div>
+
+          {toast && (
+            <div
+              className="flex items-center justify-center pointer-events-none"
+              style={{ position: "absolute", left: 0, right: 0, bottom: "100%", marginBottom: 10 }}
+            >
+              <span
+                className="text-[12.5px] px-3.5 py-1.5 rounded-full border backdrop-blur-xl shadow-lg"
+                style={{
+                  backgroundColor: "var(--surface-solid)",
+                  borderColor: "var(--border-2)",
+                  color: "var(--text-1)",
+                  animation: "sx-rise 0.2s ease",
+                }}
+              >
+                {toast}
+              </span>
+            </div>
+          )}
 
           <div className="flex items-center justify-center mt-2.5">
             <p className="flex items-center gap-1.5 text-[11px]" style={{ color: "var(--text-3)" }}>
@@ -1931,9 +2013,7 @@ function ChatBubble({ message, brief, onGenerate, onAdjust, onReset, onRetry, fe
               <Download size={14} />
               Download
             </PrimaryButton>
-            <GhostButton onClick={() => navigator.clipboard?.writeText(message.content)}>
-              Copy
-            </GhostButton>
+            <GhostButton onClick={onCopy}>Copy</GhostButton>
             <GhostButton onClick={onReset}>Start something new</GhostButton>
           </div>
         </div>
