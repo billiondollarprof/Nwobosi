@@ -282,6 +282,10 @@ const STAGE_PROMPT: Record<string, string> = {
 
 /* -------------------------------------------------------------------------- */
 
+/* Twenty megabytes. Four shrunk screenshots plus a conversation come in
+   well under this; anything past it is not a person working. */
+const MAX_REQUEST_BYTES = 20 * 1024 * 1024;
+
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -316,6 +320,15 @@ Deno.serve(async (req: Request) => {
   const { data: { user }, error: userError } = await asUser.auth.getUser();
   if (userError || !user) {
     return json({ ok: false, reason: "Sign in to keep going." }, 401);
+  }
+
+  /* The browser shrinks images before sending and caps how many files ride
+     on one turn, but the browser is not something this function is allowed
+     to trust. A request this large is either a bug or someone poking at it
+     directly, and either way the answer is no. */
+  const declaredSize = Number(req.headers.get("content-length") ?? 0);
+  if (declaredSize > MAX_REQUEST_BYTES) {
+    return json({ ok: false, reason: "That is too much to send at once. Fewer files, or smaller ones." }, 413);
   }
 
   let body: Record<string, unknown>;

@@ -62,7 +62,23 @@ export const CURRENT_USER = {
    -------------------------------------------------------------------------- */
 
 export const DAILY_LIMIT = 5;
-export const MAX_UPLOAD_KB = 1024;
+
+/* Five megabytes, which is generous for a phone screenshot and still small
+   enough that a slow connection does not stall.
+
+   Megabytes are not really what binds, though. What binds is how much of a
+   file reaches the model, because every turn resends the whole
+   conversation. A megabyte of text is roughly a quarter of a million
+   tokens, more than the cheap model can hold at all. So the real guards
+   live in the chat page: images are shrunk before they are sent, text is
+   capped by characters, and both are capped by how many files one message
+   may carry. This number only stops something absurd arriving. */
+export const MAX_UPLOAD_KB = 5120;
+
+/* Four files per message. Past that it stops being a person handing over
+   what matters and starts being a folder, and a folder is what pointing at
+   a drive is for. */
+export const MAX_FILES_PER_MESSAGE = 4;
 
 /* --------------------------------------------------------------------------
    SECTION: Model tiers

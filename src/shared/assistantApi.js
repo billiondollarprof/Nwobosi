@@ -152,5 +152,11 @@ export function sendTurn({ stage = "interview", messages, onMeta, onText, onDone
 export function toApiMessages(messages) {
   return messages
     .map((m) => ({ role: m.role, content: m.apiContent ?? m.content }))
-    .filter((m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim());
+    .filter((m) => {
+      if (m.role !== "user" && m.role !== "assistant") return false;
+      /* A turn carrying a screenshot is a list of blocks rather than a
+         string, so emptiness has to be checked both ways. */
+      if (Array.isArray(m.content)) return m.content.length > 0;
+      return typeof m.content === "string" && m.content.trim().length > 0;
+    });
 }

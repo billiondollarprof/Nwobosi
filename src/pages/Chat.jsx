@@ -70,6 +70,7 @@ import {
   CURRENT_USER,
   DAILY_LIMIT,
   MAX_UPLOAD_KB,
+  MAX_FILES_PER_MESSAGE,
   TEMPLATES,
   SKILL_BY_TYPE,
   SKILL_LABELS,
@@ -134,31 +135,114 @@ function visibleText(raw) {
    would be the exact lie this is guarding against. */
 const READABLE_EXTENSIONS = ["txt", "md", "markdown", "csv", "tsv", "json", "log", "rtf"];
 
-/* Roughly ten thousand tokens per file. Enough for anything a person
-   pastes in during a conversation, small enough that four of them cannot
-   quietly eat the context or the budget. */
-const MAX_FILE_CHARS = 40000;
+/* Images the model can genuinely see. This is what makes "screenshot the
+   part that shows the figure" a real instruction rather than a dead end. */
+const IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "gif", "bmp"];
 
-function isReadableFile(name) {
+/* Roughly ten thousand tokens per file, and sixty thousand characters
+   across one message however the files are split. Enough for anything a
+   person pastes in during a conversation, small enough that four of them
+   cannot quietly eat the context or the budget. */
+const MAX_FILE_CHARS = 40000;
+const MAX_TURN_CHARS = 60000;
+
+/* The long edge the model works at anyway. Anything bigger is downscaled
+   before it is looked at, so sending a 4000 pixel screenshot only costs
+   upload time and buys nothing. Shrinking to this first is free quality:
+   what arrives is exactly what the model would have seen.
+
+   It matters more than it sounds. An image costs about width times height
+   over 750 in tokens, so a full size phone screenshot runs into thousands
+   of tokens, resent on every single turn. Shrunk, a screenshot is about
+   fifteen hundred. */
+const MAX_IMAGE_EDGE = 1568;
+const IMAGE_QUALITY = 0.85;
+
+function fileKind(name) {
   const ext = name.split(".").pop()?.toLowerCase() ?? "";
-  return READABLE_EXTENSIONS.includes(ext);
+  if (READABLE_EXTENSIONS.includes(ext)) return "text";
+  if (IMAGE_EXTENSIONS.includes(ext)) return "image";
+  return "unreadable";
 }
 
-/* The turn as the model receives it: what they typed, then the contents of
-   whatever they handed over, each one fenced and named so the model can
-   cite it back by filename. */
-function withAttachedText(text, attachments) {
-  const readable = attachments.filter((a) => a.status === "ready" && a.text);
-  if (!readable.length) return text;
+/* Draws the image smaller and re-encodes it. Done here, in the browser,
+   because a five megabyte photo that becomes two hundred kilobytes before
+   it leaves the device is faster for them and cheaper for the company, and
+   the model sees no difference. */
+function shrinkImage(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
 
-  const blocks = readable.map(
-    (a) =>
-      `--- FILE: ${a.name}${a.truncated ? " (first part only, it was too long to include in full)" : ""} ---\n` +
-      `${a.text}\n` +
-      "--- END FILE ---"
-  );
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const longest = Math.max(img.width, img.height);
+      const scale = longest > MAX_IMAGE_EDGE ? MAX_IMAGE_EDGE / longest : 1;
+      const width = Math.max(1, Math.round(img.width * scale));
+      const height = Math.max(1, Math.round(img.height * scale));
 
-  return [text, ...blocks].filter(Boolean).join("\n\n");
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+
+      const dataUrl = canvas.toDataURL("image/jpeg", IMAGE_QUALITY);
+      const data = dataUrl.split(",")[1] ?? "";
+      if (!data) {
+        reject(new Error("empty canvas"));
+        return;
+      }
+      resolve({ media_type: "image/jpeg", data, width, height });
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("not an image this browser can open"));
+    };
+
+    img.src = url;
+  });
+}
+
+/* The turn as the model receives it. Plain text when nothing was attached
+   or only text files were, so the common case stays a simple string.
+   Images make it a list of blocks, pictures first, which is the order the
+   API wants and the order that reads correctly: here is what I am looking
+   at, and here is what I am asking about it. */
+function buildTurnContent(text, attachments) {
+  const ready = attachments.filter((a) => a.status === "ready");
+  const textFiles = ready.filter((a) => a.text);
+  const imageFiles = ready.filter((a) => a.image);
+
+  let budget = MAX_TURN_CHARS;
+  const blocks = [];
+
+  for (const a of textFiles) {
+    if (budget <= 0) break;
+    const slice = a.text.slice(0, budget);
+    budget -= slice.length;
+    const cut = a.truncated || slice.length < a.text.length;
+    blocks.push(
+      `--- FILE: ${a.name}${cut ? " (first part only, it was too long to include in full)" : ""} ---\n` +
+        `${slice}\n` +
+        "--- END FILE ---"
+    );
+  }
+
+  const written = [text, ...blocks].filter(Boolean).join("\n\n");
+
+  if (!imageFiles.length) return written;
+
+  return [
+    ...imageFiles.map((a) => ({
+      type: "image",
+      source: { type: "base64", media_type: a.image.media_type, data: a.image.data },
+    })),
+    {
+      type: "text",
+      text: written || `Here is ${imageFiles.map((a) => a.name).join(" and ")}.`,
+    },
+  ];
 }
 
 function guessProjectType(text) {
@@ -411,14 +495,14 @@ export default function Chat() {
        file they handed over becomes something the model can work from
        rather than a name it has to guess about. */
     const attachments = pendingAttachments;
-    const apiContent = withAttachedText(text, attachments);
+    const apiContent = buildTurnContent(text, attachments);
 
     addMessage({ role: "user", type: "text", content: text, apiContent, attachments });
     setInput("");
     setPendingAttachments([]);
     if (textareaRef.current) textareaRef.current.style.height = "auto";
 
-    if (apiContent) handleUserReply(text, apiContent);
+    if (apiContent?.length) handleUserReply(text, apiContent);
   }
 
   function quickStart(seedText) {
@@ -664,23 +748,38 @@ export default function Chat() {
     const files = Array.from(e.target.files || []);
     e.target.value = "";
 
-    files.forEach((file) => {
-      const sizeKB = Math.round(file.size / 1024);
+    /* Counted against what is already staged, not against this batch, so
+       picking two then two more hits the same wall as picking four. */
+    let room = MAX_FILES_PER_MESSAGE - pendingAttachments.length;
+    if (files.length > room) {
+      showUploadError(
+        room > 0
+          ? `You can attach ${MAX_FILES_PER_MESSAGE} files at a time. Taking the first ${room}.`
+          : `You already have ${MAX_FILES_PER_MESSAGE} files attached. Send these first.`
+      );
+    }
 
+    files.forEach((file) => {
+      if (room <= 0) return;
+
+      const sizeKB = Math.round(file.size / 1024);
       if (sizeKB > MAX_UPLOAD_KB) {
-        setUploadError(
-          `${file.name} is ${(sizeKB / 1024).toFixed(1)} MB, over the 1 MB limit. Paste the part that matters instead, or split it up.`
+        showUploadError(
+          `${file.name} is ${(sizeKB / 1024).toFixed(1)} MB, over the ${Math.round(
+            MAX_UPLOAD_KB / 1024
+          )} MB limit. Paste the part that matters instead, or split it up.`
         );
-        setTimeout(() => setUploadError(""), 5500);
         return;
       }
 
+      room -= 1;
       const id = nextId();
+      const kind = fileKind(file.name);
 
       /* A file type nothing here can actually open. Saying so now is the
          whole point: a chip that claims a file is ready when its contents
          never reach the model is how a draft ends up invented. */
-      if (!isReadableFile(file.name)) {
+      if (kind === "unreadable") {
         setPendingAttachments((prev) => [
           ...prev,
           { id, name: file.name, sizeKB, status: "unreadable" },
@@ -689,6 +788,21 @@ export default function Chat() {
       }
 
       setPendingAttachments((prev) => [...prev, { id, name: file.name, sizeKB, status: "reading" }]);
+
+      if (kind === "image") {
+        shrinkImage(file)
+          .then((image) => {
+            setPendingAttachments((prev) =>
+              prev.map((a) => (a.id === id ? { ...a, status: "ready", image } : a))
+            );
+          })
+          .catch(() => {
+            setPendingAttachments((prev) =>
+              prev.map((a) => (a.id === id ? { ...a, status: "unreadable" } : a))
+            );
+          });
+        return;
+      }
 
       const reader = new FileReader();
 
@@ -712,6 +826,11 @@ export default function Chat() {
 
       reader.readAsText(file);
     });
+  }
+
+  function showUploadError(message) {
+    setUploadError(message);
+    setTimeout(() => setUploadError(""), 5500);
   }
 
   function removeAttachment(id) {
