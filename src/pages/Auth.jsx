@@ -19,9 +19,8 @@ import { LogoMark } from "../shared/icons.jsx";
 import { BRAND, FONTS } from "../shared/tokens";
 import { PageShell, ThemeToggle, PrimaryButton, GhostButton, Field, TextInput, Spinner } from "../shared/ui.jsx";
 import { PRODUCT, COMPANY, ASSISTANT_NAME } from "../shared/config.js";
-
-/* Stands in for the invited staff list until Supabase auth is wired up. */
-const KNOWN_ACCOUNTS = ["anthony@buildfest.com", "admin@buildfest.com"];
+import { supabase } from "../shared/supabase.js";
+import { loadMe } from "../shared/session.js";
 
 const OTP_LENGTH = 6;
 
@@ -48,7 +47,7 @@ export default function Auth() {
      account found state, which offers to request access instead.
      ------------------------------------------------------------------------ */
 
-  function handleLogin(e) {
+  async function handleLogin(e) {
     e.preventDefault();
     const value = email.trim().toLowerCase();
 
@@ -64,14 +63,41 @@ export default function Auth() {
     setError("");
     setBusy(true);
 
-    setTimeout(() => {
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: value,
+      password,
+    });
+
+    if (signInError) {
       setBusy(false);
-      if (KNOWN_ACCOUNTS.includes(value)) {
-        setMode("otp");
-      } else {
-        setMode("notfound");
+
+      /* A connection that never arrived is not a rejected sign in, and
+         telling someone their account does not exist because their train
+         went into a tunnel is a bad way to lose them. */
+      if (signInError.name === "AuthRetryableFetchError" || signInError.status === 0) {
+        setError("Could not reach the server. Check your connection and try again.");
+        return;
       }
-    }, 700);
+
+      /* A wrong password and an email nobody has registered land in the
+         same place on purpose. Telling them apart would turn this box
+         into a way of finding out who has an account here. Offering to
+         request access covers both without confirming either. */
+      setMode("notfound");
+      return;
+    }
+
+    /* Signed in. Where they land depends on which workspace they are on
+       and whether they run it, and only the database knows either. */
+    const me = await loadMe();
+    setBusy(false);
+
+    if (!me?.company?.slug) {
+      setError("Signed in, but your account is not on a workspace yet. Ask your admin.");
+      return;
+    }
+
+    navigate(me.staff?.access_level === "admin" ? `/${me.company.slug}/admin` : `/${me.company.slug}`);
   }
 
   /* ------------------------------------------------------------------------

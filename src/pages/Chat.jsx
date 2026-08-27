@@ -1101,7 +1101,7 @@ export default function Chat() {
           ==================================================================== */}
 
       <FloatingNav>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 min-w-0 flex-1">
           <button
             onClick={() => setSidebarOpen(true)}
             className="w-9 h-9 rounded-[10px] flex items-center justify-center border transition-colors hover:opacity-80"
@@ -1110,13 +1110,20 @@ export default function Chat() {
           >
             <Menu size={16} strokeWidth={2} style={{ color: "var(--text-2)" }} />
           </button>
-          <div className="flex items-center gap-2 ml-1.5">
-            <span className="font-bold text-[15px] tracking-tight" style={{ fontFamily: FONTS.display }}>
+          {/* min-w-0 and truncate together are what stop a long company name
+              wrapping the title onto two lines the moment a skill badge
+              appears beside it. Without min-w-0 a flex child refuses to
+              shrink below its content, so truncate never gets a chance. */}
+          <div className="flex items-center gap-2 ml-1.5 min-w-0">
+            <span
+              className="font-bold text-[15px] tracking-tight truncate"
+              style={{ fontFamily: FONTS.display }}
+            >
               {ASSISTANT_NAME}
             </span>
             {autoSkill && (
               <span
-                className="text-[11.5px] px-2 py-0.5 rounded-full"
+                className="text-[11.5px] px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap"
                 style={{
                   backgroundColor: "rgba(20,32,160,0.12)",
                   color: BRAND.accentSoft,
@@ -1131,7 +1138,7 @@ export default function Chat() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {/* Profile and usage */}
           <div className="relative" ref={profileRef}>
             <button
