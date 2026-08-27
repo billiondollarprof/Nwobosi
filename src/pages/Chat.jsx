@@ -1435,13 +1435,18 @@ export default function Chat() {
                           </span>
 
                           <span className="flex items-center gap-1.5 shrink-0">
-                            {tool.state === "connected" && <StatusPill tone="ok">Connected</StatusPill>}
+                            {/* Nothing here says Connected unless it is doing
+                                work. "Set up" means the account and keys
+                                exist and the wiring does not, which is a real
+                                and different thing from an example, and both
+                                are different from working. */}
+                            {tool.state === "registered" && <StatusPill tone="pending">Set up</StatusPill>}
                             {tool.state === "connectable" && (
                               <StatusPill tone={connectors[tool.id] ? "ok" : "neutral"}>
                                 {connectors[tool.id] ? "Connected" : "Connect"}
                               </StatusPill>
                             )}
-                            {tool.state === "sample" && <StatusPill tone="neutral">Sample</StatusPill>}
+                            {tool.state === "sample" && <StatusPill tone="neutral">Example</StatusPill>}
 
                             {/* Anything with more to say carries the info dot,
                                 including the connected one. Green on its own
