@@ -481,7 +481,21 @@ export default function Chat() {
       setGreetingText(buildGreetingText(who.staff?.name?.split(" ")[0]));
 
       const recent = await listConversations(who.user.id);
-      if (alive) setRecentChats(recent);
+      if (!alive) return;
+      setRecentChats(recent);
+
+      /* Land back in the conversation they were last in, rather than on a
+         blank page with their work one menu away. A refresh, a dead
+         battery or a second phone should all feel like picking the thread
+         back up, which is the whole reason conversations are saved. */
+      const latest = recent[0];
+      if (latest && !conversationIdRef.current) {
+        const row = await loadConversation(latest.id);
+        if (!alive || !row) return;
+        conversationIdRef.current = row.id;
+        setFlowStage(row.stage ?? "interview");
+        updateMessages((row.messages ?? []).map((m) => ({ id: nextId(), ...m })));
+      }
 
       if (who.company?.id) {
         const work = await listWork(who.company.id);

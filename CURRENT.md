@@ -93,8 +93,13 @@ under **ofilifire@gmail.com**.
   is on `main`**, which caught us out for a whole session once.
 - Edge functions are **not** deployed by git. They are pasted into the
   Supabase dashboard by hand. Sources live in `supabase/functions/`.
-- Deployed and current: `assistant`, `add-link`, `check-access-code`,
+- Deployed: `assistant-`, `add-link`, `invite-staff`, `check-access-code`,
   `create-workspace`.
+- **The assistant's slug is `assistant-`, with a trailing hyphen.** The
+  dashboard shows its Name as "assistant", and renaming does not change a
+  slug. Calling the wrong one is a 404 with no CORS headers, which a
+  browser reports as a send failure, so it looks like a network fault.
+  Slugs are named in `src/shared/config.js` under `FUNCTIONS`.
 - **`verify_jwt` is OFF on all of them, deliberately.** The toggle is
   "verify with legacy secret" and this project uses the new key system
   (`sb_publishable_...`), so ON can reject valid user tokens. Every

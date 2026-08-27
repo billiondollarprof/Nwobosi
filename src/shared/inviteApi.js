@@ -6,6 +6,7 @@
    ========================================================================== */
 
 import { supabase } from "./supabase.js";
+import { FUNCTIONS } from "./config.js";
 
 const FUNCTIONS_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
 
@@ -24,7 +25,7 @@ export async function inviteStaff({ name, email, role, ceiling, dailyLimit }) {
 
   let response;
   try {
-    response = await fetch(`${FUNCTIONS_BASE}/invite-staff`, {
+    response = await fetch(`${FUNCTIONS_BASE}/${FUNCTIONS.inviteStaff}`, {
       method: "POST",
       headers: {
         apikey: PUBLISHABLE_KEY,
