@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This file tells Claude how to work on this project. The product is StellaXafe, built for the BuildFest competition.
+This file tells Claude how to work on this project. The product is StellaXafe.
 
 ## How to talk to the user
 

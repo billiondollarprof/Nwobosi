@@ -4,6 +4,22 @@ Log of each work session. Newest at the top. Keep entries short.
 
 ---
 
+## Session 5: 2026-09-02
+
+**The StellaXafe site moved into this app**
+
+- The two repos were the same product living apart: the marketing site was a separate Python generated static site, this repo was the product. Everything the site had and this app did not is now here, as React pages. This repo is the one with everything.
+- Six public pages now share one nav and one footer: landing, `/services`, `/founder`, `/insights`, `/form-builder`, `/contact`. Services, Founder and Contact read as modals over the site, which is what the static site was going for, except arriving at one is instant now. That page reload was written up as a known limitation in the old repo, and moving into the router is what fixed it.
+- New shared pieces: `MarketingNav.jsx`, `MarketingFooter.jsx`, `ModalCard.jsx`, and `marketing.jsx` for the page shell, eyebrow, section head, gradient text and divider. Chat, admin, auth and setup use none of them and were not touched.
+- Landing kept its hero exactly as it was, one button, and gained what it was missing: the research reality check with sources cited straight, where we deploy, the four services, the products at `#products` (Amara, XALOM, Form Builder), and the insights teaser.
+- **Demo does not get its own page.** `/setup` is the real demo, so every link the old site pointed at `demo.html` now points at `/setup`.
+- **The contact form really sends.** New `send-contact` edge function emails `anthony@stellaxafe.com` through Resend, with the sender's address set as the reply to. It needs `RESEND_API_KEY` in the Supabase dashboard before anything leaves. Until then it fails closed with a plain message.
+- BuildFest is cleared everywhere: the docs, the landing footer line, the stale `anthony@buildfest.com` sign in note, and the project plan PDF, renamed `stellaxafe_project_plan.pdf` with both its metadata and its visible text rewritten. Same in the StellaXafe repo's plan notes.
+- Checked: build clean, all six pages captured desktop and mobile in both themes with no sideways scroll anywhere, and 14 click through checks passing, covering every nav link, the products anchor from another page, modal close and Escape, the hero CTA, footer links, the contact form's gate, and the mobile menu.
+- Not done: the live send, this sandbox cannot reach `supabase.co`. Fonts also could not load here, so the screenshots show fallback faces rather than Sora and DM Sans.
+
+---
+
 ## Session 3: 2026-08-25
 
 **Hero copy split, plus the shimmer**
@@ -70,7 +86,7 @@ Log of each work session. Newest at the top. Keep entries short.
 
 **Setup and docs**
 
-- Repo was empty. Added `buildfest_project_plan.pdf` and the chat prototype.
+- Repo was empty. Added `stellaxafe_project_plan.pdf` and the chat prototype.
 - Set up `CLAUDE.md`, `CURRENT.md`, and this file. Opened PR #1.
 - Read the full 8 page project plan and the whole chat prototype.
 - Named the product StellaXafe. Rewrote `README.md` around it.
@@ -182,8 +198,8 @@ Each of these was found by looking, not by being reported.
   assistant, and could not have.
 - **Sign in was a `setTimeout`** against two email addresses hardcoded in
   the source. A workspace lasted exactly as long as its browser tab.
-- **The chat greeted everyone as Anthony** and called itself BuildFest AI
-  whatever company the workspace was for.
+- **The chat greeted everyone as Anthony** and called itself by a fixed
+  name that had nothing to do with whatever company the workspace was for.
 - **The library shipped two invented files** marked as synced to a Drive
   nobody has connected.
 - **Canva said Connected** and claimed its designs were real and yours to

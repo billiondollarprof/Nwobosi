@@ -68,6 +68,12 @@ under **ofilifire@gmail.com**.
   person, so a brief someone is halfway through survives a closed tab or
   a different phone. The sidebar offers them under "Pick up where you left
   off" and resuming restores the stage as well as the messages.
+- **The public site.** Six pages sharing one nav and one footer: landing,
+  `/services`, `/founder`, `/insights`, `/form-builder`, `/contact`. Ported
+  from the separate StellaXafe repo in session 5, so this repo is now the
+  only one. Services, Founder and Contact are routes styled as modals, with
+  real URLs and instant navigation. Nothing here touches the product
+  screens. **Demo is not a page**, every demo link goes to `/setup`.
 - **RLS** is tight. Every table on, every policy scoped by
   `private.current_company_id()`, which reads `staff` by `auth.uid()`.
   `access_codes` has RLS on and zero policies, so only the service role
@@ -80,8 +86,12 @@ under **ofilifire@gmail.com**.
 - **Google Drive connects nothing.** Google has the client and secret,
   there is no `oauth-callback` function. Shown as **Set up**.
 - **Gmail, Slack, Notion** are examples. Shown as **Example**.
-- **Resend sends nothing.** No email leaves the product, branded or
-  otherwise.
+- **Resend still sends nothing, but it is one step away.** The contact form
+  and its `send-contact` function are built and deployed, and they email
+  `anthony@stellaxafe.com`. `RESEND_API_KEY` is **not set** in the Supabase
+  dashboard, so the function fails closed and no email leaves yet. Setting
+  that key is the whole remaining step. Nothing else in the product sends
+  mail, branded or otherwise.
 - **Email OTP does not exist.** The OTP screen is in `Auth.jsx` and is
   unreachable. Sign in is password only.
 - **There is no staff invite flow.** An admin cannot add a person. The
@@ -103,9 +113,15 @@ under **ofilifire@gmail.com**.
 - Frontend: Cloudflare, deploys from `main`. **The live site is whatever
   is on `main`**, which caught us out for a whole session once.
 - Edge functions are **not** deployed by git. They are pasted into the
-  Supabase dashboard by hand. Sources live in `supabase/functions/`.
+  Supabase dashboard by hand, or pushed straight to the project by a
+  session with Supabase access, which is how `send-contact` got there.
+  Sources live in `supabase/functions/`.
 - Deployed: `assistant-`, `add-link`, `invite-staff`, `check-access-code`,
-  `create-workspace`.
+  `create-workspace`, `send-contact`.
+- **Secrets are still by hand.** `send-contact` reads `RESEND_API_KEY`, and
+  optionally `CONTACT_TO` and `CONTACT_FROM` if the inbox or the sending
+  address ever changes. The from address has to be on a domain verified
+  with Resend. `stellaxafe.com` and `mail.stellaxafe.com` both are.
 - **The assistant's slug is `assistant-`, with a trailing hyphen.** The
   dashboard shows its Name as "assistant", and renaming does not change a
   slug. Calling the wrong one is a 404 with no CORS headers, which a

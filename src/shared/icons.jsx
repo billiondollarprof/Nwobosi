@@ -101,6 +101,28 @@ export function LogoLockup({ stacked = false, size = 26, textClass = "text-[16px
 }
 
 /* --------------------------------------------------------------------------
+   SECTION: Sister product marks
+   Amara and XALOM are their own products under the same umbrella, so they
+   keep their own marks rather than being restyled into this one's.
+
+   Amara's wordmark is set rather than pictured: a serif face, with the
+   second half in its gold. Drawn as type it stays sharp at any size and
+   flips theme with everything else, which a flattened screenshot of a
+   logo cannot do.
+   -------------------------------------------------------------------------- */
+
+export function AmaraWordmark({ size = "1.15rem" }) {
+  return (
+    <span
+      style={{ fontFamily: FONTS.serif, fontWeight: 600, fontSize: size, letterSpacing: "-0.01em" }}
+    >
+      <span style={{ color: "var(--text-1)" }}>Am</span>
+      <span style={{ color: "#D4A017" }}>ara</span>
+    </span>
+  );
+}
+
+/* --------------------------------------------------------------------------
    SECTION: Connector glyphs
    -------------------------------------------------------------------------- */
 

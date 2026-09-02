@@ -4,17 +4,23 @@
    a sign up product. A company arrives with an access code and builds their
    own workspace. Read top to bottom:
 
-     1. Nav
-     2. Hero
-     3. Works with
-     4. The problem
-     5. How it works
-     6. Security
-     7. Call to action
-     8. Footer
+      1. Nav
+      2. Hero
+      3. Works with
+      4. The problem
+      5. The reality check
+      6. How it works
+      7. Where we deploy
+      8. Services
+      9. Products
+     10. Security
+     11. Insights
+     12. Call to action
+     13. Footer
    ========================================================================== */
 
-import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   ArrowRight,
   ShieldCheck,
@@ -25,12 +31,25 @@ import {
   FileSignature,
   FileCheck2,
   Lock,
+  Hotel,
+  HeartPulse,
+  Landmark,
+  Church,
+  Building2,
+  Factory,
+  Terminal,
+  Users,
+  GraduationCap,
 } from "lucide-react";
 
-import { LogoMark } from "../shared/icons.jsx";
+import { AmaraWordmark } from "../shared/icons.jsx";
 import LogoAnimated from "../shared/LogoAnimated.jsx";
 import { BRAND, GRADIENTS, FONTS } from "../shared/tokens";
-import { PageShell, FloatingNav, ThemeToggle, PrimaryButton, StatusPill } from "../shared/ui.jsx";
+import { useTheme } from "../shared/theme.jsx";
+import { PageShell, GlassPanel, PrimaryButton, GhostButton, StatusPill } from "../shared/ui.jsx";
+import MarketingNav from "../shared/MarketingNav.jsx";
+import MarketingFooter from "../shared/MarketingFooter.jsx";
+import { SectionHead, GradientText, Eyebrow, Divider } from "../shared/marketing.jsx";
 import { PRODUCT, WORKFLOW_TOOLS } from "../shared/config.js";
 
 /* --------------------------------------------------------------------------
@@ -79,6 +98,87 @@ const STEPS = [
     icon: FileCheck2,
     title: "It builds",
     body: "The file is generated and written straight to your Drive, with a download link in the chat.",
+  },
+];
+
+/* Published research, cited rather than rewritten into house numbers. A
+   figure with somebody else's name on it is worth more here than a
+   rounder one with ours. */
+const RESEARCH = [
+  {
+    figure: "69%",
+    title: "Suspected shadow AI use",
+    body: "Of organizations suspect or have evidence that employees are using prohibited public AI tools at work.",
+    source: "Gartner survey of cybersecurity leaders, 2025",
+  },
+  {
+    figure: "57%",
+    title: "Leaked secrets concern",
+    body: "Of respondents are concerned about leaked secrets appearing inside AI generated code.",
+    source: "Gartner, 2023",
+  },
+  {
+    figure: "40%",
+    title: "Projected shadow AI incidents",
+    body: "Of enterprises are predicted to face a security or compliance incident tied to unauthorized shadow AI by 2030.",
+    source: "Gartner",
+  },
+];
+
+const INDUSTRIES = [
+  {
+    icon: Hotel,
+    title: "Hospitality",
+    body: "Guest messaging, booking follow up, and concierge automation.",
+  },
+  {
+    icon: HeartPulse,
+    title: "Healthcare",
+    body: "Clinics, hospitals, and patient intake with appointment reminders.",
+  },
+  {
+    icon: Landmark,
+    title: "Financial services",
+    body: "Client communication and reporting with a strict data perimeter.",
+  },
+  {
+    icon: Church,
+    title: "Faith based organizations",
+    body: "Visitor follow up, event registration, and congregation care.",
+  },
+  {
+    icon: Building2,
+    title: "Enterprise and corporate",
+    body: "Internal tooling and workflow automation across departments.",
+  },
+  {
+    icon: Factory,
+    title: "Engineering and manufacturing",
+    body: "Technical documentation and workflow automation on private infrastructure.",
+  },
+];
+
+/* The short version. The full architecture is its own page. */
+const SERVICES = [
+  {
+    icon: Terminal,
+    title: "Custom internal prompt engines",
+    body: "Pre loaded with your brand voice and schemas.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Zero data retention environments",
+    body: "Private APIs that never train a public model.",
+  },
+  {
+    icon: Users,
+    title: "Human in the loop workflows",
+    body: "Approval checkpoints on critical actions.",
+  },
+  {
+    icon: GraduationCap,
+    title: "Executive and staff AI training",
+    body: "Turning nontechnical teams into power users.",
   },
 ];
 
@@ -155,26 +255,29 @@ function HeroCloud() {
 
 export default function Landing() {
   const navigate = useNavigate();
+  const { hash } = useLocation();
+  const { effectiveTheme } = useTheme();
+
+  /* This page owns the one anchor on the site, #products, which the nav
+     and the footer both point at from other pages. Arriving with it in
+     the URL means "put me at that section", so it is honoured here rather
+     than by the router, which sends every other arrival to the top. */
+  useEffect(() => {
+    if (!hash) return;
+    document.getElementById(hash.slice(1))?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [hash]);
 
   return (
     <PageShell scroll>
       {/* ====================================================================
           1. NAV
-          No sign in. The only way in is an access code. Same floating glass
-          pill as Chat and Admin, so the brand feels like one system from
-          the first screen. Dark glass in dark mode, white glass in light,
-          the surface colour comes from --nav-surface and flips on its own.
+          No sign in. The only way in is an access code, so the nav sells
+          rather than signs anybody in. Shared with the other public pages,
+          which is what keeps the whole public surface feeling like one
+          site rather than six.
           ==================================================================== */}
 
-      <FloatingNav maxWidth="max-w-3xl" sticky>
-        <div className="flex items-center gap-2.5">
-          <LogoMark size={26} />
-          <span className="font-bold text-[16px] tracking-tight" style={{ fontFamily: FONTS.display }}>
-            {PRODUCT.name}
-          </span>
-        </div>
-        <ThemeToggle />
-      </FloatingNav>
+      <MarketingNav />
 
       {/* ====================================================================
           2. HERO
@@ -325,7 +428,62 @@ export default function Landing() {
       </section>
 
       {/* ====================================================================
-          5. HOW IT WORKS
+          5. THE REALITY CHECK
+          The evidence for the section above it, in somebody else's numbers.
+          A buyer who is not sure this is a real problem yet is not going to
+          take our word for it, and should not have to.
+          ==================================================================== */}
+
+      <section className="relative z-10 px-5 sm:px-8 pb-20 sm:pb-28">
+        <div className="max-w-5xl mx-auto">
+          <SectionHead
+            eyebrow="The enterprise AI reality check"
+            title="Unmanaged AI adoption is already a live risk"
+            sub="Independent research on generative AI in the enterprise, cited directly rather than paraphrased into house statistics."
+            center
+          />
+
+          <div className="grid gap-4 sm:grid-cols-3">
+            {RESEARCH.map((item) => (
+              <GlassPanel key={item.figure} className="p-7">
+                <div
+                  className="text-[40px] font-bold leading-none"
+                  style={{ fontFamily: FONTS.display, color: BRAND.accentSoft }}
+                >
+                  {item.figure}
+                </div>
+                <h3
+                  className="text-[16px] font-bold mt-3.5 mb-2"
+                  style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
+                >
+                  {item.title}
+                </h3>
+                <p className="text-[14px] leading-relaxed" style={{ color: "var(--text-3)" }}>
+                  {item.body}
+                </p>
+                <p className="text-[11.5px] mt-4" style={{ color: "var(--text-3)", opacity: 0.8 }}>
+                  Source: {item.source}
+                </p>
+              </GlassPanel>
+            ))}
+          </div>
+
+          <GlassPanel
+            className="mt-4 p-7 border-l-[3px]"
+            style={{ borderLeftColor: BRAND.purple }}
+          >
+            <p className="text-[14.5px] leading-relaxed" style={{ color: "var(--text-2)" }}>
+              <strong style={{ color: "var(--text-1)" }}>Case in point.</strong> In 2023, Samsung
+              banned internal AI tool use after employees shared proprietary source code with a
+              public chatbot. It is a policy response many enterprises are still repeating rather
+              than solving with private infrastructure.
+            </p>
+          </GlassPanel>
+        </div>
+      </section>
+
+      {/* ====================================================================
+          6. HOW IT WORKS
           ==================================================================== */}
 
       <section className="relative z-10 px-5 sm:px-8 pb-20 sm:pb-28">
@@ -374,10 +532,229 @@ export default function Landing() {
       </section>
 
       {/* ====================================================================
-          6. SECURITY
+          7. WHERE WE DEPLOY
+          The same private core, configured for how each industry runs.
           ==================================================================== */}
 
       <section className="relative z-10 px-5 sm:px-8 pb-20 sm:pb-28">
+        <div className="max-w-5xl mx-auto">
+          <SectionHead
+            eyebrow="Where we deploy"
+            title="Built for industries that cannot afford a leak"
+            sub="The same private core, configured for how each industry actually operates."
+            center
+          />
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {INDUSTRIES.map((industry) => (
+              <GlassPanel key={industry.title} className="p-6">
+                <div
+                  className="w-11 h-11 rounded-[12px] flex items-center justify-center mb-4"
+                  style={{ backgroundColor: `${BRAND.purple}1F` }}
+                >
+                  <industry.icon size={19} style={{ color: BRAND.accentSoft }} />
+                </div>
+                <h3
+                  className="text-[16px] font-bold mb-2"
+                  style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
+                >
+                  {industry.title}
+                </h3>
+                <p className="text-[13.5px] leading-relaxed" style={{ color: "var(--text-3)" }}>
+                  {industry.body}
+                </p>
+              </GlassPanel>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <Divider />
+
+      {/* ====================================================================
+          8. SERVICES
+          The four pillars in one line each. The full architecture is its
+          own page, so this section stays a summary and links on.
+          ==================================================================== */}
+
+      <section className="relative z-10 px-5 sm:px-8 py-20 sm:py-28">
+        <div className="max-w-5xl mx-auto">
+          <SectionHead
+            eyebrow="Core services"
+            title="Four pillars of a secure AI deployment"
+            sub="From private prompt infrastructure to the people who approve what it does, every layer built to keep proprietary data inside your walls."
+            center
+          />
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {SERVICES.map((service) => (
+              <GlassPanel key={service.title} className="p-6">
+                <div
+                  className="w-11 h-11 rounded-[12px] flex items-center justify-center mb-4"
+                  style={{ backgroundColor: "rgba(20,32,160,0.12)" }}
+                >
+                  <service.icon size={19} style={{ color: BRAND.accentSoft }} />
+                </div>
+                <h3
+                  className="text-[15.5px] font-bold mb-2"
+                  style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
+                >
+                  {service.title}
+                </h3>
+                <p className="text-[13.5px] leading-relaxed" style={{ color: "var(--text-3)" }}>
+                  {service.body}
+                </p>
+              </GlassPanel>
+            ))}
+          </div>
+
+          <div className="mt-8 text-center">
+            <GhostButton
+              onClick={() => navigate("/services")}
+              className="inline-flex items-center gap-2 px-5 py-3 text-[14px]"
+            >
+              See the full service architecture
+              <ArrowRight size={15} />
+            </GhostButton>
+          </div>
+        </div>
+      </section>
+
+      <Divider />
+
+      {/* ====================================================================
+          9. PRODUCTS
+          The anchor the nav and the footer point at. Three things built and
+          maintained end to end, not three things advised on.
+          ==================================================================== */}
+
+      <section id="products" className="relative z-10 px-5 sm:px-8 py-20 sm:py-28 scroll-mt-24">
+        <div className="max-w-5xl mx-auto">
+          <SectionHead
+            eyebrow="In house products"
+            title="We do not just advise. We build."
+            sub="Three products engineered and maintained end to end, offered under the StellaXafe umbrella."
+            center
+          />
+
+          <div className="grid gap-4 lg:grid-cols-3">
+            {/* Amara */}
+            <GlassPanel className="p-0 overflow-hidden" style={{ borderTop: `3px solid ${BRAND.purple}` }}>
+              <div className="p-7 pb-0">
+                <div className="flex items-center justify-between gap-3">
+                  <AmaraWordmark size="1.5rem" />
+                  <StatusPill tone="ok">Deployed</StatusPill>
+                </div>
+                <p className="text-[14px] leading-relaxed mt-4" style={{ color: "var(--text-3)" }}>
+                  Multi tenant guest intelligence and automated CRM platform for hospitality. Guest
+                  messaging, booking follow up, and engagement analytics in one system.
+                </p>
+              </div>
+              <div
+                className="m-7 mt-5 rounded-[12px] border px-4 py-3.5"
+                style={{ backgroundColor: "var(--surface-2)", borderColor: "var(--border)" }}
+              >
+                <div className="text-[10.5px] uppercase tracking-wide" style={{ color: "var(--text-3)" }}>
+                  Live at
+                </div>
+                <a
+                  href="https://amara.ng"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[13.5px] transition-opacity hover:opacity-70"
+                  style={{ color: "var(--text-2)" }}
+                >
+                  amara.ng
+                </a>
+              </div>
+            </GlassPanel>
+
+            {/* XALOM */}
+            <GlassPanel
+              className="p-0 overflow-hidden"
+              style={{ borderTop: `3px solid ${BRAND.accentSoft}` }}
+            >
+              <div className="p-7 pb-0">
+                <div className="flex items-center justify-between gap-3">
+                  <span
+                    className="font-bold text-[17px] tracking-tight"
+                    style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
+                  >
+                    XALOM
+                  </span>
+                  <StatusPill tone="accent">Identity protocol</StatusPill>
+                </div>
+                <p className="text-[14px] leading-relaxed mt-4" style={{ color: "var(--text-3)" }}>
+                  Digital trust, reputation, and identity infrastructure. Verifiable digital identity
+                  built for secure fintech and digital ecosystems.
+                </p>
+              </div>
+              <div
+                className="m-7 mt-5 rounded-[12px] border px-4 py-3.5 flex items-center gap-3"
+                style={{ backgroundColor: "var(--surface-2)", borderColor: "var(--border)" }}
+              >
+                {/* Two files, one per background. Picking here rather than
+                    hiding one with CSS means only the one being shown is
+                    ever fetched. */}
+                <img
+                  src={effectiveTheme === "dark" ? "/xalom-dark.webp" : "/xalom-light.webp"}
+                  alt=""
+                  className="w-8 h-auto shrink-0"
+                />
+                <div>
+                  <div
+                    className="text-[10.5px] uppercase tracking-wide"
+                    style={{ color: "var(--text-3)" }}
+                  >
+                    Status
+                  </div>
+                  <div className="text-[13.5px]" style={{ color: "var(--text-2)" }}>
+                    In development
+                  </div>
+                </div>
+              </div>
+            </GlassPanel>
+
+            {/* Form Builder and Automation */}
+            <GlassPanel className="p-0 overflow-hidden" style={{ borderTop: `3px solid ${BRAND.green}` }}>
+              <div className="p-7 pb-0">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <span
+                    className="font-bold text-[16px] tracking-tight"
+                    style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
+                  >
+                    Form Builder &amp; Automation
+                  </span>
+                  <StatusPill tone="ok">Managed setup</StatusPill>
+                </div>
+                <p className="text-[14px] leading-relaxed mt-4" style={{ color: "var(--text-3)" }}>
+                  Custom intake forms, appointment scheduling, and automated WhatsApp reminders for
+                  churches, hospitals, and businesses of any size, with full guest and client CSV
+                  export.
+                </p>
+              </div>
+              <div className="m-7 mt-5">
+                <button
+                  onClick={() => navigate("/form-builder")}
+                  className="inline-flex items-center gap-2 text-[14px] font-semibold transition-all hover:gap-3"
+                  style={{ color: BRAND.accentSoft }}
+                >
+                  Explore the product
+                  <ArrowRight size={15} />
+                </button>
+              </div>
+            </GlassPanel>
+          </div>
+        </div>
+      </section>
+
+      <Divider />
+
+      {/* ====================================================================
+          10. SECURITY
+          ==================================================================== */}
+
+      <section className="relative z-10 px-5 sm:px-8 py-20 sm:py-28">
         <div className="max-w-3xl mx-auto">
           <div
             className="rounded-[20px] border p-8 sm:p-10 backdrop-blur-xl text-center"
@@ -422,7 +799,41 @@ export default function Landing() {
       </section>
 
       {/* ====================================================================
-          7. CALL TO ACTION
+          11. INSIGHTS
+          The research, kept to a teaser. It earns a mention here because it
+          says what kind of company this is, and its own page for anyone
+          that answer interests.
+          ==================================================================== */}
+
+      <section className="relative z-10 px-5 sm:px-8 pb-20 sm:pb-28">
+        <div className="max-w-2xl mx-auto text-center">
+          <div className="flex justify-center">
+            <Eyebrow>Insights</Eyebrow>
+          </div>
+          <h2
+            className="text-[26px] sm:text-[32px] font-bold tracking-tight mt-4"
+            style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
+          >
+            Pioneering next gen <GradientText>AI governance architecture</GradientText>
+          </h2>
+          <p className="text-[15px] leading-relaxed mt-5" style={{ color: "var(--text-2)" }}>
+            We are conceptualizing a dynamic, evolving AI governance framework designed to detect
+            unauthorized proxy actions in autonomous agent code. Plus ongoing notes from the team.
+          </p>
+          <div className="flex justify-center mt-5">
+            <StatusPill tone="accent">Actively seeking research partners and funding</StatusPill>
+          </div>
+          <PrimaryButton
+            onClick={() => navigate("/insights")}
+            className="px-7 py-3.5 text-[15px] mx-auto mt-7"
+          >
+            Read insights
+          </PrimaryButton>
+        </div>
+      </section>
+
+      {/* ====================================================================
+          12. CALL TO ACTION
           ==================================================================== */}
 
       <section className="relative z-10 px-5 sm:px-8 pb-24">
@@ -448,22 +859,10 @@ export default function Landing() {
       </section>
 
       {/* ====================================================================
-          8. FOOTER
+          13. FOOTER
           ==================================================================== */}
 
-      <footer className="relative z-10 border-t mt-auto" style={{ borderColor: "var(--border)" }}>
-        <div className="max-w-5xl mx-auto px-5 sm:px-8 py-7 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <LogoMark size={20} />
-            <span className="text-[13.5px] font-semibold" style={{ color: "var(--text-2)" }}>
-              {PRODUCT.name}
-            </span>
-          </div>
-          <p className="text-[12.5px]" style={{ color: "var(--text-3)" }}>
-            Built for the 10Alytics Business AI BuildFest
-          </p>
-        </div>
-      </footer>
+      <MarketingFooter />
     </PageShell>
   );
 }

@@ -2,8 +2,6 @@
 
 A private AI gateway for enterprises. Staff describe what they need in plain language. StellaXafe runs a short interview, reads only the company's approved knowledge, writes a full prompt, and returns a finished, on brand file.
 
-Built for the 10Alytics Business AI BuildFest.
-
 > **Proprietary.** Copyright (c) 2026 Okechukwu Nwobosi. All rights reserved.
 > This repository is shared for review only. See [LICENSE](LICENSE). Reading it
 > grants no right to copy, reuse, or redistribute any part of it.
@@ -214,7 +212,7 @@ src/
 
 | File | What it is |
 | --- | --- |
-| `buildfest_project_plan.pdf` | The full system plan. First written 2026-08-22, updated since |
+| `stellaxafe_project_plan.pdf` | The full system plan. First written 2026-08-22, updated since |
 | `CLAUDE.md` | Working rules for this project |
 | `CURRENT.md` | Full state of work in progress |
 | `SESSIONS.md` | Log of past work sessions |
@@ -227,7 +225,7 @@ npm run dev      # http://localhost:5173
 npm run build    # production build into dist/
 ```
 
-Sign in with `anthony@buildfest.com` and any password to see the invited path. Use any other email to see the request access flow. Any six digits pass the OTP step.
+There is no public sign up. A company starts at `/setup` with an access code, which creates their workspace and their admin account. Staff reach the app by invitation from that admin, or by raising an access request the admin approves.
 
 ## Status
 

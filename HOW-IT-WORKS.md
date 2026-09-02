@@ -5,8 +5,6 @@ plain language. The assistant interviews them briefly, reads only that
 company's approved material, confirms what it understood, and produces a
 finished document.
 
-Built for the 10Alytics Business AI BuildFest.
-
 ---
 
 ## The problem
