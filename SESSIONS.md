@@ -17,6 +17,7 @@ Log of each work session. Newest at the top. Keep entries short.
 - BuildFest is cleared everywhere: the docs, the landing footer line, the stale `anthony@buildfest.com` sign in note, and the project plan PDF, renamed `stellaxafe_project_plan.pdf` with both its metadata and its visible text rewritten. Same in the StellaXafe repo's plan notes.
 - Checked: build clean, all six pages captured desktop and mobile in both themes with no sideways scroll anywhere, and 14 click through checks passing, covering every nav link, the products anchor from another page, modal close and Escape, the hero CTA, footer links, the contact form's gate, and the mobile menu.
 - Not done: the live send, this sandbox cannot reach `supabase.co`. Fonts also could not load here, so the screenshots show fallback faces rather than Sora and DM Sans.
+- After review: the README's source tree and Status section were both stale, describing four pages and a front end with seeded data, which stopped being true several sessions ago. Both now say what is actually there, and Status points at `CURRENT.md` as the one to trust. The word "hackathon" was cleared from the StellaXafe repo's plan notes and their filenames, same as BuildFest.
 
 ---
 
