@@ -1,43 +1,24 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <!--
-    Square, purpose built favicon. The hero mark is wide (200x130), which
-    wastes pixels when forced into a square tab icon, so this is its own
-    tighter composition at the same proportions: stroke to radius ratio,
-    and centre gap to radius ratio, both match the hero mark.
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="StellaXafe">
+  <!-- The Containment Seal, frozen for a tab. Full spec in MARK.md.
 
-    Frozen gradient, not travelling. A favicon is looked at for a fraction
-    of a second, it does not need to move. The interlock itself, one ring
-    passing through the other, is what carries the identity down to 16px.
-  -->
+       This file cannot read the app's theme variables, and a tab strip is
+       light in some browsers and dark in others, so the colours here are
+       picked to hold on either. The inner gradient stops at purple rather
+       than running to near white, which is right inside the app on a dark
+       ground and invisible on a white tab strip. -->
   <defs>
-    <linearGradient id="gLeft" x1="9" y1="50" x2="59" y2="50" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#1420A0" />
-      <stop offset="50%" stop-color="#7C3AED" />
-      <stop offset="100%" stop-color="#1420A0" />
+    <linearGradient id="seal-inner" x1="18" y1="82" x2="82" y2="18" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#2030C8"/>
+      <stop offset="100%" stop-color="#7C3AED"/>
     </linearGradient>
-    <linearGradient id="gRight" x1="41" y1="50" x2="91" y2="50" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#1420A0" />
-      <stop offset="50%" stop-color="#7C3AED" />
-      <stop offset="100%" stop-color="#1420A0" />
-    </linearGradient>
-    <!-- The hole in the right ring is a short arc of the left ring's own
-         stroke, same centre and radius, not a round hole clipped to size.
-         A plain circle cutting a curved stroke can leave an uneven sliver
-         depending on how a renderer handles a clipPath inside a mask. An
-         arc drawn on the exact ring it is hiding cannot mismatch it. -->
-    <mask id="notch">
-      <rect x="0" y="0" width="100" height="100" fill="white" />
-      <path
-        d="M 37.6 25.261 A 25 25 0 0 1 57.681 41.987"
-        stroke="black"
-        stroke-width="10"
-        stroke-linecap="round"
-        fill="none"
-      />
-    </mask>
   </defs>
-  <circle cx="34" cy="50" r="25" fill="none" stroke="url(#gLeft)" stroke-width="8.5" />
-  <g mask="url(#notch)">
-    <circle cx="66" cy="50" r="25" fill="none" stroke="url(#gRight)" stroke-width="8.5" />
-  </g>
+
+  <!-- The company boundary -->
+  <circle cx="50" cy="50" r="44" fill="none" stroke="#7C819B" stroke-width="3"/>
+
+  <!-- The model gateway -->
+  <circle cx="50" cy="50" r="30" fill="none" stroke="url(#seal-inner)" stroke-width="7"/>
+
+  <!-- The data, held at one o'clock in the channel -->
+  <circle cx="76.2" cy="23.8" r="6" fill="#F5A820"/>
 </svg>

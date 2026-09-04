@@ -7,8 +7,8 @@
       1. Nav
       2. Hero
       3. Works with
-      4. The problem
-      5. The reality check
+      4. The read back
+      5. The problem, and the research behind it
       6. How it works
       7. Where we deploy
       8. Services
@@ -43,7 +43,8 @@ import {
 } from "lucide-react";
 
 import { AmaraWordmark } from "../shared/icons.jsx";
-import LogoAnimated from "../shared/LogoAnimated.jsx";
+import ContainmentSeal from "../shared/ContainmentSeal.jsx";
+import Reveal from "../shared/Reveal.jsx";
 import { BRAND, GRADIENTS, FONTS } from "../shared/tokens";
 import { useTheme } from "../shared/theme.jsx";
 import { PageShell, GlassPanel, PrimaryButton, GhostButton, StatusPill } from "../shared/ui.jsx";
@@ -289,21 +290,36 @@ export default function Landing() {
         <div className="relative max-w-3xl mx-auto text-center pt-10 pb-24 sm:pt-16 sm:pb-32">
           <HeroCloud />
 
+          {/* One moving object and one sentence. Everything that used to
+              sit above the mark has gone: a badge over the top of it is
+              one more thing competing with the only thing worth looking
+              at. The mark carries the idea on its own. */}
           <div className="flex justify-center mb-12 sm:mb-16">
-            <StatusPill tone="accent">Private AI, by invitation</StatusPill>
+            <ContainmentSeal size={280} className="max-w-[62vw] h-auto" />
           </div>
 
-          <div className="flex justify-center mb-12 sm:mb-16">
-            <LogoAnimated size={280} />
-          </div>
+          {/* Weight 500, not 700. At this size bold is shouting, and the
+              restraint is most of what separates a page that looks
+              expensive from one that looks loud.
 
+              Both sentences are too long to hold one line at this size, so
+              balance decides where they break. Without it the first one
+              breaks late and drops "now." onto a line of its own, which is
+              the one thing a headline must never do. */}
           <h1
-            className="text-[34px] sm:text-[52px] font-bold leading-[1.1] tracking-tight mb-7"
-            style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
+            className="text-[34px] sm:text-[54px] font-medium leading-[1.08] tracking-[-0.03em] mb-7 max-w-4xl mx-auto"
+            style={{ fontFamily: FONTS.display, color: "var(--text-1)", textWrap: "balance" }}
           >
-            Your staff are using AI right now.
-            <br />
-            <span style={HEADLINE_ACCENT}>You don't know what they've told it.</span>
+            {/* Each sentence is its own block rather than two lines split
+                by a <br>, so balance applies to each one on its own. With
+                a single balanced block the second sentence kept dropping
+                "it." onto a line by itself. This holds whatever the font
+                measures, which matters because the display face is loaded
+                from the network and the fallback is a different width. */}
+            <span className="block">Your staff are using AI right now.</span>
+            <span className="block" style={HEADLINE_ACCENT}>
+              You don't know what they've told it.
+            </span>
           </h1>
 
           {/* Two lengths, not one squeezed down. Mobile gets the promise,
@@ -384,13 +400,89 @@ export default function Landing() {
       </section>
 
       {/* ====================================================================
-          4. THE PROBLEM
+          4. THE READ BACK
+          The one thing worth showing rather than describing, and the
+          reason the product can be trusted with somebody's afternoon. The
+          panel on the right is the real component from the chat screen,
+          same rows, same words, not a drawing of one.
           ==================================================================== */}
 
       <section className="relative z-10 px-5 sm:px-8 pb-20 sm:pb-28">
-        <div className="max-w-5xl mx-auto">
+        <Reveal className="max-w-5xl mx-auto grid gap-10 lg:grid-cols-2 lg:gap-16 items-center">
+          <Reveal>
+            <Eyebrow>Before it spends your time</Eyebrow>
+            <h2
+              className="text-[28px] sm:text-[38px] font-medium leading-[1.12] tracking-[-0.025em] mt-4"
+              style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
+            >
+              It tells you what it understood, <GradientText>before it builds anything</GradientText>
+            </h2>
+            <p className="text-[16px] leading-relaxed mt-5" style={{ color: "var(--text-2)" }}>
+              Every brief comes back to you first: what it is making, who it is for, which of your
+              own sources it will use, and what it is assuming. You confirm, or you say what is
+              wrong and it goes round again.
+            </p>
+            <p className="text-[16px] leading-relaxed mt-4" style={{ color: "var(--text-2)" }}>
+              The back and forth happens here, in cheap conversation, instead of after somebody has
+              read a finished document that was never going to be right.
+            </p>
+          </Reveal>
+
+          <Reveal delay={90}>
+            <GlassPanel className="p-5 sm:p-6">
+              <p className="text-[15.5px] mb-4" style={{ color: "var(--text-1)" }}>
+                Here is what I have got. Let me know if anything needs to change.
+              </p>
+              <div className="mb-5">
+                {[
+                  ["Project", "Renewal one pager for Meridian Health"],
+                  ["Template", "Client One Pager"],
+                  ["Audience", "Their operations director"],
+                  ["Source", "Brand Guide, Q2 Renewals Summary"],
+                ].map(([label, value]) => (
+                  <div
+                    key={label}
+                    className="flex gap-4 py-2 border-b"
+                    style={{ borderColor: "var(--border)" }}
+                  >
+                    <span
+                      className="w-20 shrink-0 text-[11px] font-semibold uppercase tracking-wide pt-0.5"
+                      style={{ color: "var(--text-3)" }}
+                    >
+                      {label}
+                    </span>
+                    <span className="text-[14.5px]" style={{ color: "var(--text-1)" }}>
+                      {value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              {/* Presentational. The real one spends money, and a button on
+                  a landing page that looks like it does and does not is
+                  worse than no button. */}
+              <div
+                aria-hidden="true"
+                className="px-5 py-2.5 rounded-[12px] text-[14px] font-semibold text-white w-fit"
+                style={{ background: GRADIENTS.action }}
+              >
+                Generate
+              </div>
+            </GlassPanel>
+            <p className="text-[12.5px] mt-3" style={{ color: "var(--text-3)" }}>
+              An example brief. The screen itself is the one your staff use.
+            </p>
+          </Reveal>
+        </Reveal>
+      </section>
+
+      {/* ====================================================================
+          5. THE PROBLEM
+          ==================================================================== */}
+
+      <section className="relative z-10 px-5 sm:px-8 pb-10">
+        <Reveal className="max-w-5xl mx-auto">
           <h2
-            className="text-[26px] sm:text-[32px] font-bold text-center mb-3 tracking-tight"
+            className="text-[28px] sm:text-[38px] font-medium text-center mb-3 tracking-[-0.025em]"
             style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
           >
             Three problems, solved at once
@@ -424,24 +516,24 @@ export default function Landing() {
               </div>
             ))}
           </div>
-        </div>
+        </Reveal>
       </section>
 
-      {/* ====================================================================
-          5. THE REALITY CHECK
-          The evidence for the section above it, in somebody else's numbers.
-          A buyer who is not sure this is a real problem yet is not going to
-          take our word for it, and should not have to.
-          ==================================================================== */}
+      {/* --------------------------------------------------------------------
+          The evidence, attached to the claim above rather than given its own
+          heading. A buyer who is not yet sure this is a real problem will
+          not take our word for it, and should not have to.
+          -------------------------------------------------------------------- */}
 
       <section className="relative z-10 px-5 sm:px-8 pb-20 sm:pb-28">
-        <div className="max-w-5xl mx-auto">
-          <SectionHead
-            eyebrow="The enterprise AI reality check"
-            title="Unmanaged AI adoption is already a live risk"
-            sub="Independent research on generative AI in the enterprise, cited directly rather than paraphrased into house statistics."
-            center
-          />
+        <Reveal className="max-w-5xl mx-auto">
+          <p
+            className="text-[14px] text-center mb-8 max-w-xl mx-auto"
+            style={{ color: "var(--text-3)" }}
+          >
+            Independent research on AI in the enterprise, cited directly rather than paraphrased
+            into house statistics.
+          </p>
 
           <div className="grid gap-4 sm:grid-cols-3">
             {RESEARCH.map((item) => (
@@ -479,7 +571,7 @@ export default function Landing() {
               than solving with private infrastructure.
             </p>
           </GlassPanel>
-        </div>
+        </Reveal>
       </section>
 
       {/* ====================================================================
@@ -487,9 +579,9 @@ export default function Landing() {
           ==================================================================== */}
 
       <section className="relative z-10 px-5 sm:px-8 pb-20 sm:pb-28">
-        <div className="max-w-4xl mx-auto">
+        <Reveal className="max-w-4xl mx-auto">
           <h2
-            className="text-[26px] sm:text-[32px] font-bold text-center mb-3 tracking-tight"
+            className="text-[28px] sm:text-[38px] font-medium text-center mb-3 tracking-[-0.025em]"
             style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
           >
             How it works
@@ -528,7 +620,7 @@ export default function Landing() {
               </div>
             ))}
           </div>
-        </div>
+        </Reveal>
       </section>
 
       {/* ====================================================================
@@ -537,7 +629,7 @@ export default function Landing() {
           ==================================================================== */}
 
       <section className="relative z-10 px-5 sm:px-8 pb-20 sm:pb-28">
-        <div className="max-w-5xl mx-auto">
+        <Reveal className="max-w-5xl mx-auto">
           <SectionHead
             eyebrow="Where we deploy"
             title="Built for industries that cannot afford a leak"
@@ -566,7 +658,7 @@ export default function Landing() {
               </GlassPanel>
             ))}
           </div>
-        </div>
+        </Reveal>
       </section>
 
       <Divider />
@@ -578,7 +670,7 @@ export default function Landing() {
           ==================================================================== */}
 
       <section className="relative z-10 px-5 sm:px-8 py-20 sm:py-28">
-        <div className="max-w-5xl mx-auto">
+        <Reveal className="max-w-5xl mx-auto">
           <SectionHead
             eyebrow="Core services"
             title="Four pillars of a secure AI deployment"
@@ -617,7 +709,7 @@ export default function Landing() {
               <ArrowRight size={15} />
             </GhostButton>
           </div>
-        </div>
+        </Reveal>
       </section>
 
       <Divider />
@@ -629,7 +721,7 @@ export default function Landing() {
           ==================================================================== */}
 
       <section id="products" className="relative z-10 px-5 sm:px-8 py-20 sm:py-28 scroll-mt-24">
-        <div className="max-w-5xl mx-auto">
+        <Reveal className="max-w-5xl mx-auto">
           <SectionHead
             eyebrow="In house products"
             title="We do not just advise. We build."
@@ -745,7 +837,7 @@ export default function Landing() {
               </div>
             </GlassPanel>
           </div>
-        </div>
+        </Reveal>
       </section>
 
       <Divider />
@@ -755,7 +847,7 @@ export default function Landing() {
           ==================================================================== */}
 
       <section className="relative z-10 px-5 sm:px-8 py-20 sm:py-28">
-        <div className="max-w-3xl mx-auto">
+        <Reveal className="max-w-3xl mx-auto">
           <div
             className="rounded-[20px] border p-8 sm:p-10 backdrop-blur-xl text-center"
             style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
@@ -770,7 +862,7 @@ export default function Landing() {
             </div>
 
             <h2
-              className="text-[22px] sm:text-[26px] font-bold mb-3 tracking-tight"
+              className="text-[24px] sm:text-[30px] font-medium mb-3 tracking-[-0.025em]"
               style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
             >
               It only knows what you tell it
@@ -795,7 +887,7 @@ export default function Landing() {
               ))}
             </div>
           </div>
-        </div>
+        </Reveal>
       </section>
 
       {/* ====================================================================
@@ -806,12 +898,12 @@ export default function Landing() {
           ==================================================================== */}
 
       <section className="relative z-10 px-5 sm:px-8 pb-20 sm:pb-28">
-        <div className="max-w-2xl mx-auto text-center">
+        <Reveal className="max-w-2xl mx-auto text-center">
           <div className="flex justify-center">
             <Eyebrow>Insights</Eyebrow>
           </div>
           <h2
-            className="text-[26px] sm:text-[32px] font-bold tracking-tight mt-4"
+            className="text-[28px] sm:text-[38px] font-medium tracking-[-0.025em] mt-4"
             style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
           >
             Pioneering next gen <GradientText>AI governance architecture</GradientText>
@@ -829,7 +921,7 @@ export default function Landing() {
           >
             Read insights
           </PrimaryButton>
-        </div>
+        </Reveal>
       </section>
 
       {/* ====================================================================
@@ -837,9 +929,9 @@ export default function Landing() {
           ==================================================================== */}
 
       <section className="relative z-10 px-5 sm:px-8 pb-24">
-        <div className="max-w-2xl mx-auto text-center">
+        <Reveal className="max-w-2xl mx-auto text-center">
           <h2
-            className="text-[26px] sm:text-[34px] font-bold mb-4 tracking-tight"
+            className="text-[30px] sm:text-[42px] font-medium mb-4 tracking-[-0.03em]"
             style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
           >
             See it running on your own company
@@ -855,7 +947,7 @@ export default function Landing() {
             Build your company's AI
             <ArrowRight size={16} />
           </PrimaryButton>
-        </div>
+        </Reveal>
       </section>
 
       {/* ====================================================================

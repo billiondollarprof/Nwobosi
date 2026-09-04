@@ -1,6 +1,10 @@
 /* Fraunces carries the Amara wordmark only. One weight, one product mark,
    so it is scoped to that and never becomes a third face in the UI. */
-@import url("https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=DM+Sans:wght@400;500;600&family=Fraunces:opsz,wght@9..144,600&display=swap");
+/* Sora 400 and 500 are here for the display sizes. Large type does not
+   need to be bold, and setting a 52px headline at 700 is shouting where
+   500 is confidence. The heavier weights stay for small headings, where
+   weight is doing real work. */
+@import url("https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600&family=Fraunces:opsz,wght@9..144,600&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -268,7 +272,82 @@ body {
   }
 }
 
+/* --------------------------------------------------------------------------
+   THE MARK
+   The Containment Seal. Full spec in MARK.md, including the two states
+   that are not built here because nothing real fires them yet.
+
+   Idle is what runs: the bead travels the channel once every ten seconds,
+   a highlight drifts along the outer ring on a much slower cycle, the
+   bead's bloom breathes, and the specular on the inner ring shifts very
+   slightly. The rings themselves never spin, so it never reads as a
+   loading spinner.
+   -------------------------------------------------------------------------- */
+
+@keyframes sx-seal-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes sx-seal-drift {
+  to {
+    stroke-dashoffset: -276;
+  }
+}
+
+/* The specular is a reflection off a fixed light, so it stays where it is
+   and only changes intensity. Travelling it would read as a second bead. */
+@keyframes sx-seal-sheen {
+  0%,
+  100% {
+    opacity: 0.38;
+  }
+  50% {
+    opacity: 0.62;
+  }
+}
+
+@keyframes sx-seal-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.2);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   SCROLL REVEAL
+   Sections settle in as they arrive. The resting state is visible, not
+   transparent, so a section is readable even if the observer never fires
+   or JavaScript never runs. See shared/Reveal.jsx.
+   -------------------------------------------------------------------------- */
+
+.sx-reveal {
+  opacity: 1;
+  transform: none;
+  transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.22, 0.7, 0.3, 1);
+}
+
+.sx-reveal-armed {
+  opacity: 0;
+  transform: translateY(18px);
+}
+
 /* Anyone who has asked their system to calm motion down gets a still logo. */
+@media (prefers-reduced-motion: reduce) {
+  .sx-reveal,
+  .sx-reveal-armed {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   [class*="sx-motion"],
   [style*="sx-ring-travel"],
@@ -279,6 +358,10 @@ body {
   [style*="sx-mic-pulse"],
   [style*="sx-mic-listening"],
   [style*="sx-shimmer"],
+  [style*="sx-seal-orbit"],
+  [style*="sx-seal-drift"],
+  [style*="sx-seal-sheen"],
+  [style*="sx-seal-breathe"],
   .sx-mark-stretch,
   [style*="sx-cloud-drift"] {
     animation: none !important;

@@ -4,6 +4,23 @@ Log of each work session. Newest at the top. Keep entries short.
 
 ---
 
+## Session 6: 2026-09-04
+
+**The landing page, and the mark it was missing**
+
+- **The Containment Seal is the mark now**, built from `MARK.md` instead of from memory. `ContainmentSeal.jsx` is the hero version, three layers of lit tube with the bead orbiting the channel once every ten seconds. `LogoMark` in `icons.jsx` is the small still one, so nav, footer, chat, admin and auth all changed with it. Favicons, the touch icon and the social mark were all regenerated.
+- Only the idle state is built. `MARK.md` also specifies a verified pulse and a blocked bounce, and both wait on a real event. The rule that governs the figures under the mark governs its motion too: a mark that reports things that did not happen is worse than one that reports nothing.
+- **The ground moved off pure black** to `#05060D`, a near black with a faint blue cast, and stays cool. Pure black is what makes a dark product look cheap, and warming it would cost the gold bead the contrast that makes it the focal point. This is in `tokens.js`, so it moved every screen, not just the landing page.
+- **Display type dropped from weight 700 to 500** and went up in size, with tighter tracking. At 54px bold is shouting. This is the single change that does most of the work, and it came from what ElevenLabs actually does: their display face runs at weight 300.
+- **The read back is now on the page**, as the real component out of the chat screen rather than a drawing of one. Same rows, same words. It is the most convincing thing the product has and it was not being shown.
+- The problem section and the research behind it are now one block instead of two, and every section below the fold arrives on scroll. The reveal rests visible, so a failed script or reduced motion leaves the page readable rather than blank.
+- Headline sentences are each their own block so they balance independently. As one balanced block the second sentence kept dropping "it." onto a line by itself.
+- Checked: build clean, all six pages captured desktop and mobile in both themes with no sideways scroll and nothing left hidden after scrolling, 14 click through checks passing, and `/setup` and `/auth` rendered to confirm the new mark did not break the app screens.
+- `LogoAnimated.jsx` is now unused. Left in place rather than deleted, because the logo choice is still the user's to make and nothing imports it, so it costs nothing in the bundle.
+- Fonts are blocked in this sandbox, so every screenshot is in fallback faces. Sora's real metrics could not be checked, which is why the headline was made to balance rather than tuned to fit.
+
+---
+
 ## Session 5: 2026-09-02
 
 **The StellaXafe site moved into this app**

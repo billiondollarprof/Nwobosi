@@ -71,8 +71,11 @@ export function SectionHead({ eyebrow, title, sub, center = false }) {
   return (
     <div className={`max-w-2xl mb-11 ${center ? "mx-auto text-center" : ""}`}>
       {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
+      {/* Weight 500 at this size, not 700. Large type carries on its own,
+          and bolding it is the difference between a page that reads as
+          expensive and one that reads as loud. */}
       <h2
-        className="text-[26px] sm:text-[32px] font-bold tracking-tight mt-3.5"
+        className="text-[28px] sm:text-[38px] font-medium tracking-[-0.025em] mt-3.5"
         style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
       >
         {title}

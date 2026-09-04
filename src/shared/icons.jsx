@@ -10,54 +10,48 @@ import { BRAND, FONTS } from "./tokens";
 
 /* --------------------------------------------------------------------------
    SECTION: Product mark
-   The small still version of the hero mark, same interlocked rings, same
-   zero gap fuse at the crossing, just square and frozen. Used everywhere
-   the wordmark needs an icon beside it: nav bars, the chat sidebar, the
-   footer. It used to be two blend mode discs that only vaguely gestured at
-   the real logo, this is the actual thing at a small size, not a stand in.
+   The Containment Seal, still and small. Used everywhere the wordmark
+   needs an icon beside it: nav bars, the chat sidebar, the footer.
+
+   Same geometry as the full mark in ContainmentSeal.jsx, with the bloom
+   and the specular dropped, because both are invisible at this size and
+   only cost paint. The bead freezes at one o'clock in the channel, and it
+   is drawn larger than the spec radius: at 26 pixels a true 3.5 bead is
+   under a pixel across and simply disappears, and the bead is a third of
+   the silhouette.
+
+   Below 24 pixels the strokes change so both rings still read as two
+   rings. If a size cannot hold two rings and a bead it is too small for
+   the mark, and the wordmark should carry it alone. See MARK.md.
 
    IDs are namespaced with useId because this renders more than once on the
-   same page (nav and footer both show it), and SVG gradient/mask ids have
-   to be unique per document or the second copy can point at the wrong def.
+   same page (nav and footer both show it), and SVG gradient ids have to be
+   unique per document or the second copy can point at the wrong def.
    -------------------------------------------------------------------------- */
 
 export function LogoMark({ size = 26 }) {
   const uid = useId();
-  const left = `${uid}-left`;
-  const right = `${uid}-right`;
-  const mask = `${uid}-mask`;
+  const inner = `${uid}-inner`;
+  const tiny = size < 24;
 
   return (
     <svg width={size} height={size} viewBox="0 0 100 100" fill="none" role="img" aria-label="StellaXafe">
       <defs>
-        <linearGradient id={left} x1="9" y1="50" x2="59" y2="50" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor={BRAND.navy} />
-          <stop offset="50%" stopColor={BRAND.purple} />
-          <stop offset="100%" stopColor={BRAND.navy} />
+        <linearGradient id={inner} x1="18" y1="82" x2="82" y2="18" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="var(--seal-in-a)" />
+          <stop offset="52%" stopColor="var(--seal-in-mid)" />
+          <stop offset="100%" stopColor="var(--seal-in-b)" />
         </linearGradient>
-        <linearGradient id={right} x1="41" y1="50" x2="91" y2="50" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor={BRAND.navy} />
-          <stop offset="50%" stopColor={BRAND.purple} />
-          <stop offset="100%" stopColor={BRAND.navy} />
-        </linearGradient>
-        {/* Same fuse as the hero mark and the favicon: the cutout is a short
-            arc of the left ring's own stroke, same centre and radius, not a
-            round hole clipped to size, so nothing can render it a pixel off. */}
-        <mask id={mask}>
-          <rect x="0" y="0" width="100" height="100" fill="white" />
-          <path
-            d="M 37.6 25.261 A 25 25 0 0 1 57.681 41.987"
-            stroke="black"
-            strokeWidth="10"
-            strokeLinecap="round"
-            fill="none"
-          />
-        </mask>
       </defs>
-      <circle cx="34" cy="50" r="25" fill="none" stroke={`url(#${left})`} strokeWidth="8.5" />
-      <g mask={`url(#${mask})`}>
-        <circle cx="66" cy="50" r="25" fill="none" stroke={`url(#${right})`} strokeWidth="8.5" />
-      </g>
+
+      {/* The boundary */}
+      <circle cx="50" cy="50" r="44" stroke="var(--seal-outer)" strokeWidth={tiny ? 3 : 2} />
+
+      {/* The gateway */}
+      <circle cx="50" cy="50" r="30" stroke={`url(#${inner})`} strokeWidth={tiny ? 5 : 6.5} />
+
+      {/* The data, held at one o'clock in the channel */}
+      <circle cx="76.2" cy="23.8" r={tiny ? 5.5 : 5} fill={BRAND.gold} />
     </svg>
   );
 }

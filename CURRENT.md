@@ -75,8 +75,16 @@ under **ofilifire@gmail.com**.
   `/services`, `/founder`, `/insights`, `/form-builder`, `/contact`. Ported
   from the separate StellaXafe repo in session 5, so this repo is now the
   only one. Services, Founder and Contact are routes styled as modals, with
-  real URLs and instant navigation. Nothing here touches the product
-  screens. **Demo is not a page**, every demo link goes to `/setup`.
+  real URLs and instant navigation. **Demo is not a page**, every demo link
+  goes to `/setup`.
+- **The mark is the Containment Seal**, built to `MARK.md`. Read that file
+  before touching the logo: the old interlocked rings were a drift away
+  from the written spec and looked like somebody else's mark. Only the
+  idle orbit is built. The other two states wait on a real event to fire
+  them.
+- **The ground is `#05060D`, not pure black, and stays cool.** In
+  `tokens.js`, so it applies to every screen. Display type sits at weight
+  500 at large sizes, not 700.
 - **RLS** is tight. Every table on, every policy scoped by
   `private.current_company_id()`, which reads `staff` by `auth.uid()`.
   `access_codes` has RLS on and zero policies, so only the service role

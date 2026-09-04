@@ -18,6 +18,11 @@ export const BRAND = {
   amber: "#E8980A",
   red: "#E53E3E",
   accentSoft: "#5870F8",
+  /* The bead in the mark, and the only warm colour the brand owns. It is
+     reserved for the thing being protected, so it never becomes a general
+     purpose accent. See MARK.md. */
+  gold: "#F5A820",
+  goldCore: "#FFC24D",
 };
 
 export const GRADIENTS = {
@@ -40,19 +45,32 @@ export const GRADIENTS = {
    the active theme.
    -------------------------------------------------------------------------- */
 
+/* Dark is a near black carrying a faint blue cast, not pure #000000. A
+   pure black ground is the thing that makes a dark product look cheap:
+   nothing sits on it, it just sits behind everything. A chosen dark reads
+   as a surface. It stays cool, never warmed toward brown, because the gold
+   bead in the mark is the only warm thing in the brand and warming the
+   ground costs it the contrast that makes it the focal point. */
 export const THEME_VARS = {
   dark: {
-    "--bg": "#000000",
+    "--bg": "#05060D",
     "--surface": "rgba(255, 255, 255, 0.05)",
-    "--surface-solid": "#0A0A0A",
+    "--surface-solid": "#0B0D15",
     "--surface-2": "rgba(255, 255, 255, 0.035)",
-    "--nav-surface": "rgba(0, 0, 0, 0.62)",
-    "--chip": "#1C1C1E",
+    "--nav-surface": "rgba(5, 6, 13, 0.62)",
+    "--chip": "#171922",
     "--border": "rgba(255, 255, 255, 0.1)",
     "--border-2": "rgba(255, 255, 255, 0.18)",
     "--text-1": "#F5F5F7",
     "--text-2": "#9A9AA5",
     "--text-3": "#6E6E76",
+    /* The mark. Named here so it flips with the theme like everything
+       else, rather than the component branching on which theme is on. */
+    "--seal-outer": "rgba(255, 255, 255, 0.34)",
+    "--seal-outer-hi": "rgba(255, 255, 255, 0.85)",
+    "--seal-in-a": "#2E42E0",
+    "--seal-in-mid": "#7C8CF5",
+    "--seal-in-b": "#E8EBFF",
   },
   light: {
     "--bg": "#F6F7FC",
@@ -66,6 +84,11 @@ export const THEME_VARS = {
     "--text-1": "#0A0F2E",
     "--text-2": "#424668",
     "--text-3": "#7880A8",
+    "--seal-outer": "rgba(8, 17, 58, 0.30)",
+    "--seal-outer-hi": "rgba(8, 17, 58, 0.72)",
+    "--seal-in-a": "#2030C8",
+    "--seal-in-mid": "#17257A",
+    "--seal-in-b": "#08113A",
   },
 };
 
