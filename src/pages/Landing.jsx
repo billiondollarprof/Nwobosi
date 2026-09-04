@@ -116,7 +116,7 @@ const PROBLEMS = [
   {
     icon: FileCheck2,
     title: "It cannot invent your numbers",
-    body: "Every company fact comes from a source your admin approved, in your own templates and voice, without anyone supplying them. If something is missing it says so instead of filling the gap.",
+    body: "Every company fact comes from a source your admin approved, in your own templates and voice, without anyone supplying them. If something is missing it says so instead of filling the gap. That gap is where hallucination gets in, and it is closed by design rather than left to chance.",
   },
 ];
 

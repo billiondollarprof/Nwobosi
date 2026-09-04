@@ -55,13 +55,18 @@ being solved, and they are what the page should be built on:
   control, and nothing is trained on.
 - **Safe.** Approved sources only, per person isolation, a human
   checkpoint before anything is spent.
-- **Nothing invented.** Every company fact traces back to a source the
-  admin approved, the output is constrained by a brief that was read back
-  and confirmed, and where something is missing it says so rather than
-  filling the gap.
+- **Hallucination is constrained by design.** Every company fact traces
+  back to a source the admin approved, the output is constrained by a
+  brief that was read back and confirmed, and where something is missing
+  it says so rather than filling the gap.
+
+  Use the word. It is the term a buyer recognises and the one they scan
+  for, and a page that never says it looks like a page avoiding it.
 
   Say it as the mechanism. Not "zero hallucination", and not "near zero"
-  either. The absolute is falsifiable in one sitting, by exactly the
+  either, and not "reduces the risk of hallucination", which is the same
+  weakness with more words: a hedged verb reads as a vendor who is not
+  sure. "By design" is the part a reviewer can check. The absolute is falsifiable in one sitting, by exactly the
   technical reviewer most likely to test the boldest claim on the page,
   and it takes the rest of the page down with it when it fails. It is also
   what every vendor in this category writes, so it reads as noise. Worse,

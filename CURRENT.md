@@ -18,8 +18,8 @@ architecture and it shows the shape. It is not the software any customer
 will be handed. What they receive is built for them, and what is added or
 dropped depends on the contract.
 
-Four things never vary, in any deployment: private, safe, nothing
-invented, and the iteration problem solved. Everything else does. See
+Four things never vary, in any deployment: private, safe, hallucination
+constrained by design, and the iteration problem solved. Everything else does. See
 `DIRECTION.md` for why the third is stated as a mechanism and never as a
 number.
 
