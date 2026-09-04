@@ -84,6 +84,12 @@ export const THEME_VARS = {
        gives the section a direction to be lit from. */
     "--sweep-a": "rgba(46, 66, 224, 0.42)",
     "--sweep-b": "rgba(124, 58, 237, 0.20)",
+    /* Film grain over the whole page, and the lit horizon the hero closes
+       on. See index.css for why both exist. */
+    "--grain": "0.055",
+    "--floor-fill": "rgba(46, 66, 224, 0.10)",
+    "--floor-edge": "rgba(124, 140, 255, 0.22)",
+    "--field-ring": "rgba(140, 160, 255, 0.10)",
     /* The sweep inside the second headline line. On dark it lifts toward
        white. */
     "--h-a": "#5870F8",
@@ -114,6 +120,12 @@ export const THEME_VARS = {
     "--aura-2": "rgba(124, 58, 237, 0.07)",
     "--sweep-a": "rgba(46, 66, 224, 0.13)",
     "--sweep-b": "rgba(124, 58, 237, 0.06)",
+    /* A third of the weight. Noise on white reads as dirt long before it
+       reads as texture. */
+    "--grain": "0.02",
+    "--floor-fill": "rgba(46, 66, 224, 0.05)",
+    "--floor-edge": "rgba(46, 66, 224, 0.14)",
+    "--field-ring": "rgba(46, 66, 224, 0.09)",
     /* The sheen has to darken, not lighten. Sweeping toward near white on
        a white page made the last word of the headline disappear as the
        band passed over it. */

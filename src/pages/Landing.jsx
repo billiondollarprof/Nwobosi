@@ -299,6 +299,29 @@ function HeroSweep() {
   );
 }
 
+/* The horizon the hero closes on. Stripe's signature is not the gradient,
+   it is that a plain rectangle sits inside a skewed, clipped container,
+   which is what produces a hard diagonal edge rather than a soft fade into
+   nothing. Same trick, no WebGL: the band is skewed, the parent clips it,
+   and the parent is what keeps the skew from pushing the page sideways.
+
+   Wide screens only. On a phone the hero is already tight and a horizon
+   would land on top of the trust row. */
+function HeroFloor() {
+  return (
+    <div
+      className="hidden sm:block absolute inset-x-0 bottom-0 h-[110px] overflow-hidden pointer-events-none"
+      aria-hidden="true"
+    >
+      {/* The clip is what keeps a skewed band from widening the page, and
+          it is also what decides where the line lands: the band's own top
+          edge sits 36px above the bottom of the hero at the centre, well
+          clear of the trust row above it. */}
+      <div className="sx-floor-band absolute -inset-x-[8%] top-[74px] h-[240px]" />
+    </div>
+  );
+}
+
 function HeroAura() {
   return (
     <div
@@ -369,6 +392,7 @@ export default function Landing() {
           measured against that runs off the bottom of the real one. */}
       <section className="relative z-10 px-5 sm:px-8">
         <HeroSweep />
+        <HeroFloor />
         <div className="relative max-w-3xl mx-auto text-center flex flex-col justify-center min-h-[calc(100svh-120px)] pt-4 pb-16 sm:pb-20">
           <HeroAura />
 
@@ -401,8 +425,33 @@ export default function Landing() {
               the capability allowable. That order matters: led with the
               risk instead, this is a compliance tool, and every vendor in
               the category can run the same line. */}
-          <div className="hidden sm:flex justify-center mb-11">
-            <ContainmentSeal size="clamp(120px, min(21vh, 44vw), 260px)" />
+          {/* The mark, and the field it sits in. Both are sized off one
+              variable so the rings stay in proportion to it at every
+              width, and the rings are behind and non interactive. */}
+          <div
+            className="hidden sm:flex justify-center mb-11 relative"
+            style={{ "--seal": "clamp(120px, min(21vh, 44vw), 260px)" }}
+          >
+            <div
+              className="sx-field absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+              style={{ width: "calc(var(--seal) * 4.2)", height: "calc(var(--seal) * 4.2)" }}
+              aria-hidden="true"
+            >
+              {[1.9, 2.85, 4.1].map((scale, i) => (
+                <div
+                  key={scale}
+                  className="sx-field-ring"
+                  style={{
+                    width: `calc(var(--seal) * ${scale})`,
+                    height: `calc(var(--seal) * ${scale})`,
+                    /* Offset so the three never breathe in unison, which
+                       would read as one pulsing object. */
+                    animationDelay: `${i * -4.6}s`,
+                  }}
+                />
+              ))}
+            </div>
+            <ContainmentSeal size="var(--seal)" />
           </div>
 
           <h1

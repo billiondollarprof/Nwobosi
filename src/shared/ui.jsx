@@ -63,7 +63,7 @@ export function PageShell({ children, scroll = false, className = "" }) {
          edge, but hidden makes this a scroll container, which silently
          kills `position: sticky` on everything inside it, including the
          landing page's floating nav. clip does not. */
-      className={`w-full flex flex-col relative isolate overflow-x-clip transition-colors duration-300 ${
+      className={`sx-grain w-full flex flex-col relative isolate overflow-x-clip transition-colors duration-300 ${
         scroll ? "min-h-dvh" : "h-dvh overflow-hidden"
       } ${className}`}
       style={{

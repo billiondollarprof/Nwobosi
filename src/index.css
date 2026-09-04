@@ -427,6 +427,111 @@ body {
    -------------------------------------------------------------------------- */
 
 /* --------------------------------------------------------------------------
+   GRAIN
+   A dark page built out of large soft gradients bands. On a real display
+   the aura and the sweep step through eight or nine visible rings instead
+   of blending, and banding is the single thing that makes an expensive
+   looking dark page look cheap. A fine noise layer breaks the steps up.
+
+   It is a fixed overlay so it does not scroll with the page: grain that
+   travels reads as a texture printed on the content, grain that stays put
+   reads as the screen itself. It sits above the sections and below the
+   nav, and it never takes a click.
+
+   Light mode gets about a third of the weight. Noise on white reads as
+   dirt long before it reads as texture.
+   -------------------------------------------------------------------------- */
+
+.sx-grain::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  pointer-events: none;
+  opacity: var(--grain);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 140px 140px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Nothing animated here. The rule exists so the grain is easy to find
+     when someone goes looking for why a flat colour is not flat. */
+}
+
+/* --------------------------------------------------------------------------
+   HERO FLOOR
+   The hero used to end by simply running out. Stripe's signature is not
+   the gradient itself, it is that the gradient is a plain rectangle inside
+   a skewed, clipped container, which is what gives the section a hard
+   diagonal edge instead of a soft fade into nothing. Same trick here,
+   without the WebGL: a skewed band, clipped by its parent, carrying a
+   faint fill and one lit edge.
+
+   It gives the composition a floor. Light enters from the top left and
+   the section closes on a horizon, rather than the mark and the type
+   floating in a void with the next section starting underneath them.
+   -------------------------------------------------------------------------- */
+
+/* Two degrees, not four. The skew is applied across a band wider than the
+   window, so every extra degree lifts the far end by tens of pixels: at
+   3.2 the line rose through the call to action and read as a stray rule
+   drawn across the page rather than as the ground under it. The fill hangs
+   below the edge and the shadow throws light back up over it. */
+.sx-floor-band {
+  transform: skewY(-2deg);
+  background: linear-gradient(to bottom, var(--floor-fill), transparent 68%);
+  border-top: 1px solid var(--floor-edge);
+  box-shadow: 0 -22px 48px -16px var(--floor-fill);
+}
+
+/* --------------------------------------------------------------------------
+   THE CONTAINMENT FIELD
+   Three rings spreading out from the mark, so wide and so faint they read
+   as the space around it rather than as circles drawn on the page.
+
+   This is not decoration filling a gap. The mark is a containment ring,
+   and the argument the whole page makes is that the boundary goes round
+   everything, not just round one object. Showing the field extending past
+   the mark and out under the headline says that without a sentence.
+
+   Masked so it fades before it reaches the type: rings crossing a headline
+   would be a pattern behind words, which is the opposite of the point.
+   -------------------------------------------------------------------------- */
+
+.sx-field {
+  -webkit-mask-image: radial-gradient(closest-side, #000 40%, transparent 100%);
+  mask-image: radial-gradient(closest-side, #000 40%, transparent 100%);
+}
+
+.sx-field-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+  border-radius: 50%;
+  border: 1px solid var(--field-ring);
+  animation: sx-field-breathe 14s ease-in-out infinite;
+}
+
+@keyframes sx-field-breathe {
+  0%,
+  100% {
+    opacity: 0.5;
+    scale: 1;
+  }
+  50% {
+    opacity: 1;
+    scale: 1.035;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sx-field-ring {
+    animation: none;
+  }
+}
+
+/* --------------------------------------------------------------------------
    HERO AURA
    The light the mark sits in, and the mark is not in the same place at
    every width. On a phone it sits below the sentence, so the light sits
