@@ -71,6 +71,16 @@ export const THEME_VARS = {
     "--seal-in-a": "#2E42E0",
     "--seal-in-mid": "#7C8CF5",
     "--seal-in-b": "#E8EBFF",
+    /* The hero aura. One dominant hue with one orbiting at half its
+       weight. Three colours at equal weight is the recipe for mud, which
+       is exactly what the old four blob version produced. */
+    "--aura-1": "rgba(88, 112, 248, 0.46)",
+    "--aura-2": "rgba(124, 58, 237, 0.28)",
+    /* The sweep inside the second headline line. On dark it lifts toward
+       white. */
+    "--h-a": "#5870F8",
+    "--h-b": "#9F5AF5",
+    "--h-sheen": "#E4E9FF",
   },
   light: {
     "--bg": "#F6F7FC",
@@ -89,6 +99,17 @@ export const THEME_VARS = {
     "--seal-in-a": "#2030C8",
     "--seal-in-mid": "#17257A",
     "--seal-in-b": "#08113A",
+    /* Roughly a third of the dark weight. A light ground shows every bit
+       of dirt that black hides, so the same alphas that read as
+       atmosphere on black read as a stain here. */
+    "--aura-1": "rgba(88, 112, 248, 0.14)",
+    "--aura-2": "rgba(124, 58, 237, 0.07)",
+    /* The sheen has to darken, not lighten. Sweeping toward near white on
+       a white page made the last word of the headline disappear as the
+       band passed over it. */
+    "--h-a": "#3B4FD8",
+    "--h-b": "#7C3AED",
+    "--h-sheen": "#8B5CF6",
   },
 };
 

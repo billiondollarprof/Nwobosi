@@ -183,14 +183,19 @@ const SERVICES = [
   },
 ];
 
-/* The second line of the headline. Same gradient as the logo, so the mark
-   and the words read as one system. Tuned to stay legible on true black
-   and on the light background. A light band is woven into the gradient
-   and slowly swept across with the existing sx-shimmer keyframe, so the
-   line catches light rather than just sitting there as a flat colour. */
+/* The second line of the headline. Same gradient family as the mark, so
+   the logo and the words read as one system. A brighter band is woven
+   into the gradient and swept slowly across with the sx-shimmer keyframe,
+   so the line catches light rather than sitting flat.
+
+   Every stop is a theme token. The band used to be a hard coded near
+   white, which reads as light catching the words on a black ground and as
+   nothing at all on a white one: the last word of the line washed out
+   completely as the sweep passed over it. On light the band darkens
+   instead of lightening. */
 const HEADLINE_ACCENT = {
   background:
-    "linear-gradient(90deg, #5870F8 0%, #9F5AF5 40%, #E4E9FF 50%, #9F5AF5 60%, #5870F8 100%)",
+    "linear-gradient(90deg, var(--h-a) 0%, var(--h-b) 40%, var(--h-sheen) 50%, var(--h-b) 60%, var(--h-a) 100%)",
   backgroundSize: "220% 100%",
   WebkitBackgroundClip: "text",
   backgroundClip: "text",
@@ -199,55 +204,49 @@ const HEADLINE_ACCENT = {
 };
 
 /* --------------------------------------------------------------------------
-   SECTION: Hero cloud
-   The hero read as too quiet on its own. This is a soft wash of colour
-   sitting above the mark, not behind it and not wrapped around it, three
-   blurred blobs traced along a shallow arc so the shape reads as a C
-   hovering overhead, plus a wider faint wash so it spreads out past its
-   own edges instead of stopping at a hard circle. Each blob drifts on its
-   own timing so it reads as smoke moving, not one shape breathing in sync.
+   SECTION: Hero aura
+   The light the mark sits in.
+
+   This replaced a four blob version that put navy, indigo, violet and deep
+   purple at roughly equal weight inside a box with overflow hidden. Two
+   things were wrong with it. Three hues at equal weight average out to
+   grey, which is fine on black where it reads as haze and obvious on a
+   light ground where it reads as a stain. And clipping a blurred shape
+   with overflow hidden puts a hard straight edge across the bottom of
+   something whose whole job is to have no edge.
+
+   So: one dominant hue with one orbiting at roughly half its weight, both
+   from theme tokens because a light page needs about a third of the alpha
+   a black one does, and a radial mask instead of a clip, so the whole
+   thing dissolves rather than stopping.
    -------------------------------------------------------------------------- */
 
-function HeroCloud() {
+const AURA_MASK = "radial-gradient(60% 60% at 50% 38%, #000 0%, transparent 78%)";
+
+function HeroAura() {
   return (
     <div
-      className="absolute inset-x-0 -top-16 sm:-top-24 h-[380px] sm:h-[460px] overflow-hidden pointer-events-none"
+      className="absolute inset-x-0 -top-24 h-[520px] sm:h-[620px] pointer-events-none"
+      style={{ WebkitMaskImage: AURA_MASK, maskImage: AURA_MASK }}
       aria-hidden="true"
     >
-      {/* Wide faint wash first, everything else drifts on top of it */}
+      {/* The dominant one, sitting over the mark. */}
       <div
-        className="absolute left-1/2 top-[8%] w-[92%] max-w-[760px] h-[260px] rounded-full"
+        className="absolute left-1/2 -translate-x-1/2 top-[4%] w-[86%] max-w-[680px] h-[420px] rounded-full"
         style={{
-          background: `radial-gradient(ellipse, ${BRAND.navy}26 0%, transparent 72%)`,
-          filter: "blur(70px)",
-          animation: "sx-cloud-drift-b 26s ease-in-out infinite",
+          background: "radial-gradient(ellipse, var(--aura-1) 0%, transparent 70%)",
+          filter: "blur(90px)",
+          animation: "sx-cloud-drift-a 24s ease-in-out infinite",
         }}
       />
-      {/* Left of the arc */}
+      {/* The orbiting one, offset so the light has a direction rather than
+          being a symmetrical halo. Half the weight of the first. */}
       <div
-        className="absolute left-[10%] sm:left-[18%] top-[40%] w-[200px] h-[200px] sm:w-[260px] sm:h-[260px] rounded-full"
+        className="absolute left-[58%] top-[26%] w-[300px] h-[300px] sm:w-[400px] sm:h-[400px] rounded-full"
         style={{
-          background: `radial-gradient(circle, ${BRAND.purple}59 0%, transparent 70%)`,
-          filter: "blur(50px)",
-          animation: "sx-cloud-drift-a 17s ease-in-out infinite",
-        }}
-      />
-      {/* Top of the arc, the highest point of the C */}
-      <div
-        className="absolute left-1/2 top-0 w-[260px] h-[260px] sm:w-[340px] sm:h-[340px] rounded-full"
-        style={{
-          background: `radial-gradient(circle, ${BRAND.accentSoft}4D 0%, transparent 70%)`,
-          filter: "blur(55px)",
-          animation: "sx-cloud-drift-b 20s ease-in-out infinite",
-        }}
-      />
-      {/* Right of the arc, mirrors the left */}
-      <div
-        className="absolute right-[10%] sm:right-[18%] top-[40%] w-[200px] h-[200px] sm:w-[260px] sm:h-[260px] rounded-full"
-        style={{
-          background: `radial-gradient(circle, ${BRAND.purpleDeep}59 0%, transparent 70%)`,
-          filter: "blur(50px)",
-          animation: "sx-cloud-drift-c 22s ease-in-out infinite",
+          background: "radial-gradient(circle, var(--aura-2) 0%, transparent 70%)",
+          filter: "blur(80px)",
+          animation: "sx-cloud-drift-c 31s ease-in-out infinite",
         }}
       />
     </div>
@@ -295,7 +294,7 @@ export default function Landing() {
           measured against that runs off the bottom of the real one. */}
       <section className="relative z-10 px-5 sm:px-8">
         <div className="relative max-w-3xl mx-auto text-center flex flex-col justify-center min-h-[calc(100svh-120px)] pt-4 pb-16 sm:pb-20">
-          <HeroCloud />
+          <HeroAura />
 
           {/* One moving object and one sentence. Everything that used to
               sit above the mark has gone: a badge over the top of it is
@@ -326,7 +325,7 @@ export default function Landing() {
                 whatever the font measures, which matters because the display
                 face loads from the network and the fallback is a different
                 width. */}
-            <span className="block">Enterprise AI that already knows your company.</span>
+            <span className="block">Private AI that already knows your company.</span>
             <span className="block" style={HEADLINE_ACCENT}>
               And never lets a word of it out.
             </span>
@@ -341,9 +340,9 @@ export default function Landing() {
             className="text-[15px] sm:text-[18px] leading-[1.6] max-w-[600px] mx-auto mb-7 sm:mb-9"
             style={{ color: "var(--text-2)" }}
           >
-            It asks a few questions, reads only the sources you approve, and returns finished work in
-            your own templates, numbers and voice. No prompt writing, no setup team, and nothing
-            crosses your boundary.
+            A private repository for everything your company knows. Ask in plain language and get
+            finished work back in your own templates, numbers and voice. Nothing is trained on, and
+            nothing crosses your boundary.
           </p>
 
           {/* One button only. Setting up your own company's AI is the demo,
