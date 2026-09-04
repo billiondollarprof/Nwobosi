@@ -373,19 +373,28 @@ body {
    other way.
    -------------------------------------------------------------------------- */
 
-@media (max-width: 640px) {
-  .sx-stack > .sx-stack-item {
-    position: sticky;
-    top: calc(80px + var(--i, 0) * 14px);
-    background-color: var(--surface-solid) !important;
-    box-shadow: 0 -8px 30px -18px rgba(0, 0, 0, 0.7);
-  }
+.sx-stack-slot {
+  position: sticky;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .sx-stack > .sx-stack-item {
-    position: static;
-  }
+/* The card scales from its own top edge. Scaling from the centre pulls the
+   top of a buried card down and away from the one covering it, which opens
+   a gap where the pile should look continuous. */
+.sx-stack-card {
+  transform-origin: center top;
+  will-change: transform, filter;
+}
+
+/* The pile only works if the cards are opaque. Through a translucent card
+   you see the one beneath at a slightly different scale, and the whole
+   thing turns to mush.
+
+   It is forced because the surface colour arrives as an inline style from
+   the shared panel component, and an inline style cannot be beaten from a
+   stylesheet any other way. */
+.sx-stack-card > * {
+  background-color: var(--surface-solid) !important;
+  box-shadow: 0 -10px 40px -22px rgba(0, 0, 0, 0.65);
 }
 
 /* --------------------------------------------------------------------------

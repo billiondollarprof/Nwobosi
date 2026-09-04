@@ -19,7 +19,7 @@
      13. Footer
    ========================================================================== */
 
-import { useEffect } from "react";
+import { Fragment, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   ArrowRight,
@@ -45,6 +45,8 @@ import {
 import { AmaraWordmark } from "../shared/icons.jsx";
 import ContainmentSeal from "../shared/ContainmentSeal.jsx";
 import Reveal from "../shared/Reveal.jsx";
+import Typewriter from "../shared/Typewriter.jsx";
+import CardStack from "../shared/CardStack.jsx";
 import { BRAND, GRADIENTS, FONTS } from "../shared/tokens";
 import { useTheme } from "../shared/theme.jsx";
 import { PageShell, GlassPanel, PrimaryButton, GhostButton, StatusPill } from "../shared/ui.jsx";
@@ -58,8 +60,26 @@ import { SectionHead, GradientText, Eyebrow, Divider } from "../shared/marketing
    Kept as data so the sections below stay readable.
    -------------------------------------------------------------------------- */
 
-/* The three objections an enterprise buyer raises before they will try it. */
-const TRUST_POINTS = ["Nothing leaves your walls", "No setup team", "Live in 10 minutes"];
+/* The three objections an enterprise buyer raises before they will try it.
+   Short forms for the phone, so the row holds one line. It used to wrap,
+   which left a separator stranded at the start of the second line. */
+const TRUST_POINTS = [
+  { full: "Nothing leaves your walls", short: "Nothing leaves" },
+  { full: "No setup team", short: "No setup team" },
+  { full: "Live in 10 minutes", short: "Live in 10 min" },
+];
+
+/* What the product hands back. These rotate in the subtext, so a reader
+   watching for a few seconds learns the range of work it does without
+   another sentence being written. Every one is a document this really
+   produces: Word and PDF are real, decks are not. */
+const OUTPUTS = [
+  "a client one pager",
+  "a board update",
+  "a renewal notice",
+  "a project brief",
+  "a policy summary",
+];
 
 const PROBLEMS = [
   {
@@ -336,13 +356,26 @@ export default function Landing() {
               One paragraph at both sizes. The old page ran two versions and
               the short one gave a phone reader the promise without the part
               that earns it. */}
+          {/* Two lengths, not one paragraph squeezed down. Most people meet
+              this page on a phone, and five lines of grey text there is
+              five lines nobody reads. The phone gets the one sentence that
+              matters. Everything above tablet gets the sentence that earns
+              it as well. Both end on the same rotating phrase. */}
           <p
-            className="text-[15px] sm:text-[18px] leading-[1.6] max-w-[600px] mx-auto mb-7 sm:mb-9"
+            className="sm:hidden text-[15.5px] leading-[1.6] max-w-[320px] mx-auto mb-7"
             style={{ color: "var(--text-2)" }}
           >
-            A private repository for everything your company knows. Ask in plain language and get
-            finished work back in your own templates, numbers and voice. Nothing is trained on, and
-            nothing crosses your boundary.
+            A private repository for everything your company knows. Ask in plain language, and get
+            back <Typewriter phrases={OUTPUTS} style={{ color: "var(--h-a)", fontWeight: 500 }} />
+          </p>
+          <p
+            className="hidden sm:block text-[18px] leading-[1.6] max-w-[620px] mx-auto mb-9"
+            style={{ color: "var(--text-2)" }}
+          >
+            A private repository for everything your company knows, in your own templates, numbers
+            and voice. Nothing is trained on, and nothing crosses your boundary. Ask in plain
+            language, and get back{" "}
+            <Typewriter phrases={OUTPUTS} style={{ color: "var(--h-a)", fontWeight: 500 }} />
           </p>
 
           {/* One button only. Setting up your own company's AI is the demo,
@@ -357,15 +390,25 @@ export default function Landing() {
             </PrimaryButton>
           </div>
 
+          {/* One line, always. The separators are their own children rather
+              than living inside each item, and nothing wraps, so a divider
+              can never end up stranded at the start of a second row. */}
           <div
-            className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-[12.5px]"
+            className="flex items-center justify-center gap-2.5 sm:gap-3 text-[11.5px] sm:text-[12.5px]"
             style={{ color: "var(--text-3)" }}
           >
             {TRUST_POINTS.map((point, i) => (
-              <span key={point} className="flex items-center gap-3">
-                {i > 0 && <span style={{ opacity: 0.4 }}>|</span>}
-                {point}
-              </span>
+              <Fragment key={point.full}>
+                {i > 0 && (
+                  <span aria-hidden="true" style={{ opacity: 0.35 }}>
+                    |
+                  </span>
+                )}
+                <span className="whitespace-nowrap">
+                  <span className="sm:hidden">{point.short}</span>
+                  <span className="hidden sm:inline">{point.full}</span>
+                </span>
+              </Fragment>
             ))}
           </div>
         </div>
@@ -490,17 +533,21 @@ export default function Landing() {
             Most teams have all three. Fixing one without the others does not hold.
           </p>
 
-          <div className="sx-stack grid gap-4 sm:grid-cols-3">
-            {PROBLEMS.map((item, i) => (
+          {/* Below a laptop these stack: each card anchors, the next slides
+              over it, and the one underneath sinks back. Above it, the
+              three sit side by side and are read in one glance, so
+              CardStack hands the layout back to this grid. */}
+          {/* The anchor clears the floating nav. Parked any higher, a stuck
+              card sits behind that glass pill and its text shows through
+              it, which looks like a rendering fault rather than a stack. */}
+          <CardStack className="grid gap-4 lg:grid-cols-3" top={116} dwell="24vh">
+            {PROBLEMS.map((item) => (
               <div
                 key={item.title}
-                /* On a phone these stack rather than queue: each one parks
-                   a little below the last. See sx-stack in index.css. */
-                className="sx-stack-item rounded-[18px] border p-6 backdrop-blur-xl"
+                className="rounded-[18px] border p-6 backdrop-blur-xl h-full"
                 style={{
                   backgroundColor: "var(--surface)",
                   borderColor: "var(--border)",
-                  "--i": i,
                 }}
               >
                 <div
@@ -520,7 +567,7 @@ export default function Landing() {
                 </p>
               </div>
             ))}
-          </div>
+          </CardStack>
         </Reveal>
       </section>
 
