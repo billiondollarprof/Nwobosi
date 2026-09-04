@@ -16,6 +16,7 @@ import { AmaraWordmark } from "../shared/icons.jsx";
 import { GlassPanel, PrimaryButton, StatusPill } from "../shared/ui.jsx";
 import { MarketingPage, GradientText, Eyebrow } from "../shared/marketing.jsx";
 import ModalCard from "../shared/ModalCard.jsx";
+import Photo from "../shared/Photo.jsx";
 
 /* --------------------------------------------------------------------------
    Page content
@@ -58,11 +59,21 @@ export default function Founder() {
             ================================================================== */}
 
         <div className="grid md:grid-cols-[0.9fr_1.1fr] rounded-t-[22px] overflow-hidden">
-          <div className="relative min-h-[280px] md:min-h-[420px]" style={{ backgroundColor: "#05060C" }}>
-            <img
-              src="/anthony-nwobosi.webp"
+          {/* Tall enough on a phone to hold a whole head. The portrait is
+              3:4, so a short landscape box crops it at the mouth. */}
+          <div className="relative min-h-[400px] md:min-h-[420px]" style={{ backgroundColor: "#05060C" }}>
+            {/* Absolutely positioned, so the column's own height decides the
+                crop and the reserved ratio never applies. The source is
+                1086px wide, so the pipeline wrote 640 and 1024 and no
+                more. */}
+            <Photo
+              name="anthony-nwobosi"
               alt="Anthony Nwobosi"
-              className="absolute inset-0 w-full h-full object-cover object-top"
+              widths={[640, 1024]}
+              sizes="(max-width: 768px) 100vw, 45vw"
+              priority
+              fill
+              imgClassName="object-top"
             />
             <div
               className="absolute inset-0"

@@ -914,44 +914,69 @@ export default function Landing() {
           ==================================================================== */}
 
       <section className="relative z-10 px-5 sm:px-8 py-20 sm:py-28">
-        <Reveal className="max-w-3xl mx-auto">
+        <Reveal className="max-w-5xl mx-auto">
           <div
-            className="rounded-[20px] border p-8 sm:p-10 backdrop-blur-xl text-center"
+            className="rounded-[20px] border overflow-hidden backdrop-blur-xl grid lg:grid-cols-[0.85fr_1.15fr]"
             style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
           >
-            <div className="flex justify-center mb-5">
+            {/* Two people going through a document line by line before it
+                counts. That is the read back, and it is what this section
+                is claiming, so the picture is the argument rather than
+                decoration. A phone gets the upright crop, because the
+                landscape one puts both faces too small to read.
+                The pipeline wrote 640 and 1024 for the wide file and 640
+                only for the upright one, so the widths say so. */}
+            <div className="relative">
+              <Photo
+                name="review-wide"
+                alt="Two colleagues reading through a document together at a boardroom table"
+                ratio="3 / 2"
+                widths={[640, 1024]}
+                narrow="review-portrait"
+                narrowRatio="2 / 3"
+                narrowWidths={[640]}
+                sizes="(max-width: 1023px) 100vw, 440px"
+                /* Absolute with a real height on the wide layout, so the
+                   column fills whatever height the text next to it sets
+                   and the reserved ratio stops applying. Below lg it goes
+                   back in flow and the ratio holds the space again. */
+                className="lg:absolute lg:inset-0 sx-photo-fill-lg"
+              />
+            </div>
+
+            <div className="p-8 sm:p-10 flex flex-col justify-center">
               <div
-                className="w-12 h-12 rounded-[14px] flex items-center justify-center"
+                className="w-12 h-12 rounded-[14px] flex items-center justify-center mb-5"
                 style={{ backgroundColor: "rgba(22,176,74,0.12)" }}
               >
                 <Lock size={22} style={{ color: BRAND.green }} />
               </div>
-            </div>
 
-            <h2
-              className="text-[24px] sm:text-[30px] font-medium mb-3 tracking-[-0.025em]"
-              style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
-            >
-              It only knows what you tell it
-            </h2>
-            <p className="text-[15px] leading-relaxed mb-7 max-w-xl mx-auto" style={{ color: "var(--text-3)" }}>
-              Your admin decides what goes into the knowledge base. Every company fact in an output traces
-              back to a source you approved. If something is missing, the assistant says so rather than
-              making it up. Zero trust at the runtime layer, and your data never leaves boundaries you
-              control.
-            </p>
+              <h2
+                className="text-[24px] sm:text-[30px] font-medium mb-3 tracking-[-0.025em]"
+                style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
+              >
+                It only knows what you tell it
+              </h2>
+              <p className="text-[15px] leading-relaxed mb-7" style={{ color: "var(--text-3)" }}>
+                Your admin decides what goes into the knowledge base. Every company fact in an output
+                traces back to a source you approved. If something is missing, the assistant says so
+                rather than making it up. Zero trust at the runtime layer, and your data never leaves
+                boundaries you control.
+              </p>
 
-            <div className="flex flex-wrap items-center justify-center gap-2.5">
-              {[
-                "No public sign up",
-                "Invite or approval only",
-                "Per person connectors",
-                "Nothing stored in chat",
-              ].map((claim) => (
-                <StatusPill key={claim} tone="ok">
-                  {claim}
-                </StatusPill>
-              ))}
+              <div className="flex flex-wrap gap-2.5">
+                {[
+                  "No public sign up",
+                  "Invite or approval only",
+                  "Per person connectors",
+                  "Nothing stored in chat",
+                ].map((claim) => (
+                  <StatusPill key={claim} tone="ok">
+                    {claim}
+                  </StatusPill>
+                ))}
+              </div>
             </div>
           </div>
         </Reveal>

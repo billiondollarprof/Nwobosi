@@ -391,6 +391,18 @@ body {
   }
 }
 
+/* A photograph that fills a column on a wide screen instead of holding a
+   ratio. The height comes from the text beside it, so the ratio has to be
+   released or it would compute the width from that height and push the
+   picture out over its neighbour. Below the breakpoint the ratio is back
+   and still reserves the space. */
+@media (min-width: 1024px) {
+  .sx-photo-fill-lg {
+    aspect-ratio: auto;
+    height: 100%;
+  }
+}
+
 .sx-stack-slot {
   position: sticky;
 }

@@ -113,6 +113,11 @@ export function LogoLockup({ stacked = false, size = 26, textClass = "text-[16px
    for product marks as real artwork instead of a flattened screenshot, and
    an arc and a circle are exactly the kind of shape that costs nothing to
    draw and stays sharp at any size. */
+/* Sampled off the original artwork rather than guessed at, so the mark on
+   this page is the same green and the same gold as the mark on amara.ng. */
+const AMARA_GREEN = "#20B255";
+const AMARA_GOLD = "#FAC302";
+
 export function AmaraGlyph({ size = 22 }) {
   return (
     <svg
@@ -124,22 +129,32 @@ export function AmaraGlyph({ size = 22 }) {
       aria-label="Amara"
       className="shrink-0"
     >
-      {/* The echo, behind and offset. Both parts are the mark's own colours
-          carried at half strength, rather than separately darkened
-          colours, so the echo stays the same hue as what it echoes. */}
+      {/* The echo, a smaller arc tucked inside the main one and ending a
+          little short of it. It is the same two colours at half strength
+          rather than separately darkened ones, which is how the original
+          is built: sampling the reference gives #105F2E for the echo,
+          exactly this green at 0.5 over a dark ground. */}
       <g opacity="0.5">
         <path
-          d="M 27 96 A 70 70 0 0 1 84 34"
-          stroke="#1B9E4B"
-          strokeWidth="12"
+          d="M 24.8 90.9 A 55.4 55.4 0 0 1 79.6 35"
+          stroke={AMARA_GREEN}
+          strokeWidth="5.9"
           strokeLinecap="round"
         />
-        <circle cx="86" cy="33" r="8.5" fill="#FBBF24" />
+        <circle cx="87.7" cy="35.6" r="6.7" fill={AMARA_GOLD} />
       </g>
 
-      {/* The mark itself */}
-      <path d="M 11 89 A 78 78 0 0 1 74 15" stroke="#22C55E" strokeWidth="13" strokeLinecap="round" />
-      <circle cx="78" cy="14" r="11.5" fill="#FBBF24" />
+      {/* The mark itself. A quarter turn: it leaves the bottom vertical and
+          arrives horizontal under the dot, which is what makes it read as
+          a rise rather than as a piece of a circle. The dot sits just past
+          the end of the stroke and covers the cap. */}
+      <path
+        d="M 5.7 87.2 A 70 70 0 0 1 75.3 16.8"
+        stroke={AMARA_GREEN}
+        strokeWidth="8.1"
+        strokeLinecap="round"
+      />
+      <circle cx="87" cy="16.8" r="10.75" fill={AMARA_GOLD} />
     </svg>
   );
 }

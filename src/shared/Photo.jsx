@@ -25,14 +25,21 @@ import { useState } from "react";
 
 const WIDTHS = [640, 1024, 1600];
 
-function srcSet(name) {
-  return WIDTHS.map((w) => `/img/${name}-${w}.webp ${w}w`).join(", ");
+/* The pipeline never upscales, so a 1000px original only ever produces a
+   640 file. Offering a width that was never written sends the browser to
+   a 404, and this component treats a 404 as "no photograph" and removes
+   itself. So each use declares the widths that actually exist on disk. */
+function srcSet(name, widths) {
+  return widths.map((w) => `/img/${name}-${w}.webp ${w}w`).join(", ");
 }
 
 export default function Photo({
   name,
   alt,
   ratio = "16 / 9",
+  /* Which files the pipeline actually wrote for this name. Check
+     public/img/ after a run rather than assuming all three. */
+  widths = WIDTHS,
   /* What slice of the viewport this occupies, so the browser can choose a
      width before layout has settled. Wrong values here are the usual
      reason a responsive image still downloads the largest file. */
@@ -45,6 +52,11 @@ export default function Photo({
      media query belongs. */
   narrow,
   narrowRatio,
+  narrowWidths,
+  /* Fill the parent instead of reserving a ratio. For a photograph in a
+     column whose height is set by whatever sits next to it. The parent
+     has to be positioned, and has to have a height of its own. */
+  fill = false,
   priority = false,
   className = "",
   imgClassName = "",
@@ -52,10 +64,14 @@ export default function Photo({
   const [failed, setFailed] = useState(false);
   if (failed) return null;
 
+  /* The plain src is the fallback for anything that ignores srcset, so it
+     has to be a file that exists. Largest available, not a fixed 1024. */
+  const widest = widths[widths.length - 1];
+
   const image = (
     <img
-      src={`/img/${name}-1024.webp`}
-      srcSet={srcSet(name)}
+      src={`/img/${name}-${widest}.webp`}
+      srcSet={srcSet(name, widths)}
       sizes={sizes}
       alt={alt}
       onError={() => setFailed(true)}
@@ -70,13 +86,21 @@ export default function Photo({
 
   return (
     <div
-      className={`sx-photo overflow-hidden ${className}`}
-      style={{ "--r-wide": ratio, "--r-narrow": narrowRatio || ratio }}
+      className={
+        fill
+          ? `absolute inset-0 overflow-hidden ${className}`
+          : `sx-photo overflow-hidden ${className}`
+      }
+      style={fill ? undefined : { "--r-wide": ratio, "--r-narrow": narrowRatio || ratio }}
     >
       {narrow ? (
         <picture>
-          <source media="(max-width: 767px)" srcSet={srcSet(narrow)} sizes={sizes} />
-          <source srcSet={srcSet(name)} sizes={sizes} />
+          <source
+            media="(max-width: 767px)"
+            srcSet={srcSet(narrow, narrowWidths || widths)}
+            sizes={sizes}
+          />
+          <source srcSet={srcSet(name, widths)} sizes={sizes} />
           {image}
         </picture>
       ) : (
