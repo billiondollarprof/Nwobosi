@@ -105,6 +105,45 @@ export function LogoLockup({ stacked = false, size = 26, textClass = "text-[16px
    logo cannot do.
    -------------------------------------------------------------------------- */
 
+/* The mark that sits to the left of the wordmark: an arc rising to a
+   sun, with a darker echo of itself set down and behind, which is what
+   gives it depth on a dark ground.
+
+   Drawn rather than dropped in as a raster. Amara's own design rules ask
+   for product marks as real artwork instead of a flattened screenshot, and
+   an arc and a circle are exactly the kind of shape that costs nothing to
+   draw and stays sharp at any size. */
+export function AmaraGlyph({ size = 22 }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 100 100"
+      fill="none"
+      role="img"
+      aria-label="Amara"
+      className="shrink-0"
+    >
+      {/* The echo, behind and offset. Both parts are the mark's own colours
+          carried at half strength, rather than separately darkened
+          colours, so the echo stays the same hue as what it echoes. */}
+      <g opacity="0.5">
+        <path
+          d="M 27 96 A 70 70 0 0 1 84 34"
+          stroke="#1B9E4B"
+          strokeWidth="12"
+          strokeLinecap="round"
+        />
+        <circle cx="86" cy="33" r="8.5" fill="#FBBF24" />
+      </g>
+
+      {/* The mark itself */}
+      <path d="M 11 89 A 78 78 0 0 1 74 15" stroke="#22C55E" strokeWidth="13" strokeLinecap="round" />
+      <circle cx="78" cy="14" r="11.5" fill="#FBBF24" />
+    </svg>
+  );
+}
+
 export function AmaraWordmark({ size = "1.15rem" }) {
   return (
     <span
@@ -112,6 +151,16 @@ export function AmaraWordmark({ size = "1.15rem" }) {
     >
       <span style={{ color: "var(--text-1)" }}>Am</span>
       <span style={{ color: "#D4A017" }}>ara</span>
+    </span>
+  );
+}
+
+/* The two together, in the order they are always shown. */
+export function AmaraLockup({ size = "1.5rem", glyph = 26 }) {
+  return (
+    <span className="inline-flex items-center gap-2.5">
+      <AmaraGlyph size={glyph} />
+      <AmaraWordmark size={size} />
     </span>
   );
 }

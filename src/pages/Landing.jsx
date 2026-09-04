@@ -42,7 +42,8 @@ import {
   GraduationCap,
 } from "lucide-react";
 
-import { AmaraWordmark } from "../shared/icons.jsx";
+import { AmaraLockup } from "../shared/icons.jsx";
+import Photo from "../shared/Photo.jsx";
 import ContainmentSeal from "../shared/ContainmentSeal.jsx";
 import Reveal from "../shared/Reveal.jsx";
 import Typewriter from "../shared/Typewriter.jsx";
@@ -689,6 +690,20 @@ export default function Landing() {
             center
           />
 
+          {/* The one photograph on the page, and it earns its place by
+              showing the environment this runs in rather than decorating
+              the section. It removes itself if the file is not there, so
+              the grid below reads the same either way. */}
+          <Photo
+            name="ops-room"
+            alt="An operations floor at dusk, screens lit, people at work"
+            ratio="16 / 9"
+            narrowRatio="4 / 3"
+            sizes="(max-width: 1024px) 100vw, 1024px"
+            className="rounded-[20px] border mb-10"
+            imgClassName="opacity-[0.92]"
+          />
+
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {INDUSTRIES.map((industry) => (
               <GlassPanel key={industry.title} className="p-6">
@@ -786,7 +801,7 @@ export default function Landing() {
             <GlassPanel className="p-0 overflow-hidden" style={{ borderTop: `3px solid ${BRAND.purple}` }}>
               <div className="p-7 pb-0">
                 <div className="flex items-center justify-between gap-3">
-                  <AmaraWordmark size="1.5rem" />
+                  <AmaraLockup size="1.5rem" glyph={26} />
                   <StatusPill tone="ok">Deployed</StatusPill>
                 </div>
                 <p className="text-[14px] leading-relaxed mt-4" style={{ color: "var(--text-3)" }}>

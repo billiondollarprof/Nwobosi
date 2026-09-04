@@ -5,3 +5,7 @@ dist
 .DS_Store
 *.log
 .vite
+
+# Image originals. Only the optimised output in public/img/ is served,
+# and originals are large enough that they do not belong in the history.
+assets/source

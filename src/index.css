@@ -373,6 +373,24 @@ body {
    other way.
    -------------------------------------------------------------------------- */
 
+/* --------------------------------------------------------------------------
+   PHOTOGRAPHS
+   The ratio is reserved before the bytes arrive, so nothing reflows as
+   each picture lands. A phone can be shown a different crop at a
+   different ratio, which is why this is two variables rather than one.
+   See shared/Photo.jsx.
+   -------------------------------------------------------------------------- */
+
+.sx-photo {
+  aspect-ratio: var(--r-wide);
+}
+
+@media (max-width: 767px) {
+  .sx-photo {
+    aspect-ratio: var(--r-narrow);
+  }
+}
+
 .sx-stack-slot {
   position: sticky;
 }
