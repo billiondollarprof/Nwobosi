@@ -1,8 +1,16 @@
 /* ==========================================================================
    LANDING PAGE
-   The public entry point. There is no sign in here on purpose. This is not
-   a sign up product. A company arrives with an access code and builds their
-   own workspace. Read top to bottom:
+   The public entry point. There is no sign in here on purpose, and there is
+   no plan, seat or free tier either. Nothing about this is self serve.
+
+   StellaXafe is built to order. A company comes with requirements and the
+   deployment is built into their systems. What runs behind this page is
+   the blueprint: it proves the architecture and shows the shape, and a
+   buyer drives it with an access code. See DIRECTION.md before changing
+   any copy here, and in particular before adding anything that reads as
+   "switch it on yourself".
+
+   Read top to bottom:
 
       1. Nav
       2. Hero
@@ -64,11 +72,18 @@ import { SectionHead, GradientText, Eyebrow, Divider } from "../shared/marketing
 
 /* The three objections an enterprise buyer raises before they will try it.
    Short forms for the phone, so the row holds one line. It used to wrap,
-   which left a separator stranded at the start of the second line. */
+   which left a separator stranded at the start of the second line.
+
+   Two of these used to be "No setup team" and "Live in 10 minutes". Both
+   are self serve claims, and this is not a self serve product. They told a
+   buyer they could switch this on themselves, which is the opposite of
+   what it is, and an enterprise reader who meets "live in 10 minutes" on a
+   deployment page discounts everything above it. Seeing it in ten minutes
+   is true, and it is what the button below actually offers. */
 const TRUST_POINTS = [
   { full: "Nothing leaves your walls", short: "Nothing leaves" },
-  { full: "No setup team", short: "No setup team" },
-  { full: "Live in 10 minutes", short: "Live in 10 min" },
+  { full: "Built into your systems", short: "Into your systems" },
+  { full: "See it in 10 minutes", short: "See it in 10 min" },
 ];
 
 /* What the product hands back. These rotate in the subtext, so a reader
@@ -1170,9 +1185,20 @@ export default function Landing() {
           >
             See it running on your own company
           </h2>
-          <p className="text-[15px] mb-8" style={{ color: "var(--text-3)" }}>
-            Bring your access code. Name your company, answer three questions, and watch it build something
-            that already sounds like you.
+          {/* The one place the page says what it is, plainly, because
+              everything above could still be read as a product you sign up
+              for. It is not. The blueprint is the honest word for what a
+              reader can drive, and saying so is stronger than implying
+              otherwise: an architecture that already runs is the reason a
+              deployment is fast. */}
+          <p className="text-[15px] leading-relaxed mb-3" style={{ color: "var(--text-3)" }}>
+            Bring your access code. Name your company, answer three questions, and watch it build
+            something that already sounds like you.
+          </p>
+          <p className="text-[14px] leading-relaxed mb-8 max-w-lg mx-auto" style={{ color: "var(--text-3)", opacity: 0.85 }}>
+            This is not software you subscribe to. What you drive here is the blueprint. The
+            deployment is built into your own systems, and it is fast because the architecture,
+            the guardrails and the isolation are already built and already work.
           </p>
           <PrimaryButton
             onClick={() => navigate("/setup")}

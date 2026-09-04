@@ -1,8 +1,32 @@
 # CURRENT
 
-Where StellaXafe actually stands, written 2026-08-27, near the end of the
-session before submission. Read this first. `SESSIONS.md` is the log
-behind it.
+Where StellaXafe actually stands. The body of this file was written
+2026-08-27; the note directly below was added 2026-09-04. Read this first.
+`SESSIONS.md` is the log behind it, and `DIRECTION.md` is what this is all
+being built toward.
+
+---
+
+## What this repository is, before anything else
+
+**StellaXafe is not SaaS.** There is no plan, no seat, no self serve tier,
+and nobody signs up. It is built to order: a company comes with
+requirements and the deployment is built into their own systems.
+
+**So everything in this repository is a blueprint.** It proves the
+architecture and it shows the shape. It is not the software any customer
+will be handed. What they receive is built for them, and what is added or
+dropped depends on the contract.
+
+Four things never vary, in any deployment: private, safe, near zero
+hallucination, and the iteration problem solved. Everything else does.
+
+This matters for how the rest of this file reads. "Not real yet" below
+means not wired in the blueprint. It does not mean out of scope, and it is
+not a reason to remove a claim from a public page. `DIRECTION.md` holds
+the rule for what public copy may say.
+
+---
 
 This file is deliberately blunt about what is real and what is not,
 because the last three sessions were spent finding things that looked

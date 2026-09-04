@@ -23,6 +23,58 @@ So the rule for public copy is not "only claim what the demo does". It is:
 
 ---
 
+## What is actually being sold
+
+Read this before writing a word of public copy, because getting it wrong
+makes the page sound like a category it is not in.
+
+**This is not SaaS.** Nobody signs up and uses this. There is no plan, no
+seat, no self serve tier. It is built to order: a company comes to us, we
+take their requirements, and we build this into their system. What they
+end up using is theirs, running where they run things. It is not this
+instance with their logo on it.
+
+**So the demo is a blueprint.** It shows the direction and it proves the
+architecture runs. It is deliberately not the thing anyone is handed. A
+buyer driving it is looking at the shape of what they would get, not at
+the product they would receive.
+
+**The architecture already existing is the advantage.** We are not
+starting from a blank page for each company, and that is the whole reason
+a deployment is fast rather than a twelve month project. The code, the
+guardrails, the flow and the isolation model are already built and already
+work. Reshaping that into what a company actually needs is a different
+size of job to inventing it.
+
+### What is constant, and what is not
+
+Four things do not move, in any deployment, ever. They are the problems
+being solved, and they are what the page should be built on:
+
+- **Private.** The company's material stays inside boundaries they
+  control, and nothing is trained on.
+- **Safe.** Approved sources only, per person isolation, a human
+  checkpoint before anything is spent.
+- **Near zero hallucination.** Output is constrained by a brief that was
+  read back and confirmed, not by hope.
+- **The iteration problem solved.** The back and forth happens in cheap
+  conversation before anything is generated.
+
+Everything else is contract dependent. Which systems it connects to, where
+finished work is written, what is added, what is dropped, what the
+assistant looks like and how it carries out the work. None of that should
+be stated on a public page as though it were fixed.
+
+### What this rules out of the copy
+
+Anything that reads as self serve. "No setup team", "live in ten minutes",
+"start free", a pricing table, a sign up button. They put the page in the
+wrong category, and an enterprise buyer who reads one of them discounts
+everything above it. Where a claim is about the demo, say it is about the
+demo.
+
+---
+
 ## Where it started
 
 Anthony watched a friend upload his company's documents into a public
