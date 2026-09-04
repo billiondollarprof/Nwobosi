@@ -55,8 +55,20 @@ being solved, and they are what the page should be built on:
   control, and nothing is trained on.
 - **Safe.** Approved sources only, per person isolation, a human
   checkpoint before anything is spent.
-- **Near zero hallucination.** Output is constrained by a brief that was
-  read back and confirmed, not by hope.
+- **Nothing invented.** Every company fact traces back to a source the
+  admin approved, the output is constrained by a brief that was read back
+  and confirmed, and where something is missing it says so rather than
+  filling the gap.
+
+  Say it as the mechanism. Not "zero hallucination", and not "near zero"
+  either. The absolute is falsifiable in one sitting, by exactly the
+  technical reviewer most likely to test the boldest claim on the page,
+  and it takes the rest of the page down with it when it fails. It is also
+  what every vendor in this category writes, so it reads as noise. Worse,
+  a marketing absolute does not stay in marketing: it ends up in a
+  procurement questionnaire and then in a contract, warranting something
+  nobody can warrant, to hospitals and legal firms. The mechanism is the
+  stronger claim, because a reviewer can check it and find it true.
 - **The iteration problem solved.** The back and forth happens in cheap
   conversation before anything is generated.
 

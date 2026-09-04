@@ -66,7 +66,8 @@ Then generation runs against that prompt.
 Writing the prompt down first does three things:
 
 - **The model does not drift.** It follows the prompt line by line instead of losing details across a long conversation.
-- **Company facts carry their source.** The output model is instructed to use only the supplied facts for anything company specific. That is how hallucination is stopped, at generation time, on every output.
+- **Company facts carry their source.** The output model is instructed to use only the supplied facts for anything company specific. That is the constraint that keeps invented company facts out, applied at
+generation time on every output.
 - **It is auditable.** The prompt is a record of exactly what was asked for and what it was built from.
 
 ## What the AI is allowed to know

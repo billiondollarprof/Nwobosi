@@ -18,8 +18,10 @@ architecture and it shows the shape. It is not the software any customer
 will be handed. What they receive is built for them, and what is added or
 dropped depends on the contract.
 
-Four things never vary, in any deployment: private, safe, near zero
-hallucination, and the iteration problem solved. Everything else does.
+Four things never vary, in any deployment: private, safe, nothing
+invented, and the iteration problem solved. Everything else does. See
+`DIRECTION.md` for why the third is stated as a mechanism and never as a
+number.
 
 This matters for how the rest of this file reads. "Not real yet" below
 means not wired in the blueprint. It does not mean out of scope, and it is
