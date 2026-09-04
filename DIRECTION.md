@@ -4,8 +4,22 @@ Why this exists, what it is actually for, and where it is going. Read this
 before working on product copy or on the assistant flow.
 
 `CURRENT.md` says what is built. This file says what it is meant to be.
-The two disagree in places on purpose, and where they do, `CURRENT.md`
-wins for any claim made on a public page.
+They disagree in places on purpose.
+
+**The demo is a sample, not the specification.** It shows the shape of the
+thing. It is not the ceiling, and the landing page is not a description of
+it. The landing page describes what a deployment does for a company that
+hires us, and a deployment is a larger thing than the demo wires.
+
+So the rule for public copy is not "only claim what the demo does". It is:
+
+- Describe what a deployment does. That is what is being sold and it is
+  what we build.
+- Never name a specific integration as though it is already connected. The
+  systems a deployment connects to are a requirements question asked of
+  each organization, not a decision made here.
+- Where something is research rather than product, say so on the page. The
+  AI Police section is the only part of this file that carries that mark.
 
 ---
 
@@ -93,6 +107,44 @@ read back to Anthony before anything is rebuilt.
    at step 4. The read back is the first guardrail, the prompt is the
    second.
 7. **It builds**, and returns the finished work.
+
+### Where the finished work goes
+
+This is architecture, not a detail, and it is the reason the product can
+be trusted with a company's material at all.
+
+**The files do not live in the software.** We do not become another place
+a company's data is kept. The system reads from wherever the organization
+already keeps its data, and it writes the finished work back to the same
+place.
+
+Which place that is depends on the organization. Drive, Dropbox,
+SharePoint, a database of their own. It is one of the first requirements
+questions asked at the start of an engagement, and never assumed. Public
+copy therefore says "your own storage", not "your Drive".
+
+**Two deliveries at the same moment.** A download link in the chat, and
+the file saved as a draft into their own storage. The person can take it
+now or find it where their work already lives.
+
+### Memory, instead of keeping the file
+
+Once the document has left the chat, the assistant still has to know what
+happened. So the work is converted into notes it keeps: what was asked,
+what was decided, which sources were used. The next conversation starts
+knowing that, rather than starting cold.
+
+Two things about this are not optional.
+
+**The memory is per person.** Each staff member has their own. The
+assistant must never surface one person's memory to another, for the same
+reason it must never surface one company's documents to another. It is the
+same isolation rule applied one layer deeper, and it is a security
+boundary, not a convenience.
+
+**It is bigger than two files.** `sessions.md` and `current.md` are the
+shorthand for the idea, not the design. Treat those names as a way of
+describing what is kept, and design the actual store when the work starts.
 
 ### What this buys, in the order a buyer cares
 

@@ -129,7 +129,7 @@ const STEPS = [
   {
     icon: FileSignature,
     title: "It writes the prompt, then builds",
-    body: "One prompt, written from the brief you approved, and that prompt is the second guardrail: nothing reaches the document that you did not confirm. The finished file comes back as Word or PDF.",
+    body: "One prompt, written from the brief you approved, and that prompt is the second guardrail: nothing reaches the document that you did not confirm. The finished file comes back two ways at once: a download in the chat, and a draft saved into your own storage, wherever your files already live.",
     wide: true,
   },
 ];
@@ -1080,11 +1080,22 @@ export default function Landing() {
               >
                 It only knows what you tell it
               </h2>
-              <p className="text-[15px] leading-relaxed mb-7" style={{ color: "var(--text-3)" }}>
+              <p className="text-[15px] leading-relaxed mb-4" style={{ color: "var(--text-3)" }}>
                 Your admin decides what goes into the knowledge base. Every company fact in an output
                 traces back to a source you approved. If something is missing, the assistant says so
                 rather than making it up. Zero trust at the runtime layer, and your data never leaves
                 boundaries you control.
+              </p>
+              {/* The storage boundary is the part a technical reviewer will
+                  look for, and it is the strongest thing on this section:
+                  we do not become another place their data is kept. It says
+                  "your own storage" rather than naming a vendor, because
+                  which one it is belongs to the requirements conversation
+                  with each organization. */}
+              <p className="text-[15px] leading-relaxed mb-7" style={{ color: "var(--text-3)" }}>
+                Your files stay in your own storage, not inside this software. What each person works
+                on is remembered for them and for nobody else, so the assistant keeps its context
+                between conversations without one person's work ever reaching another's.
               </p>
 
               <div className="flex flex-wrap gap-2.5">
@@ -1092,7 +1103,8 @@ export default function Landing() {
                   "No public sign up",
                   "Invite or approval only",
                   "Per person connectors",
-                  "Nothing stored in chat",
+                  "Memory is per person",
+                  "Your storage, not ours",
                 ].map((claim) => (
                   <StatusPill key={claim} tone="ok">
                     {claim}

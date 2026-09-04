@@ -530,7 +530,7 @@ export default function Chat() {
             id: w.id,
             title: w.title,
             skill: w.skill,
-            driveSynced: false,
+            savedToStorage: false,
             when: new Date(w.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
             content: w.summary,
           }))
@@ -816,8 +816,14 @@ export default function Chat() {
 
   /* ------------------------------------------------------------------------
      4. GENERATION
-     Runs once the staff member confirms the brief. The finished file is
-     written to their Drive rather than kept in the chat.
+     Runs once the staff member confirms the brief.
+
+     A finished file is delivered two ways in a deployment: a download here
+     in the chat, and a draft written into the organization's own storage.
+     Which storage that is belongs to the requirements conversation with
+     each organization, so nothing in this file names one. Neither does the
+     library below: it holds what was made, and says plainly that it is
+     here rather than pretending it went somewhere it did not.
      ------------------------------------------------------------------------ */
 
   /* The moment the conversation becomes a deliverable. Same function as
@@ -876,12 +882,12 @@ export default function Chat() {
         setDailyUsed((n) => Math.min(n + 1, DAILY_LIMIT));
 
         /* Into the library, so it is somewhere other than this one
-           conversation. driveSynced stays false because Drive is not
-           connected, and claiming otherwise would be a lie in the UI. */
+           conversation. savedToStorage stays false because no storage is
+           connected here, and claiming otherwise would be a lie in the UI. */
         const title = docTitle(messages);
 
         setLibraryFiles((prev) => [
-          { id: nextId(), title, skill: autoSkill, driveSynced: false, when: "Just now", content: finished },
+          { id: nextId(), title, skill: autoSkill, savedToStorage: false, when: "Just now", content: finished },
           ...prev,
         ]);
 
@@ -1298,20 +1304,21 @@ export default function Chat() {
                       {f.title}
                     </span>
                     <span className="flex items-center gap-1 text-[10.5px]" style={{ color: "var(--text-3)" }}>
-                      {f.driveSynced ? (
+                      {/* A spinner that never resolves is worse than no
+                          status at all, and that is what sat here: nothing
+                          is connected, so "Saving" span forever. It now says
+                          where the file actually is. */}
+                      {f.savedToStorage ? (
                         <>
                           <Cloud size={10} style={{ color: BRAND.green }} />
-                          Synced to Drive, {f.when}
+                          Saved to your storage, {f.when}
                         </>
                       ) : (
-                        <>
-                          <Spinner size={10} />
-                          Saving to Drive
-                        </>
+                        <>Made {f.when.toLowerCase()}</>
                       )}
                     </span>
                   </span>
-                  {f.driveSynced && <ExternalLink size={12} style={{ color: "var(--text-3)" }} />}
+                  {f.savedToStorage && <ExternalLink size={12} style={{ color: "var(--text-3)" }} />}
                 </button>
               );
             })}
