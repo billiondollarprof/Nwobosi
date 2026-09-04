@@ -110,6 +110,16 @@ export default function Admin() {
         return;
       }
 
+      /* Signed in, but not an admin. The database already refuses every
+         write on this page, because each policy is scoped by is_admin(),
+         so the worst they could do was watch saves fail. Still wrong to
+         let the panel open at all: hiding the link is a courtesy, this is
+         the check. Send them to their own side. */
+      if (who.staff?.access_level !== "admin") {
+        navigate(who.company?.slug ? `/${who.company.slug}` : "/chat", { replace: true });
+        return;
+      }
+
       setMe(who);
       setLoadingMe(false);
     })();

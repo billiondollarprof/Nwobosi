@@ -59,6 +59,7 @@ import {
   saveConversation,
 } from "../shared/session.js";
 import { readFileAsText, fileKind } from "../shared/readFile.js";
+import { downloadPdf, downloadDocx } from "../shared/download.js";
 import { BRAND, GRADIENTS, FONTS } from "../shared/tokens";
 import {
   PageShell,
@@ -311,17 +312,11 @@ function slugForFile(title) {
    from text already on screen, so there is no round trip and nothing to
    store server side, which is the point: the chat is not a filing
    cabinet. */
-function downloadDocument(title, content) {
-  const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${slugForFile(title)}.md`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
+/* The finished work leaves as a PDF or a Word file. It used to leave as
+   Markdown, which is a text file full of hashes and stars: fine in a code
+   editor, and nothing a phone will even open. A document nobody can open
+   is not a document. Both writers live in shared/download.js and load only
+   when a button is pressed. */
 
 let idCounter = 0;
 function nextId() {
@@ -968,12 +963,25 @@ export default function Chat() {
      Drive instead, which keeps large files out of the model context.
      ------------------------------------------------------------------------ */
 
+  /* One place that sizes the box to its contents, so it grows the same
+     whether the words were typed or spoken. It used to be done inside the
+     typing handler only, which meant dictation ran off the bottom of a one
+     line box and you could not see what you had said. */
+  function fitTextarea() {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 140) + "px";
+  }
+
   function handleTextareaInput(e) {
     setInput(e.target.value);
     const el = e.target;
     el.style.height = "auto";
     el.style.height = Math.min(el.scrollHeight, 140) + "px";
   }
+
+  useEffect(fitTextarea, [input]);
 
   function handleFileSelect(e) {
     const files = Array.from(e.target.files || []);
@@ -1077,6 +1085,20 @@ export default function Chat() {
 
   function toggleFeedback(id, kind) {
     setFeedback((prev) => ({ ...prev, [id]: prev[id] === kind ? null : kind }));
+  }
+
+  /* Writing a file can fail, and a download button that silently does
+     nothing is the worst control on any screen. Say what happened. */
+  async function handleDownload(format, title, content) {
+    setToast(format === "pdf" ? "Making the PDF" : "Making the Word file");
+    try {
+      if (format === "pdf") await downloadPdf(title, content);
+      else await downloadDocx(title, content);
+      setToast("Saved to your downloads");
+    } catch (err) {
+      console.error("could not build the file", err);
+      setToast("Could not build that file. Copy the text instead.");
+    }
   }
 
   /* A copy that says nothing is a copy you check by pasting somewhere to
@@ -1260,7 +1282,7 @@ export default function Chat() {
               return (
                 <button
                   key={f.id}
-                  onClick={() => downloadDocument(f.title, f.content)}
+                  onClick={() => downloadPdf(f.title, f.content)}
                   className="w-full flex items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-left transition-colors hover:opacity-80"
                   style={{ backgroundColor: "var(--surface)" }}
                   title="Download again"
@@ -1324,14 +1346,20 @@ export default function Chat() {
         </div>
 
         <div className="p-3 border-t space-y-1" style={{ borderColor: "var(--border)" }}>
-          <button
-            onClick={() => navigate("/admin")}
-            className="w-full flex items-center gap-2 rounded-[12px] px-3.5 py-2.5 text-[14px] font-medium transition-colors hover:opacity-80"
-            style={{ color: "var(--text-2)" }}
-          >
-            <Shield size={15} />
-            Admin dashboard
-          </button>
+          {/* Only an admin is offered the admin side. A staff member being
+              shown a door they are not allowed through is an invitation to
+              try it, and a door that opens onto a panel where every save
+              fails is worse than no door. */}
+          {me?.staff?.access_level === "admin" && (
+            <button
+              onClick={() => navigate("/admin")}
+              className="w-full flex items-center gap-2 rounded-[12px] px-3.5 py-2.5 text-[14px] font-medium transition-colors hover:opacity-80"
+              style={{ color: "var(--text-2)" }}
+            >
+              <Shield size={15} />
+              Admin dashboard
+            </button>
+          )}
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-2 rounded-[12px] px-3.5 py-2.5 text-[14px] font-medium transition-colors hover:opacity-80"
@@ -1488,6 +1516,7 @@ export default function Chat() {
                 feedback={feedback[m.id]}
                 onFeedback={(kind) => toggleFeedback(m.id, kind)}
                 onCopy={() => copyText(m.content)}
+                onDownload={(format) => handleDownload(format, m.title || "Your document", m.content)}
               />
             ))}
             {typing && <TypingDots />}
@@ -1860,7 +1889,7 @@ export default function Chat() {
    avatar, staff messages sit in a neutral capsule on the right.
    ========================================================================== */
 
-function ChatBubble({ message, brief, onGenerate, onAdjust, onReset, onRetry, feedback, onFeedback, onCopy }) {
+function ChatBubble({ message, brief, onGenerate, onAdjust, onReset, onRetry, feedback, onFeedback, onCopy, onDownload }) {
   const isUser = message.role === "user";
   const riseStyle = { animation: "sx-rise 0.35s ease" };
 
@@ -2007,12 +2036,13 @@ function ChatBubble({ message, brief, onGenerate, onAdjust, onReset, onRetry, fe
 
           <div className="flex flex-wrap gap-2.5">
             <PrimaryButton
-              onClick={() => downloadDocument(title, message.content)}
+              onClick={() => onDownload("pdf")}
               className="flex items-center gap-2 text-[13.5px] px-4"
             >
               <Download size={14} />
-              Download
+              Download PDF
             </PrimaryButton>
+            <GhostButton onClick={() => onDownload("docx")}>Word</GhostButton>
             <GhostButton onClick={onCopy}>Copy</GhostButton>
             <GhostButton onClick={onReset}>Start something new</GhostButton>
           </div>
