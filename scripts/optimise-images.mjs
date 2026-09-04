@@ -51,7 +51,12 @@ async function main() {
     return;
   }
 
-  const images = entries.filter((f) => /\.(png|jpe?g|webp|tiff?)$/i.test(f));
+  /* Anything named "reference" is something to work from, not something to
+     ship. Artwork to trace, a screenshot to match. It stays in the source
+     folder and never reaches public/img/. */
+  const images = entries.filter(
+    (f) => /\.(png|jpe?g|webp|tiff?)$/i.test(f) && !/reference/i.test(f),
+  );
   if (!images.length) {
     console.error(`No images found in ${path.relative(ROOT, SOURCE)}.`);
     process.exitCode = 1;
