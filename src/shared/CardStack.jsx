@@ -41,7 +41,13 @@ const DARKEN = 0.42;
 export default function CardStack({
   children,
   top = 92,
-  dwell = "26vh",
+  /* How far you scroll between one card locking and the next arriving. It
+     is also the blank space between the cards before you reach them, which
+     is the reason it is this small: at a quarter of the window the section
+     read as three cards with holes punched between them rather than as a
+     deck. Short enough to look like a pile, long enough that each card has
+     a moment on its own. */
+  dwell = "11vh",
   /* Above this width the caller's own layout takes over. Three cards side
      by side on a wide screen are already read in one glance, and stacking
      them there would make the reader scroll for something they can
@@ -142,12 +148,16 @@ export default function CardStack({
     };
   }, [enabled, top, items.length]);
 
+  /* className describes the caller's own layout, which is almost always a
+     grid. That layout is meaningless once the cards are stacked, and its
+     gap would be added on top of the dwell, so it is dropped here rather
+     than fought with. */
   if (!enabled) {
     return <div className={className}>{items}</div>;
   }
 
   return (
-    <div ref={ref} className={`sx-stack ${className}`}>
+    <div ref={ref} className="sx-stack">
       {items.map((child, i) => (
         <div
           key={i}

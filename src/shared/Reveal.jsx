@@ -1,6 +1,15 @@
 /* ==========================================================================
    REVEAL
-   Sections settle in as they arrive rather than being there all at once.
+   Sections come forward as they arrive and settle back as they leave.
+
+   It used to fire once and stop. That was the safe choice and it was the
+   wrong one: a page where everything is equally present is a page with no
+   focus, and the section you are actually reading should be the brightest
+   thing on the screen. So this now runs both ways. The band it watches is
+   inset from the top and bottom of the window, which means a section is
+   still "away" while it sits in the outer edge of the viewport and comes
+   forward as it moves into the middle. That is the part a reader feels:
+   the copy sharpening as they scroll toward it.
 
    The resting state is visible. Arming happens in JavaScript, before
    paint, and only when the browser can actually observe and the reader has
@@ -9,8 +18,9 @@
    section is simply visible. A page whose content is parked at zero
    opacity waiting on an observer is one failed script away from blank.
 
-   It fires once. Content that fades out again when you scroll back up
-   reads as a page that cannot make up its mind.
+   Nothing here depends on scroll position at load. Land halfway down the
+   page on a refresh and the sections in view come forward on the first
+   frame, exactly as they would have if you had scrolled to them.
    ========================================================================== */
 
 import { useEffect, useLayoutEffect, useRef } from "react";
@@ -25,25 +35,26 @@ export default function Reveal({ children, delay = 0, className = "", as: Tag = 
     if (!el) return;
     if (typeof IntersectionObserver === "undefined") return;
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
-    el.classList.add("sx-reveal-armed");
+    el.classList.add("sx-reveal-live", "sx-reveal-away");
   }, []);
 
   useEffect(() => {
     const el = ref.current;
-    if (!el || !el.classList.contains("sx-reveal-armed")) return;
+    if (!el || !el.classList.contains("sx-reveal-live")) return;
+
+    el.style.transitionDelay = `${delay}ms`;
 
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
-          el.style.transitionDelay = `${delay}ms`;
-          el.classList.remove("sx-reveal-armed");
-          observer.disconnect();
+          el.classList.toggle("sx-reveal-away", !entry.isIntersecting);
         }
       },
-      /* A little before the edge, so a section has finished arriving by the
-         time it is properly in view rather than animating under the reader. */
-      { rootMargin: "0px 0px -12% 0px", threshold: 0.05 },
+      /* Inset top and bottom. A section counts as arrived once it has
+         reached the middle band of the window, not the instant one pixel
+         of it clears the edge. threshold 0 so a section taller than the
+         band still counts as arrived while it is passing through. */
+      { rootMargin: "-14% 0px -14% 0px", threshold: 0 },
     );
 
     observer.observe(el);

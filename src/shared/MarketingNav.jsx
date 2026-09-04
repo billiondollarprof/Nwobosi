@@ -67,7 +67,7 @@ export default function MarketingNav() {
       {/* ------------------------------------------------------------------
           Links, desktop
           ------------------------------------------------------------------ */}
-      <div className="hidden md:flex items-center gap-1">
+      <div className="hidden lg:flex items-center gap-1">
         {NAV_LINKS.map((link) => {
           const active = pathname === link.to;
           return (
@@ -90,13 +90,13 @@ export default function MarketingNav() {
         <ThemeToggle />
         <PrimaryButton
           onClick={() => go("/contact")}
-          className="hidden sm:block px-4 py-2 text-[13px]"
+          className="hidden sm:block px-4 py-2 text-[13px] whitespace-nowrap"
         >
           Book a live call
         </PrimaryButton>
         <button
           onClick={() => setMenuOpen((open) => !open)}
-          className="md:hidden w-9 h-9 rounded-full flex items-center justify-center border transition-colors hover:opacity-80"
+          className="lg:hidden w-9 h-9 rounded-full flex items-center justify-center border transition-colors hover:opacity-80"
           style={{ borderColor: "var(--border-2)" }}
           aria-label={menuOpen ? "Close menu" : "Open menu"}
           aria-expanded={menuOpen}
@@ -116,7 +116,7 @@ export default function MarketingNav() {
           ------------------------------------------------------------------ */}
       {menuOpen && (
         <div
-          className="md:hidden absolute left-0 right-0 top-16 rounded-[20px] border backdrop-blur-2xl overflow-hidden shadow-2xl z-50"
+          className="lg:hidden absolute left-0 right-0 top-16 rounded-[20px] border backdrop-blur-2xl overflow-hidden shadow-2xl z-50"
           style={{ backgroundColor: "var(--surface-solid)", borderColor: "var(--border-2)" }}
         >
           {NAV_LINKS.map((link) => (

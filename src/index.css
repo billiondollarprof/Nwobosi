@@ -426,6 +426,27 @@ body {
    See shared/Photo.jsx.
    -------------------------------------------------------------------------- */
 
+/* --------------------------------------------------------------------------
+   HERO AURA
+   The light the mark sits in, and the mark is not in the same place at
+   every width. On a phone it sits below the sentence, so the light sits
+   low. On a wide screen it is back above the headline and the light rises
+   with it. A mask cannot be written as a responsive utility, so it lives
+   here where a media query belongs.
+   -------------------------------------------------------------------------- */
+
+.sx-hero-aura {
+  -webkit-mask-image: radial-gradient(62% 62% at 50% 62%, #000 0%, transparent 80%);
+  mask-image: radial-gradient(62% 62% at 50% 62%, #000 0%, transparent 80%);
+}
+
+@media (min-width: 640px) {
+  .sx-hero-aura {
+    -webkit-mask-image: radial-gradient(60% 58% at 50% 26%, #000 0%, transparent 78%);
+    mask-image: radial-gradient(60% 58% at 50% 26%, #000 0%, transparent 78%);
+  }
+}
+
 .sx-photo {
   aspect-ratio: var(--r-wide);
 }
@@ -458,6 +479,13 @@ body {
 .sx-stack-card {
   transform-origin: center top;
   will-change: transform, filter;
+  /* A flex column, so the levelled height actually reaches the card. The
+     wrapper is what gets min-height, and a child asking for height 100%
+     against a parent whose height is auto resolves to auto: the wrapper
+     grew, the card did not, and the difference showed up as a hole under
+     every card but the tallest. */
+  display: flex;
+  flex-direction: column;
 }
 
 /* The pile only works if the cards are opaque. Through a translucent card
@@ -468,6 +496,7 @@ body {
    the shared panel component, and an inline style cannot be beaten from a
    stylesheet any other way. */
 .sx-stack-card > * {
+  flex: 1 1 auto;
   background-color: var(--surface-solid) !important;
   box-shadow: 0 -10px 40px -22px rgba(0, 0, 0, 0.65);
 }
@@ -482,18 +511,29 @@ body {
 .sx-reveal {
   opacity: 1;
   transform: none;
-  transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.22, 0.7, 0.3, 1);
 }
 
-.sx-reveal-armed {
-  opacity: 0;
-  transform: translateY(18px);
+/* Only a section the observer is actually driving gets a transition. Left
+   on the resting class, a section that never gets observed would still be
+   paying for a compositor layer it has no use for. */
+.sx-reveal-live {
+  transition: opacity 0.65s ease, transform 0.65s cubic-bezier(0.22, 0.7, 0.3, 1);
 }
 
-/* Anyone who has asked their system to calm motion down gets a still logo. */
+/* Away, not hidden. It reads as depth: the section you are on is forward,
+   the ones either side of it have stepped back. Taken to zero this becomes
+   a page that blanks out as you scroll, which is a different and much
+   worse effect. */
+.sx-reveal-live.sx-reveal-away {
+  opacity: 0.32;
+  transform: translateY(16px);
+}
+
+/* Anyone who has asked their system to calm motion down gets a still page. */
 @media (prefers-reduced-motion: reduce) {
   .sx-reveal,
-  .sx-reveal-armed {
+  .sx-reveal-live,
+  .sx-reveal-away {
     opacity: 1 !important;
     transform: none !important;
     transition: none !important;

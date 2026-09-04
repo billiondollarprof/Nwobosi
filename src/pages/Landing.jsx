@@ -25,11 +25,11 @@ import {
   ArrowRight,
   ShieldCheck,
   Timer,
-  Sparkles,
   MessagesSquare,
   Database,
   FileSignature,
   FileCheck2,
+  ListChecks,
   Lock,
   Hotel,
   HeartPulse,
@@ -48,6 +48,7 @@ import ContainmentSeal from "../shared/ContainmentSeal.jsx";
 import Reveal from "../shared/Reveal.jsx";
 import Typewriter from "../shared/Typewriter.jsx";
 import CardStack from "../shared/CardStack.jsx";
+import CountUp from "../shared/CountUp.jsx";
 import { BRAND, GRADIENTS, FONTS } from "../shared/tokens";
 import { useTheme } from "../shared/theme.jsx";
 import { PageShell, GlassPanel, PrimaryButton, GhostButton, StatusPill } from "../shared/ui.jsx";
@@ -82,44 +83,54 @@ const OUTPUTS = [
   "a policy summary",
 ];
 
+/* The three cards under the problem heading. The first one is the whole
+   thesis and has to stay first: the leak is not carelessness, it is that
+   the good version of the work needs context the tool does not have. Lead
+   with recklessness instead and this is a policy product. */
 const PROBLEMS = [
   {
     icon: ShieldCheck,
-    title: "Data stays yours",
-    body: "Staff stop pasting company data into public AI tools. Everything runs inside one isolated tenant, and it can be deployed inside your own environment.",
+    title: "Nobody has to paste anything",
+    body: "Staff upload company documents to public tools because it makes the work better, and better work is the job. Here the material is already inside, so there is nothing to paste and nowhere for it to go.",
   },
   {
     icon: Timer,
-    title: "No more retry loops",
-    body: "The assistant interviews first and confirms what it heard. The back and forth happens in cheap conversation, before anything is generated.",
+    title: "The retry loop ends",
+    body: "It works out what it still needs, asks for exactly that, then reads the brief back. The back and forth happens in conversation, not after somebody has read a finished document that was never going to be right.",
   },
   {
-    icon: Sparkles,
-    title: "Every output on brand",
-    body: "Work is built from your own brand kit, templates, and terminology. Two people asking for the same thing get the same standard.",
+    icon: FileCheck2,
+    title: "It cannot invent your numbers",
+    body: "Every company fact comes from a source your admin approved, in your own templates and voice, without anyone supplying them. If something is missing it says so instead of filling the gap.",
   },
 ];
 
 const STEPS = [
   {
     icon: MessagesSquare,
-    title: "It asks",
-    body: "A short interview works out what you need, who it is for, and which files to read.",
+    title: "You ask",
+    body: "In plain language, and you point at the documents that matter. There is no prompt to write.",
   },
   {
     icon: Database,
-    title: "It reads",
-    body: "It pulls only the company material this task needs, nothing more.",
+    title: "It reads your side first",
+    body: "It searches your company's own material for the context this task sits on, before it asks you for anything.",
   },
   {
-    icon: FileSignature,
-    title: "It writes the prompt",
-    body: "One complete prompt, with every fact carrying its source, so nothing drifts and nothing is invented.",
+    icon: ListChecks,
+    title: "It interviews you for the rest",
+    body: "It works out what is still missing and asks for exactly that, and nothing else. This is what replaces prompt writing.",
   },
   {
     icon: FileCheck2,
-    title: "It builds",
-    body: "The file is generated and written straight to your Drive, with a download link in the chat.",
+    title: "It reads the brief back",
+    body: "What it is making, who it is for, which of your sources it will use, what it is assuming. You confirm, correct, or add.",
+  },
+  {
+    icon: FileSignature,
+    title: "It writes the prompt, then builds",
+    body: "One prompt, written from the brief you approved, and that prompt is the second guardrail: nothing reaches the document that you did not confirm. The finished file comes back as Word or PDF.",
+    wide: true,
   },
 ];
 
@@ -242,18 +253,46 @@ const HEADLINE_ACCENT = {
    thing dissolves rather than stopping.
    -------------------------------------------------------------------------- */
 
-const AURA_MASK = "radial-gradient(60% 60% at 50% 38%, #000 0%, transparent 78%)";
+/* The sweep needs its own mask, anchored where the light comes from. Run
+   through the mask above it would be cut off at the left edge, which is
+   exactly the hard edge that version was written to get rid of. */
+const SWEEP_MASK =
+  "radial-gradient(125% 115% at 6% 0%, #000 0%, rgba(0,0,0,0.55) 46%, transparent 82%)";
+
+/* Sits on the section, not inside the centred column. An absolutely
+   positioned child measures against its ancestor's padding box, so
+   inset-x-0 here is the full width of the window. Nested in the column it
+   was 768px wide with a hard vertical edge down each side, which is the
+   one thing a light source must never have. */
+function HeroSweep() {
+  return (
+    <div
+      className="absolute inset-x-0 -top-40 h-[620px] sm:h-[820px] pointer-events-none"
+      style={{ WebkitMaskImage: SWEEP_MASK, maskImage: SWEEP_MASK }}
+      aria-hidden="true"
+    >
+      <div
+        className="absolute -left-[15%] -top-[35%] w-[92%] h-[180%]"
+        style={{
+          background:
+            "linear-gradient(118deg, var(--sweep-a) 0%, var(--sweep-b) 44%, transparent 74%)",
+          filter: "blur(64px)",
+          animation: "sx-cloud-drift-a 34s ease-in-out infinite",
+        }}
+      />
+    </div>
+  );
+}
 
 function HeroAura() {
   return (
     <div
-      className="absolute inset-x-0 -top-24 h-[520px] sm:h-[620px] pointer-events-none"
-      style={{ WebkitMaskImage: AURA_MASK, maskImage: AURA_MASK }}
+      className="sx-hero-aura absolute inset-0 pointer-events-none"
       aria-hidden="true"
     >
       {/* The dominant one, sitting over the mark. */}
       <div
-        className="absolute left-1/2 -translate-x-1/2 top-[4%] w-[86%] max-w-[680px] h-[420px] rounded-full"
+        className="absolute left-1/2 -translate-x-1/2 top-[40%] sm:top-[2%] w-[86%] max-w-[680px] h-[420px] rounded-full"
         style={{
           background: "radial-gradient(ellipse, var(--aura-1) 0%, transparent 70%)",
           filter: "blur(90px)",
@@ -263,7 +302,7 @@ function HeroAura() {
       {/* The orbiting one, offset so the light has a direction rather than
           being a symmetrical halo. Half the weight of the first. */}
       <div
-        className="absolute left-[58%] top-[26%] w-[300px] h-[300px] sm:w-[400px] sm:h-[400px] rounded-full"
+        className="absolute left-[58%] top-[56%] sm:top-[18%] w-[300px] h-[300px] sm:w-[400px] sm:h-[400px] rounded-full"
         style={{
           background: "radial-gradient(circle, var(--aura-2) 0%, transparent 70%)",
           filter: "blur(80px)",
@@ -314,6 +353,7 @@ export default function Landing() {
           height of the screen with the address bar collapsed, and a hero
           measured against that runs off the bottom of the real one. */}
       <section className="relative z-10 px-5 sm:px-8">
+        <HeroSweep />
         <div className="relative max-w-3xl mx-auto text-center flex flex-col justify-center min-h-[calc(100svh-120px)] pt-4 pb-16 sm:pb-20">
           <HeroAura />
 
@@ -321,13 +361,23 @@ export default function Landing() {
               sit above the mark has gone: a badge over the top of it is
               one more thing competing with the only thing worth looking
               at. The mark carries the idea on its own. */}
-          {/* Both terms matter. vh keeps the mark from pushing the button off
-              a short laptop window, vw keeps it from crowding a narrow
-              phone, and min() takes whichever is the tighter constraint. */}
-          <div className="flex justify-center mb-6 sm:mb-11">
-            <ContainmentSeal size="clamp(108px, min(21vh, 44vw), 260px)" />
-          </div>
+          {/* The mark is in a different place at each size, and that is a
+              decision rather than a compromise.
 
+              On a phone you arrive at the top and scroll, so order is real:
+              the claim should be the first thing read, and an object above
+              it is something to get past. It sits below the sentence
+              instead, where it becomes the pause before the button.
+
+              On a wide screen the whole hero arrives at once. There is no
+              reading order to protect, only a composition, and the mark
+              belongs at the top of it. Placed mid section there it floats
+              between two blocks of text with air on both sides and reads
+              as an orphan rather than a crown.
+
+              Both terms in the size matter. vh keeps it from pushing the
+              button off a short laptop window, vw keeps it from crowding a
+              narrow phone, and min() takes the tighter of the two. */}
           {/* Weight 500, not 700. At this size bold is shouting, and the
               restraint is most of what separates a page that looks
               expensive from one that looks loud.
@@ -336,6 +386,10 @@ export default function Landing() {
               the capability allowable. That order matters: led with the
               risk instead, this is a compliance tool, and every vendor in
               the category can run the same line. */}
+          <div className="hidden sm:flex justify-center mb-11">
+            <ContainmentSeal size="clamp(120px, min(21vh, 44vw), 260px)" />
+          </div>
+
           <h1
             className="text-[28px] sm:text-[42px] lg:text-[54px] font-medium leading-[1.08] tracking-[-0.03em] mb-5 sm:mb-6 max-w-4xl mx-auto"
             style={{ fontFamily: FONTS.display, color: "var(--text-1)", textWrap: "balance" }}
@@ -347,8 +401,22 @@ export default function Landing() {
                 face loads from the network and the fallback is a different
                 width. */}
             <span className="block">Private AI that already knows your company.</span>
-            <span className="block" style={HEADLINE_ACCENT}>
-              And never lets a word of it out.
+            {/* This line never wraps. It is the shortest sentence on the
+                page and breaking it in two is the one thing that would make
+                it look accidental. Held to one line two ways: nowrap, and a
+                size that shrinks only if a screen is narrow enough to need
+                it, which stops nowrap from pushing the page sideways on a
+                small phone. 10.6em is the measured width of the sentence in
+                the display face. */}
+            <span
+              className="block"
+              style={{
+                ...HEADLINE_ACCENT,
+                whiteSpace: "nowrap",
+                fontSize: "min(1em, calc((100vw - 2.75rem) / 10.6))",
+              }}
+            >
+              Nothing ever leaves.
             </span>
           </h1>
 
@@ -378,6 +446,14 @@ export default function Landing() {
             language, and get back{" "}
             <Typewriter phrases={OUTPUTS} style={{ color: "var(--h-a)", fontWeight: 500 }} />
           </p>
+
+          {/* Second placement, phones only. See the note on the first one. */}
+          {/* A 568px tall phone had three pixels to spare under the trust
+              row, so the mark gives a little back there and takes it again
+              on anything taller. */}
+          <div className="sm:hidden flex justify-center mb-6 min-[380px]:mb-7">
+            <ContainmentSeal size="min(40vw, 30vh)" />
+          </div>
 
           {/* One button only. Setting up your own company's AI is the demo,
               there is nothing else to send someone to see. */}
@@ -467,7 +543,8 @@ export default function Landing() {
             </p>
             <p className="text-[16px] leading-relaxed mt-4" style={{ color: "var(--text-2)" }}>
               The back and forth happens here, in cheap conversation, instead of after somebody has
-              read a finished document that was never going to be right.
+              read a finished document that was never going to be right. What you confirm becomes
+              the brief the work is built from, and nothing outside it reaches the finished file.
             </p>
           </Reveal>
 
@@ -541,7 +618,7 @@ export default function Landing() {
           {/* The anchor clears the floating nav. Parked any higher, a stuck
               card sits behind that glass pill and its text shows through
               it, which looks like a rendering fault rather than a stack. */}
-          <CardStack className="grid gap-4 lg:grid-cols-3" top={116} dwell="24vh">
+          <CardStack className="grid gap-4 lg:grid-cols-3" top={116}>
             {PROBLEMS.map((item) => (
               <div
                 key={item.title}
@@ -588,14 +665,17 @@ export default function Landing() {
             into house statistics.
           </p>
 
-          <div className="grid gap-4 sm:grid-cols-3">
+          <CardStack className="grid gap-4 sm:grid-cols-3" top={116} stackBelow={640}>
             {RESEARCH.map((item) => (
-              <GlassPanel key={item.figure} className="p-7">
+              <GlassPanel key={item.figure} className="p-7 h-full">
+                {/* The figure runs up when the reader reaches it, and lands
+                    on the published number exactly. A cited statistic that
+                    settles on the wrong value is worse than a still one. */}
                 <div
                   className="text-[40px] font-bold leading-none"
                   style={{ fontFamily: FONTS.display, color: BRAND.accentSoft }}
                 >
-                  {item.figure}
+                  <CountUp value={item.figure} />
                 </div>
                 <h3
                   className="text-[16px] font-bold mt-3.5 mb-2"
@@ -611,7 +691,7 @@ export default function Landing() {
                 </p>
               </GlassPanel>
             ))}
-          </div>
+          </CardStack>
 
           <GlassPanel
             className="mt-4 p-7 border-l-[3px]"
@@ -640,14 +720,28 @@ export default function Landing() {
             How it works
           </h2>
           <p className="text-[15px] text-center mb-11 max-w-lg mx-auto" style={{ color: "var(--text-3)" }}>
-            Four steps. Your staff member only takes part in the first one.
+            Five steps. The only parts your staff member takes part in are conversation.
           </p>
 
+          {/* Five steps into a two column grid leaves one on its own, so the
+              last one takes the full width. It is the step that carries the
+              guardrail, which is the point of the whole section, so the
+              extra room is where it should have gone anyway.
+
+              This is the one card section that is not stacked on a phone.
+              A stack levels every card to the tallest, which is right when
+              the cards are peers and wrong here: these are steps of very
+              different lengths, and levelling left two hundred pixels of
+              empty card under the short ones. They are also a sequence,
+              and a numbered list read straight down is the clearest way to
+              show an order. */}
           <div className="grid gap-4 sm:grid-cols-2">
             {STEPS.map((step, i) => (
               <div
                 key={step.title}
-                className="rounded-[18px] border p-6 backdrop-blur-xl flex gap-4"
+                className={`rounded-[18px] border p-6 backdrop-blur-xl flex gap-4 h-full ${
+                  step.wide ? "sm:col-span-2" : ""
+                }`}
                 style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
               >
                 <div className="shrink-0">
@@ -722,9 +816,9 @@ export default function Landing() {
             />
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <CardStack className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" top={116} stackBelow={640}>
             {INDUSTRIES.map((industry) => (
-              <GlassPanel key={industry.title} className="p-6">
+              <GlassPanel key={industry.title} className="p-6 h-full">
                 <div
                   className="w-11 h-11 rounded-[12px] flex items-center justify-center mb-4"
                   style={{ backgroundColor: `${BRAND.purple}1F` }}
@@ -742,7 +836,7 @@ export default function Landing() {
                 </p>
               </GlassPanel>
             ))}
-          </div>
+          </CardStack>
         </Reveal>
       </section>
 
@@ -763,9 +857,9 @@ export default function Landing() {
             center
           />
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <CardStack className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" top={116} stackBelow={640}>
             {SERVICES.map((service) => (
-              <GlassPanel key={service.title} className="p-6">
+              <GlassPanel key={service.title} className="p-6 h-full">
                 <div
                   className="w-11 h-11 rounded-[12px] flex items-center justify-center mb-4"
                   style={{ backgroundColor: "rgba(20,32,160,0.12)" }}
@@ -783,7 +877,7 @@ export default function Landing() {
                 </p>
               </GlassPanel>
             ))}
-          </div>
+          </CardStack>
 
           <div className="mt-8 text-center">
             <GhostButton
@@ -1026,11 +1120,19 @@ export default function Landing() {
             className="text-[28px] sm:text-[38px] font-medium tracking-[-0.025em] mt-4"
             style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
           >
-            Pioneering next gen <GradientText>AI governance architecture</GradientText>
+            The next problem is <GradientText>tools by proxy</GradientText>
           </h2>
           <p className="text-[15px] leading-relaxed mt-5" style={{ color: "var(--text-2)" }}>
-            We are conceptualizing a dynamic, evolving AI governance framework designed to detect
-            unauthorized proxy actions in autonomous agent code. Plus ongoing notes from the team.
+            Agents are given tools, and agents can extend themselves. So one can reach a tool it was
+            never granted, not by breaking in, but because the tool was reachable. Blocking every
+            call is not an option, because running unattended is the whole value. Written rules miss
+            the case nobody thought of. What is needed is a checkpoint that carries its own rules
+            inside it and adapts: two factor authentication for AI.
+          </p>
+          {/* Said plainly, because it is a thesis and the page should not
+              read as though the product already does it. */}
+          <p className="text-[13.5px] leading-relaxed mt-3.5" style={{ color: "var(--text-3)" }}>
+            Open research by our founder. It is an argument, not something StellaXafe ships today.
           </p>
           <div className="flex justify-center mt-5">
             <StatusPill tone="accent">Actively seeking research partners and funding</StatusPill>

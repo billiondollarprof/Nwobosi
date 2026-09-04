@@ -68,7 +68,9 @@ export const THEME_VARS = {
     /* The mark. Named here so it flips with the theme like everything
        else, rather than the component branching on which theme is on. */
     "--seal-outer": "rgba(255, 255, 255, 0.34)",
-    "--seal-outer-hi": "rgba(255, 255, 255, 0.85)",
+    /* A glint travelling the outer ring, not a second ring. At 0.85 over a
+       0.34 base it read as the ring being broken open at that point. */
+    "--seal-outer-hi": "rgba(255, 255, 255, 0.6)",
     "--seal-in-a": "#2E42E0",
     "--seal-in-mid": "#7C8CF5",
     "--seal-in-b": "#E8EBFF",
@@ -77,6 +79,11 @@ export const THEME_VARS = {
        is exactly what the old four blob version produced. */
     "--aura-1": "rgba(88, 112, 248, 0.46)",
     "--aura-2": "rgba(124, 58, 237, 0.28)",
+    /* The sweep: light entering from the top left and opening across the
+       hero, rather than a symmetrical halo behind the mark. It is what
+       gives the section a direction to be lit from. */
+    "--sweep-a": "rgba(46, 66, 224, 0.42)",
+    "--sweep-b": "rgba(124, 58, 237, 0.20)",
     /* The sweep inside the second headline line. On dark it lifts toward
        white. */
     "--h-a": "#5870F8",
@@ -105,6 +112,8 @@ export const THEME_VARS = {
        atmosphere on black read as a stain here. */
     "--aura-1": "rgba(88, 112, 248, 0.14)",
     "--aura-2": "rgba(124, 58, 237, 0.07)",
+    "--sweep-a": "rgba(46, 66, 224, 0.13)",
+    "--sweep-b": "rgba(124, 58, 237, 0.06)",
     /* The sheen has to darken, not lighten. Sweeping toward near white on
        a white page made the last word of the headline disappear as the
        band passed over it. */
