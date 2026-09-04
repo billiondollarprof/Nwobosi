@@ -690,19 +690,37 @@ export default function Landing() {
             center
           />
 
-          {/* The one photograph on the page, and it earns its place by
+          {/* The one wide photograph on the page, and it earns its place by
               showing the environment this runs in rather than decorating
               the section. It removes itself if the file is not there, so
-              the grid below reads the same either way. */}
-          <Photo
-            name="ops-room"
-            alt="An operations floor at dusk, screens lit, people at work"
-            ratio="16 / 9"
-            narrowRatio="4 / 3"
-            sizes="(max-width: 1024px) 100vw, 1024px"
-            className="rounded-[20px] border mb-10"
-            imgClassName="opacity-[0.92]"
-          />
+              the grid below reads the same either way.
+
+              The top and bottom edges dissolve into the page. A hard
+              rectangle here reads as a stock photo dropped on the design;
+              letting the ground come up over it makes it part of the
+              section. */}
+          <div className="relative mb-10">
+            <Photo
+              name="ops-room"
+              alt="An operations floor at dusk, screens lit, people at work"
+              ratio="16 / 9"
+              narrowRatio="4 / 3"
+              sizes="(max-width: 1024px) 100vw, 1024px"
+              className="rounded-[28px]"
+              imgClassName="opacity-[0.92]"
+            />
+            <div
+              className="absolute inset-0 rounded-[28px] pointer-events-none"
+              style={{
+                background:
+                  "linear-gradient(to bottom, var(--bg) 0%, transparent 20%, transparent 74%, var(--bg) 100%)",
+              }}
+            />
+            <div
+              className="absolute inset-0 rounded-[28px] pointer-events-none"
+              style={{ boxShadow: "inset 0 0 0 1px var(--border)" }}
+            />
+          </div>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {INDUSTRIES.map((industry) => (
@@ -916,7 +934,7 @@ export default function Landing() {
       <section className="relative z-10 px-5 sm:px-8 py-20 sm:py-28">
         <Reveal className="max-w-5xl mx-auto">
           <div
-            className="rounded-[20px] border overflow-hidden backdrop-blur-xl grid lg:grid-cols-[0.85fr_1.15fr]"
+            className="rounded-[28px] border overflow-hidden backdrop-blur-xl grid lg:grid-cols-[0.85fr_1.15fr]"
             style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
           >
             {/* Two people going through a document line by line before it
@@ -941,6 +959,16 @@ export default function Landing() {
                    and the reserved ratio stops applying. Below lg it goes
                    back in flow and the ratio holds the space again. */
                 className="lg:absolute lg:inset-0 sx-photo-fill-lg"
+              />
+              {/* Same idea as the wide photograph above: the picture fades
+                  into the card rather than butting up against the copy. */}
+              <div
+                className="lg:hidden absolute inset-x-0 bottom-0 h-24 pointer-events-none"
+                style={{ background: "linear-gradient(to bottom, transparent, var(--surface-solid))" }}
+              />
+              <div
+                className="hidden lg:block absolute inset-y-0 right-0 w-28 pointer-events-none"
+                style={{ background: "linear-gradient(to right, transparent, var(--surface-solid))" }}
               />
             </div>
 

@@ -10,6 +10,9 @@
 
 export const BRAND = {
   navy: "#1420A0",
+  /* The navy the brand navy becomes when it has to hold its own next to
+     the purple on a dark ground. #1420A0 reads as almost black there. */
+  navyLift: "#2E42E0",
   navyDeep: "#08113A",
   purple: "#7C3AED",
   purpleDeep: "#4C1D95",
@@ -32,8 +35,6 @@ export const GRADIENTS = {
   brand: `linear-gradient(135deg, ${BRAND.navy}, ${BRAND.purple})`,
   /* Usage meters and progress bars */
   meter: `linear-gradient(90deg, ${BRAND.navy}, ${BRAND.purple})`,
-  /* The halo that sits behind the floating nav */
-  navHalo: `linear-gradient(90deg, ${BRAND.purple}, ${BRAND.purpleDeep}, #0B1149, ${BRAND.purpleDeep}, ${BRAND.purple})`,
   /* The rotating ring on the idle mic button */
   micRing: `conic-gradient(from 0deg, ${BRAND.navy}, ${BRAND.purple}, ${BRAND.cyan}, ${BRAND.navy})`,
 };

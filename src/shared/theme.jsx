@@ -13,13 +13,19 @@ const ThemeContext = createContext(null);
 
 /* --------------------------------------------------------------------------
    SECTION: Stored preference
+   Dark is the default for everyone, on every device. The product is dark,
+   the mark was drawn for a dark ground, and following the operating system
+   meant half of all first visits landed on the version that was designed
+   second. Light is a choice someone makes here, not one their phone makes
+   for them.
+
    Storage can throw in private windows, so every access is guarded.
    -------------------------------------------------------------------------- */
 
 function readStoredChoice() {
   try {
     const stored = window.localStorage.getItem(STORAGE_KEY);
-    if (stored === "light" || stored === "dark" || stored === "system") return stored;
+    if (stored === "light" || stored === "dark") return stored;
   } catch {
     /* storage unavailable, fall through to the default */
   }
@@ -40,24 +46,20 @@ function writeStoredChoice(choice) {
 
 export function ThemeProvider({ children }) {
   const [themeChoice, setThemeChoiceState] = useState(readStoredChoice);
-  const [systemPref, setSystemPref] = useState("dark");
 
-  /* Follow the operating system setting and keep following it live. */
-  useEffect(() => {
-    if (typeof window === "undefined" || !window.matchMedia) return;
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    setSystemPref(mq.matches ? "dark" : "light");
-    const handler = (e) => setSystemPref(e.matches ? "dark" : "light");
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
-  }, []);
-
-  const effectiveTheme = themeChoice === "system" ? systemPref : themeChoice;
+  /* There is nothing between the choice and the theme any more, but both
+     names are kept: every screen reads effectiveTheme, and that stays true
+     whatever the choice turns out to mean later. */
+  const effectiveTheme = themeChoice;
   const vars = THEME_VARS[effectiveTheme];
 
   function setThemeChoice(choice) {
     setThemeChoiceState(choice);
     writeStoredChoice(choice);
+  }
+
+  function toggleTheme() {
+    setThemeChoice(effectiveTheme === "dark" ? "light" : "dark");
   }
 
   /* Paint the page background so there is no flash behind the app shell. */
@@ -67,7 +69,7 @@ export function ThemeProvider({ children }) {
   }, [vars]);
 
   const value = useMemo(
-    () => ({ themeChoice, setThemeChoice, effectiveTheme, vars }),
+    () => ({ themeChoice, setThemeChoice, toggleTheme, effectiveTheme, vars }),
     [themeChoice, effectiveTheme, vars]
   );
 

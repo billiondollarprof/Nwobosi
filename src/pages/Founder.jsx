@@ -75,9 +75,17 @@ export default function Founder() {
               fill
               imgClassName="object-top"
             />
+            {/* The picture should sit in the card, not on top of it. On a
+                phone the column is above the text and the fade runs down
+                into it; side by side it runs across. Both fade to the
+                card's own surface, so there is no seam to see. */}
             <div
-              className="absolute inset-0"
-              style={{ background: "linear-gradient(0deg, rgba(5,6,12,0.55), transparent 40%)" }}
+              className="md:hidden absolute inset-x-0 bottom-0 h-24 pointer-events-none"
+              style={{ background: "linear-gradient(to bottom, transparent, var(--surface-solid))" }}
+            />
+            <div
+              className="hidden md:block absolute inset-y-0 right-0 w-28 pointer-events-none"
+              style={{ background: "linear-gradient(to right, transparent, var(--surface-solid))" }}
             />
           </div>
 

@@ -5,7 +5,7 @@
    ========================================================================== */
 
 import { forwardRef, useEffect, useRef, useState } from "react";
-import { Sun, Moon, Monitor, Check } from "lucide-react";
+import { Sun, Moon } from "lucide-react";
 import { useTheme } from "./theme.jsx";
 import { BRAND, GRADIENTS, FONTS } from "./tokens";
 
@@ -326,68 +326,30 @@ export function TypingDots() {
 
 /* --------------------------------------------------------------------------
    SECTION: Theme toggle
-   Light, dark, or follow the device.
+   Two states, so it is a switch rather than a menu. Dark is where everyone
+   starts. There is no "follow my device": the page picking its own look
+   from a system setting is the page deciding, and this is the one visual
+   decision worth handing over outright.
    -------------------------------------------------------------------------- */
 
 export function ThemeToggle() {
-  const { themeChoice, setThemeChoice, effectiveTheme } = useTheme();
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function onDown(e) {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    }
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [open]);
-
-  const options = [
-    { id: "light", label: "Light", icon: Sun },
-    { id: "dark", label: "Dark", icon: Moon },
-    { id: "system", label: "Device", icon: Monitor },
-  ];
+  const { toggleTheme, effectiveTheme } = useTheme();
+  const dark = effectiveTheme === "dark";
 
   return (
-    <div className="relative" ref={ref}>
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="w-9 h-9 rounded-full flex items-center justify-center border transition-colors hover:opacity-80"
-        style={{ borderColor: "var(--border-2)" }}
-        aria-label="Change theme"
-      >
-        {effectiveTheme === "dark" ? (
-          <Moon size={15} style={{ color: "var(--text-2)" }} />
-        ) : (
-          <Sun size={15} style={{ color: "var(--text-2)" }} />
-        )}
-      </button>
-      {open && (
-        <div
-          className="absolute right-0 top-11 rounded-2xl border shadow-2xl overflow-hidden z-50 w-40 backdrop-blur-2xl"
-          style={{ backgroundColor: "var(--surface-solid)", borderColor: "var(--border)" }}
-        >
-          {options.map((opt) => (
-            <button
-              key={opt.id}
-              onClick={() => {
-                setThemeChoice(opt.id);
-                setOpen(false);
-              }}
-              className="w-full flex items-center justify-between px-4 py-2.5 text-[13.5px] hover:opacity-80 transition-opacity"
-              style={{ color: "var(--text-1)" }}
-            >
-              <span className="flex items-center gap-2.5">
-                <opt.icon size={14} style={{ color: "var(--text-3)" }} />
-                {opt.label}
-              </span>
-              {themeChoice === opt.id && <Check size={13} style={{ color: BRAND.navy }} />}
-            </button>
-          ))}
-        </div>
+    <button
+      onClick={toggleTheme}
+      className="w-9 h-9 rounded-full flex items-center justify-center border transition-colors hover:opacity-80"
+      style={{ borderColor: "var(--border-2)" }}
+      aria-label={dark ? "Switch to light" : "Switch to dark"}
+      title={dark ? "Switch to light" : "Switch to dark"}
+    >
+      {dark ? (
+        <Moon size={15} style={{ color: "var(--text-2)" }} />
+      ) : (
+        <Sun size={15} style={{ color: "var(--text-2)" }} />
       )}
-    </div>
+    </button>
   );
 }
 
@@ -397,26 +359,32 @@ export function ThemeToggle() {
    -------------------------------------------------------------------------- */
 
 export function FloatingNav({ children, maxWidth = "max-w-3xl", sticky = false }) {
+  /* Purple and navy each take half the ring, and the seam between them
+     travels round the pill. See .sx-ring in index.css for how the band is
+     cut out of the gradient. */
+  const ringColours = { "--ring-a": BRAND.purple, "--ring-b": BRAND.navyLift };
+
   return (
     <div
       className={`shrink-0 px-3 sm:px-5 pt-5 pb-3 relative z-20 ${sticky ? "sticky top-0" : ""}`}
     >
       <div className={`relative ${maxWidth} mx-auto`}>
+        {/* The glow is the same ring, wider and thrown out of focus, so the
+            colour under the pill is always the colour on it. It is a lift
+            off the page, not the cloud it used to be. */}
         <div
-          className="absolute -inset-[14px] rounded-full pointer-events-none"
-          style={{
-            background: GRADIENTS.navHalo,
-            backgroundSize: "300% 100%",
-            filter: "blur(16px)",
-            opacity: 1,
-            animation: "sx-nav-glow 5s ease-in-out infinite",
-          }}
+          className="sx-ring absolute -inset-[3px] rounded-full pointer-events-none"
+          style={{ ...ringColours, "--ring-w": "5px", filter: "blur(9px)", opacity: 0.55 }}
         />
         <header
-          className="relative h-14 flex items-center justify-between px-4 sm:px-5 rounded-full border backdrop-blur-2xl transition-colors duration-300"
-          style={{ backgroundColor: "var(--nav-surface)", borderColor: "var(--border-2)" }}
+          className="relative h-14 flex items-center justify-between px-4 sm:px-5 rounded-full backdrop-blur-2xl transition-colors duration-300"
+          style={{ backgroundColor: "var(--nav-surface)" }}
         >
           {children}
+          <div
+            className="sx-ring absolute inset-0 rounded-full pointer-events-none"
+            style={ringColours}
+          />
         </header>
       </div>
     </div>

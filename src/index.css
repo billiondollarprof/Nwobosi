@@ -147,15 +147,60 @@ body {
   }
 }
 
-@keyframes sx-nav-glow {
-  0%,
-  100% {
-    opacity: 0.8;
-    background-position: 0% 50%;
+/* --------------------------------------------------------------------------
+   THE NAV RING
+   A hard edged strip around the floating nav rather than a cloud behind it.
+   Purple takes one half of the ring, navy the other, and the seam between
+   them travels round the pill, so the colour arrives at each corner in
+   turn instead of the whole thing pulsing at once.
+
+   Two pieces make it work:
+
+     A conic gradient starting at an angle held in a custom property. The
+     property is registered, which is what lets a browser interpolate it,
+     because an unregistered custom property is just a string and animates
+     in one jump at the halfway mark. Where @property is missing the ring
+     stays put and is still a sharp gradient edge, which is the right thing
+     to degrade to.
+
+     A mask that keeps only the padding band. Without it the gradient fills
+     the pill, and the nav is translucent, so the whole bar goes purple.
+   -------------------------------------------------------------------------- */
+
+@property --sx-ring-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes sx-ring-travel-angle {
+  to {
+    --sx-ring-angle: 360deg;
   }
-  50% {
-    opacity: 1;
-    background-position: 100% 50%;
+}
+
+.sx-ring {
+  padding: var(--ring-w, 1.5px);
+  background: conic-gradient(
+    from var(--sx-ring-angle),
+    var(--ring-a),
+    var(--ring-b) 50%,
+    var(--ring-a)
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: sx-ring-travel-angle 11s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sx-ring {
+    animation: none;
   }
 }
 
@@ -460,7 +505,6 @@ body {
   [style*="sx-ring-travel"],
   [style*="sx-ring-breathe"],
   [style*="sx-glow"],
-  [style*="sx-nav-glow"],
   [style*="sx-mic-spin"],
   [style*="sx-mic-pulse"],
   [style*="sx-mic-listening"],
