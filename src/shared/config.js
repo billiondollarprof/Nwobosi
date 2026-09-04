@@ -55,6 +55,7 @@ export const FUNCTIONS = {
   assistant: "assistant-",
   addLink: "add-link",
   inviteStaff: "invite-staff",
+  sendContact: "send-contact",
 };
 
 export const OAUTH_REDIRECT_URI =

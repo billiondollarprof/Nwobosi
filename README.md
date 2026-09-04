@@ -2,8 +2,6 @@
 
 A private AI gateway for enterprises. Staff describe what they need in plain language. StellaXafe runs a short interview, reads only the company's approved knowledge, writes a full prompt, and returns a finished, on brand file.
 
-Built for the 10Alytics Business AI BuildFest.
-
 > **Proprietary.** Copyright (c) 2026 Okechukwu Nwobosi. All rights reserved.
 > This repository is shared for review only. See [LICENSE](LICENSE). Reading it
 > grants no right to copy, reuse, or redistribute any part of it.
@@ -202,19 +200,42 @@ src/
   shared/
     tokens.js           colors, gradients, themes, type, shape
     config.js           branding, skills, model tiers, workflow tools, limits
-    icons.jsx           product mark and connector glyphs
+    icons.jsx           product mark, sister product marks, connector glyphs
     theme.jsx           theme provider and hook
     ui.jsx              shared primitives every page builds from
+    supabase.js         one client for the whole app
+    session.js          who is signed in
+    marketing.jsx       page shell and text pieces for the public pages
+    MarketingNav.jsx    the public nav, shared by all six public pages
+    MarketingFooter.jsx the public footer
+    ModalCard.jsx       the card the modal styled pages sit in
+    assistantApi.js     the chat call
+    setupApi.js         access codes and workspace creation
+    inviteApi.js        staff invites
+    linkApi.js          adding a link to the knowledge base
+    readFile.js         PDF and Word parsing in the browser
+    useSpeechToText.js  the mic button
+    LogoAnimated.jsx    the hero mark
   pages/
-    Landing.jsx         public entry point
-    Auth.jsx            login, request access, OTP
-    Chat.jsx            the staff surface
-    Admin.jsx           the knowledge brain
+    the product
+      Setup.jsx         access code to a live workspace
+      Auth.jsx          login, request access, OTP
+      Chat.jsx          the staff surface
+      Admin.jsx         the knowledge brain
+    the public site
+      Landing.jsx       public entry point
+      Services.jsx      /services, modal styled
+      Founder.jsx       /founder, modal styled
+      Contact.jsx       /contact, modal styled, really sends
+      Insights.jsx      /insights
+      FormBuilder.jsx   /form-builder
+
+supabase/functions/     edge function sources, deployed by hand
 ```
 
 | File | What it is |
 | --- | --- |
-| `buildfest_project_plan.pdf` | The full system plan. First written 2026-08-22, updated since |
+| `stellaxafe_project_plan.pdf` | The full system plan. First written 2026-08-22, updated since |
 | `CLAUDE.md` | Working rules for this project |
 | `CURRENT.md` | Full state of work in progress |
 | `SESSIONS.md` | Log of past work sessions |
@@ -227,10 +248,26 @@ npm run dev      # http://localhost:5173
 npm run build    # production build into dist/
 ```
 
-Sign in with `anthony@buildfest.com` and any password to see the invited path. Use any other email to see the request access flow. Any six digits pass the OTP step.
+There is no public sign up. A company starts at `/setup` with an access code, which creates their workspace and their admin account. Staff reach the app by invitation from that admin, or by raising an access request the admin approves.
 
 ## Status
 
-The four pages are built and working. The interview, brief read back, generation, Library with Drive sync states, workflow tools, and both themes all run. The admin dashboard covers the knowledge base, connectors, access requests, invites, model ceilings, and usage.
+**`CURRENT.md` is the blunt version, and it is the one to trust.** It is kept deliberately honest about what is real and what only looks real. This section is the summary.
 
-Everything is still front end with seeded data. Next is Supabase for auth, the database, and the pgvector index, then the real backend flow, then the connectors.
+**Real, running against Supabase:**
+
+- Setup. An access code creates the auth user, the company and the admin, and lands them in their own workspace. Every step rolls back.
+- Sign in. Real password sign in, and where you land is read from the database.
+- The assistant. Streaming, real Claude, three stages, all enforced server side: who you are by row level security, which model by the ceiling your admin set, and how much by a budget checked before and charged after.
+- The knowledge base. Files and pasted text are read, chunked and stored, and their contents reach the model. PDF and Word are parsed in the browser. Links are fetched server side, admin only.
+- Saved conversations and finished work both survive a refresh.
+- Row level security is on for every table, with `access_codes` reachable only by the service role.
+- The public site. Six pages, ported from the old separate repo.
+
+**Not real, and must not be claimed:**
+
+- Canva and Google Drive are registered, with keys in place, and neither makes nor connects anything yet. Gmail, Slack and Notion are examples only.
+- Every generated file is Markdown. The skill badges name PowerPoint, Word and Excel, and nothing produces one yet.
+- There is no staff invite flow, and the OTP screen is unreachable. Sign in is password only.
+- Images cannot go into the knowledge base.
+- The contact form is deployed but `RESEND_API_KEY` is not set, so it fails closed and no mail leaves.

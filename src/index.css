@@ -1,4 +1,6 @@
-@import url("https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap");
+/* Fraunces carries the Amara wordmark only. One weight, one product mark,
+   so it is scoped to that and never becomes a third face in the UI. */
+@import url("https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=DM+Sans:wght@400;500;600&family=Fraunces:opsz,wght@9..144,600&display=swap");
 
 @tailwind base;
 @tailwind components;

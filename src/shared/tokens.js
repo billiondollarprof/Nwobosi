@@ -76,6 +76,10 @@ export const THEME_VARS = {
 export const FONTS = {
   display: "'Sora', sans-serif",
   body: "'DM Sans', sans-serif",
+  /* Only the Amara wordmark uses this. It is a different product with its
+     own identity, and setting it in the app's own face would quietly
+     rebrand somebody else's logo. */
+  serif: "'Fraunces', Georgia, serif",
 };
 
 /* --------------------------------------------------------------------------
