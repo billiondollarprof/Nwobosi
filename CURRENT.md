@@ -63,6 +63,9 @@ under **ofilifire@gmail.com**.
 - **Links** are fetched once, server side, by `add-link`, admin only, with
   private addresses refused and every redirect hop checked.
 - **Images** in the chat are shrunk to 1568px and sent as image blocks.
+- **Finished work downloads as a PDF or a Word file**, laid out in the
+  browser by `shared/download.js`. It used to download as Markdown, which
+  a phone will not open, so the deliverable could not be shown to anyone.
 - **Finished work** is saved to `work_history` and survives a refresh.
 - **Conversations are saved** to `conversations`, the last three per
   person, so a brief someone is halfway through survives a closed tab or
@@ -99,8 +102,9 @@ under **ofilifire@gmail.com**.
   not work even if it were wired.
 - **Skills are a badge, not a capability.** PowerPoint, Word, Excel,
   Design, Mind map, Analysis are detected from wording and shown in the
-  nav. Every output is Markdown, downloaded as `.md`. Nothing produces a
-  real deck, sheet or design.
+  nav. Word and PDF are real now. **PowerPoint, Excel and Design are
+  not**: a request for a deck gets a well written outline of one as a PDF,
+  not a `.pptx`.
 - **Images cannot go in the knowledge base.** Company sources reach the
   model as text in the system prompt, and an image cannot go there.
   Converting an image to PDF does not help: PDF extraction returns text,

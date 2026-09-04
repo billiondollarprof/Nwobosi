@@ -10,23 +10,25 @@ long. Ordered by what buys the most.
 
 ## 1. Real file formats
 
-**Now:** every output is Markdown, downloaded as `.md`. The skill badges
-(PowerPoint, Word, Excel, Design) are detected from wording and shown in
-the nav, but nothing produces those files. A judge asking for a pitch deck
-gets a well-written outline of one.
+**Done:** PDF and Word. `shared/download.js` parses the Markdown the model
+returns and lays out a real page, or hands the same blocks to a `.docx`
+writer. Both run in the browser, nothing uploaded.
 
-**Build:** a writer per format, running in the browser so nothing is
-uploaded.
+**Still missing:** PowerPoint and Excel. A judge asking for a pitch deck
+gets a well written outline of one as a PDF, not a deck.
 
-- `.docx` with `docx` (npm). Headings, lists, tables, a letterhead image.
+**Build:** two more writers against the same parsed blocks.
+
 - `.pptx` with `pptxgenjs`. One slide per H2, bullets from the list under
   it, the company's colours from the brand source.
 - `.xlsx` with `exceljs`.
 
+The parser and the block shape already exist, so both are small.
+
 The generate stage already returns structured Markdown, so the writers take
 that as input. Pick the writer from the skill already detected.
 
-**Effort:** one day for Word and PowerPoint together. Half a day for Excel.
+**Effort:** half a day for PowerPoint. Half a day for Excel.
 
 ---
 

@@ -54,8 +54,8 @@ whom, which company sources it will use, what it is assuming.
 **7. The person confirms.** *Did I get that right?* Build it, or say what is
 wrong. A correction re-enters the same loop.
 
-**8. It writes the document.** Download it, and it is saved to the company's
-library.
+**8. It writes the document.** Download it as a PDF or a Word file, both
+built in the browser, and it is saved to the company's library.
 
 ---
 
@@ -127,8 +127,9 @@ Sonnet for analysis and writing.
 Stated plainly, because a demo that oversells itself is the thing this
 product exists to avoid.
 
-- **Output is Markdown.** Real `.docx`, `.pptx` and Canva designs are the
-  next build, not something this demo does.
+- **Output is a PDF or a Word file**, written in the browser, nothing
+  uploaded. A real `.pptx` deck and Canva designs are the next build, not
+  something this demo does.
 - **Canva and Google Drive are registered, not wired.** The accounts and
   keys exist; the flows do not. The app says **Set up** rather than
   Connected, and nothing in it claims Connected.
