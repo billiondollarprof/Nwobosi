@@ -6,7 +6,7 @@
 
       1. Nav
       2. Hero
-      3. Works with
+      3. Integrations
       4. The read back
       5. The problem, and the research behind it
       6. How it works
@@ -50,8 +50,8 @@ import { useTheme } from "../shared/theme.jsx";
 import { PageShell, GlassPanel, PrimaryButton, GhostButton, StatusPill } from "../shared/ui.jsx";
 import MarketingNav from "../shared/MarketingNav.jsx";
 import MarketingFooter from "../shared/MarketingFooter.jsx";
+import IntegrationStrip from "../shared/IntegrationStrip.jsx";
 import { SectionHead, GradientText, Eyebrow, Divider } from "../shared/marketing.jsx";
-import { PRODUCT, WORKFLOW_TOOLS } from "../shared/config.js";
 
 /* --------------------------------------------------------------------------
    Page content
@@ -286,66 +286,69 @@ export default function Landing() {
           its place or it does not appear.
           ==================================================================== */}
 
+      {/* The hero is sized against the window, not against a fixed stack of
+          margins. Every piece below the mark is fixed height, so the mark
+          is the one thing that gives: it answers to viewport height, which
+          is what keeps the button above the fold on a laptop, a tablet in
+          landscape, and a phone. svh, not vh, because on a phone vh is the
+          height of the screen with the address bar collapsed, and a hero
+          measured against that runs off the bottom of the real one. */}
       <section className="relative z-10 px-5 sm:px-8">
-        <div className="relative max-w-3xl mx-auto text-center pt-10 pb-24 sm:pt-16 sm:pb-32">
+        <div className="relative max-w-3xl mx-auto text-center flex flex-col justify-center min-h-[calc(100svh-120px)] pt-4 pb-16 sm:pb-20">
           <HeroCloud />
 
           {/* One moving object and one sentence. Everything that used to
               sit above the mark has gone: a badge over the top of it is
               one more thing competing with the only thing worth looking
               at. The mark carries the idea on its own. */}
-          <div className="flex justify-center mb-12 sm:mb-16">
-            <ContainmentSeal size={280} className="max-w-[62vw] h-auto" />
+          {/* Both terms matter. vh keeps the mark from pushing the button off
+              a short laptop window, vw keeps it from crowding a narrow
+              phone, and min() takes whichever is the tighter constraint. */}
+          <div className="flex justify-center mb-6 sm:mb-11">
+            <ContainmentSeal size="clamp(108px, min(21vh, 44vw), 260px)" />
           </div>
 
           {/* Weight 500, not 700. At this size bold is shouting, and the
               restraint is most of what separates a page that looks
               expensive from one that looks loud.
 
-              Both sentences are too long to hold one line at this size, so
-              balance decides where they break. Without it the first one
-              breaks late and drops "now." onto a line of its own, which is
-              the one thing a headline must never do. */}
+              The claim is the capability, and the containment is what makes
+              the capability allowable. That order matters: led with the
+              risk instead, this is a compliance tool, and every vendor in
+              the category can run the same line. */}
           <h1
-            className="text-[34px] sm:text-[54px] font-medium leading-[1.08] tracking-[-0.03em] mb-7 max-w-4xl mx-auto"
+            className="text-[28px] sm:text-[42px] lg:text-[54px] font-medium leading-[1.08] tracking-[-0.03em] mb-5 sm:mb-6 max-w-4xl mx-auto"
             style={{ fontFamily: FONTS.display, color: "var(--text-1)", textWrap: "balance" }}
           >
-            {/* Each sentence is its own block rather than two lines split
-                by a <br>, so balance applies to each one on its own. With
-                a single balanced block the second sentence kept dropping
-                "it." onto a line by itself. This holds whatever the font
-                measures, which matters because the display face is loaded
-                from the network and the fallback is a different width. */}
-            <span className="block">Your staff are using AI right now.</span>
+            {/* Each sentence is its own block rather than two lines split by
+                a <br>, so balance applies to each one on its own and neither
+                can drop a single word onto a line by itself. This holds
+                whatever the font measures, which matters because the display
+                face loads from the network and the fallback is a different
+                width. */}
+            <span className="block">Enterprise AI that already knows your company.</span>
             <span className="block" style={HEADLINE_ACCENT}>
-              You don't know what they've told it.
+              And never lets a word of it out.
             </span>
           </h1>
 
-          {/* Two lengths, not one squeezed down. Mobile gets the promise,
-              desktop and tablet get the scene that earns it, plus the one
-              technical term (row-level security) doing real work here:
-              StellaXafe, and the landing page, are allowed to sound like
-              they know what they are talking about. */}
+          {/* The subtext carries the third thing the headline could not: that
+              this is easier than the AI they are using now, not just safer.
+              One paragraph at both sizes. The old page ran two versions and
+              the short one gave a phone reader the promise without the part
+              that earns it. */}
           <p
-            className="sm:hidden text-[16px] leading-relaxed max-w-[420px] mx-auto mb-11"
+            className="text-[15px] sm:text-[18px] leading-[1.6] max-w-[600px] mx-auto mb-7 sm:mb-9"
             style={{ color: "var(--text-2)" }}
           >
-            {PRODUCT.name} gives your staff an AI that reads only what your admin approves, and never lets
-            it leave your walls.
-          </p>
-          <p
-            className="hidden sm:block text-[18px] leading-relaxed max-w-[560px] mx-auto mb-11"
-            style={{ color: "var(--text-2)" }}
-          >
-            Every day your people paste company numbers, client names, and contracts into tools you do not
-            control. {PRODUCT.name} reads only the sources your admin approves, keeps every company isolated
-            with row-level security, and never lets any of it leave your walls.
+            It asks a few questions, reads only the sources you approve, and returns finished work in
+            your own templates, numbers and voice. No prompt writing, no setup team, and nothing
+            crosses your boundary.
           </p>
 
           {/* One button only. Setting up your own company's AI is the demo,
               there is nothing else to send someone to see. */}
-          <div className="flex flex-wrap items-center justify-center gap-3 mb-9">
+          <div className="flex flex-wrap items-center justify-center gap-3 mb-5 sm:mb-7">
             <PrimaryButton
               onClick={() => navigate("/setup")}
               className="flex items-center gap-2 px-6 py-3.5 text-[15px]"
@@ -370,33 +373,30 @@ export default function Landing() {
       </section>
 
       {/* ====================================================================
-          3. WORKS WITH
-          Moved out of the hero. It is reassurance, not the headline.
+          3. INTEGRATIONS
+          Two rows of connectors, moving in opposite directions. A static
+          row of five reads as a short list. A moving strip reads as a
+          surface things plug into.
+
+          The line under it is deliberate. None of these are wired in the
+          demo, and claiming otherwise is the fastest way to lose the
+          technical reader who reviews this page before a deal moves. What
+          is true is that a deployment connects the systems an organization
+          already runs on, and that sentence is the more confident one
+          anyway.
           ==================================================================== */}
 
-      <section className="relative z-10 px-5 sm:px-8 pb-20 sm:pb-28">
-        <div className="max-w-3xl mx-auto text-center">
-          <p
-            className="text-[11px] font-semibold uppercase tracking-wide mb-5"
-            style={{ color: "var(--text-3)" }}
-          >
-            Works with what you already use
-          </p>
-          <div className="flex items-center justify-center gap-3 flex-wrap">
-            {WORKFLOW_TOOLS.map((tool) => (
-              <div
-                key={tool.id}
-                className="flex items-center gap-2 rounded-full border px-3.5 py-2 backdrop-blur-xl"
-                style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
-              >
-                <tool.icon size={16} />
-                <span className="text-[13px]" style={{ color: "var(--text-2)" }}>
-                  {tool.label}
-                </span>
-              </div>
-            ))}
+      <section className="relative z-10 pb-20 sm:pb-28">
+        <div className="px-5 sm:px-8">
+          <div className="max-w-3xl mx-auto text-center mb-7">
+            <Eyebrow>Integrations</Eyebrow>
+            <p className="text-[15px] leading-relaxed mt-3.5" style={{ color: "var(--text-3)" }}>
+              Your deployment connects the systems your organization already runs on, scoped to
+              exactly what your team approves.
+            </p>
           </div>
         </div>
+        <IntegrationStrip />
       </section>
 
       {/* ====================================================================
@@ -491,12 +491,18 @@ export default function Landing() {
             Most teams have all three. Fixing one without the others does not hold.
           </p>
 
-          <div className="grid gap-4 sm:grid-cols-3">
-            {PROBLEMS.map((item) => (
+          <div className="sx-stack grid gap-4 sm:grid-cols-3">
+            {PROBLEMS.map((item, i) => (
               <div
                 key={item.title}
-                className="rounded-[18px] border p-6 backdrop-blur-xl"
-                style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
+                /* On a phone these stack rather than queue: each one parks
+                   a little below the last. See sx-stack in index.css. */
+                className="sx-stack-item rounded-[18px] border p-6 backdrop-blur-xl"
+                style={{
+                  backgroundColor: "var(--surface)",
+                  borderColor: "var(--border)",
+                  "--i": i,
+                }}
               >
                 <div
                   className="w-10 h-10 rounded-[12px] flex items-center justify-center mb-4"

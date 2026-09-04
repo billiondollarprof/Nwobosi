@@ -38,7 +38,12 @@ const BEAD_Y = 50 - CHANNEL_R;
    smaller radius than the ring so it sits on the inner edge. */
 const SHEEN = "M 22.9 45.2 A 27.5 27.5 0 0 1 47.6 22.6";
 
+/* `size` takes a number of pixels or any CSS length, so the hero can hand
+   it a clamp that answers to the height of the window. It is applied as a
+   style rather than as width and height attributes, because an attribute
+   cannot hold a calc. */
 export default function ContainmentSeal({ size = 280, className = "" }) {
+  const length = typeof size === "number" ? `${size}px` : size;
   /* This renders more than once per page, and SVG gradient and filter ids
      are document wide. Without namespacing, the second copy silently
      picks up the first one's definitions. */
@@ -50,11 +55,10 @@ export default function ContainmentSeal({ size = 280, className = "" }) {
 
   return (
     <svg
-      width={size}
-      height={size}
       viewBox="0 0 100 100"
       fill="none"
       className={className}
+      style={{ width: length, height: length }}
       role="img"
       aria-label="StellaXafe"
     >

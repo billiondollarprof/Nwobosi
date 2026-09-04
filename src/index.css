@@ -321,6 +321,74 @@ body {
 }
 
 /* --------------------------------------------------------------------------
+   INTEGRATION STRIP
+   Two rows of connector chips travelling in opposite directions. The track
+   holds the list twice and moves exactly half its own width, so the loop
+   has no seam and no jump.
+
+   The mask is what stops it reading as a row that ran out of viewport. It
+   dissolves into the page at both ends instead of stopping at an edge.
+   -------------------------------------------------------------------------- */
+
+@keyframes sx-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.sx-marquee-mask {
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 9%, #000 91%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 9%, #000 91%, transparent);
+}
+
+/* Stops for anyone reading a label, and for anyone who asked motion to
+   calm down. Pausing rather than removing keeps the strip where it is
+   instead of snapping back to the start. */
+.sx-marquee-mask:hover [style*="sx-marquee"] {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [style*="sx-marquee"] {
+    animation: none !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   STACKING CARDS
+   On a phone a row of cards becomes a column, and a long column of equal
+   cards is the dullest thing on a page. These stick instead: each one
+   comes to rest a little below the last, so they gather into a pile the
+   reader is building rather than a list they are wading through.
+
+   Each card carries its index as --i, which sets how far down it parks.
+
+   The background has to become opaque, or the card beneath shows through
+   the pile and the whole effect turns to mush. It is forced because the
+   surface colour arrives as an inline style from the shared panel
+   component, and an inline style cannot be beaten from a stylesheet any
+   other way.
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 640px) {
+  .sx-stack > .sx-stack-item {
+    position: sticky;
+    top: calc(80px + var(--i, 0) * 14px);
+    background-color: var(--surface-solid) !important;
+    box-shadow: 0 -8px 30px -18px rgba(0, 0, 0, 0.7);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sx-stack > .sx-stack-item {
+    position: static;
+  }
+}
+
+/* --------------------------------------------------------------------------
    SCROLL REVEAL
    Sections settle in as they arrive. The resting state is visible, not
    transparent, so a section is readable even if the observer never fires

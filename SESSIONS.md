@@ -6,6 +6,15 @@ Log of each work session. Newest at the top. Keep entries short.
 
 ## Session 6: 2026-09-04
 
+**The hero, rewritten to sell the capability**
+
+- **New H1: "Enterprise AI that already knows your company. And never lets a word of it out."** The old one led with the risk, which made this a compliance tool that any vendor in the category could have written, and "your staff" cast the reader as a manager policing people rather than someone gaining an advantage. Capability first, containment as the thing that permits it. The subtext carries the third claim the headline could not, that this is easier than the AI they use now, not only safer.
+- Research behind it: [Orizon's teardown of AI infrastructure sites](https://www.orizon.co/blog/top-10-ai-infrastructure-websites-in-2026) says most of the category runs the same gradient hero, generic illustration, three column grid and "trusted by" bar, and that the ones that break out have positioning a buyer gets in five seconds plus real product surface. The hero convention that keeps recurring is a headline under eight words, a sub at 18 to 22px, and one verb led CTA.
+- **The hero now fits every breakpoint.** It is measured against `100svh` with the mark on a `clamp` that answers to both viewport height and width, so the mark is the thing that gives instead of the button falling off the bottom. Verified at seven sizes from 1440x900 down to 360x640: the CTA and the trust line are above the fold at all of them. It used to fall below on anything shorter than about 700px.
+- **"Works with what you already use" is now Integrations**, with fourteen connectors on two rows travelling in opposite directions, masked at both ends, pausing on hover and still under reduced motion. The line under it says a deployment connects the systems an organization already runs on, which is what is actually true. None of these are wired in the demo, and a wall of logos implying otherwise is the fastest way to lose the technical reader who reviews this page before a deal moves.
+- **Cards stack on a phone.** The three problem cards park a little below one another instead of queueing down the page. They go opaque while stacked, or the pile turns to mush.
+- Checked: build clean, seven breakpoints measured, six pages captured desktop and mobile in both themes with no sideways scroll, 14 click through checks passing, no console errors.
+
 **The landing page, and the mark it was missing**
 
 - **The Containment Seal is the mark now**, built from `MARK.md` instead of from memory. `ContainmentSeal.jsx` is the hero version, three layers of lit tube with the bead orbiting the channel once every ten seconds. `LogoMark` in `icons.jsx` is the small still one, so nav, footer, chat, admin and auth all changed with it. Favicons, the touch icon and the social mark were all regenerated.
