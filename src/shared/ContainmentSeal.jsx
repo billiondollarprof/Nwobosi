@@ -48,8 +48,11 @@ const CHANNEL_IN = INNER_R + INNER_W / 2;
 const CHANNEL_R = (CHANNEL_OUT + CHANNEL_IN) / 2;
 const BEAD_R = (CHANNEL_OUT - CHANNEL_IN) / 2;
 
-/* The bloom around the bead, in proportion to it. */
-const BEAD_GLOW_R = BEAD_R * 1.6;
+/* The bloom around the bead, in proportion to it. Kept close: at 1.6 with
+   a wide blur the halo spilled across both rings and read as a lamp behind
+   the mark rather than a lit bead inside a channel. It only has to say the
+   bead is the light source. */
+const BEAD_GLOW_R = BEAD_R * 1.15;
 
 /* The bead sits at the top of the channel and is carried round from
    there, so its resting position is one full radius above centre. */
@@ -100,8 +103,8 @@ export default function ContainmentSeal({ size = 280, className = "" }) {
         <filter id={soft} x="-60%" y="-60%" width="220%" height="220%">
           <feGaussianBlur stdDeviation="1.5" />
         </filter>
-        <filter id={beadGlow} x="-160%" y="-160%" width="420%" height="420%">
-          <feGaussianBlur stdDeviation="2.4" />
+        <filter id={beadGlow} x="-120%" y="-120%" width="340%" height="340%">
+          <feGaussianBlur stdDeviation="1.5" />
         </filter>
       </defs>
 

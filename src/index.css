@@ -378,15 +378,18 @@ body {
   }
 }
 
+/* The bead's halo, breathing. Held well under full: the point is that the
+   bead is alive, not that it is bright. Earlier values peaked at 0.9 and
+   scale 1.2, which bloomed over both rings. */
 @keyframes sx-seal-breathe {
   0%,
   100% {
-    opacity: 0.55;
+    opacity: 0.34;
     transform: scale(1);
   }
   50% {
-    opacity: 0.9;
-    transform: scale(1.2);
+    opacity: 0.5;
+    transform: scale(1.1);
   }
 }
 
