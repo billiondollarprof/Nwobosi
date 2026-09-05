@@ -505,9 +505,13 @@ body {
   --seal: clamp(120px, min(21vh, 44vw), 260px);
 }
 
+/* On a wide screen the mark has a column of its own and is the largest
+   thing on the page. Both terms matter: vw stops it crowding the copy
+   beside it, vh stops it pushing the call to action off a short laptop
+   window, and min() takes whichever is tighter. */
 @media (min-width: 1024px) {
   .sx-seal-slot {
-    --seal: clamp(88px, 12vh, 132px);
+    --seal: clamp(200px, min(31vw, 46vh), 440px);
   }
 }
 

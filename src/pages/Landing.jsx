@@ -90,21 +90,6 @@ const TRUST_POINTS = [
    watching for a few seconds learns the range of work it does without
    another sentence being written. Every one is a document this really
    produces: Word and PDF are real, decks are not. */
-/* The read back, compressed to what fits beside a headline. Four rows and
-   two answers, because that is the whole product argument: it says what it
-   understood, and nothing is written until a person agrees.
-
-   The assumption row is the one that does the convincing. Any tool can
-   repeat your request back. Surfacing what it decided on its own, and
-   putting that in front of you before it spends anything, is the part
-   nobody else shows. */
-const HERO_BRIEF = [
-  ["Making", "A renewal one pager"],
-  ["For", "Meridian Health, operations"],
-  ["Using", "Brand Guide, Q2 Renewals Summary"],
-  ["Assuming", "Q3 pricing holds"],
-];
-
 const OUTPUTS = [
   "a client one pager",
   "a board update",
@@ -337,95 +322,6 @@ function HeroFloor() {
   );
 }
 
-/* The proof, on wide screens only.
-
-   Everything else in the hero is atmosphere: a mark, a claim, a button. A
-   buyer saw no evidence of a product until they had scrolled past two
-   sections, and the read back is the most convincing thing on the page,
-   so it belongs where they land rather than where they might get to.
-
-   It is tilted a few degrees on its vertical axis. That is the one thing
-   worth borrowing from a product shot: a surface at a slight angle reads
-   as an object sitting in the room, where the same surface square on
-   reads as a picture of one. Six degrees is enough to feel it and little
-   enough to keep every line readable.
-
-   Nothing here is interactive. The real one spends money, and a button on
-   a landing page that looks like it does and does not is worse than no
-   button at all. */
-function HeroBrief() {
-  return (
-    <div className="hidden lg:block" style={{ perspective: "1400px" }}>
-      <div
-        className="sx-card rounded-[22px] border p-6 xl:p-7"
-        style={{
-          backgroundColor: "var(--panel-raised)",
-          boxShadow: "var(--card-lift), var(--panel-drop)",
-          transform: "rotateY(-6deg) rotateX(2.5deg)",
-          transformOrigin: "right center",
-        }}
-        aria-hidden="true"
-      >
-        <div className="flex items-center gap-2 mb-5">
-          <span
-            className="w-1.5 h-1.5 rounded-full"
-            style={{ backgroundColor: BRAND.green }}
-          />
-          <span
-            className="text-[10.5px] font-semibold uppercase tracking-[0.14em]"
-            style={{ color: "var(--text-3)" }}
-          >
-            Read back
-          </span>
-        </div>
-
-        <p className="text-[14.5px] leading-relaxed mb-5" style={{ color: "var(--text-1)" }}>
-          Here is what I have got. Tell me if anything is wrong before I write it.
-        </p>
-
-        <div className="mb-6">
-          {HERO_BRIEF.map(([label, value]) => (
-            <div
-              key={label}
-              className="flex gap-4 py-2.5 border-b last:border-b-0"
-              style={{ borderColor: "var(--border)" }}
-            >
-              <span
-                className="w-[74px] shrink-0 text-[10.5px] font-semibold uppercase tracking-wide pt-1"
-                style={{ color: "var(--text-3)" }}
-              >
-                {label}
-              </span>
-              <span className="text-[13.5px] leading-snug" style={{ color: "var(--text-1)" }}>
-                {value}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        <div className="flex items-center gap-2.5">
-          <span
-            className="px-4 py-2 rounded-[10px] text-[13px] font-semibold text-white"
-            style={{ background: GRADIENTS.action }}
-          >
-            Looks right
-          </span>
-          <span
-            className="px-4 py-2 rounded-[10px] text-[13px] border"
-            style={{ borderColor: "var(--border-2)", color: "var(--text-2)" }}
-          >
-            Change something
-          </span>
-        </div>
-      </div>
-
-      <p className="text-[12px] mt-4 pl-1" style={{ color: "var(--text-3)" }}>
-        Nothing is written until a person says yes.
-      </p>
-    </div>
-  );
-}
-
 function HeroAura() {
   return (
     <div
@@ -504,8 +400,37 @@ export default function Landing() {
               proof rather than decoration, so it only appears where there
               is room for it to be read. Below that width the hero is
               exactly what it was, because it already worked. */}
-          <div className="grid lg:grid-cols-[1.05fr_0.95fr] lg:gap-14 xl:gap-20 lg:items-center">
-            <div className="text-center lg:text-left">
+          {/* One column up to a laptop, two above it, and the mark is the
+              second column rather than a line above the headline. It is
+              first in the source because a phone reads top to bottom and
+              the mark belongs above the sentence there; order swaps it
+              across on a wide screen, where there is no reading order to
+              protect, only a composition. */}
+          <div className="grid lg:grid-cols-2 lg:gap-12 xl:gap-16 lg:items-center">
+            <div className="sx-seal-slot order-1 lg:order-2 flex justify-center mb-7 sm:mb-11 lg:mb-0 relative">
+              <div
+                className="sx-field absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+                style={{ width: "calc(var(--seal) * 4.2)", height: "calc(var(--seal) * 4.2)" }}
+                aria-hidden="true"
+              >
+                {[1.9, 2.85, 4.1].map((scale, i) => (
+                  <div
+                    key={scale}
+                    className="sx-field-ring"
+                    style={{
+                      width: `calc(var(--seal) * ${scale})`,
+                      height: `calc(var(--seal) * ${scale})`,
+                      /* Offset so the three never breathe in unison, which
+                         would read as one pulsing object. */
+                      animationDelay: `${i * -4.6}s`,
+                    }}
+                  />
+                ))}
+              </div>
+              <ContainmentSeal size="var(--seal)" />
+            </div>
+
+            <div className="order-2 lg:order-1 text-center lg:text-left">
 
           {/* One moving object and one sentence. Everything that used to
               sit above the mark has gone: a badge over the top of it is
@@ -539,29 +464,6 @@ export default function Landing() {
           {/* The mark, and the field it sits in. Both are sized off one
               variable so the rings stay in proportion to it at every
               width, and the rings are behind and non interactive. */}
-          <div className="sx-seal-slot flex justify-center lg:justify-start mb-7 sm:mb-11 lg:mb-8 relative">
-            <div
-              className="sx-field absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
-              style={{ width: "calc(var(--seal) * 4.2)", height: "calc(var(--seal) * 4.2)" }}
-              aria-hidden="true"
-            >
-              {[1.9, 2.85, 4.1].map((scale, i) => (
-                <div
-                  key={scale}
-                  className="sx-field-ring"
-                  style={{
-                    width: `calc(var(--seal) * ${scale})`,
-                    height: `calc(var(--seal) * ${scale})`,
-                    /* Offset so the three never breathe in unison, which
-                       would read as one pulsing object. */
-                    animationDelay: `${i * -4.6}s`,
-                  }}
-                />
-              ))}
-            </div>
-            <ContainmentSeal size="var(--seal)" />
-          </div>
-
           <h1
             className="text-[28px] sm:text-[42px] lg:text-[46px] xl:text-[52px] font-medium leading-[1.08] tracking-[-0.03em] mb-5 sm:mb-6 max-w-4xl mx-auto lg:mx-0"
             style={{ fontFamily: FONTS.display, color: "var(--text-1)", textWrap: "balance" }}
@@ -675,8 +577,6 @@ export default function Landing() {
             ))}
           </div>
             </div>
-
-            <HeroBrief />
           </div>
         </div>
       </section>
