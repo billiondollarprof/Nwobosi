@@ -56,7 +56,15 @@ under **ofilifire@gmail.com**.
 
 - **Setup.** `/setup` takes an access code, creates the auth user, the
   company and the staff row, signs the admin in, and lands them on
-  `/{slug}/admin`. Rollback on every step.
+  `/{slug}/admin`. Rollback on every step. It is also the page every Demo
+  link lands on, so it carries the marketing nav and footer rather than
+  bare app chrome, and a rail down the left says which of the four steps
+  you are on and what the next one costs. **`/setup?step=N` opens any of
+  the four screens with stand in values, in dev only.** Three of them sit
+  behind a real code and a real Supabase, so without that they cannot be
+  opened to be looked at, which is why the page went so long without a
+  design pass. The block is compiled out of production, checked by
+  grepping `dist` after a build.
 - **Sign in.** Real Supabase password sign in. It reads who you are from
   the database and sends you to your own workspace, admin side or chat
   side. A wrong password and an unknown email land in the same place on
@@ -101,8 +109,10 @@ under **ofilifire@gmail.com**.
   `/services`, `/founder`, `/insights`, `/form-builder`, `/contact`. Ported
   from the separate StellaXafe repo in session 5, so this repo is now the
   only one. Services, Founder and Contact are routes styled as modals, with
-  real URLs and instant navigation. **Demo is not a page**, every demo link
-  goes to `/setup`.
+  real URLs and instant navigation. **Demo is not a separate page**, every
+  demo link goes to `/setup`, which is built to be landed on cold: it is on
+  the same nav and footer as the rest of the site and it says what the four
+  steps are before asking for the code.
 - **The mark is the Containment Seal**, built to `MARK.md`. Read that file
   before touching the logo: the old interlocked rings were a drift away
   from the written spec and looked like somebody else's mark. Only the
