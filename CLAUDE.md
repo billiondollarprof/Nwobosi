@@ -98,7 +98,8 @@ Because of that there is a testing branch, and work goes through it.
 
 1. Build on a feature branch, as before.
 2. Merge into `testing` and push. Cloudflare Pages builds it to
-   `testing.<project>.pages.dev`.
+   **https://testing.stellaxafe01.pages.dev** (the Pages project is
+   `stellaxafe01`, so any branch gets `https://<branch>.stellaxafe01.pages.dev`).
 3. Look at it there. Both themes, a phone and a desktop, click the things.
 4. Only then merge `testing` into `main`.
 
