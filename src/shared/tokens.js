@@ -63,8 +63,13 @@ export const THEME_VARS = {
     "--border": "rgba(255, 255, 255, 0.1)",
     "--border-2": "rgba(255, 255, 255, 0.18)",
     "--text-1": "#F5F5F7",
-    "--text-2": "#9A9AA5",
-    "--text-3": "#6E6E76",
+    /* Lifted. text-3 was #6E6E76, which on this ground is about 3.8 to 1
+       and fails the small text bar: source lines, captions and the trust
+       row under the hero were all sitting at it and all read as faint.
+       These are roughly 6.7 and 5.6 to 1. The hierarchy between the three
+       is unchanged, all of it is just further off the floor. */
+    "--text-2": "#A6A6B2",
+    "--text-3": "#8A8A95",
     /* The mark. Named here so it flips with the theme like everything
        else, rather than the component branching on which theme is on. */
     "--seal-outer": "rgba(255, 255, 255, 0.34)",

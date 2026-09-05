@@ -497,7 +497,7 @@ export default function Landing() {
       <section className="relative z-10 px-5 sm:px-8">
         <HeroSweep />
         <HeroFloor />
-        <div className="relative max-w-3xl lg:max-w-6xl mx-auto flex flex-col justify-center min-h-[calc(100svh-120px)] pt-4 pb-16 sm:pb-20">
+        <div className="relative max-w-3xl lg:max-w-6xl mx-auto flex flex-col justify-center min-h-[calc(100svh-88px)] pt-4 pb-10 sm:pb-16">
           <HeroAura />
 
           {/* One column up to a laptop, two above it. The second column is
@@ -539,7 +539,7 @@ export default function Landing() {
           {/* The mark, and the field it sits in. Both are sized off one
               variable so the rings stay in proportion to it at every
               width, and the rings are behind and non interactive. */}
-          <div className="sx-seal-slot hidden sm:flex justify-center lg:justify-start mb-11 lg:mb-8 relative">
+          <div className="sx-seal-slot flex justify-center lg:justify-start mb-7 sm:mb-11 lg:mb-8 relative">
             <div
               className="sx-field absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
               style={{ width: "calc(var(--seal) * 4.2)", height: "calc(var(--seal) * 4.2)" }}
@@ -587,10 +587,7 @@ export default function Landing() {
                 competitor can claim, it has a long enough run to move, and
                 the closing sentence stays flat, which is what makes it
                 land. */}
-            <span className="block">
-              Private AI that{" "}
-              <span style={HEADLINE_ACCENT}>already knows your company</span>.
-            </span>
+            <span className="block">Private AI that already knows your company.</span>
             {/* This line never wraps. It is the shortest sentence on the
                 page and breaking it in two is the one thing that would make
                 it look accidental. Held to one line two ways: nowrap, and a
@@ -601,6 +598,7 @@ export default function Landing() {
             <span
               className="block"
               style={{
+                ...HEADLINE_ACCENT,
                 whiteSpace: "nowrap",
                 fontSize: "min(1em, calc((100vw - 2.75rem) / 10.6))",
               }}
@@ -643,13 +641,6 @@ export default function Landing() {
           </p>
 
           {/* Second placement, phones only. See the note on the first one. */}
-          {/* A 568px tall phone had three pixels to spare under the trust
-              row, so the mark gives a little back there and takes it again
-              on anything taller. */}
-          <div className="sm:hidden flex justify-center mb-6 min-[380px]:mb-7">
-            <ContainmentSeal size="min(40vw, 30vh)" />
-          </div>
-
           {/* One button only. Setting up your own company's AI is the demo,
               there is nothing else to send someone to see. */}
           <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 mb-5 sm:mb-7">
@@ -704,7 +695,7 @@ export default function Landing() {
           anyway.
           ==================================================================== */}
 
-      <section className="relative z-10 pb-20 sm:pb-28">
+      <section className="relative z-10 pt-10 sm:pt-4 pb-20 sm:pb-28">
         <div className="px-5 sm:px-8">
           <div className="max-w-3xl mx-auto text-center mb-7">
             <Eyebrow>Integrations</Eyebrow>
@@ -989,28 +980,15 @@ export default function Landing() {
               rectangle here reads as a stock photo dropped on the design;
               letting the ground come up over it makes it part of the
               section. */}
-          <div className="relative mb-10">
-            <Photo
-              name="ops-room"
-              alt="An operations floor at dusk, screens lit, people at work"
-              ratio="16 / 9"
-              narrowRatio="4 / 3"
-              sizes="(max-width: 1024px) 100vw, 1024px"
-              className="rounded-[28px]"
-              imgClassName="opacity-[0.92]"
-            />
-            <div
-              className="absolute inset-0 rounded-[28px] pointer-events-none"
-              style={{
-                background:
-                  "linear-gradient(to bottom, var(--bg) 0%, transparent 20%, transparent 74%, var(--bg) 100%)",
-              }}
-            />
-            <div
-              className="absolute inset-0 rounded-[28px] pointer-events-none"
-              style={{ boxShadow: "inset 0 0 0 1px var(--border)" }}
-            />
-          </div>
+          <Photo
+            name="ops-room"
+            alt="An operations floor at dusk, screens lit, people at work"
+            ratio="16 / 9"
+            narrowRatio="4 / 3"
+            sizes="(max-width: 1024px) 100vw, 1024px"
+            className="sx-photo-fade-y rounded-[28px] mb-10"
+            imgClassName="opacity-[0.92]"
+          />
 
           <CardStack className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" top={116} stackBelow={640}>
             {INDUSTRIES.map((industry) => (
@@ -1248,17 +1226,13 @@ export default function Landing() {
                    column fills whatever height the text next to it sets
                    and the reserved ratio stops applying. Below lg it goes
                    back in flow and the ratio holds the space again. */
-                className="lg:absolute lg:inset-0 sx-photo-fill-lg"
-              />
-              {/* Same idea as the wide photograph above: the picture fades
-                  into the card rather than butting up against the copy. */}
-              <div
-                className="lg:hidden absolute inset-x-0 bottom-0 h-24 pointer-events-none"
-                style={{ background: "linear-gradient(to bottom, transparent, var(--surface-solid))" }}
-              />
-              <div
-                className="hidden lg:block absolute inset-y-0 right-0 w-28 pointer-events-none"
-                style={{ background: "linear-gradient(to right, transparent, var(--surface-solid))" }}
+                /* Fades by mask rather than by a painted overlay, for the
+                   reason in index.css: paint the page colour over a dark
+                   photograph on a light theme and you get fog, not a
+                   dissolve. Downward on a phone where the copy is below
+                   it, across on a wide screen where the copy is beside
+                   it. */
+                className="sx-photo-fade-b lg:sx-photo-fade-r lg:absolute lg:inset-0 sx-photo-fill-lg"
               />
             </div>
 

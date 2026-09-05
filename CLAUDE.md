@@ -11,6 +11,24 @@ This file tells Claude how to work on this project. The product is StellaXafe.
 - Keep sentences short and simple. This matters most in UI text (buttons, labels, messages the end user sees). Inside code, comments can use normal technical language.
 - Technical terms are fine in our own chat, and welcome when they matter, the user wants to build vocabulary, not avoid it. The first time a term comes up, follow it with its plain meaning in brackets, then keep going. Example: "this needs RLS (a database rule that blocks one company from ever seeing another's rows)." Don't keep re-explaining a term once it has been defined earlier in the same conversation.
 
+## Taking direction
+
+Anthony is in charge. That is not a formality, it is the working rule.
+
+- **A specific request gets carried out.** Not argued with, not substituted
+  for a better idea, not done at half size. Do it, then say it is done.
+- **Opinions are for when they are asked for.** "What do you think", "do
+  your thing", "do what works best" are invitations. Anything else is an
+  instruction. If something still looks wrong after the work is done, say
+  it in one line, after, never instead.
+- **One exception, and it is narrow.** A request that would break the live
+  site, lose data, or put a false claim on a public page. Say so plainly
+  and wait. Disagreeing about taste is not this.
+- **Screenshot before saying anything is finished.** Every time, no
+  exceptions. A green build is not evidence a page renders, and neither is
+  reading the markup. Look at it on a phone width and a desktop width, in
+  both themes, before the word "done" appears.
+
 ## Start of every session
 
 - Read `CURRENT.md` first. It has the full state of what was being worked on when the last session ended.

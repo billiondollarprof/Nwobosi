@@ -569,6 +569,38 @@ body {
   aspect-ratio: var(--r-wide);
 }
 
+/* --------------------------------------------------------------------------
+   FADING A PHOTOGRAPH INTO THE PAGE
+   The first attempt laid a gradient of the page colour over the top and
+   bottom of the picture. On a dark ground that is invisible and works. On
+   a light one it is a sheet of near white paint over a dark photograph,
+   which does not read as the image dissolving, it reads as fog sitting on
+   it, and the edge of the paint is visible as a band.
+
+   A mask is the right tool. It takes the picture's own alpha to zero, so
+   it fades into whatever is actually behind it, in any theme, with nothing
+   laid on top.
+   -------------------------------------------------------------------------- */
+
+.sx-photo-fade-y {
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent);
+}
+
+.sx-photo-fade-b {
+  -webkit-mask-image: linear-gradient(to bottom, #000 62%, transparent);
+  mask-image: linear-gradient(to bottom, #000 62%, transparent);
+}
+
+@media (min-width: 1024px) {
+  /* Side by side, the picture meets the copy on its right edge instead of
+     its bottom one. */
+  .lg\:sx-photo-fade-r {
+    -webkit-mask-image: linear-gradient(to right, #000 62%, transparent);
+    mask-image: linear-gradient(to right, #000 62%, transparent);
+  }
+}
+
 @media (max-width: 767px) {
   .sx-photo {
     aspect-ratio: var(--r-narrow);
