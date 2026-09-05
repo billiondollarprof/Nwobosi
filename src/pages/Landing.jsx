@@ -118,7 +118,7 @@ const PROBLEMS = [
   {
     icon: ShieldCheck,
     title: "Nothing to paste",
-    body: "Your documents are already inside it. There is nothing to upload, nothing to paste, and nowhere for it to go.",
+    body: "Everything it needs is already there. Nothing to upload, nothing to paste, and nowhere for it to go.",
   },
   {
     icon: Timer,
@@ -128,7 +128,7 @@ const PROBLEMS = [
   {
     icon: FileCheck2,
     title: "It cannot invent your numbers",
-    body: "Every figure comes from a source your admin approved. When it does not have something, it says so. That gap is where hallucination gets in, and it is shut.",
+    body: "Every figure comes from a source your admin approved. When it does not have something, it says so. That gap is where hallucination gets in, and it is closed.",
   },
 ];
 
@@ -141,7 +141,7 @@ const STEPS = [
   {
     icon: Database,
     title: "It reads your side first",
-    body: "It reads your company's own material for the context this task sits on, before it asks you for anything.",
+    body: "It goes through your company's own material for the context this task sits on, before it asks you for anything.",
   },
   {
     icon: ListChecks,
@@ -169,19 +169,19 @@ const RESEARCH = [
     figure: "69%",
     title: "Suspected shadow AI use",
     body: "Of organizations suspect or have evidence that employees are using prohibited public AI tools at work.",
-    source: "Gartner survey of cybersecurity leaders, 2025",
+    source: "Gartner survey of 302 cybersecurity leaders, 2025",
   },
   {
     figure: "57%",
-    title: "Leaked secrets concern",
-    body: "Of respondents are concerned about leaked secrets appearing inside AI generated code.",
-    source: "Gartner, 2023",
+    title: "Leaked data in AI code",
+    body: "Of developers worry that AI generated code will expose sensitive company or customer data.",
+    source: "Sonar, State of Code developer survey, 2026",
   },
   {
     figure: "40%",
     title: "Projected shadow AI incidents",
     body: "Of enterprises are predicted to face a security or compliance incident tied to unauthorized shadow AI by 2030.",
-    source: "Gartner",
+    source: "Gartner, 2025",
   },
 ];
 
@@ -223,7 +223,7 @@ const SERVICES = [
   {
     icon: Terminal,
     title: "Custom internal prompt engines",
-    body: "Pre loaded with your brand voice and schemas.",
+    body: "Preloaded with your brand voice and your schemas.",
   },
   {
     icon: ShieldCheck,
@@ -238,7 +238,7 @@ const SERVICES = [
   {
     icon: GraduationCap,
     title: "Executive and staff AI training",
-    body: "Turning nontechnical teams into power users.",
+    body: "Not prompt courses. How to judge AI output, and where it belongs in your operation.",
   },
 ];
 
@@ -535,8 +535,8 @@ export default function Landing() {
             className="sm:hidden text-[15.5px] leading-[1.6] max-w-[330px] mx-auto mb-7"
             style={{ color: "var(--text-2)" }}
           >
-            Everything your company runs on, already inside it. Your staff ask in plain language
-            and get back{" "}
+            Everything your company runs on is already inside it. Your staff ask in plain
+            language and get back{" "}
             <Typewriter phrases={OUTPUTS} style={{ color: "var(--h-a)", fontWeight: 500 }} />
           </p>
           <p
@@ -549,8 +549,8 @@ export default function Landing() {
             className="hidden sm:block text-[17.5px] leading-[1.6] max-w-[620px] mx-auto lg:mx-0 mb-9 lg:mb-8 lg:min-h-[6.4em]"
             style={{ color: "var(--text-2)" }}
           >
-            Every document, template and number your company runs on, already inside it. Your staff
-            ask in plain language and get back{" "}
+            Every document, template and number your company runs on is already inside it. Your
+            staff ask in plain language and get back{" "}
             <Typewriter phrases={OUTPUTS} style={{ color: "var(--h-a)", fontWeight: 500 }} />
             <span className="block mt-3" style={{ color: "var(--text-3)" }}>
               No prompt course. No power user. Their first afternoon.
@@ -615,7 +615,7 @@ export default function Landing() {
           <div className="max-w-3xl mx-auto text-center mb-7">
             <Eyebrow>Integrations</Eyebrow>
             <p className="text-[15px] leading-relaxed mt-3.5" style={{ color: "var(--text-3)" }}>
-              Your deployment connects the systems your organization already runs on. Scoped to
+              Your deployment connects to the systems your organization already runs on. Scoped to
               exactly what your team approves, and nothing beyond it.
             </p>
           </div>
@@ -639,12 +639,12 @@ export default function Landing() {
               className="text-[28px] sm:text-[38px] font-medium leading-[1.12] tracking-[-0.025em] mt-4"
               style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
             >
-              It tells you what it understood, <GradientText>before it builds anything</GradientText>
+              It tells you what it understood <GradientText>before it builds anything</GradientText>
             </h2>
             <p className="text-[16px] leading-relaxed mt-5" style={{ color: "var(--text-2)" }}>
               Every brief comes back to you first: what it is making, who it is for, which of your
               own sources it will use, and what it is assuming. You confirm, or you say what is
-              wrong and it goes round again.
+              wrong.
             </p>
             <p className="text-[16px] leading-relaxed mt-4" style={{ color: "var(--text-2)" }}>
               The back and forth happens here, in conversation, instead of after somebody has read a
@@ -663,7 +663,7 @@ export default function Landing() {
                   ["Project", "Renewal one pager for Meridian Health"],
                   ["Template", "Client One Pager"],
                   ["Audience", "Their operations director"],
-                  ["Source", "Brand Guide, Q2 Renewals Summary"],
+                  ["Sources", "Brand Guide, Q2 Renewals Summary"],
                 ].map(([label, value]) => (
                   <div
                     key={label}
@@ -694,7 +694,7 @@ export default function Landing() {
               </div>
             </GlassPanel>
             <p className="text-[12.5px] mt-3" style={{ color: "var(--text-3)" }}>
-              An example brief. The screen itself is the one your staff use.
+              An example brief. This is the screen your staff see.
             </p>
           </Reveal>
         </Reveal>
@@ -858,7 +858,7 @@ export default function Landing() {
             How it works
           </h2>
           <p className="text-[15px] text-center mb-11 max-w-lg mx-auto" style={{ color: "var(--text-3)" }}>
-Five steps. Your staff member only ever talks.
+Five steps. All your staff ever do is talk.
           </p>
 
           {/* Five steps into a two column grid leaves one on its own, so the
@@ -918,7 +918,7 @@ Five steps. Your staff member only ever talks.
           <SectionHead
             eyebrow="Where we deploy"
             title="Built for industries that cannot afford a leak"
-            sub="The same private core, configured for how each industry actually operates."
+            sub="The same private core, configured for how each industry runs."
             center
           />
 
@@ -978,7 +978,7 @@ Five steps. Your staff member only ever talks.
           <SectionHead
             eyebrow="Core services"
             title="Four pillars of a secure AI deployment"
-            sub="From private prompt infrastructure to the people who approve what it does, every layer built to keep proprietary data inside your walls."
+            sub="From private prompt infrastructure to the people who approve what it does, every layer is built to keep proprietary data inside your walls."
             center
           />
 
@@ -1029,7 +1029,7 @@ Five steps. Your staff member only ever talks.
           <SectionHead
             eyebrow="In house products"
             title="We do not just advise. We build."
-            sub="Three products engineered and maintained end to end, offered under the StellaXafe umbrella."
+            sub="Three products, engineered and maintained end to end."
             center
           />
 
@@ -1042,8 +1042,9 @@ Five steps. Your staff member only ever talks.
                   <StatusPill tone="ok">Deployed</StatusPill>
                 </div>
                 <p className="text-[14px] leading-relaxed mt-4" style={{ color: "var(--text-3)" }}>
-                  Multi tenant guest intelligence and automated CRM platform for hospitality. Guest
-                  messaging, booking follow up, and engagement analytics in one system.
+                  Guest intelligence and automated CRM for hospitality, on one isolated workspace
+                  per property. Guest messaging, booking follow up, and engagement analytics in one
+                  system.
                 </p>
               </div>
               <div
@@ -1213,7 +1214,7 @@ Five steps. Your staff member only ever talks.
                   which one it is belongs to the requirements conversation
                   with each organization. */}
               <p className="text-[15px] leading-relaxed mb-7" style={{ color: "var(--text-3)" }}>
-                Your files stay in your own storage, not inside this software. What each person works
+                Your files stay in your own storage, not inside ours. What each person works
                 on is remembered for them and for nobody else, so the assistant keeps its context
                 between conversations without one person's work ever reaching another's.
               </p>
