@@ -30,17 +30,17 @@ const FRAMEWORK_STEPS = [
   {
     stage: "Detect",
     title: "Unauthorized proxy actions",
-    body: "Identify when an agent attempts to act outside its declared scope.",
+    body: "An agent reaches a tool it was never granted. Not by breaking in, but because the tool was reachable.",
   },
   {
     stage: "Alert",
     title: "Real time human notification",
-    body: "Route the flagged action to a human before it executes.",
+    body: "The action stops and goes to a person, before it runs rather than after it ran.",
   },
   {
     stage: "Evolve",
     title: "A guardrail that updates with the system",
-    body: "The model of expected behavior updates as agent code and permissions change.",
+    body: "The rules live inside the checkpoint and move with the code, because a rule written once is a rule already out of date.",
   },
 ];
 
@@ -62,11 +62,11 @@ const WRITING = [
   },
   {
     title: "Designing approval checkpoints people actually use",
-    body: "Notes from deploying human in the loop workflows inside real teams.",
+    body: "Why most approval steps get clicked through, and what makes one people actually read.",
   },
   {
     title: "What shadow AI usage looks like from the inside",
-    body: "Patterns we have seen across client audits before a private system goes in.",
+    body: "What the habit looks like from inside a company, and why a policy has never stopped it.",
   },
 ];
 
@@ -83,10 +83,10 @@ export default function Insights() {
         eyebrow="Forward research"
         title={
           <>
-            Pioneering next gen <GradientText>AI governance architecture</GradientText>
+            The next problem is <GradientText>tools by proxy</GradientText>
           </>
         }
-        lead="As autonomous agents take on more consequential work, the gap between the agent acting and a human knowing is where the real risk lives. We are building the architecture to close it, and writing about what we learn along the way."
+        lead="Agents are given tools. Agents are recursive, they evolve, and they can extend themselves. So an agent can reach a tool it was never granted, not by breaking in, but because the tool was reachable. Anthony calls this using tools by proxy. It is a hypothesis rather than a finished proof, and it gets worse the closer this field moves toward general intelligence."
       />
 
       {/* ====================================================================
@@ -100,13 +100,19 @@ export default function Insights() {
               className="text-[22px] sm:text-[26px] font-bold tracking-tight"
               style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
             >
-              A dynamic AI governance framework
+              Two factor authentication, for AI
             </h2>
             <p className="text-[15px] leading-relaxed mt-4" style={{ color: "var(--text-2)" }}>
-              Internally, the team likes to call it the AI Police. The formal name is a dynamic,
-              evolving AI governance framework, conceptualized to sit alongside autonomous agent
-              code. Not a static filter, but a watching process that learns what normal looks like
-              for a given workflow and flags what is not.
+              Blocking every tool call is not an option. An agent that waits for a human on each
+              one is not worth having, and the usefulness and the risk come from the same property.
+              Written rules are not enough either. A rules file is prose, it misses the case nobody
+              thought of, and an agent walks through the gap without disobeying a word of it.
+              <br />
+              <br />
+              What is left is a checkpoint that carries its own rules inside it and adapts as the
+              system it watches changes. Anthony calls it two factor authentication for AI.
+              Internally the team calls it the AI Police. Both names describe one thing: a second
+              factor between an agent deciding and an agent acting.
             </p>
 
             <div className="flex flex-col gap-3.5 mt-7">
@@ -211,14 +217,14 @@ export default function Insights() {
       <section className="relative z-10 px-5 sm:px-8 py-20">
         <div className="max-w-5xl mx-auto">
           <SectionHead
-            eyebrow="From the blog"
+            eyebrow="Being written"
             title="Notes on building private AI infrastructure"
-            sub="Writing from the team as we build. New posts added regularly."
+            sub="Nothing is published yet. These three are the ones being written first."
           />
           <div className="grid gap-5 sm:grid-cols-3">
             {WRITING.map((post) => (
               <GlassPanel key={post.title} className="p-6">
-                <StatusPill tone="neutral">Coming soon</StatusPill>
+                <StatusPill tone="neutral">In progress</StatusPill>
                 <h3
                   className="text-[16px] font-bold mt-3.5 mb-2"
                   style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}

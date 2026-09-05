@@ -24,25 +24,25 @@ const PILLARS = [
     number: "01",
     stage: "Infrastructure",
     title: "Custom internal prompt engines",
-    body: "Pre loaded with your brand voice, tone, and structured data schemas so output already sounds like you.",
+    body: "Preloaded with your brand voice, your tone and your data schemas, so the first draft already sounds like your company wrote it.",
   },
   {
     number: "02",
     stage: "Privacy",
     title: "Zero data retention environments",
-    body: "Private API configurations that keep prompts and responses inside your perimeter, never retained for training.",
+    body: "Prompts and responses stay inside your perimeter. Nothing is retained, and nothing is trained on.",
   },
   {
     number: "03",
     stage: "Oversight",
     title: "Human in the loop workflows",
-    body: "Approval checkpoints on any action with real consequences. The system proposes, a person decides.",
+    body: "Approval checkpoints on any action with consequences. The system proposes. A person decides. Nothing in between.",
   },
   {
     number: "04",
     stage: "Adoption",
     title: "Executive and staff AI training",
-    body: "Guiding nontechnical teams into confident, daily operational use.",
+    body: "Not prompt courses. How to read AI output, where to trust it, and where it belongs in your operation.",
   },
 ];
 
@@ -64,8 +64,8 @@ export default function Services() {
           Four pillars of a <GradientText>secure AI deployment</GradientText>
         </h1>
         <p className="text-[15.5px] leading-relaxed mt-4 max-w-xl" style={{ color: "var(--text-2)" }}>
-          Each service stands alone or interlocks. Most engagements start with one pillar and expand
-          into the full stack within two quarters.
+          Each one stands alone. Together they are a deployment. Most companies need the first
+          two before they need the rest, and there is no order you have to buy them in.
         </p>
 
         {/* ==================================================================

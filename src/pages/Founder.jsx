@@ -23,8 +23,9 @@ import Photo from "../shared/Photo.jsx";
    -------------------------------------------------------------------------- */
 
 const BACKGROUND = [
-  "Anthony's work sits at the intersection of two disciplines that rarely share a desk. Production software engineering, and the emerging field of applied AI safety. As a full stack engineer, he has shipped and maintained platforms end to end: architecture, authentication, data models, and the unglamorous plumbing that makes a product trustworthy in daily use.",
-  "That engineering discipline carries directly into StellaXafe's approach. Every private prompt engine, every zero retention environment, and every human in the loop checkpoint is designed the way production infrastructure is designed. Assume failure, assume misuse, and build the guardrail before the feature ships.",
+  "StellaXafe started with a friend uploading his company's documents into a public chatbot. Not carelessly. He did it because it produced better work, and better work was the job. That is the whole problem in one picture: the leak is not caused by people being reckless, it is caused by the good version of the work needing context the tool does not have.",
+  "Anthony ships platforms end to end. Architecture, authentication, data models, and the unglamorous plumbing that decides whether a product is trustworthy on a Tuesday afternoon. Amara is live and a business runs on it. XALOM is in build. Both were taken from nothing to production, which is the part most AI safety writing has never had to do.",
+  "That discipline is the whole approach here. Every private prompt engine, every zero retention environment, every human in the loop checkpoint is designed the way production infrastructure is designed. Assume failure, assume misuse, and build the guardrail before the feature ships. The guardrail is not a feature you add later, it is the thing the feature is built inside.",
 ];
 
 const WORK = [
@@ -104,9 +105,9 @@ export default function Founder() {
               Principal architect and AI systems strategist
             </p>
             <p className="text-[15px] leading-relaxed mt-5" style={{ color: "var(--text-2)" }}>
-              Full stack software engineer and creator of Amara and XALOM digital trust
-              infrastructure. Anthony bridges practical enterprise workflow tools with cutting edge
-              AI safety concepts.
+              Full stack engineer. Built and shipped Amara, which runs a live business today,
+              and XALOM, a digital trust and identity protocol. StellaXafe is where the enterprise
+              workflow tools and the AI safety architecture meet.
             </p>
             <PrimaryButton
               onClick={() => navigate("/contact")}
