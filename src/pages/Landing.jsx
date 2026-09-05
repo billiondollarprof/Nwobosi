@@ -90,6 +90,21 @@ const TRUST_POINTS = [
    watching for a few seconds learns the range of work it does without
    another sentence being written. Every one is a document this really
    produces: Word and PDF are real, decks are not. */
+/* The read back, compressed to what fits beside a headline. Four rows and
+   two answers, because that is the whole product argument: it says what it
+   understood, and nothing is written until a person agrees.
+
+   The assumption row is the one that does the convincing. Any tool can
+   repeat your request back. Surfacing what it decided on its own, and
+   putting that in front of you before it spends anything, is the part
+   nobody else shows. */
+const HERO_BRIEF = [
+  ["Making", "A renewal one pager"],
+  ["For", "Meridian Health, operations"],
+  ["Using", "Brand Guide, Q2 Renewals Summary"],
+  ["Assuming", "Q3 pricing holds"],
+];
+
 const OUTPUTS = [
   "a client one pager",
   "a board update",
@@ -322,6 +337,95 @@ function HeroFloor() {
   );
 }
 
+/* The proof, on wide screens only.
+
+   Everything else in the hero is atmosphere: a mark, a claim, a button. A
+   buyer saw no evidence of a product until they had scrolled past two
+   sections, and the read back is the most convincing thing on the page,
+   so it belongs where they land rather than where they might get to.
+
+   It is tilted a few degrees on its vertical axis. That is the one thing
+   worth borrowing from a product shot: a surface at a slight angle reads
+   as an object sitting in the room, where the same surface square on
+   reads as a picture of one. Six degrees is enough to feel it and little
+   enough to keep every line readable.
+
+   Nothing here is interactive. The real one spends money, and a button on
+   a landing page that looks like it does and does not is worse than no
+   button at all. */
+function HeroBrief() {
+  return (
+    <div className="hidden lg:block" style={{ perspective: "1400px" }}>
+      <div
+        className="sx-card rounded-[22px] border p-6 xl:p-7"
+        style={{
+          backgroundColor: "var(--panel-raised)",
+          boxShadow: "var(--card-lift), var(--panel-drop)",
+          transform: "rotateY(-6deg) rotateX(2.5deg)",
+          transformOrigin: "right center",
+        }}
+        aria-hidden="true"
+      >
+        <div className="flex items-center gap-2 mb-5">
+          <span
+            className="w-1.5 h-1.5 rounded-full"
+            style={{ backgroundColor: BRAND.green }}
+          />
+          <span
+            className="text-[10.5px] font-semibold uppercase tracking-[0.14em]"
+            style={{ color: "var(--text-3)" }}
+          >
+            Read back
+          </span>
+        </div>
+
+        <p className="text-[14.5px] leading-relaxed mb-5" style={{ color: "var(--text-1)" }}>
+          Here is what I have got. Tell me if anything is wrong before I write it.
+        </p>
+
+        <div className="mb-6">
+          {HERO_BRIEF.map(([label, value]) => (
+            <div
+              key={label}
+              className="flex gap-4 py-2.5 border-b last:border-b-0"
+              style={{ borderColor: "var(--border)" }}
+            >
+              <span
+                className="w-[74px] shrink-0 text-[10.5px] font-semibold uppercase tracking-wide pt-1"
+                style={{ color: "var(--text-3)" }}
+              >
+                {label}
+              </span>
+              <span className="text-[13.5px] leading-snug" style={{ color: "var(--text-1)" }}>
+                {value}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-2.5">
+          <span
+            className="px-4 py-2 rounded-[10px] text-[13px] font-semibold text-white"
+            style={{ background: GRADIENTS.action }}
+          >
+            Looks right
+          </span>
+          <span
+            className="px-4 py-2 rounded-[10px] text-[13px] border"
+            style={{ borderColor: "var(--border-2)", color: "var(--text-2)" }}
+          >
+            Change something
+          </span>
+        </div>
+      </div>
+
+      <p className="text-[12px] mt-4 pl-1" style={{ color: "var(--text-3)" }}>
+        Nothing is written until a person says yes.
+      </p>
+    </div>
+  );
+}
+
 function HeroAura() {
   return (
     <div
@@ -393,8 +497,15 @@ export default function Landing() {
       <section className="relative z-10 px-5 sm:px-8">
         <HeroSweep />
         <HeroFloor />
-        <div className="relative max-w-3xl mx-auto text-center flex flex-col justify-center min-h-[calc(100svh-120px)] pt-4 pb-16 sm:pb-20">
+        <div className="relative max-w-3xl lg:max-w-6xl mx-auto flex flex-col justify-center min-h-[calc(100svh-120px)] pt-4 pb-16 sm:pb-20">
           <HeroAura />
+
+          {/* One column up to a laptop, two above it. The second column is
+              proof rather than decoration, so it only appears where there
+              is room for it to be read. Below that width the hero is
+              exactly what it was, because it already worked. */}
+          <div className="grid lg:grid-cols-[1.05fr_0.95fr] lg:gap-14 xl:gap-20 lg:items-center">
+            <div className="text-center lg:text-left">
 
           {/* One moving object and one sentence. Everything that used to
               sit above the mark has gone: a badge over the top of it is
@@ -428,10 +539,7 @@ export default function Landing() {
           {/* The mark, and the field it sits in. Both are sized off one
               variable so the rings stay in proportion to it at every
               width, and the rings are behind and non interactive. */}
-          <div
-            className="hidden sm:flex justify-center mb-11 relative"
-            style={{ "--seal": "clamp(120px, min(21vh, 44vw), 260px)" }}
-          >
+          <div className="sx-seal-slot hidden sm:flex justify-center lg:justify-start mb-11 lg:mb-8 relative">
             <div
               className="sx-field absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
               style={{ width: "calc(var(--seal) * 4.2)", height: "calc(var(--seal) * 4.2)" }}
@@ -455,7 +563,7 @@ export default function Landing() {
           </div>
 
           <h1
-            className="text-[28px] sm:text-[42px] lg:text-[54px] font-medium leading-[1.08] tracking-[-0.03em] mb-5 sm:mb-6 max-w-4xl mx-auto"
+            className="text-[28px] sm:text-[42px] lg:text-[46px] xl:text-[52px] font-medium leading-[1.08] tracking-[-0.03em] mb-5 sm:mb-6 max-w-4xl mx-auto lg:mx-0"
             style={{ fontFamily: FONTS.display, color: "var(--text-1)", textWrap: "balance" }}
           >
             {/* Each sentence is its own block rather than two lines split by
@@ -464,16 +572,24 @@ export default function Landing() {
                 whatever the font measures, which matters because the display
                 face loads from the network and the fallback is a different
                 width. */}
-            {/* The sweep is on the claim, and the containment line is left
-                plain. Two reasons it is this way round rather than the
-                other. A flat, undecorated "Nothing ever leaves." is the
-                more severe sentence: a gradient softens words, and that
-                line should not be softened. And the sweep now has two
-                lines to travel across instead of twenty characters, which
-                is the difference between light moving over type and a
-                colour sitting on it. */}
-            <span className="block" style={HEADLINE_ACCENT}>
-              Private AI that already knows your company.
+            {/* The accent is on a phrase, not on a line, and it took three
+                goes to land there.
+
+                On the closing line it was twenty characters, too short a
+                run for a sweep, so it read as a colour sitting on the
+                words rather than light moving over them. Moved to the
+                whole opening sentence it had room to travel, but colour is
+                where the eye goes first, so the setup outshouted the
+                payoff and "Nothing ever leaves." arrived as an
+                afterthought.
+
+                On the phrase it does both jobs. It marks the thing no
+                competitor can claim, it has a long enough run to move, and
+                the closing sentence stays flat, which is what makes it
+                land. */}
+            <span className="block">
+              Private AI that{" "}
+              <span style={HEADLINE_ACCENT}>already knows your company</span>.
             </span>
             {/* This line never wraps. It is the shortest sentence on the
                 page and breaking it in two is the one thing that would make
@@ -511,7 +627,13 @@ export default function Landing() {
             back <Typewriter phrases={OUTPUTS} style={{ color: "var(--h-a)", fontWeight: 500 }} />
           </p>
           <p
-            className="hidden sm:block text-[18px] leading-[1.6] max-w-[620px] mx-auto mb-9"
+            /* The rotating phrase changes length, and in the narrower two
+               column layout that flips the paragraph between three lines
+               and four, which moved the button under the reader's cursor
+               every few seconds. Four lines of room are held whether they
+               are used or not. Measured: 14px of travel before, none
+               after. */
+            className="hidden sm:block text-[17.5px] leading-[1.6] max-w-[620px] mx-auto lg:mx-0 mb-9 lg:mb-8 lg:min-h-[6.4em]"
             style={{ color: "var(--text-2)" }}
           >
             A private repository for everything your company knows, in your own templates, numbers
@@ -530,7 +652,7 @@ export default function Landing() {
 
           {/* One button only. Setting up your own company's AI is the demo,
               there is nothing else to send someone to see. */}
-          <div className="flex flex-wrap items-center justify-center gap-3 mb-5 sm:mb-7">
+          <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 mb-5 sm:mb-7">
             <PrimaryButton
               onClick={() => navigate("/setup")}
               className="flex items-center gap-2 px-6 py-3.5 text-[15px]"
@@ -544,7 +666,7 @@ export default function Landing() {
               than living inside each item, and nothing wraps, so a divider
               can never end up stranded at the start of a second row. */}
           <div
-            className="flex items-center justify-center gap-2.5 sm:gap-3 text-[11.5px] sm:text-[12.5px]"
+            className="flex items-center justify-center lg:justify-start gap-2.5 sm:gap-3 text-[11.5px] sm:text-[12.5px]"
             style={{ color: "var(--text-3)" }}
           >
             {TRUST_POINTS.map((point, i) => (
@@ -560,6 +682,10 @@ export default function Landing() {
                 </span>
               </Fragment>
             ))}
+          </div>
+            </div>
+
+            <HeroBrief />
           </div>
         </div>
       </section>

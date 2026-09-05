@@ -498,6 +498,19 @@ body {
    would be a pattern behind words, which is the opposite of the point.
    -------------------------------------------------------------------------- */
 
+/* The mark is the crown of a centred hero up to a laptop, and one element
+   in a two column composition above it. Different jobs, different sizes,
+   and one variable so the field rings stay in proportion to it either way. */
+.sx-seal-slot {
+  --seal: clamp(120px, min(21vh, 44vw), 260px);
+}
+
+@media (min-width: 1024px) {
+  .sx-seal-slot {
+    --seal: clamp(88px, 12vh, 132px);
+  }
+}
+
 .sx-field {
   -webkit-mask-image: radial-gradient(closest-side, #000 40%, transparent 100%);
   mask-image: radial-gradient(closest-side, #000 40%, transparent 100%);

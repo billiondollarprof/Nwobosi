@@ -100,6 +100,12 @@ export const THEME_VARS = {
     "--card-sheen": "linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0) 42%)",
     "--card-edge": "rgba(255, 255, 255, 0.14)",
     "--card-lift": "0 1px 0 0 rgba(255,255,255,0.05) inset, 0 12px 28px -18px rgba(0,0,0,0.8), 0 2px 6px -4px rgba(0,0,0,0.6)",
+    /* The hero panel sits closer to the viewer than any other surface, so
+       it is lighter than the cards and throws a much longer shadow. On a
+       near black ground a panel the same colour as its background is not a
+       raised object, it is a slightly different rectangle. */
+    "--panel-raised": "#13161F",
+    "--panel-drop": "0 44px 90px -46px rgba(0,0,0,0.95), 0 12px 34px -20px rgba(0,0,0,0.7)",
     /* The sweep inside the second headline line. On dark it lifts toward
        white. */
     "--h-a": "#5870F8",
@@ -144,6 +150,8 @@ export const THEME_VARS = {
     "--card-sheen": "linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0) 46%)",
     "--card-edge": "rgba(255, 255, 255, 0.95)",
     "--card-lift": "0 1px 0 0 rgba(255,255,255,0.9) inset, 0 14px 30px -20px rgba(20,32,90,0.28), 0 2px 6px -4px rgba(20,32,90,0.14)",
+    "--panel-raised": "#FFFFFF",
+    "--panel-drop": "0 44px 90px -50px rgba(20,32,90,0.45), 0 12px 34px -22px rgba(20,32,90,0.22)",
     /* The sheen has to darken, not lighten. Sweeping toward near white on
        a white page made the last word of the headline disappear as the
        band passed over it. */
