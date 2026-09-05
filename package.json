@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build && node scripts/preview-guard.mjs",
     "preview": "vite preview",
-    "images": "node scripts/optimise-images.mjs"
+    "images": "node scripts/optimise-images.mjs",
+    "icons": "node scripts/make-icons.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.4",

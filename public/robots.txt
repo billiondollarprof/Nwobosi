@@ -1,0 +1,15 @@
+# Production. Preview branches get a different file written over this one
+# by scripts/preview-guard.mjs, disallowing everything.
+
+User-agent: *
+Allow: /
+
+# The demo and the app are behind an access code. There is nothing there
+# for a crawler and a half rendered app screen in search results helps
+# nobody.
+Disallow: /setup
+Disallow: /chat
+Disallow: /admin
+Disallow: /auth
+
+Sitemap: https://stellaxafe.com/sitemap.xml

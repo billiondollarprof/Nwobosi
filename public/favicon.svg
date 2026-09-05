@@ -19,6 +19,12 @@
   <!-- The model gateway -->
   <circle cx="50" cy="50" r="30" fill="none" stroke="url(#seal-inner)" stroke-width="7"/>
 
-  <!-- The data, held at one o'clock in the channel -->
-  <circle cx="76.2" cy="23.8" r="6" fill="#F5A820"/>
+  <!-- The data, held at one o'clock in the channel.
+
+       The channel is the gap between the two stroke faces, not between the
+       two radii. Boundary stroke 3 puts its inner face at 42.5, gateway
+       stroke 7 puts its outer face at 33.5, so the bead is radius 4.5 at a
+       travel radius of 38, which at one o'clock is 38 over root two on
+       each axis. -->
+  <circle cx="76.87" cy="23.13" r="4.5" fill="#F5A820"/>
 </svg>

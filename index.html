@@ -3,24 +3,49 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>StellaXafe</title>
+
+    <title>StellaXafe — Private AI that already knows your company</title>
     <meta
       name="description"
-      content="A private AI gateway for enterprises. Describe what you need, get a finished on brand file."
+      content="Every document, template and number your company runs on, already inside a private AI. Your staff ask in plain language and get finished work back. Nothing is trained on and nothing leaves your boundary."
     />
+    <link rel="canonical" href="https://stellaxafe.com/" />
+    <meta name="theme-color" content="#05060D" />
 
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!-- favicon.ico is not linked because it does not need to be. A browser
+         asks for /favicon.ico on its own, and until this file existed the
+         single page app catch all answered that request with index.html,
+         so the browser fell back to whatever icon it had cached. The other
+         two are linked so a browser that prefers them does not have to
+         guess. The version string is there to pull a stale icon out of a
+         cache once; bump it when the mark changes. -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=2" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2" />
 
-    <meta property="og:title" content="StellaXafe" />
+    <!-- Absolute URLs. LinkedIn, Slack and iMessage will not resolve a
+         relative one, so a relative path here is a link preview with a
+         blank space where the card should be. -->
+    <meta property="og:site_name" content="StellaXafe" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://stellaxafe.com/" />
+    <meta property="og:title" content="StellaXafe — Private AI that already knows your company" />
     <meta
       property="og:description"
-      content="A private AI gateway for enterprises. Describe what you need, get a finished on brand file."
+      content="Your staff ask in plain language and get finished work back. Nothing is trained on and nothing leaves your boundary."
     />
-    <meta property="og:type" content="website" />
-    <meta property="og:image" content="/logo-mark.png" />
+    <meta property="og:image" content="https://stellaxafe.com/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="StellaXafe" />
+
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="StellaXafe — Private AI that already knows your company" />
+    <meta
+      name="twitter:description"
+      content="Your staff ask in plain language and get finished work back. Nothing is trained on and nothing leaves your boundary."
+    />
+    <meta name="twitter:image" content="https://stellaxafe.com/og-image.png" />
   </head>
   <body>
     <div id="root"></div>
