@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node scripts/preview-guard.mjs",
     "preview": "vite preview",
     "images": "node scripts/optimise-images.mjs"
   },

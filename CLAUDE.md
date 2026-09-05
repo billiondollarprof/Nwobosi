@@ -71,6 +71,35 @@ The advantage does not come from the model. It comes from the output already kno
 
 **The landing page, and anything else that is StellaXafe talking about itself, is a different surface with different rules.** A calm, mature, premium company is allowed to sound like it knows what it is talking about. Use a real technical term where it earns its place and carries authority, RLS, retrieval, tenant isolation, that kind of thing, rather than always reaching for the softest possible word. The read is not a technical buyer, but someone technical usually reviews the page before a deal moves, so it should hold up to that read too. What it is not: a wall of buzzwords, or jargon reached for out of habit rather than because the sentence needed it. Calm and simple stays the default tone, a real term shows up when it is the clearest and most precise word available, not as flavour.
 
+## Branching and deploying
+
+The site is live. `main` deploys straight to stellaxafe.com with nothing
+in between, so **every push to `main` is a publish.**
+
+Because of that there is a testing branch, and work goes through it.
+
+1. Build on a feature branch, as before.
+2. Merge into `testing` and push. Cloudflare Pages builds it to
+   `testing.<project>.pages.dev`.
+3. Look at it there. Both themes, a phone and a desktop, click the things.
+4. Only then merge `testing` into `main`.
+
+Claude does not merge to `main` without being asked. Pushing `testing` does
+not need asking, because nobody outside sees it.
+
+Two things keep previews from becoming a problem:
+
+- **Every branch that is not `main` is built noindex.** `scripts/preview-guard.mjs`
+  runs after the build and writes a `robots.txt` and an `X-Robots-Tag`
+  header on any preview deployment. Unreleased copy indexed under a
+  pages.dev domain is a mess to undo. Production writes neither.
+- **Preview URLs are still public.** The guard tells crawlers to stay away;
+  it does not stop a person with the link. Put previews behind Cloudflare
+  Access if that matters for a given piece of work.
+
+Hotfixes to `main` directly are allowed when the live site is broken.
+Everything else waits for testing.
+
 ## Project structure
 
 This project is not one big file. Each major part of the app is its own page, in its own file:
