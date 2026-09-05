@@ -82,7 +82,7 @@ import { SectionHead, GradientText, Eyebrow, Divider } from "../shared/marketing
    is true, and it is what the button below actually offers. */
 const TRUST_POINTS = [
   { full: "Nothing leaves your walls", short: "Nothing leaves" },
-  { full: "Built into your systems", short: "Into your systems" },
+  { full: "Useful on day one", short: "Day one" },
   { full: "See it in 10 minutes", short: "See it in 10 min" },
 ];
 
@@ -102,21 +102,33 @@ const OUTPUTS = [
    thesis and has to stay first: the leak is not carelessness, it is that
    the good version of the work needs context the tool does not have. Lead
    with recklessness instead and this is a policy product. */
+/* What actually gets said in a company, in the words people use. This is
+   the section that was doing the least work and it was because it was
+   explaining a problem the reader already lives instead of showing it to
+   them. A sentence about staff behaviour is an essay. The sentence itself
+   is a scene. */
+const OVERHEARD = [
+  "Just paste the brief in, it is quicker.",
+  "Upload the contract, it writes better when it can see it.",
+  "It is fine, I deleted the chat after.",
+  "Do not tell compliance.",
+];
+
 const PROBLEMS = [
   {
     icon: ShieldCheck,
-    title: "Nobody has to paste anything",
-    body: "Staff upload company documents to public tools because it makes the work better, and better work is the job. Here the material is already inside, so there is nothing to paste and nowhere for it to go.",
+    title: "Nothing to paste",
+    body: "Your documents are already inside it. There is nothing to upload, nothing to paste, and nowhere for it to go.",
   },
   {
     icon: Timer,
-    title: "The retry loop ends",
-    body: "It works out what it still needs, asks for exactly that, then reads the brief back. The back and forth happens in conversation, not after somebody has read a finished document that was never going to be right.",
+    title: "No thirty day ramp",
+    body: "No prompt course. No power user. Your newest staff member gets the same standard of work as your best one, on their first afternoon.",
   },
   {
     icon: FileCheck2,
     title: "It cannot invent your numbers",
-    body: "Every company fact comes from a source your admin approved, in your own templates and voice, without anyone supplying them. If something is missing it says so instead of filling the gap. That gap is where hallucination gets in, and it is closed by design rather than left to chance.",
+    body: "Every figure comes from a source your admin approved. When it does not have something, it says so. That gap is where hallucination gets in, and it is shut.",
   },
 ];
 
@@ -124,17 +136,17 @@ const STEPS = [
   {
     icon: MessagesSquare,
     title: "You ask",
-    body: "In plain language, and you point at the documents that matter. There is no prompt to write.",
+    body: "In plain language. Point at the documents that matter. There is no prompt to write and nothing to learn.",
   },
   {
     icon: Database,
     title: "It reads your side first",
-    body: "It searches your company's own material for the context this task sits on, before it asks you for anything.",
+    body: "It reads your company's own material for the context this task sits on, before it asks you for anything.",
   },
   {
     icon: ListChecks,
     title: "It interviews you for the rest",
-    body: "It works out what is still missing and asks for exactly that, and nothing else. This is what replaces prompt writing.",
+    body: "It works out what is still missing and asks for that, and nothing else. This replaces prompt engineering outright.",
   },
   {
     icon: FileCheck2,
@@ -334,7 +346,7 @@ function HeroAura() {
         style={{
           background: "radial-gradient(ellipse, var(--aura-1) 0%, transparent 70%)",
           filter: "blur(90px)",
-          animation: "sx-cloud-drift-a 24s ease-in-out infinite",
+          animation: "sx-swap-blue 26s ease-in-out infinite",
         }}
       />
       {/* The orbiting one, offset so the light has a direction rather than
@@ -344,7 +356,7 @@ function HeroAura() {
         style={{
           background: "radial-gradient(circle, var(--aura-2) 0%, transparent 70%)",
           filter: "blur(80px)",
-          animation: "sx-cloud-drift-c 31s ease-in-out infinite",
+          animation: "sx-swap-violet 31s ease-in-out infinite",
         }}
       />
     </div>
@@ -520,11 +532,12 @@ export default function Landing() {
               matters. Everything above tablet gets the sentence that earns
               it as well. Both end on the same rotating phrase. */}
           <p
-            className="sm:hidden text-[15.5px] leading-[1.6] max-w-[320px] mx-auto mb-7"
+            className="sm:hidden text-[15.5px] leading-[1.6] max-w-[330px] mx-auto mb-7"
             style={{ color: "var(--text-2)" }}
           >
-            A private repository for everything your company knows. Ask in plain language, and get
-            back <Typewriter phrases={OUTPUTS} style={{ color: "var(--h-a)", fontWeight: 500 }} />
+            Everything your company runs on, already inside it. Your staff ask in plain language
+            and get back{" "}
+            <Typewriter phrases={OUTPUTS} style={{ color: "var(--h-a)", fontWeight: 500 }} />
           </p>
           <p
             /* The rotating phrase changes length, and in the narrower two
@@ -536,10 +549,12 @@ export default function Landing() {
             className="hidden sm:block text-[17.5px] leading-[1.6] max-w-[620px] mx-auto lg:mx-0 mb-9 lg:mb-8 lg:min-h-[6.4em]"
             style={{ color: "var(--text-2)" }}
           >
-            A private repository for everything your company knows, in your own templates, numbers
-            and voice. Nothing is trained on, and nothing crosses your boundary. Ask in plain
-            language, and get back{" "}
+            Every document, template and number your company runs on, already inside it. Your staff
+            ask in plain language and get back{" "}
             <Typewriter phrases={OUTPUTS} style={{ color: "var(--h-a)", fontWeight: 500 }} />
+            <span className="block mt-3" style={{ color: "var(--text-3)" }}>
+              No prompt course. No power user. Their first afternoon.
+            </span>
           </p>
 
           {/* Second placement, phones only. See the note on the first one. */}
@@ -600,8 +615,8 @@ export default function Landing() {
           <div className="max-w-3xl mx-auto text-center mb-7">
             <Eyebrow>Integrations</Eyebrow>
             <p className="text-[15px] leading-relaxed mt-3.5" style={{ color: "var(--text-3)" }}>
-              Your deployment connects the systems your organization already runs on, scoped to
-              exactly what your team approves.
+              Your deployment connects the systems your organization already runs on. Scoped to
+              exactly what your team approves, and nothing beyond it.
             </p>
           </div>
         </div>
@@ -632,9 +647,9 @@ export default function Landing() {
               wrong and it goes round again.
             </p>
             <p className="text-[16px] leading-relaxed mt-4" style={{ color: "var(--text-2)" }}>
-              The back and forth happens here, in cheap conversation, instead of after somebody has
-              read a finished document that was never going to be right. What you confirm becomes
-              the brief the work is built from, and nothing outside it reaches the finished file.
+              The back and forth happens here, in conversation, instead of after somebody has read a
+              finished document that was never going to be right. What you confirm becomes the
+              brief. Nothing outside it reaches the finished file.
             </p>
           </Reveal>
 
@@ -692,13 +707,49 @@ export default function Landing() {
       <section className="relative z-10 px-5 sm:px-8 pb-10">
         <Reveal className="max-w-5xl mx-auto">
           <h2
-            className="text-[28px] sm:text-[38px] font-medium text-center mb-3 tracking-[-0.025em]"
+            className="text-[30px] sm:text-[42px] font-medium text-center mb-4 tracking-[-0.03em] max-w-3xl mx-auto"
+            style={{ fontFamily: FONTS.display, color: "var(--text-1)", textWrap: "balance" }}
+          >
+            Right now, your best people are pasting your company into someone else&apos;s chatbot.
+          </h2>
+          <p
+            className="text-[16px] text-center mb-10 max-w-xl mx-auto leading-relaxed"
+            style={{ color: "var(--text-2)" }}
+          >
+            Not because they are careless. Because it is the only way to get work that is any good.
+          </p>
+
+          {/* The scene, in the words people actually use. Set as quotes on
+              their own so they read as things overheard rather than as
+              copy. This is the part the section was missing: a reader
+              recognises their own week here before a single claim is made
+              about the product. */}
+          <div className="max-w-2xl mx-auto mb-10 grid gap-2.5 sm:gap-3">
+            {OVERHEARD.map((line, i) => (
+              <p
+                key={line}
+                className={`text-[15px] sm:text-[16.5px] leading-snug px-4 py-3 rounded-[14px] border w-fit ${
+                  i % 2 ? "ml-auto text-right" : ""
+                }`}
+                style={{
+                  fontFamily: FONTS.display,
+                  color: "var(--text-2)",
+                  backgroundColor: "var(--surface-2)",
+                  borderColor: "var(--border)",
+                }}
+              >
+                &ldquo;{line}&rdquo;
+              </p>
+            ))}
+          </div>
+
+          <p
+            className="text-[18px] sm:text-[22px] text-center mb-11 font-medium tracking-[-0.02em]"
             style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
           >
-            Three problems, solved at once
-          </h2>
-          <p className="text-[15px] text-center mb-11 max-w-lg mx-auto" style={{ color: "var(--text-3)" }}>
-            Most teams have all three. Fixing one without the others does not hold.
+            Every company bans it. Nobody gave their staff another way.
+            <br className="hidden sm:block" />{" "}
+            <GradientText>StellaXafe is the other way.</GradientText>
           </p>
 
           {/* Below a laptop these stack: each card anchors, the next slides
@@ -712,7 +763,7 @@ export default function Landing() {
             {PROBLEMS.map((item) => (
               <div
                 key={item.title}
-                className="sx-card rounded-[18px] border p-6 backdrop-blur-xl h-full"
+                className="sx-card sx-card-lit rounded-[18px] border p-6 sm:p-7 backdrop-blur-xl h-full"
                 style={{ backgroundColor: "var(--surface)" }}
               >
                 <div
@@ -807,7 +858,7 @@ export default function Landing() {
             How it works
           </h2>
           <p className="text-[15px] text-center mb-11 max-w-lg mx-auto" style={{ color: "var(--text-3)" }}>
-            Five steps. The only parts your staff member takes part in are conversation.
+Five steps. Your staff member only ever talks.
           </p>
 
           {/* Five steps into a two column grid leaves one on its own, so the
@@ -1151,10 +1202,9 @@ export default function Landing() {
                 It only knows what you tell it
               </h2>
               <p className="text-[15px] leading-relaxed mb-4" style={{ color: "var(--text-3)" }}>
-                Your admin decides what goes into the knowledge base. Every company fact in an output
-                traces back to a source you approved. If something is missing, the assistant says so
-                rather than making it up. Zero trust at the runtime layer, and your data never leaves
-                boundaries you control.
+                Your admin decides what goes into the knowledge base. Every company fact in an
+                output traces back to a source you approved. When something is missing it says so.
+                Zero trust at the runtime layer, and your data never leaves boundaries you control.
               </p>
               {/* The storage boundary is the part a technical reviewer will
                   look for, and it is the strongest thing on this section:
@@ -1251,9 +1301,9 @@ export default function Landing() {
             something that already sounds like you.
           </p>
           <p className="text-[14px] leading-relaxed mb-8 max-w-lg mx-auto" style={{ color: "var(--text-3)", opacity: 0.85 }}>
-            This is not software you subscribe to. What you drive here is the blueprint. The
-            deployment is built into your own systems, and it is fast because the architecture,
-            the guardrails and the isolation are already built and already work.
+            This is not software you subscribe to. What you drive here is the blueprint. Your
+            deployment is built into your own systems, and it is fast because the architecture, the
+            guardrails and the isolation already exist and already work.
           </p>
           <PrimaryButton
             onClick={() => navigate("/setup")}

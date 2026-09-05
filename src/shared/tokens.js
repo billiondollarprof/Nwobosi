@@ -111,6 +111,10 @@ export const THEME_VARS = {
        raised object, it is a slightly different rectangle. */
     "--panel-raised": "#13161F",
     "--panel-drop": "0 44px 90px -46px rgba(0,0,0,0.95), 0 12px 34px -20px rgba(0,0,0,0.7)",
+    /* The lit edge. Bright enough to be seen at a glance on this ground,
+       never bright enough to become the loudest thing on the card. */
+    "--lit-a": "rgba(88, 112, 248, 0.85)",
+    "--lit-b": "rgba(160, 90, 245, 0.55)",
     /* The sweep inside the second headline line. On dark it lifts toward
        white. */
     "--h-a": "#5870F8",
@@ -157,6 +161,8 @@ export const THEME_VARS = {
     "--card-lift": "0 1px 0 0 rgba(255,255,255,0.9) inset, 0 14px 30px -20px rgba(20,32,90,0.28), 0 2px 6px -4px rgba(20,32,90,0.14)",
     "--panel-raised": "#FFFFFF",
     "--panel-drop": "0 44px 90px -50px rgba(20,32,90,0.45), 0 12px 34px -22px rgba(20,32,90,0.22)",
+    "--lit-a": "rgba(46, 66, 224, 0.55)",
+    "--lit-b": "rgba(124, 58, 237, 0.35)",
     /* The sheen has to darken, not lighten. Sweeping toward near white on
        a white page made the last word of the headline disappear as the
        band passed over it. */

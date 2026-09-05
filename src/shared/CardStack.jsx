@@ -59,8 +59,9 @@ export default function CardStack({
      is the reason it is this small: at a quarter of the window the section
      read as three cards with holes punched between them rather than as a
      deck. Short enough to look like a pile, long enough that each card has
-     a moment on its own. */
-  dwell = "11vh",
+     a moment on its own. Was 11, still read as three cards with holes
+     between them rather than as one stack. */
+  dwell = "7vh",
   /* Above this width the caller's own layout takes over. Three cards side
      by side on a wide screen are already read in one glance, and stacking
      them there would make the reader scroll for something they can

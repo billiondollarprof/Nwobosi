@@ -180,7 +180,7 @@ body {
 }
 
 .sx-ring {
-  padding: var(--ring-w, 1.5px);
+  padding: var(--ring-w, 2px);
   background: conic-gradient(
     from var(--sx-ring-angle),
     var(--ring-a),
@@ -195,7 +195,7 @@ body {
     linear-gradient(#000 0 0) content-box,
     linear-gradient(#000 0 0);
   mask-composite: exclude;
-  animation: sx-ring-travel-angle 11s linear infinite;
+  animation: sx-ring-travel-angle 7s linear infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -304,6 +304,31 @@ body {
   }
   50% {
     transform: translate(-50%, 6%) scale(1.1);
+  }
+}
+
+/* XALOM runs its two hero colours on opposite translations so they trade
+   places rather than breathing together. It is the right idea: two blobs
+   drifting the same way is one blob with extra steps. Blue falls to the
+   left as violet rises to the right, they cross in the middle, and the
+   hero never sits still without ever looking animated. */
+@keyframes sx-swap-blue {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-20%, 30%) scale(1.09);
+  }
+}
+
+@keyframes sx-swap-violet {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(22%, -28%) scale(1.12);
   }
 }
 
@@ -501,8 +526,20 @@ body {
 /* The mark is the crown of a centred hero up to a laptop, and one element
    in a two column composition above it. Different jobs, different sizes,
    and one variable so the field rings stay in proportion to it either way. */
+/* The floor is 104, not 120. On a 568px tall phone the sentence and the
+   button need the room more than the mark does, and at the old floor the
+   trust row sat eight pixels under the fold. */
 .sx-seal-slot {
-  --seal: clamp(120px, min(21vh, 44vw), 260px);
+  --seal: clamp(104px, min(21vh, 44vw), 260px);
+}
+
+/* A 568px tall phone has to fit a mark, three lines of headline, a
+   sentence, a button and the trust row. Something gives, and it is the
+   mark. Scoped by height so a normal phone keeps the full size. */
+@media (max-height: 620px) {
+  .sx-seal-slot {
+    --seal: clamp(88px, min(16vh, 38vw), 200px);
+  }
 }
 
 /* On a wide screen the mark has a column of its own and is the largest
@@ -693,6 +730,36 @@ body {
 }
 
 /* --------------------------------------------------------------------------
+   A LIT EDGE
+   One hairline of navy running into violet, drawn round a card. Used only
+   where a card is carrying the argument rather than listing something, so
+   that it means "read this one" instead of becoming the house border.
+
+   Same mask trick as the nav ring: paint the gradient, then keep only the
+   one pixel band, because an unmasked gradient fills the card and drowns
+   whatever is written on it.
+   -------------------------------------------------------------------------- */
+
+.sx-card-lit::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  padding: 1px;
+  pointer-events: none;
+  background: linear-gradient(142deg, var(--lit-a), var(--lit-b) 52%, transparent 88%);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+
+/* --------------------------------------------------------------------------
    SCROLL REVEAL
    Sections settle in as they arrive. The resting state is visible, not
    transparent, so a section is readable even if the observer never fires
@@ -745,7 +812,8 @@ body {
   [style*="sx-seal-sheen"],
   [style*="sx-seal-breathe"],
   .sx-mark-stretch,
-  [style*="sx-cloud-drift"] {
+  [style*="sx-cloud-drift"],
+  [style*="sx-swap-"] {
     animation: none !important;
   }
 }
