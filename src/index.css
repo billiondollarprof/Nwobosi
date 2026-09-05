@@ -603,7 +603,44 @@ body {
 .sx-stack-card > * {
   flex: 1 1 auto;
   background-color: var(--surface-solid) !important;
-  box-shadow: 0 -10px 40px -22px rgba(0, 0, 0, 0.65);
+  box-shadow: var(--stack-shadow);
+}
+
+/* --------------------------------------------------------------------------
+   RAISED SURFACE
+   What separates a card that looks drawn from a card that looks made.
+   Three things, all of them about a single light source above the page:
+
+     A lighter hairline along the top edge, where the light lands.
+     A gradient inside the surface, brighter at the top, gone by halfway.
+     Two shadows, one tight and one soft, so it sits on the page rather
+     than floating an even distance off it.
+
+   All three flip with the theme, because on a light ground the highlight
+   is white and the shadow is a cool navy, not black.
+   -------------------------------------------------------------------------- */
+
+.sx-card {
+  position: relative;
+  border-color: var(--card-edge);
+  box-shadow: var(--card-lift);
+}
+
+/* The sheen is a layer rather than a background, so it never fights the
+   surface colour the card was given and never covers its content. */
+.sx-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--card-sheen);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.sx-card > * {
+  position: relative;
+  z-index: 1;
 }
 
 /* --------------------------------------------------------------------------

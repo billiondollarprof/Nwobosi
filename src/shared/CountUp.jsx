@@ -48,6 +48,7 @@ export default function CountUp({ value, className = "", style }) {
 
     let frame = 0;
     let running = false;
+    let played = false;
 
     function run() {
       running = true;
@@ -70,20 +71,32 @@ export default function CountUp({ value, className = "", style }) {
       frame = requestAnimationFrame(step);
     }
 
+    /* The resting value is always the real one. An earlier version parked
+       it at zero whenever the observer said "out of view", which was wrong
+       twice over. The observer says "out" long before a card leaves the
+       screen, so a fully visible statistic sat there reading 0%. And 0%
+       under "Projected shadow AI incidents" is not a missing number, it is
+       a different and false claim, on the one page that must never carry
+       one. Zero now exists only inside the animation. */
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
-          /* Re-arms on the way out, so scrolling back up and returning
-             plays it again rather than showing a number that already
-             happened. */
+          /* Re-arms on the way out, so coming back to it plays again
+             rather than showing a number that already happened. */
           if (entry.isIntersecting) {
-            if (!running) run();
+            if (!running && !played) {
+              played = true;
+              run();
+            }
           } else if (!running) {
-            setShown(`${parsed.prefix}${(0).toFixed(parsed.decimals)}${parsed.suffix}`);
+            played = false;
           }
         }
       },
-      { rootMargin: "0px 0px -18% 0px", threshold: 0.4 },
+      /* Generous. A tall card inside a sticky stack may never expose 40%
+         of itself inside a shrunk root, and the old threshold meant it
+         simply never fired. */
+      { threshold: 0.15 },
     );
 
     observer.observe(el);

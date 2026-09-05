@@ -464,7 +464,17 @@ export default function Landing() {
                 whatever the font measures, which matters because the display
                 face loads from the network and the fallback is a different
                 width. */}
-            <span className="block">Private AI that already knows your company.</span>
+            {/* The sweep is on the claim, and the containment line is left
+                plain. Two reasons it is this way round rather than the
+                other. A flat, undecorated "Nothing ever leaves." is the
+                more severe sentence: a gradient softens words, and that
+                line should not be softened. And the sweep now has two
+                lines to travel across instead of twenty characters, which
+                is the difference between light moving over type and a
+                colour sitting on it. */}
+            <span className="block" style={HEADLINE_ACCENT}>
+              Private AI that already knows your company.
+            </span>
             {/* This line never wraps. It is the shortest sentence on the
                 page and breaking it in two is the one thing that would make
                 it look accidental. Held to one line two ways: nowrap, and a
@@ -475,7 +485,6 @@ export default function Landing() {
             <span
               className="block"
               style={{
-                ...HEADLINE_ACCENT,
                 whiteSpace: "nowrap",
                 fontSize: "min(1em, calc((100vw - 2.75rem) / 10.6))",
               }}
@@ -686,11 +695,8 @@ export default function Landing() {
             {PROBLEMS.map((item) => (
               <div
                 key={item.title}
-                className="rounded-[18px] border p-6 backdrop-blur-xl h-full"
-                style={{
-                  backgroundColor: "var(--surface)",
-                  borderColor: "var(--border)",
-                }}
+                className="sx-card rounded-[18px] border p-6 backdrop-blur-xl h-full"
+                style={{ backgroundColor: "var(--surface)" }}
               >
                 <div
                   className="w-10 h-10 rounded-[12px] flex items-center justify-center mb-4"
@@ -803,10 +809,10 @@ export default function Landing() {
             {STEPS.map((step, i) => (
               <div
                 key={step.title}
-                className={`rounded-[18px] border p-6 backdrop-blur-xl flex gap-4 h-full ${
+                className={`sx-card rounded-[18px] border p-6 backdrop-blur-xl flex gap-4 h-full ${
                   step.wide ? "sm:col-span-2" : ""
                 }`}
-                style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
+                style={{ backgroundColor: "var(--surface)" }}
               >
                 <div className="shrink-0">
                   <div
@@ -1092,8 +1098,8 @@ export default function Landing() {
       <section className="relative z-10 px-5 sm:px-8 py-20 sm:py-28">
         <Reveal className="max-w-5xl mx-auto">
           <div
-            className="rounded-[28px] border overflow-hidden backdrop-blur-xl grid lg:grid-cols-[0.85fr_1.15fr]"
-            style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
+            className="sx-card rounded-[28px] border overflow-hidden backdrop-blur-xl grid lg:grid-cols-[0.85fr_1.15fr]"
+            style={{ backgroundColor: "var(--surface)" }}
           >
             {/* Two people going through a document line by line before it
                 counts. That is the read back, and it is what this section

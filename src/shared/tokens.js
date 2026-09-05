@@ -90,6 +90,16 @@ export const THEME_VARS = {
     "--floor-fill": "rgba(46, 66, 224, 0.10)",
     "--floor-edge": "rgba(124, 140, 255, 0.22)",
     "--field-ring": "rgba(140, 160, 255, 0.10)",
+    /* How far a buried card in a stack recedes, and the shadow the card
+       above casts onto it. On a dark ground receding means going into
+       shadow, so it can be heavy. See CardStack.jsx. */
+    "--stack-darken": "0.42",
+    "--stack-shadow": "0 -14px 44px -20px rgba(0, 0, 0, 0.75)",
+    /* The raised surface: a light edge along the top, a gradient that is
+       a touch brighter where the light hits, and two shadows. */
+    "--card-sheen": "linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0) 42%)",
+    "--card-edge": "rgba(255, 255, 255, 0.14)",
+    "--card-lift": "0 1px 0 0 rgba(255,255,255,0.05) inset, 0 12px 28px -18px rgba(0,0,0,0.8), 0 2px 6px -4px rgba(0,0,0,0.6)",
     /* The sweep inside the second headline line. On dark it lifts toward
        white. */
     "--h-a": "#5870F8",
@@ -126,6 +136,14 @@ export const THEME_VARS = {
     "--floor-fill": "rgba(46, 66, 224, 0.05)",
     "--floor-edge": "rgba(46, 66, 224, 0.14)",
     "--field-ring": "rgba(46, 66, 224, 0.09)",
+    /* Barely anything. Darkening a white card does not read as depth, it
+       reads as a grey card, which is what the light stack looked like.
+       On a light ground the shadow does the work instead. */
+    "--stack-darken": "0.07",
+    "--stack-shadow": "0 -16px 40px -22px rgba(20, 32, 90, 0.35)",
+    "--card-sheen": "linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0) 46%)",
+    "--card-edge": "rgba(255, 255, 255, 0.95)",
+    "--card-lift": "0 1px 0 0 rgba(255,255,255,0.9) inset, 0 14px 30px -20px rgba(20,32,90,0.28), 0 2px 6px -4px rgba(20,32,90,0.14)",
     /* The sheen has to darken, not lighten. Sweeping toward near white on
        a white page made the last word of the headline disappear as the
        band passed over it. */

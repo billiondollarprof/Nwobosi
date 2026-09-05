@@ -36,7 +36,20 @@ import { Children, useEffect, useLayoutEffect, useRef, useState } from "react";
    pile turns into two sets of words on top of each other. Brightness
    leaves the card opaque and simply sends it back into the dark. */
 const SCALE_DROP = 0.055;
-const DARKEN = 0.42;
+
+/* How far the buried card darkens is a theme decision, not a constant.
+   Darkening a white card does not read as depth, it reads as a grey card,
+   which is exactly what the light stack looked like: three cards fading to
+   dishwater. On a light ground the shadow does the work and this is almost
+   nothing. Read once per pass rather than per card. */
+function darkenAmount(el) {
+  /* Read off the stack itself, not the document. The theme is applied as
+     inline custom properties on the app shell, so the root element does
+     not carry them and asking it returns an empty string. */
+  const raw = el ? getComputedStyle(el).getPropertyValue("--stack-darken") : "";
+  const n = Number.parseFloat(raw);
+  return Number.isFinite(n) ? n : 0.42;
+}
 
 export default function CardStack({
   children,
@@ -108,6 +121,7 @@ export default function CardStack({
     function apply() {
       frame = 0;
       const viewport = window.innerHeight;
+      const darken = darkenAmount(ref.current);
 
       /* Read everything first, then write. Interleaving the two makes the
          browser recompute layout on every card, every frame. */
@@ -130,7 +144,7 @@ export default function CardStack({
         const progress = travel <= 0 ? 0 : Math.min(1, Math.max(0, 1 - (tops[i + 1] - top) / travel));
 
         card.style.transform = `scale(${1 - progress * SCALE_DROP})`;
-        card.style.filter = `brightness(${1 - progress * DARKEN})`;
+        card.style.filter = `brightness(${1 - progress * darken})`;
       });
     }
 

@@ -86,10 +86,12 @@ export function PageShell({ children, scroll = false, className = "" }) {
 export function GlassPanel({ children, className = "", style = {}, ...rest }) {
   return (
     <div
-      className={`rounded-[18px] border backdrop-blur-xl ${className}`}
+      /* sx-card is what makes it read as a raised surface rather than a
+         rectangle with a border: a lit top edge, a sheen falling off by
+         halfway, and two shadows. See index.css. */
+      className={`sx-card rounded-[18px] border backdrop-blur-xl ${className}`}
       style={{
         backgroundColor: "var(--surface)",
-        borderColor: "var(--border)",
         ...style,
       }}
       {...rest}
