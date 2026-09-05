@@ -34,6 +34,19 @@ export function LogoMark({ size = 26 }) {
   const inner = `${uid}-inner`;
   const tiny = size < 24;
 
+  /* Same derivation as the full mark: the bead fills the gap between the
+     two stroke faces, not the gap between the two radii. The strokes are
+     thicker here so a 20px mark still reads, which moves both faces, so
+     the bead has to be worked out rather than copied across. */
+  const outerW = tiny ? 3 : 2;
+  const innerW = tiny ? 5 : 6.5;
+  const channelOut = 44 - outerW / 2;
+  const channelIn = 30 + innerW / 2;
+  const beadR = (channelOut - channelIn) / 2;
+  /* Held at one o'clock, so both offsets are the travel radius over root
+     two. */
+  const beadOffset = ((channelOut + channelIn) / 2) * Math.SQRT1_2;
+
   return (
     <svg width={size} height={size} viewBox="0 0 100 100" fill="none" role="img" aria-label="StellaXafe">
       <defs>
@@ -45,13 +58,13 @@ export function LogoMark({ size = 26 }) {
       </defs>
 
       {/* The boundary */}
-      <circle cx="50" cy="50" r="44" stroke="var(--seal-outer)" strokeWidth={tiny ? 3 : 2} />
+      <circle cx="50" cy="50" r="44" stroke="var(--seal-outer)" strokeWidth={outerW} />
 
       {/* The gateway */}
-      <circle cx="50" cy="50" r="30" stroke={`url(#${inner})`} strokeWidth={tiny ? 5 : 6.5} />
+      <circle cx="50" cy="50" r="30" stroke={`url(#${inner})`} strokeWidth={innerW} />
 
       {/* The data, held at one o'clock in the channel */}
-      <circle cx="76.2" cy="23.8" r={tiny ? 5.5 : 5} fill={BRAND.gold} />
+      <circle cx={50 + beadOffset} cy={50 - beadOffset} r={beadR} fill={BRAND.gold} />
     </svg>
   );
 }

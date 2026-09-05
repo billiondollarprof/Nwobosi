@@ -23,11 +23,33 @@ import { useId } from "react";
 
 import { BRAND } from "./tokens";
 
-/* Geometry, on a 100 by 100 grid. Straight out of the spec. */
+/* Geometry, on a 100 by 100 grid.
+
+   The channel is not the gap between the two radii, it is the gap between
+   the two strokes, and that is where this was wrong. A stroke straddles
+   its radius, so the outer ring's inner face sits half its width inside 44
+   and the gateway's outer face sits half its width outside 30. Measured
+   from the radii instead, the bead came out too small and too low: it
+   touched the gateway and stopped nearly three units short of the
+   boundary, which read as a bead rattling around in a channel rather than
+   one filling it.
+
+   So both the bead's radius and the radius it travels at are derived from
+   the two stroke faces. Change a stroke width and the bead still fits. */
 const OUTER_R = 44;
+const OUTER_W = 1.6;
 const INNER_R = 30;
-const CHANNEL_R = 37;
-const BEAD_R = 3.4;
+const INNER_W = 7;
+
+/* The two faces the channel runs between. */
+const CHANNEL_OUT = OUTER_R - OUTER_W / 2;
+const CHANNEL_IN = INNER_R + INNER_W / 2;
+
+const CHANNEL_R = (CHANNEL_OUT + CHANNEL_IN) / 2;
+const BEAD_R = (CHANNEL_OUT - CHANNEL_IN) / 2;
+
+/* The bloom around the bead, in proportion to it. */
+const BEAD_GLOW_R = BEAD_R * 1.6;
 
 /* The bead sits at the top of the channel and is carried round from
    there, so its resting position is one full radius above centre. */
@@ -89,13 +111,13 @@ export default function ContainmentSeal({ size = 280, className = "" }) {
           22% and it disappeared, which takes the whole idea with it: one
           visible ring is not a channel and cannot contain anything.
           ------------------------------------------------------------------ */}
-      <circle cx="50" cy="50" r={OUTER_R} stroke="var(--seal-outer)" strokeWidth="1.6" />
+      <circle cx="50" cy="50" r={OUTER_R} stroke="var(--seal-outer)" strokeWidth={OUTER_W} />
       <circle
         cx="50"
         cy="50"
         r={OUTER_R}
         stroke="var(--seal-outer-hi)"
-        strokeWidth="1.6"
+        strokeWidth={OUTER_W}
         strokeDasharray="26 250"
         strokeLinecap="round"
         style={{ animation: "sx-seal-drift 60s linear infinite" }}
@@ -116,7 +138,7 @@ export default function ContainmentSeal({ size = 280, className = "" }) {
         opacity="0.3"
         filter={`url(#${bloom})`}
       />
-      <circle cx="50" cy="50" r={INNER_R} stroke={`url(#${inner})`} strokeWidth="7" />
+      <circle cx="50" cy="50" r={INNER_R} stroke={`url(#${inner})`} strokeWidth={INNER_W} />
       <path
         d={SHEEN}
         stroke="#FFFFFF"
@@ -142,7 +164,7 @@ export default function ContainmentSeal({ size = 280, className = "" }) {
         <circle
           cx="50"
           cy={BEAD_Y}
-          r="5.4"
+          r={BEAD_GLOW_R}
           fill={BRAND.gold}
           filter={`url(#${beadGlow})`}
           style={{
