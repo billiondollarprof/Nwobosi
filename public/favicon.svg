@@ -1,30 +1,43 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="StellaXafe">
-  <!-- The Containment Seal, frozen for a tab. Full spec in MARK.md.
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="StellaXafe">
+  <!-- The mark, redrawn for 16 pixels. Not the app mark shrunk.
 
-       This file cannot read the app's theme variables, and a tab strip is
-       light in some browsers and dark in others, so the colours here are
-       picked to hold on either. The inner gradient stops at purple rather
-       than running to near white, which is right inside the app on a dark
-       ground and invisible on a white tab strip. -->
+       The full Seal has three elements: a fine outer boundary, a lit
+       gateway ring, and a bead in the channel between them. At a tab size
+       that fails completely. The boundary is a 1.6 unit stroke on a 100
+       unit grid, which at 16px is a quarter of a pixel, so it renders as
+       grey haze or as nothing. The gateway ends up two pixels wide, the
+       bead ends up one, and the whole thing is a faint circle floating in
+       its own padding on a strip that might be white or might be black.
+
+       So this is the same idea drawn for the size it is used at:
+
+         The tile is the boundary. A solid ground rather than a hairline
+         circle, which also gives the icon presence on any tab strip
+         instead of depending on what is behind it.
+         The ring is the gateway, thick enough to survive one pixel of
+         antialiasing.
+         The bead is the data, big enough to still be gold rather than a
+         brown smudge.
+
+       Everything is generated from this file by npm run icons, so the tab,
+       the home screen and the share card cannot drift apart again. -->
+
   <defs>
-    <linearGradient id="seal-inner" x1="18" y1="82" x2="82" y2="18" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#2030C8"/>
-      <stop offset="100%" stop-color="#7C3AED"/>
+    <linearGradient id="fav-gateway" x1="20" y1="80" x2="80" y2="20" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#4257F0"/>
+      <stop offset="100%" stop-color="#A9B6FF"/>
     </linearGradient>
   </defs>
 
-  <!-- The company boundary -->
-  <circle cx="50" cy="50" r="44" fill="none" stroke="#7C819B" stroke-width="3"/>
+  <!-- The company boundary, as a ground. Same value as the bg token. -->
+  <rect width="100" height="100" rx="22" fill="#05060D"/>
 
-  <!-- The model gateway -->
-  <circle cx="50" cy="50" r="30" fill="none" stroke="url(#seal-inner)" stroke-width="7"/>
+  <!-- The gateway. Stroke 13 is 2px at a 16px render, which is the
+       smallest that still reads as a ring rather than as a smudge. -->
+  <circle cx="50" cy="50" r="30" fill="none" stroke="url(#fav-gateway)" stroke-width="13"/>
 
-  <!-- The data, held at one o'clock in the channel.
-
-       The channel is the gap between the two stroke faces, not between the
-       two radii. Boundary stroke 3 puts its inner face at 42.5, gateway
-       stroke 7 puts its outer face at 33.5, so the bead is radius 4.5 at a
-       travel radius of 38, which at one o'clock is 38 over root two on
-       each axis. -->
-  <circle cx="76.87" cy="23.13" r="4.5" fill="#F5A820"/>
+  <!-- The data, held at one o'clock, sitting in the gateway. Radius 9.5
+       keeps it visible at 16px, where anything under about 8 turns into a
+       single dull pixel. -->
+  <circle cx="71.2" cy="28.8" r="9.5" fill="#F5A820"/>
 </svg>
