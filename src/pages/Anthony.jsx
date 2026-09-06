@@ -20,12 +20,17 @@
    nothing at all. Access is offered on request instead, which is the
    honest version of the same thing.
 
-   THE HONESTY THIS PAGE HOLDS
-   He is not a software engineer and the page says so outright. He does not
-   write the code by hand, he directs AI to write it, and the judgement
-   around that is the actual skill being sold. Claiming otherwise would
-   fall apart in a technical interview, and the true version is the
-   stronger claim in 2026 anyway.
+   WHAT THIS PAGE DOES NOT DO
+   It does not explain how the work gets done. A page that opens by
+   volunteering what its author does not personally type is a disclaimer
+   nobody asked for, and it prices the work down before the reader has
+   even decided they want it.
+
+   The page never claims he is a software engineer, so there is nothing to
+   walk back. It claims what he delivers, and "AI automation" already tells
+   a reader everything true about the method. What he can and cannot take
+   on is a conversation for an interview, where it belongs, not a
+   confession printed above the fold.
 
    Read top to bottom:
 
@@ -180,17 +185,10 @@ export default function Anthony() {
               finish. The working system.
             </p>
 
-            {/* The transparency paragraph, and it is deliberately in the
-                hero rather than buried. Claiming to be a software engineer
-                would not survive a technical interview, and the true
-                version is the stronger position in 2026: the scarce skill
-                is the judgement around the build, not the typing. */}
             <p className="text-[15px] leading-[1.65] mb-5" style={{ color: "var(--text-2)" }}>
-              I am not a software engineer and I am precise about that. I do not write the code by
-              hand. I direct AI to write it, and I own every decision that determines whether what
-              comes out is any good: what gets built, how the parts fit, where a human signs off,
-              what the system must refuse to do, and when it is genuinely finished. AI is the
-              accelerator. The judgement is the job.
+              AI is the accelerator, and it is why this lands in weeks rather than quarters. I
+              design it, I build it, and I stay on it until it is running in production and your
+              own team can carry it without me.
             </p>
 
             <p className="text-[13.5px] leading-[1.6] mb-8" style={{ color: "var(--text-3)" }}>
