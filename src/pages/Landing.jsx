@@ -48,6 +48,7 @@ import {
   Terminal,
   Users,
   GraduationCap,
+  Play,
 } from "lucide-react";
 
 import { AmaraLockup } from "../shared/icons.jsx";
@@ -59,7 +60,7 @@ import CardStack from "../shared/CardStack.jsx";
 import CountUp from "../shared/CountUp.jsx";
 import { BRAND, GRADIENTS, FONTS } from "../shared/tokens";
 import { useTheme } from "../shared/theme.jsx";
-import { PageShell, GlassPanel, PrimaryButton, GhostButton, StatusPill } from "../shared/ui.jsx";
+import { PageShell, GlassPanel, PrimaryButton, GhostButton, GlassButton, StatusPill } from "../shared/ui.jsx";
 import MarketingNav from "../shared/MarketingNav.jsx";
 import MarketingFooter from "../shared/MarketingFooter.jsx";
 import IntegrationStrip from "../shared/IntegrationStrip.jsx";
@@ -82,21 +83,84 @@ import { SectionHead, GradientText, Eyebrow, Divider } from "../shared/marketing
    is true, and it is what the button below actually offers. */
 const TRUST_POINTS = [
   { full: "Nothing leaves your walls", short: "Nothing leaves" },
-  { full: "Useful on day one", short: "Day one" },
+  /* "Day one" alone was the short form, and shortening it deleted the word
+     carrying the claim. On a phone it read as a fragment: day one of what.
+     The verb stays in at every width. */
+  { full: "Useful on day one", short: "Useful day one" },
   { full: "See it in 10 minutes", short: "See it in 10 min" },
 ];
 
 /* What the product hands back. These rotate in the subtext, so a reader
    watching for a few seconds learns the range of work it does without
    another sentence being written. Every one is a document this really
-   produces: Word and PDF are real, decks are not. */
+   produces: Word and PDF are real, decks are not.
+
+   Each one names the company's own material, and that is the point of the
+   line rather than decoration on it. The list used to read "a project
+   brief", "a board update", "a client one pager". The sentence above
+   promises that everything the company runs on is already inside it, and
+   then paid it off with documents any chatbot writes. The promise and the
+   proof have to be the same size. What no general tool can do is put this
+   quarter's numbers or last year's contract into the first draft, so that
+   is what the line says now. */
 const OUTPUTS = [
-  "a client one pager",
-  "a board update",
-  "a renewal notice",
-  "a project brief",
-  "a policy summary",
+  "a board update with this quarter's numbers",
+  "a renewal notice priced off the contract",
+  "a client one pager in your own template",
+  "a bid that reuses your own pricing",
+  "a policy summary that cites the policy",
 ];
+
+/* ==========================================================================
+   HERO LINE
+   The sentence that ends on the rotating phrase, with its height reserved.
+
+   The phrase changes length, that changes how many lines the paragraph
+   takes, and that moves the buttons underneath it. A button that walks out
+   from under a thumb every few seconds is worse than no animation at all.
+
+   The earlier fix was a measured min-height in ems. That was fragile in two
+   ways: it only held at one breakpoint, and it was measured with whatever
+   font happened to be loaded, so a webfont arriving late could make the
+   longest phrase wrap onto a line the reservation did not allow for.
+
+   This reserves the space from the content instead. Every phrase is
+   rendered once, invisibly, stacked in the same grid cell as the live one,
+   so the block is always as tall as the tallest phrase makes it, in
+   whatever font is actually being used, at whatever width. Add a phrase to
+   OUTPUTS and nothing needs re-measuring.
+   ========================================================================== */
+
+/* wrapperClass has to keep this a grid at every width it is visible at.
+   Tailwind's `hidden` beats the base `grid`, which is what makes the two
+   variants below hide correctly, but a breakpoint that sets `block` beats
+   it too and silently unstacks the reservation. */
+function HeroLine({ wrapperClass = "", textClass = "", lead, tail = null }) {
+  return (
+    <div className={`grid ${wrapperClass}`}>
+      {OUTPUTS.map((phrase) => (
+        <p
+          key={phrase}
+          aria-hidden="true"
+          className={`invisible col-start-1 row-start-1 pointer-events-none ${textClass}`}
+          style={{ color: "var(--text-2)" }}
+        >
+          {lead}
+          {/* The weight and the cursor are both here, because both take
+              width and the reservation has to match what is drawn. */}
+          <span style={{ fontWeight: 500 }}>{phrase}|</span>
+          {tail}
+        </p>
+      ))}
+
+      <p className={`col-start-1 row-start-1 ${textClass}`} style={{ color: "var(--text-2)" }}>
+        {lead}
+        <Typewriter phrases={OUTPUTS} style={{ color: "var(--h-a)", fontWeight: 500 }} />
+        {tail}
+      </p>
+    </div>
+  );
+}
 
 /* The three cards under the problem heading. The first one is the whole
    thesis and has to stay first: the leak is not carelessness, it is that
@@ -531,43 +595,59 @@ export default function Landing() {
               five lines nobody reads. The phone gets the one sentence that
               matters. Everything above tablet gets the sentence that earns
               it as well. Both end on the same rotating phrase. */}
-          <p
-            className="sm:hidden text-[15.5px] leading-[1.6] max-w-[330px] mx-auto mb-7"
-            style={{ color: "var(--text-2)" }}
-          >
-            Everything your company runs on is already inside it. Your staff ask in plain
-            language and get back{" "}
-            <Typewriter phrases={OUTPUTS} style={{ color: "var(--h-a)", fontWeight: 500 }} />
-          </p>
-          <p
-            /* The rotating phrase changes length, and in the narrower two
-               column layout that flips the paragraph between three lines
-               and four, which moved the button under the reader's cursor
-               every few seconds. Four lines of room are held whether they
-               are used or not. Measured: 14px of travel before, none
-               after. */
-            className="hidden sm:block text-[17.5px] leading-[1.6] max-w-[620px] mx-auto lg:mx-0 mb-9 lg:mb-8 lg:min-h-[6.4em]"
-            style={{ color: "var(--text-2)" }}
-          >
-            Every document, template and number your company runs on is already inside it. Your
-            staff ask in plain language and get back{" "}
-            <Typewriter phrases={OUTPUTS} style={{ color: "var(--h-a)", fontWeight: 500 }} />
-            <span className="block mt-3" style={{ color: "var(--text-3)" }}>
-              No prompt course. No power user. Their first afternoon.
-            </span>
-          </p>
+          <HeroLine
+            wrapperClass="sm:hidden mb-7"
+            textClass="text-[15.5px] leading-[1.6] max-w-[330px] mx-auto"
+            lead="Everything your company runs on is already inside it. Your staff ask in plain language and get back "
+          />
+          <HeroLine
+            /* sm:grid, not sm:block. The reservation below is a grid
+               stack, and a display utility at a breakpoint overrides the
+               base one, so sm:block quietly turned the stack back into six
+               paragraphs in a column. */
+            wrapperClass="hidden sm:grid mb-9 lg:mb-8"
+            textClass="text-[17.5px] leading-[1.6] max-w-[620px] mx-auto lg:mx-0"
+            lead="Every document, template and number your company runs on is already inside it. Your staff ask in plain language and get back "
+            tail={
+              <span className="block mt-3" style={{ color: "var(--text-3)" }}>
+                No prompt course. No power user. Their first afternoon.
+              </span>
+            }
+          />
 
-          {/* Second placement, phones only. See the note on the first one. */}
-          {/* One button only. Setting up your own company's AI is the demo,
-              there is nothing else to send someone to see. */}
-          <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 mb-5 sm:mb-7">
+          {/* Two actions, and the order matters.
+
+              This page used to offer one button, into /setup, on the
+              reasoning that building your own workspace is the demo. That
+              is true, and it was still the wrong primary. Nothing here is
+              bought by clicking. It is built to order, so the first thing
+              a reader who wants it should be able to do is tell us what
+              they need, and that is a form, not a wizard.
+
+              The demo does not disappear, it moves to second place, where
+              it belongs: it is what someone does when they want to see the
+              thing before they talk to anyone. Drawn as a real button
+              rather than a link, because half the audience arrives wanting
+              to look before they speak, and a page that only draws one of
+              its two doors loses them. */}
+          {/* items-stretch, so the two buttons are the same height because they
+              are in the same row rather than because two paddings were tuned
+              to agree. Change either one and they still match. */}
+          <div className="flex flex-col sm:flex-row items-stretch justify-center lg:justify-start gap-3 mb-5 sm:mb-7">
             <PrimaryButton
-              onClick={() => navigate("/setup")}
-              className="flex items-center gap-2 px-6 py-3.5 text-[15px]"
+              onClick={() => navigate("/contact")}
+              className="flex items-center justify-center gap-2 px-6 py-3.5 text-[15px]"
             >
               Build your company's AI
               <ArrowRight size={16} />
             </PrimaryButton>
+            <GlassButton
+              icon={Play}
+              onClick={() => navigate("/setup")}
+              className="justify-center sm:justify-start"
+            >
+              Demo it live
+            </GlassButton>
           </div>
 
           {/* One line, always. The separators are their own children rather

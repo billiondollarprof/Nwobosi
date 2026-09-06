@@ -78,7 +78,11 @@ export default function Photo({
       /* The hero mark is the only thing on this page that should compete
          for the first bytes, so everything here waits its turn. */
       loading={priority ? "eager" : "lazy"}
-      fetchPriority={priority ? "high" : "auto"}
+      /* Lowercase. React 18 does not know this one, so a camelCase
+         fetchPriority is passed through to the DOM with a warning on every
+         render; the lowercase spelling is applied as a plain attribute,
+         which is what the browser reads anyway. */
+      fetchpriority={priority ? "high" : "auto"}
       decoding="async"
       className={`w-full h-full object-cover ${imgClassName}`}
     />

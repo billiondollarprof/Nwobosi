@@ -132,6 +132,46 @@ export function PrimaryButton({ children, className = "", style = {}, ...rest })
   );
 }
 
+/* The second action, where there is one. It has to be clearly secondary to
+   the primary button and clearly still a button, which a bare text link is
+   not: a page that offers two things and only draws one of them loses the
+   half of the audience that wanted the other.
+
+   So: the same height as PrimaryButton, translucent instead of filled, and
+   an icon in its own round badge on the left. The badge is what stops it
+   reading as an outlined version of the primary. Give it `icon` and it
+   appears; leave it off and this is a plain glass pill. */
+export function GlassButton({ children, icon: Icon, className = "", style = {}, ...rest }) {
+  return (
+    <button
+      className={`inline-flex items-center gap-3 rounded-[12px] border py-2 pl-2 pr-5 text-[14px] font-medium backdrop-blur-xl transition-transform hover:scale-[1.02] active:scale-[0.98] ${className}`}
+      style={{
+        borderColor: "var(--border-2)",
+        backgroundColor: "var(--surface)",
+        color: "var(--text-1)",
+        ...style,
+      }}
+      {...rest}
+    >
+      {Icon && (
+        <span
+          className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+          style={{
+            backgroundColor: `${BRAND.accentSoft}24`,
+            border: `1px solid ${BRAND.accentSoft}47`,
+            color: BRAND.accentSoft,
+          }}
+        >
+          {/* Filled, not outlined. A hollow play triangle at 14px reads as
+              a chevron. */}
+          <Icon size={13} fill="currentColor" strokeWidth={0} />
+        </span>
+      )}
+      {children}
+    </button>
+  );
+}
+
 export function GhostButton({ children, className = "", style = {}, ...rest }) {
   return (
     <button
