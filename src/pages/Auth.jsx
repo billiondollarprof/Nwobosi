@@ -20,6 +20,7 @@ import { BRAND, FONTS } from "../shared/tokens";
 import { PageShell, ThemeToggle, PrimaryButton, GhostButton, Field, TextInput, Spinner } from "../shared/ui.jsx";
 import { PRODUCT } from "../shared/config.js";
 import { supabase } from "../shared/supabase.js";
+import { startAdminClock } from "../shared/adminClock.js";
 import { loadMe } from "../shared/session.js";
 
 const OTP_LENGTH = 6;
@@ -31,6 +32,13 @@ export default function Auth() {
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  /* Signing in is a code sent to your email. A password is the old way, kept
+     reachable for the accounts that still have one: the two workspaces built
+     before the code became the identity. Everybody invited since has a
+     random password nobody was ever told, so for them this is the only door
+     that opens. */
+  const [usePassword, setUsePassword] = useState(false);
   const [requestName, setRequestName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -89,8 +97,16 @@ export default function Auth() {
       return;
     }
 
-    /* Signed in. Where they land depends on which workspace they are on
-       and whether they run it, and only the database knows either. */
+    await land();
+  }
+
+  /* ------------------------------------------------------------------------
+     WHERE A SIGNED IN PERSON GOES
+     Shared by both doors, because it was duplicated the moment there were
+     two and the copies would have drifted.
+     ------------------------------------------------------------------------ */
+
+  async function land() {
     const me = await loadMe();
     setBusy(false);
 
@@ -101,6 +117,14 @@ export default function Auth() {
       await supabase.auth.signOut();
       setError("That account is signed in but not on a workspace yet. Ask whoever set it up to add you.");
       return;
+    }
+
+    /* An admin can change what a company's AI knows and who may use it, so
+       their session is short. Staff stay signed in until they sign out.
+       Supabase has one token lifetime for the whole project, so the shorter
+       one is kept here, in the app, and read on every load. */
+    if (me.staff?.access_level === "admin") {
+      startAdminClock();
     }
 
     /* Back to whatever they were trying to open, when that is a page on
@@ -118,6 +142,64 @@ export default function Auth() {
         : ownPrefix,
       { replace: true },
     );
+  }
+
+  /* ------------------------------------------------------------------------
+     SENDING A CODE
+     shouldCreateUser is false and that is the whole security of this screen.
+     Left on, anybody could type any address and Supabase would make them an
+     account, which would let a stranger create a signed in identity on a
+     product whose entire claim is that only invited people get in.
+
+     A refusal is not reported. "No account for that email" tells anyone who
+     asks which addresses are on this system, so an unknown address is
+     answered exactly like a known one and the code simply never arrives.
+     ------------------------------------------------------------------------ */
+
+  async function sendCode(e) {
+    e.preventDefault();
+    const value = email.trim().toLowerCase();
+
+    if (!value.includes("@")) {
+      setError("Enter the email address you were invited with.");
+      return;
+    }
+
+    setError("");
+    setBusy(true);
+
+    const { error: otpError } = await supabase.auth.signInWithOtp({
+      email: value,
+      options: { shouldCreateUser: false },
+    });
+
+    setBusy(false);
+
+    /* Network trouble is worth saying. Anything else is swallowed on
+       purpose, see the note above. */
+    if (otpError && (otpError.name === "AuthRetryableFetchError" || otpError.status === 0)) {
+      setError("Could not reach the server. Check your connection and try again.");
+      return;
+    }
+    if (otpError) console.error("signInWithOtp refused", otpError);
+
+    setEmail(value);
+    setMode("otp");
+  }
+
+  async function verifyCode(code) {
+    const { error: verifyError } = await supabase.auth.verifyOtp({
+      email: email.trim().toLowerCase(),
+      token: code,
+      type: "email",
+    });
+
+    if (verifyError) {
+      return { ok: false, reason: "That code is not right, or it has run out. Ask for a new one." };
+    }
+
+    await land();
+    return { ok: true };
   }
 
   /* ------------------------------------------------------------------------
@@ -147,10 +229,6 @@ export default function Auth() {
   /* ------------------------------------------------------------------------
      6. OTP VERIFICATION
      ------------------------------------------------------------------------ */
-
-  function handleVerified() {
-    navigate("/chat");
-  }
 
   /* ------------------------------------------------------------------------
      1. SHARED SHELL
@@ -184,13 +262,19 @@ export default function Auth() {
         >
           {mode === "login" && (
             <LoginSection
+              usePassword={usePassword}
+              onUsePassword={() => {
+                setError("");
+                setPassword("");
+                setUsePassword((v) => !v);
+              }}
               email={email}
               password={password}
               busy={busy}
               error={error}
               onEmail={setEmail}
               onPassword={setPassword}
-              onSubmit={handleLogin}
+              onSubmit={usePassword ? handleLogin : sendCode}
             />
           )}
 
@@ -220,7 +304,12 @@ export default function Auth() {
           )}
 
           {mode === "otp" && (
-            <OtpSection email={email} onVerified={handleVerified} onBack={() => resetTo("login")} />
+            <OtpSection
+              email={email}
+              onVerify={verifyCode}
+              onResend={() => sendCode({ preventDefault() {} })}
+              onBack={() => resetTo("login")}
+            />
           )}
         </div>
       </div>
@@ -239,7 +328,17 @@ export default function Auth() {
    2. LOGIN SECTION
    ========================================================================== */
 
-function LoginSection({ email, password, busy, error, onEmail, onPassword, onSubmit }) {
+function LoginSection({
+  email,
+  password,
+  busy,
+  error,
+  usePassword,
+  onEmail,
+  onPassword,
+  onSubmit,
+  onUsePassword,
+}) {
   const [show, setShow] = useState(false);
 
   return (
@@ -248,7 +347,9 @@ function LoginSection({ email, password, busy, error, onEmail, onPassword, onSub
         Sign in
       </h1>
       <p className="text-[13.5px] mb-6" style={{ color: "var(--text-3)" }}>
-        Use the email your admin invited.
+        {usePassword
+          ? "Use the email and password you were given."
+          : "Use the email you were invited with. We will send you a code."}
       </p>
 
       <Field label="Work email" required>
@@ -261,33 +362,35 @@ function LoginSection({ email, password, busy, error, onEmail, onPassword, onSub
         />
       </Field>
 
-      <Field label="Password" required>
-        <div className="relative">
-          <TextInput
-            type={show ? "text" : "password"}
-            value={password}
-            onChange={(e) => onPassword(e.target.value)}
-            placeholder="Your password"
-            autoComplete="current-password"
-            className="pr-11"
-          />
-          <button
-            type="button"
-            onClick={() => setShow((v) => !v)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 transition-opacity hover:opacity-70"
-            aria-label={show ? "Hide password" : "Show password"}
-          >
-            {show ? (
-              <EyeOff size={16} style={{ color: "var(--text-3)" }} />
-            ) : (
-              <Eye size={16} style={{ color: "var(--text-3)" }} />
-            )}
-          </button>
-        </div>
-      </Field>
+      {usePassword && (
+        <Field label="Password" required>
+          <div className="relative">
+            <TextInput
+              type={show ? "text" : "password"}
+              value={password}
+              onChange={(e) => onPassword(e.target.value)}
+              placeholder="Your password"
+              autoComplete="current-password"
+              className="pr-11"
+            />
+            <button
+              type="button"
+              onClick={() => setShow((v) => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 transition-opacity hover:opacity-70"
+              aria-label={show ? "Hide password" : "Show password"}
+            >
+              {show ? (
+                <EyeOff size={16} style={{ color: "var(--text-3)" }} />
+              ) : (
+                <Eye size={16} style={{ color: "var(--text-3)" }} />
+              )}
+            </button>
+          </div>
+        </Field>
+      )}
 
       {error && (
-        <p className="text-[12.5px] mb-4" style={{ color: BRAND.red }}>
+        <p className="text-[12.5px] mb-4" role="alert" style={{ color: BRAND.red }}>
           {error}
         </p>
       )}
@@ -295,12 +398,27 @@ function LoginSection({ email, password, busy, error, onEmail, onPassword, onSub
       <PrimaryButton
         type="submit"
         className="w-full flex items-center justify-center gap-2"
-        disabled={busy || !email.trim() || !password}
+        disabled={busy || !email.trim() || (usePassword && !password)}
       >
         {busy ? <Spinner size={14} color="#fff" /> : null}
-        {busy ? "Checking" : "Continue"}
+        {busy ? (usePassword ? "Checking" : "Sending") : usePassword ? "Continue" : "Email me a code"}
       </PrimaryButton>
 
+      {/* The old door, kept reachable rather than kept as the default.
+
+          Only the accounts made before the code became the identity have a
+          password at all. Everybody invited since has a random one nobody
+          was ever told, so for them the code is the only way in and putting
+          a password field in front of them by default would be asking for
+          something that does not exist. */}
+      <button
+        type="button"
+        onClick={onUsePassword}
+        className="w-full mt-4 text-[12.5px] underline underline-offset-2 transition-opacity hover:opacity-80"
+        style={{ color: "var(--text-3)" }}
+      >
+        {usePassword ? "Email me a code instead" : "I have a password"}
+      </button>
     </form>
   );
 }
@@ -434,7 +552,7 @@ function RequestSentSection({ email, onBack }) {
    Six boxes, auto advance, paste aware, backspace steps back.
    ========================================================================== */
 
-function OtpSection({ email, onVerified, onBack }) {
+function OtpSection({ email, onVerify, onResend, onBack }) {
   const [digits, setDigits] = useState(Array(OTP_LENGTH).fill(""));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -497,7 +615,7 @@ function OtpSection({ email, onVerified, onBack }) {
     }
   }
 
-  function handleVerify(e) {
+  async function handleVerify(e) {
     e.preventDefault();
     if (!complete) {
       setError("Enter all six digits.");
@@ -505,10 +623,22 @@ function OtpSection({ email, onVerified, onBack }) {
     }
     setError("");
     setBusy(true);
-    setTimeout(() => {
+
+    const result = await onVerify(digits.join(""));
+
+    if (!result?.ok) {
       setBusy(false);
-      onVerified();
-    }, 700);
+      setError(result?.reason ?? "That code did not work. Ask for a new one.");
+      /* Cleared and refocused. Leaving six wrong digits in place means the
+         next attempt starts with backspacing, and the boxes read as
+         accepted when they were not. */
+      setDigits(Array(OTP_LENGTH).fill(""));
+      inputsRef.current[0]?.focus();
+      return;
+    }
+    /* On success this screen is being navigated away from, so busy stays
+       true and the button does not flick back to its resting state on the
+       way out. */
   }
 
   return (

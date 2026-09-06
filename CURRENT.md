@@ -87,8 +87,27 @@ a real browser.
   deployment still needs an identity that belongs to a person.
   **`/setup?step=N` opens any of the three screens with stand in values, in
   dev only**, compiled out of production and checked by grepping `dist`.
-- **Sign in.** Real Supabase password sign in, for accounts that have a
-  password. Untouched by the setup change above. It reads who you are from
+- **Sign in is a code, not a password.** `/auth` asks for an email and
+  Supabase sends a six digit code. `shouldCreateUser` is false, which is the
+  whole security of that screen: left on, anyone typing any address would be
+  given an account. An unknown address is answered exactly like a known one
+  and the code simply never arrives, so the screen cannot be used to find out
+  who is on the system.
+  Password sign in is still reachable behind "I have a password", for the two
+  workspaces built before the code became the identity. Everybody invited
+  since has a random password nobody was ever told.
+  **This is what finishes the invite flow.** An invitation link is single use,
+  so without a code an invited person could get in exactly once and would be
+  locked out on their next device.
+  **An admin session lasts 24 hours**, held in `shared/adminClock.js` and
+  checked when the admin panel loads. Supabase has one token lifetime per
+  project, so the shorter one is enforced in the app. Read the note at the
+  top of that file: it is a convenience against a laptop left open, not a
+  security boundary. RLS is the boundary.
+  **Custom SMTP is required for this to work at any volume.** Supabase's
+  built in sender is rate limited per hour and best effort by their own docs.
+  Point Auth at Resend, and check the "minimum interval between emails"
+  setting, which is 60 seconds by default and per project, not per person. It reads who you are from
   the database and sends you to your own workspace, admin side or chat
   side. A wrong password and an unknown email land in the same place on
   purpose.
@@ -162,21 +181,6 @@ a real browser.
   domain verified with Resend. An invitation that cannot be emailed is not
   fatal: the admin gets the link back on screen and the reply says
   `emailed: false`, so the screen tells the truth about what happened.
-- **Email OTP does not exist yet.** The OTP screen is in `Auth.jsx` and is
-  unreachable. Sign in is still password only, which is now the odd one
-  out: setup, resuming a demo and accepting an invitation all mint sessions
-  without one. OTP is what closes that gap, and the decision is made:
-  passwords go, email OTP replaces them, admin tokens expire after 24 hours
-  and staff stay signed in until they sign out.
-- **Staff invites are real now.** An admin adds somebody and they get an
-  emailed link. Single use, 72 hours, and only the SHA-256 of the token is
-  stored, so a copy of `staff_invites` hands nobody a session. Redeeming is
-  one guarded UPDATE, so two clicks cannot both win. The link lands on
-  `/join/:token`, which spends it, mints a session and drops them in their
-  own workspace. `APP_URL` is read server side and never from the request,
-  so an admin cannot have our domain send a link to a site they control.
-  The `access_requests` table is still unwired, and is a different thing:
-  somebody asking to be let in, rather than being invited.
 - **Skills are a badge, not a capability.** PowerPoint, Word, Excel,
   Design, Mind map, Analysis are detected from wording and shown in the
   nav. Word and PDF are real now. **PowerPoint, Excel and Design are

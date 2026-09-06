@@ -48,6 +48,7 @@ import {
   Spinner,
 } from "../shared/ui.jsx";
 import { loadMe, listSources, addTextSource, removeSource, listStaff, listWork } from "../shared/session.js";
+import { adminSessionExpired } from "../shared/adminClock.js";
 import { readFileAsText, canBecomeText } from "../shared/readFile.js";
 import { fetchLinkSource } from "../shared/linkApi.js";
 import { inviteStaff, timeLeft } from "../shared/inviteApi.js";
@@ -117,6 +118,15 @@ export default function Admin() {
          the check. Send them to their own side. */
       if (who.staff?.access_level !== "admin") {
         navigate(who.company?.slug ? `/${who.company.slug}` : "/chat", { replace: true });
+        return;
+      }
+
+      /* An admin session lasts a day. A laptop left open in an office
+         stops being an admin console overnight. See adminClock.js for what
+         this is and, more importantly, what it is not. */
+      if (await adminSessionExpired(true)) {
+        if (!alive) return;
+        navigate(`/auth?next=${encodeURIComponent(window.location.pathname)}`, { replace: true });
         return;
       }
 
