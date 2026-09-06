@@ -13,7 +13,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Eye, EyeOff, Lock, MailCheck, ShieldAlert, UserPlus } from "lucide-react";
+import { ArrowLeft, ArrowRight, Lock, MailCheck, ShieldAlert, UserPlus } from "lucide-react";
 
 import { LogoMark } from "../shared/icons.jsx";
 import { BRAND, FONTS } from "../shared/tokens";
@@ -23,6 +23,14 @@ import { supabase } from "../shared/supabase.js";
 import { startAdminClock } from "../shared/adminClock.js";
 import { loadMe } from "../shared/session.js";
 
+/* MUST match Supabase: Authentication → Sign In / Providers → Email → Email
+   OTP Length. The setting takes 6 to 10, and newer projects are created at
+   8, so this is not a safe assumption to leave unstated.
+
+   The two cannot share a source of truth, one is a dashboard field and one
+   is a bundle, so the coupling is documented at the place it breaks: if
+   Supabase is set to 8 and this says 6, somebody types six of their eight
+   digits, the code is refused, and nothing on screen explains why. */
 const OTP_LENGTH = 6;
 
 export default function Auth() {
@@ -31,14 +39,7 @@ export default function Auth() {
   /* One of: login, notfound, request, requested, otp */
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
 
-  /* Signing in is a code sent to your email. A password is the old way, kept
-     reachable for the accounts that still have one: the two workspaces built
-     before the code became the identity. Everybody invited since has a
-     random password nobody was ever told, so for them this is the only door
-     that opens. */
-  const [usePassword, setUsePassword] = useState(false);
   const [requestName, setRequestName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -54,51 +55,6 @@ export default function Auth() {
      An unrecognized email is not refused silently. It moves to the no
      account found state, which offers to request access instead.
      ------------------------------------------------------------------------ */
-
-  async function handleLogin(e) {
-    e.preventDefault();
-    const value = email.trim().toLowerCase();
-
-    if (!value) {
-      setError("Enter your email to continue.");
-      return;
-    }
-    if (!password) {
-      setError("Enter your password to continue.");
-      return;
-    }
-
-    setError("");
-    setBusy(true);
-
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: value,
-      password,
-    });
-
-    if (signInError) {
-      setBusy(false);
-
-      /* A connection that never arrived is not a rejected sign in, and
-         telling someone their account does not exist because their train
-         went into a tunnel is a bad way to lose them. */
-      if (signInError.name === "AuthRetryableFetchError" || signInError.status === 0) {
-        setError("Could not reach the server. Check your connection and try again.");
-        return;
-      }
-
-      /* Says what actually happened. It used to send every failure to a
-         "no account found" screen, which told somebody their setup had
-         failed when in fact they had mistyped a password, and that is a
-         working system reading as a broken one. The message still names
-         neither the email nor the password as the wrong half, so it does
-         not become a way of finding out who has an account here. */
-      setError("That email and password do not match. Check both and try again.");
-      return;
-    }
-
-    await land();
-  }
 
   /* ------------------------------------------------------------------------
      WHERE A SIGNED IN PERSON GOES
@@ -262,19 +218,11 @@ export default function Auth() {
         >
           {mode === "login" && (
             <LoginSection
-              usePassword={usePassword}
-              onUsePassword={() => {
-                setError("");
-                setPassword("");
-                setUsePassword((v) => !v);
-              }}
               email={email}
-              password={password}
               busy={busy}
               error={error}
               onEmail={setEmail}
-              onPassword={setPassword}
-              onSubmit={usePassword ? handleLogin : sendCode}
+              onSubmit={sendCode}
             />
           )}
 
@@ -328,28 +276,14 @@ export default function Auth() {
    2. LOGIN SECTION
    ========================================================================== */
 
-function LoginSection({
-  email,
-  password,
-  busy,
-  error,
-  usePassword,
-  onEmail,
-  onPassword,
-  onSubmit,
-  onUsePassword,
-}) {
-  const [show, setShow] = useState(false);
-
+function LoginSection({ email, busy, error, onEmail, onSubmit }) {
   return (
     <form onSubmit={onSubmit}>
       <h1 className="text-[22px] font-bold mb-1" style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}>
         Sign in
       </h1>
       <p className="text-[13.5px] mb-6" style={{ color: "var(--text-3)" }}>
-        {usePassword
-          ? "Use the email and password you were given."
-          : "Use the email you were invited with. We will send you a code."}
+        Use the email you were invited with. We will send you a code.
       </p>
 
       <Field label="Work email" required>
@@ -362,33 +296,6 @@ function LoginSection({
         />
       </Field>
 
-      {usePassword && (
-        <Field label="Password" required>
-          <div className="relative">
-            <TextInput
-              type={show ? "text" : "password"}
-              value={password}
-              onChange={(e) => onPassword(e.target.value)}
-              placeholder="Your password"
-              autoComplete="current-password"
-              className="pr-11"
-            />
-            <button
-              type="button"
-              onClick={() => setShow((v) => !v)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 transition-opacity hover:opacity-70"
-              aria-label={show ? "Hide password" : "Show password"}
-            >
-              {show ? (
-                <EyeOff size={16} style={{ color: "var(--text-3)" }} />
-              ) : (
-                <Eye size={16} style={{ color: "var(--text-3)" }} />
-              )}
-            </button>
-          </div>
-        </Field>
-      )}
-
       {error && (
         <p className="text-[12.5px] mb-4" role="alert" style={{ color: BRAND.red }}>
           {error}
@@ -398,27 +305,12 @@ function LoginSection({
       <PrimaryButton
         type="submit"
         className="w-full flex items-center justify-center gap-2"
-        disabled={busy || !email.trim() || (usePassword && !password)}
+        disabled={busy || !email.trim()}
       >
         {busy ? <Spinner size={14} color="#fff" /> : null}
-        {busy ? (usePassword ? "Checking" : "Sending") : usePassword ? "Continue" : "Email me a code"}
+        {busy ? "Sending" : "Email me a code"}
       </PrimaryButton>
 
-      {/* The old door, kept reachable rather than kept as the default.
-
-          Only the accounts made before the code became the identity have a
-          password at all. Everybody invited since has a random one nobody
-          was ever told, so for them the code is the only way in and putting
-          a password field in front of them by default would be asking for
-          something that does not exist. */}
-      <button
-        type="button"
-        onClick={onUsePassword}
-        className="w-full mt-4 text-[12.5px] underline underline-offset-2 transition-opacity hover:opacity-80"
-        style={{ color: "var(--text-3)" }}
-      >
-        {usePassword ? "Email me a code instead" : "I have a password"}
-      </button>
     </form>
   );
 }

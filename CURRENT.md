@@ -93,9 +93,10 @@ a real browser.
   given an account. An unknown address is answered exactly like a known one
   and the code simply never arrives, so the screen cannot be used to find out
   who is on the system.
-  Password sign in is still reachable behind "I have a password", for the two
-  workspaces built before the code became the identity. Everybody invited
-  since has a random password nobody was ever told.
+  **There is no password anywhere in the interface.** All three existing
+  accounts have real Gmail addresses, checked against `auth.users`, so a code
+  reaches every one of them and the old door was redundant. See the No
+  passwords section in `CLAUDE.md` for the standing rule.
   **This is what finishes the invite flow.** An invitation link is single use,
   so without a code an invited person could get in exactly once and would be
   locked out on their next device.
@@ -104,6 +105,16 @@ a real browser.
   project, so the shorter one is enforced in the app. Read the note at the
   top of that file: it is a convenience against a laptop left open, not a
   security boundary. RLS is the boundary.
+  **`OTP_LENGTH` in `Auth.jsx` is 6 and must match** Authentication → Sign In
+  / Providers → Email → Email OTP Length. The setting accepts 6 to 10 and new
+  projects are created at 8. A mismatch means somebody types six of their
+  eight digits and nothing on screen explains the refusal.
+  **The email is branded**, and its source is
+  `supabase/email-templates/otp.html`. Supabase keeps its own copy, so
+  editing that file changes nothing until it is pasted into Authentication →
+  Emails → Magic Link. Calling `signInWithOtp` with no redirect sends that
+  template; `{{ .Token }}` rather than `{{ .ConfirmationURL }}` is what makes
+  it a code instead of a link.
   **Custom SMTP is required for this to work at any volume.** Supabase's
   built in sender is rate limited per hour and best effort by their own docs.
   Point Auth at Resend, and check the "minimum interval between emails"

@@ -1,0 +1,106 @@
+<!--
+  THE SIGN IN CODE EMAIL
+
+  This file is the source. It is not read at runtime by anything: Supabase
+  keeps its own copy, so a change here does nothing until it is pasted into
+  Authentication -> Emails -> Magic Link in the dashboard. It lives in the
+  repo so the wording and the design are reviewable and have a history,
+  rather than existing only in a textarea nobody can diff.
+
+  WHY THE MAGIC LINK TEMPLATE
+  Calling signInWithOtp without emailRedirectTo still sends the template
+  Supabase calls "Magic Link". Putting {{ .Token }} in it rather than
+  {{ .ConfirmationURL }} is what turns it from a link into a code. There is
+  no separate OTP template to fill in.
+
+  {{ .Token }} is the only variable used. Its length comes from
+  Authentication -> Sign In / Providers -> Email -> Email OTP Length, which
+  must be 6 to match OTP_LENGTH in src/pages/Auth.jsx.
+
+  WHY IT LOOKS LIKE THIS
+  Tables and inline styles, because email clients are twenty years behind a
+  browser and a stylesheet in the head is stripped by several of them.
+
+  Light, not dark, even though the product is dark. Gmail and Outlook invert
+  dark emails unpredictably and the result is a brand looking broken in
+  somebody's inbox. A white card with the brand navy on it survives every
+  client and still reads as us.
+
+  No images. Most clients block them by default, and an email whose only
+  branding is a logo that does not load is an unsigned email. The wordmark
+  is text, so it always arrives.
+
+  The code is selectable text rather than a picture, and large, because a
+  good share of people will read this on a phone and type it into another
+  window on the same phone.
+-->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+       style="background-color:#f4f5fa;margin:0;padding:32px 12px;">
+  <tr>
+    <td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+             style="max-width:460px;background-color:#ffffff;border:1px solid #e6e8f0;border-radius:14px;">
+        <tr>
+          <td style="padding:32px 32px 0 32px;">
+            <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
+                        font-size:17px;font-weight:700;letter-spacing:-0.2px;color:#0a0f2e;">
+              StellaXafe
+            </div>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:22px 32px 0 32px;">
+            <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
+                        font-size:20px;font-weight:600;color:#0a0f2e;line-height:1.35;">
+              Your sign in code
+            </div>
+            <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
+                        font-size:14px;color:#5b6180;line-height:1.6;padding-top:8px;">
+              Enter this in the window you left open.
+            </div>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:20px 32px 0 32px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                   style="background-color:#f6f7fc;border:1px solid #e6e8f0;border-radius:11px;">
+              <tr>
+                <td align="center" style="padding:20px 12px;">
+                  <span style="font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+                               font-size:30px;font-weight:700;letter-spacing:7px;color:#1420a0;">{{ .Token }}</span>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:18px 32px 0 32px;">
+            <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
+                        font-size:13px;color:#5b6180;line-height:1.6;">
+              It runs out in an hour and works once.
+            </div>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:20px 32px 30px 32px;">
+            <div style="border-top:1px solid #eceef6;padding-top:16px;
+                        font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
+                        font-size:12.5px;color:#8189a8;line-height:1.6;">
+              If you did not try to sign in, you can ignore this. Nobody can get in with your email
+              address alone.
+            </div>
+          </td>
+        </tr>
+      </table>
+
+      <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
+                  font-size:11.5px;color:#9aa1bd;padding-top:16px;">
+        StellaXafe Technologies Limited
+      </div>
+    </td>
+  </tr>
+</table>
