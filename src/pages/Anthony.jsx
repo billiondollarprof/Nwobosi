@@ -5,34 +5,34 @@
    It is not the founder bio card. That page answers "who is behind
    StellaXafe" for somebody already reading about StellaXafe. This one
    answers a different question, asked by somebody who has never heard of
-   either: what does this person build, and can they do it for us.
+   either: what can this person do for us.
 
-   WHO IT IS WRITTEN FOR
-   Three readers, and they want the same evidence:
+   THE ONE RULE THIS PAGE IS WRITTEN UNDER
+   A recruiter is not hiring somebody who owns a business. They are hiring
+   somebody who can do the job in front of them. So nothing here is framed
+   as ownership, funding, traction or a founder story. Amara and StellaXafe
+   appear only as evidence of a capability, never as assets.
 
-     A company hiring for AI orchestration, AI automation, agentic systems
-     or forward deployed work. They are looking for somebody who can design
-     the control layer and ship it, not somebody who can name models.
-     A company that wants a private AI built for them, or AI connected
-     into the systems it already runs.
-     A company that wants its own people trained to use AI properly.
+   That also decides what is left out. There are no user counts and no
+   revenue figures, because the question is not how the business is doing,
+   it is whether the person can deliver. And there is no repository link,
+   because the repositories are private and a link to one shows a stranger
+   nothing at all. Access is offered on request instead, which is the
+   honest version of the same thing.
 
-   HOW IT IS WRITTEN
-   In the language those roles are advertised in, because a recruiter scans
-   for it: orchestration, control layer, connectors, human in the loop,
-   webhooks. Not "uses AI to write code", which invites the reader to price
-   the work as typing.
-
-   Every claim on it is something that exists. Amara is live and a business
-   runs on it. The loop below is designed and partly built, and the page
-   says which is which rather than implying all of it ships today.
+   THE HONESTY THIS PAGE HOLDS
+   He is not a software engineer and the page says so outright. He does not
+   write the code by hand, he directs AI to write it, and the judgement
+   around that is the actual skill being sold. Claiming otherwise would
+   fall apart in a technical interview, and the true version is the
+   stronger claim in 2026 anyway.
 
    Read top to bottom:
 
      1. Who and what
-     2. What is shipped
-     3. The mechanism
-     4. How the work goes
+     2. What I can do for a company
+     3. Where I have done it
+     4. How I work
      5. Get in touch
    ========================================================================== */
 
@@ -45,96 +45,99 @@ import { MarketingPage, GradientText, Eyebrow } from "../shared/marketing.jsx";
 import Photo from "../shared/Photo.jsx";
 
 /* --------------------------------------------------------------------------
-   The mechanism, in the order it happens. This is the differentiator and it
-   is the thing worth reading twice, so it is a numbered list rather than a
-   paragraph: a person scanning the page can take it in without reading it.
+   What a company gets, written as deliverables rather than as skills. A
+   skills list asks the reader to work out what it would mean for them. This
+   names the thing they would actually receive.
    -------------------------------------------------------------------------- */
 
-const LOOP = [
+const DELIVERS = [
   {
-    step: "01",
-    title: "It reads the company first",
-    body: "Everything the organization connected, plus whatever that person connected themselves. Before a word is generated.",
+    title: "Turn a manual process into a system that runs",
+    body: "Point me at what your team does by hand every week. I map the workflow, work out where AI belongs and where a person has to stay, and build it into something that runs on its own. First conversation to production, without it being handed off halfway.",
   },
   {
-    step: "02",
-    title: "It finds what is missing",
-    body: "The request is compared against what actually exists. The gaps are the point, not the matches.",
+    title: "Give your staff answers from your own material",
+    body: "A knowledge system scoped to what your organization has approved, so somebody in their first week gets the same standard of answer as the person who has been there nine years. No prompt course and no power user in the middle.",
   },
   {
-    step: "03",
-    title: "It interviews the person",
-    body: "Questions, not a form. The person knows things the documents do not, and this is where that comes out.",
+    title: "Put an assistant in front of your customers",
+    body: "On the channels they already use, answering from material you approved, and handing over to a person the moment it should. It steps back while a human is in the conversation and picks up again when the room goes quiet.",
   },
   {
-    step: "04",
-    title: "It fetches, and makes them confirm",
-    body: "It can search, follow a link, or pull data. Nothing it found enters the work until a human has looked at it and said yes.",
+    title: "Connect AI to the systems you already run",
+    body: "I work inside your stack rather than around it. APIs, webhooks, databases, serverless functions, messaging platforms, whatever you are already paying for. Nobody has to rebuild what works in order to get AI into it.",
   },
   {
-    step: "05",
-    title: "It reads the plan back",
-    body: "This is what I am about to do. They approve it or correct it, and a correction goes around the loop again.",
+    title: "Design the guardrails before the feature ships",
+    body: "Approved sources only, isolation enforced at the data layer, and a human checkpoint before anything is sent or spent. Where something is missing the system says so rather than filling the gap with something that reads well.",
   },
   {
-    step: "06",
-    title: "Only then does it build",
-    body: "One long constrained prompt, then real tools producing real files. Word, Excel, a deck, an email that sends.",
+    title: "Train your people to get real output",
+    body: "Most teams with AI are getting very little back from it, and the gap is almost always the approach rather than the tool. I teach them how to work with it, so the capability stays in the building after I leave.",
   },
 ];
+
+/* Evidence, not a portfolio of assets. Each entry says what was delivered
+   and what state it is in, and nothing about who owns it. */
 
 const WORK = [
   {
     name: "Amara",
     href: "https://amara.ng",
     status: { tone: "ok", label: "Live" },
-    line: "Guest intelligence and automated CRM for hospitality.",
-    body: "A business runs on this today. Feedback capture through to WhatsApp alerts, booking follow-up, and engagement analytics, on an isolated workspace per property. Built from nothing to production, including the parts nobody sees.",
+    line: "Guest experience and automated CRM for hospitality.",
+    body: "A guest scans a code and rates their stay privately, so a complaint reaches the manager while the guest is still on the property instead of appearing on Google a week later. Around that sits a returning guest record, an authenticated check-in webhook a property system can call, and automated arrival and departure messages on WhatsApp. Live, with businesses running on it. Idea to production, mine the whole way.",
   },
   {
     name: "StellaXafe",
     href: null,
     status: { tone: "accent", label: "In build" },
     line: "Private, company-scoped AI for organizations that cannot afford to leak.",
-    body: "The system this page sits on. Multi-tenant isolation enforced in the database rather than in the application, connectors at both the organization level and the staff level, and no document ever stored on my side: finished work goes back to the customer's own storage.",
+    body: "The architecture this page is running on. Multi-tenant isolation enforced in the database rather than in the application, connectors at both the organization level and the staff level, and no document stored on our side: finished work is written back into the customer's own storage.",
   },
   {
     name: "XALOM",
     href: null,
-    status: { tone: "neutral", label: "In build" },
+    status: { tone: "neutral", label: "Designed, wiring left" },
     line: "Digital trust and identity infrastructure.",
-    body: "Its own codebase and its own deployment, sharing a domain with StellaXafe by DNS only.",
+    body: "Architecture and interface are done and the remaining work is wiring. Built as its own codebase and its own deployment, sharing a root domain by DNS only, so an identity layer never inherits the blast radius of whatever sits next to it.",
   },
 ];
 
-const HOW = [
+/* The method, in the order it happens. This is the same shape whatever is
+   being built, which is the point of showing it: it is a way of working,
+   not one product's internals. */
+
+const METHOD = [
   {
-    title: "I design the control layer",
-    body: "The interview, the gap analysis, the confirmation gate, the constrained prompt. That is where the quality and the safety actually live. The model underneath is a commodity everyone has access to.",
+    step: "01",
+    title: "Understand the process before touching a tool",
+    body: "What the team actually does, where the time goes, and which step everybody quietly dreads. Most failed AI projects were pointed at the wrong step.",
   },
   {
-    title: "I ship the whole system",
-    body: "Architecture, auth, the data model, row-level security, the connectors, the interface, the deployment. Not a prototype handed to someone else to finish. Problem to working product, under one roof.",
+    step: "02",
+    title: "Decide where a person has to stay",
+    body: "Some steps must keep a human on them, because of judgement, money, or risk. Choosing those first is what stops the system from being switched off in month two.",
   },
   {
-    title: "I build for the non-technical user",
-    body: "Nobody using what I build should have to learn prompting, and nobody should be shown a setting they did not ask for. If a person needs training to use it, the design failed, not the person.",
+    step: "03",
+    title: "Design the system around approved material",
+    body: "It reads what the organization has approved and works out what is missing before it produces anything. The gaps matter more than the matches.",
   },
   {
-    title: "Delivery is measured in weeks, not quarters",
-    body: "The architecture, the guardrails, and the isolation model already exist and already run, so most deployments are configuration and integration work rather than a build from zero.",
+    step: "04",
+    title: "Make it confirm before it commits",
+    body: "It reads back what it understood and what it is about to do. The person approves it or corrects it, and a correction goes around again in cheap conversation instead of an expensive rewrite.",
   },
   {
-    title: "I integrate AI into systems that already exist",
-    body: "Not every engagement starts from zero. I work inside a stack a company already runs, and connect AI to it without asking them to rebuild what already works.",
+    step: "05",
+    title: "Build it, with AI as the accelerator",
+    body: "This is where the work compresses. What used to be quoted in quarters lands in weeks, because the building is directed rather than typed.",
   },
   {
-    title: "I teach professionals to get the best out of AI",
-    body: "Most people using AI are not getting good output from it, and the gap is usually the approach, not the tool. I train teams on how to work with it, so the learning curve gets shorter instead of staying in my head.",
-  },
-  {
-    title: "I follow AI governance research, on the side",
-    body: "How a checkpoint should oversee an agent that keeps gaining reach faster than a written rule can keep up. It is a personal interest, not a shipped feature, and it is the reason the guardrails I build adapt instead of sitting still.",
+    step: "06",
+    title: "Ship it, then keep it honest",
+    body: "Deployed, documented, and handed over so somebody else can maintain it. A system nobody but me can run is not finished, it is a dependency.",
   },
 ];
 
@@ -145,8 +148,10 @@ export default function Anthony() {
     <MarketingPage>
       {/* ====================================================================
           1. WHO AND WHAT
-          The first screen has to answer "what does he build" in one
-          sentence, because a recruiter gives it about four seconds.
+          The first screen has to answer "what can this person do for us" in
+          one sentence, because a recruiter gives it about four seconds. Not
+          "what has he built", which is the founder version of the question
+          and the wrong one to be answering here.
           ==================================================================== */}
       <section className="px-5 sm:px-8 pt-10 sm:pt-16 pb-14">
         <div className="max-w-5xl mx-auto lg:grid lg:grid-cols-12 lg:gap-14 items-center">
@@ -164,23 +169,28 @@ export default function Anthony() {
               className="text-[30px] sm:text-[40px] lg:text-[46px] font-medium leading-[1.1] tracking-tight mt-4 mb-6"
               style={{ fontFamily: FONTS.display, color: "var(--text-1)", textWrap: "balance" }}
             >
-              I build <GradientText>AI systems that automate how businesses work</GradientText>,
-              end to end.
+              I take a business problem from{" "}
+              <GradientText>product thinking to production</GradientText>.
             </h1>
 
             <p className="text-[16.5px] leading-[1.65] mb-5" style={{ color: "var(--text-2)" }}>
-              I take a business problem, break it into a workflow, and work out where AI and
-              automation can remove manual effort or sharpen a decision. Then I design and build
-              the system itself: models, APIs, webhooks, databases, serverless functions, and
-              messaging platforms, wired into the tools a team already uses.
+              I work out what a company actually needs, break it into a workflow, decide where AI
+              belongs and where a person has to stay, and then build the thing and put it in
+              front of real users. Not a strategy deck, and not a prototype for somebody else to
+              finish. The working system.
             </p>
 
-            <p className="text-[15px] leading-[1.65] mb-4" style={{ color: "var(--text-3)" }}>
-              I work the whole path: problem, workflow, architecture, interface, then a product
-              someone actually opens on a Monday morning. Assistants, company knowledge systems,
-              automated workflows, agents, internal tools, human-in-the-loop checkpoints.
-              Different shapes of the same skill, turning a process nobody enjoys into a system
-              nobody has to think about.
+            {/* The transparency paragraph, and it is deliberately in the
+                hero rather than buried. Claiming to be a software engineer
+                would not survive a technical interview, and the true
+                version is the stronger position in 2026: the scarce skill
+                is the judgement around the build, not the typing. */}
+            <p className="text-[15px] leading-[1.65] mb-5" style={{ color: "var(--text-2)" }}>
+              I am not a software engineer and I am precise about that. I do not write the code by
+              hand. I direct AI to write it, and I own every decision that determines whether what
+              comes out is any good: what gets built, how the parts fit, where a human signs off,
+              what the system must refuse to do, and when it is genuinely finished. AI is the
+              accelerator. The judgement is the job.
             </p>
 
             <p className="text-[13.5px] leading-[1.6] mb-8" style={{ color: "var(--text-3)" }}>
@@ -254,23 +264,60 @@ export default function Anthony() {
       </section>
 
       {/* ====================================================================
-          2. WHAT IS SHIPPED
-          Status pills are honest on purpose. One live thing that a stranger
-          can open beats three described ones.
+          2. WHAT I CAN DO FOR A COMPANY
+          The section that has to come second, because it is the answer to
+          the only question the reader is actually asking.
           ==================================================================== */}
       <section className="px-5 sm:px-8 py-14 sm:py-20">
         <div className="max-w-5xl mx-auto">
-          <Eyebrow>Proof</Eyebrow>
+          <Eyebrow>What I can do for you</Eyebrow>
+          <h2
+            className="text-[26px] sm:text-[32px] font-medium leading-[1.15] tracking-tight mt-4 mb-4 max-w-2xl"
+            style={{ fontFamily: FONTS.display, color: "var(--text-1)", textWrap: "balance" }}
+          >
+            The work your team is doing by hand is the work I automate.
+          </h2>
+          <p className="text-[15.5px] leading-relaxed max-w-2xl mb-10" style={{ color: "var(--text-3)" }}>
+            Every one of these is something I have built and put in front of real users, not a
+            service line written to fill a grid.
+          </p>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            {DELIVERS.map((item) => (
+              <GlassPanel key={item.title} className="p-6">
+                <div
+                  className="text-[16px] font-semibold tracking-tight mb-2"
+                  style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
+                >
+                  {item.title}
+                </div>
+                <p className="text-[14.5px] leading-relaxed" style={{ color: "var(--text-3)" }}>
+                  {item.body}
+                </p>
+              </GlassPanel>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ====================================================================
+          3. WHERE I HAVE DONE IT
+          Evidence for the section above it. Status pills are honest on
+          purpose: one thing a stranger can open right now beats three
+          described ones.
+          ==================================================================== */}
+      <section className="px-5 sm:px-8 py-14 sm:py-20">
+        <div className="max-w-5xl mx-auto">
+          <Eyebrow>Where I have done it</Eyebrow>
           <h2
             className="text-[26px] sm:text-[32px] font-medium leading-[1.15] tracking-tight mt-4 mb-4"
             style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
           >
-            Other systems by the same builder.
+            Three systems, taken the whole way.
           </h2>
           <p className="text-[15px] leading-relaxed max-w-2xl mb-10" style={{ color: "var(--text-3)" }}>
-            Not case studies written after the fact. Other systems built by the same hands, in
-            the same order every time: problem first, architecture second, then a real
-            deployment.
+            Product thinking, architecture, interface, deployment. Same person on every layer, on
+            all three.
           </p>
 
           <div className="space-y-4">
@@ -306,29 +353,38 @@ export default function Anthony() {
               </GlassPanel>
             ))}
           </div>
+
+          {/* Said plainly rather than left as a gap. A private repository
+              link shows a stranger nothing, so offering the walkthrough is
+              the honest version of "here is my code". */}
+          <p className="text-[14px] leading-relaxed mt-6" style={{ color: "var(--text-3)" }}>
+            The repositories are private. I will walk anyone through the architecture, the code, or
+            the decisions behind any of it on request.
+          </p>
         </div>
       </section>
 
       {/* ====================================================================
-          3. THE MECHANISM
+          4. HOW I WORK
+          The method, shown as a method rather than as one product's
+          internals, because it is what transfers to the reader's company.
           ==================================================================== */}
       <section className="px-5 sm:px-8 py-14 sm:py-20">
         <div className="max-w-5xl mx-auto">
-          <Eyebrow>The mechanism</Eyebrow>
+          <Eyebrow>How I work</Eyebrow>
           <h2
             className="text-[26px] sm:text-[32px] font-medium leading-[1.15] tracking-tight mt-4 mb-4 max-w-2xl"
             style={{ fontFamily: FONTS.display, color: "var(--text-1)", textWrap: "balance" }}
           >
-            Most company AI answers immediately. This one refuses to.
+            The model is the commodity. The system around it is the work.
           </h2>
           <p className="text-[15.5px] leading-relaxed max-w-2xl mb-10" style={{ color: "var(--text-3)" }}>
-            The common failure is not a model inventing a sentence. It is somebody typing a vague
-            request into a tool that knows nothing about their company, and accepting whatever
-            comes back. Six steps remove that, and none of them is a model setting.
+            The same six steps whatever is being built, which is why a deployment takes weeks
+            rather than quarters. The thinking is already done and only the fitting is new.
           </p>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {LOOP.map((item) => (
+            {METHOD.map((item) => (
               <GlassPanel key={item.step} className="p-6">
                 <div
                   className="text-[12px] font-semibold tracking-[0.14em] mb-3"
@@ -352,37 +408,6 @@ export default function Anthony() {
       </section>
 
       {/* ====================================================================
-          4. HOW THE WORK GOES
-          ==================================================================== */}
-      <section className="px-5 sm:px-8 py-14 sm:py-20">
-        <div className="max-w-5xl mx-auto">
-          <Eyebrow>How I work</Eyebrow>
-          <h2
-            className="text-[26px] sm:text-[32px] font-medium leading-[1.15] tracking-tight mt-4 mb-10 max-w-2xl"
-            style={{ fontFamily: FONTS.display, color: "var(--text-1)", textWrap: "balance" }}
-          >
-            The model is the commodity. The system around it is the work.
-          </h2>
-
-          <div className="grid sm:grid-cols-2 gap-4">
-            {HOW.map((item) => (
-              <GlassPanel key={item.title} className="p-6">
-                <div
-                  className="text-[16px] font-semibold tracking-tight mb-2"
-                  style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
-                >
-                  {item.title}
-                </div>
-                <p className="text-[14.5px] leading-relaxed" style={{ color: "var(--text-3)" }}>
-                  {item.body}
-                </p>
-              </GlassPanel>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ====================================================================
           5. GET IN TOUCH
           One action. Every reader who arrives here, hiring or buying or
           looking for training, does the same next thing.
@@ -393,15 +418,12 @@ export default function Anthony() {
             className="text-[26px] sm:text-[34px] font-medium leading-[1.15] tracking-tight mb-4"
             style={{ fontFamily: FONTS.display, color: "var(--text-1)", textWrap: "balance" }}
           >
-            Hiring, integrating AI, or want your team trained?
+            Tell me what needs building.
           </h2>
           <p className="text-[15.5px] leading-relaxed mb-8" style={{ color: "var(--text-3)" }}>
-            Tell me what your team is doing by hand today, what you want AI to do inside a
-            system you already run, or what your people need to get better output from the
-            tools they already have. I work with anyone who wants AI integrated into their
-            systems or their work accelerated by it, and I teach professionals how to use it
-            well. Tech company, law firm, hospital, school, or any organization that wants its
-            staff working at full capacity without having to become engineers first.
+            A role you are hiring for, a process your team is still doing by hand, or a system you
+            already run that should have AI inside it. I will tell you plainly whether I am the
+            right person for it, and what I would do first.
           </p>
           <PrimaryButton
             onClick={() => navigate("/contact")}
