@@ -127,106 +127,91 @@ See the No passwords section in `CLAUDE.md`.
 
 ---
 
-## Zero data retention, and who it belongs to
+## The privacy story, said correctly
 
-**The strongest answer is not "I have zero data retention". It is that the
-customer's traffic never touches my account.**
+**This section replaced an earlier one that had it wrong.** That version led
+with the customer's API key and retention arrangements. That is a detail.
+The actual story is the perimeter.
 
-A deployment runs on **the customer's own API key, on the customer's own
-Anthropic or OpenAI account.** Their prompts go from their deployment to
-their provider under their contract. StellaXafe is not in that path and
-cannot be, which also means there is nothing for me to promise about and
-nothing for a reviewer to take my word on.
+### It is deployed inside their perimeter
 
-So the honest three layers, in the order a buyer should hear them:
+A deployment is **built into the customer's own infrastructure**: their VPC,
+their on premise, their cloud account. Supabase sells this on AWS and it is
+in the low hundreds of dollars a month, which is affordable for the size of
+company being sold to. Where exactly it lands depends on the business and
+what they can carry.
 
-1. **Nothing is trained on.** True by default on the API. Neither provider
-   trains on API traffic. This costs nothing and needs no arrangement.
-2. **Nothing is retained by us.** No document sits in our database. Work
-   goes back to the customer's own storage.
-3. **Retention at the provider is the customer's own arrangement.** Both
-   Anthropic and OpenAI keep API inputs and outputs for a limited window for
-   abuse monitoring, and both will agree **zero data retention** on an
-   account, so that inputs and outputs are not kept once the response is
-   served. The customer asks for it on their account. It then covers every
-   call the deployment makes, without me being party to it.
+So the database, the documents, the sessions, the connectors and the
+application are all theirs, on their side, under their control. Nothing sits
+in a multi tenant system belonging to us.
 
-**Do not put a retention period or a ZDR claim on a public page until it is
-in writing from the provider**, and even then say whose account it applies
-to. `DIRECTION.md` forbids a claim a reviewer can falsify, and "we have zero
-data retention" invites exactly one question: on whose account, and show me.
+### The one hop that leaves, and why it is not the same thing
 
-### Is it possible in the demo? No.
+The model is still a frontier model reached over an API, so text does leave
+the perimeter for the length of one call. **The claim is not that this never
+happens. The claim is that it is governed.**
 
-The demo runs on **our** `ANTHROPIC_API_KEY`, in the StellaXafe Supabase
-secrets. So demo traffic goes to our account under whatever retention that
-account has, which is the default.
+Here is the distinction, and it is the whole argument:
 
-That is fine and it should simply be said. The demo is a blueprint. What is
-true of it is layers 1 and 2 above, and those are worth saying on their own.
-Layer 3 arrives with a deployment, because layer 3 is a property of whose
-key is in the box.
+**A staff member pasting a document into Claude.ai or ChatGPT** is an
+individual acting on their own account, under consumer terms, with the
+conversation kept in that account's history. The company cannot see it,
+did not approve it, has no contract covering it and cannot get it back.
+That is shadow IT, and it is the actual thing being replaced.
+
+**An API call from inside the company's own deployment** is the company
+acting as the data controller, with the provider as a processor under a
+commercial agreement. No training on the content. A data processing
+agreement behind it. Defined, contractual retention rather than whatever a
+consumer product does by default, and zero retention available on request.
+Auditable, because the company owns the system making the call.
+
+**Same model. Completely different accountability.** One is a person making
+a decision nobody knows about. The other is a company making a decision it
+signed for.
+
+That is the sentence to sell: it is not about whether a model reads the
+text, it is about who is accountable for it and whether anyone can see that
+it happened.
+
+### What the demo is, and what it is not
+
+**The demo is not built in anyone's VPC and does not need to be.** It runs
+on our infrastructure and our API key, and that is fine, because the demo is
+not a smaller version of what a client gets. It is a demonstration that we
+know how to build the thing.
+
+Never imply otherwise. What a client gets is built for them, in their
+perimeter, sized to their business. `DIRECTION.md` already says the demo is
+a sample and not the specification. This is the same rule applied to the
+privacy claim.
 
 ---
 
-## WhatsApp, and why Amara is the way in
+## What is actually being bought
 
-**Amara keeps the number, the WABA and the webhook. StellaXafe becomes a
-brain it calls.** No new phone number, no second Meta approval, no copying a
-webhook secret anywhere.
+**Privacy is the reason they will let it in the building. It is not the
+reason they buy.** The reason they buy is further down and it is worth
+leading with when the room is commercial rather than technical.
 
-Meta points a WhatsApp app at **one** webhook URL. Pointing it at StellaXafe
-would take it away from Amara and break a system a business already runs on.
-So the direction is the other way round.
+**Time.** A staff member who would spend a day on a report spends an hour.
 
-Amara already has both halves of the transport:
+**Range.** People who could not produce that report at all now can. An
+average person gets an above average result, on their first afternoon,
+without a prompting course. That is a change in what the organisation is
+capable of, not a change in how fast one person types.
 
-- `receive-whatsapp-webhook` takes messages in.
-- `admin-send-whatsapp` sends them out. This is what makes a reply typed in
-  the Amara admin dashboard reach the guest's phone.
+**Iteration cost, which is the one people underrate.** Every round of "that
+is not what I meant" costs tokens and costs salary, and the salary is the
+expensive half. The interview and the read back move that cost to before
+the work is done, where a correction is one sentence instead of a rewrite.
+The orchestration is automated: the system writes the prompt, so nobody has
+to learn to.
 
-So the flow becomes:
+**No surprises.** Grounded in the company's own material, with a human
+confirming anything fetched, so what comes out is not a plausible invention.
 
-```
-guest's WhatsApp
-  -> Meta
-  -> Amara receive-whatsapp-webhook        (already approved, unchanged)
-  -> POST to StellaXafe, with a shared secret
-  -> StellaXafe runs the assistant against a workspace
-  -> reply comes back
-  -> Amara admin-send-whatsapp             (already built)
-  -> guest's WhatsApp
-```
-
-The two live in **different Supabase projects**, `xdvvidenbpsyzxgkofjj` for
-Amara and `cbunsqzkhidwjtxdsmxd` for StellaXafe, so the middle step is an
-authenticated HTTP hop rather than a function call. That is not a problem,
-it is the normal shape, and it keeps the two systems independently
-deployable.
-
-### What has to be built
-
-1. **StellaXafe: a `whatsapp-ask` function.** Takes the sender, the message
-   and which workspace answers, checks a shared secret, runs the assistant,
-   returns text. Not public: the secret is the whole door.
-2. **Amara: a branch in `receive-whatsapp-webhook`.** When a message is for
-   the assistant rather than for a human, call the above and send the reply
-   with the existing sender. Everything else in Amara is untouched.
-3. **One shared secret**, set in both projects.
-4. **A number to workspace mapping**, so the system knows which company's
-   AI is answering for this WhatsApp number.
-
-### Two things that will bite
-
-**The 24 hour window.** WhatsApp only allows free form messages within 24
-hours of the person's last message. Fine for a demo where the person writes
-first. It matters the moment anything wants to start a conversation.
-
-**The interview loop reads differently on WhatsApp.** On the web the
-assistant asks its questions in a thread somebody is watching. On WhatsApp
-those become separate notifications, and the read back is a wall of text on
-a phone. Worth shortening for that channel rather than shipping the web
-copy into it.
+---
 
 ## What this means for the copy, and one problem with it
 
@@ -291,5 +276,8 @@ Recorded so nobody reads the section above and assumes it is built.
 - Connectors are not live. Canva and Drive are registered and unwired.
 - Delivery into the person's own storage is not built. Work downloads.
 - The web fetch, the confirm step and the source suggestions are not built.
+- **The customer environment does not exist.** There is one assistant and it
+  is the staff one. The WhatsApp side needs the read only customer mode and
+  the human handover before any of the transport above is worth wiring.
 - The interview and read back **are** built, and are the part of this that
   already runs.
