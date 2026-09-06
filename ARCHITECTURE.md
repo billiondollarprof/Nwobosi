@@ -213,6 +213,116 @@ confirming anything fetched, so what comes out is not a plausible invention.
 
 ---
 
+## Two environments, and WhatsApp is the customer one
+
+**Corrected. An earlier version assumed WhatsApp was for staff. It is not.
+It is for customers, and that changes what it is allowed to do.**
+
+The assistant has two environments. Same knowledge underneath, different
+permissions, different room.
+
+### The staff environment
+
+Signed in, on the web. Everything in the loop above: interview, gap
+analysis, confirmation, plan, tools, real files out. Staff can **add** to
+what the system knows, connecting their own mail and storage on top of what
+the admin connected.
+
+### The customer environment
+
+**On WhatsApp, and read only.**
+
+A customer of the business messages the number and talks to the company's
+AI. It answers **only** from what the admin put in, and only about that
+business. It does not do work, it does not take uploads, and there is no
+"build me a deck". A customer cannot add anything to what the system knows,
+because a customer is not part of the company.
+
+That constraint is the design, not a limitation. The staff environment is a
+workshop. The customer environment is a front desk, and a front desk that
+accepts files from the street is a security hole.
+
+**The customer always writes first**, which is what keeps this simple.
+WhatsApp only permits free form replies inside 24 hours of the person's last
+message, and a conversation the customer started is always inside it. No
+message templates, no template approval, nothing to submit to Meta.
+
+### Handing over to a human
+
+The half that makes it sellable rather than a toy.
+
+1. The customer asks for a person, or asks something the AI should not
+   answer alone.
+2. **The AI says so in the same thread.** One line, in the conversation the
+   customer is already in. Not silence, not a form.
+3. **The company is notified**, and the human answers from the same place
+   they already answer from, so nobody learns a new tool.
+4. **The AI is suspended for that conversation while the human is in it.**
+   Two voices replying to one person is worse than a slow reply.
+5. **After a quiet period, about five minutes, the AI resumes**, so a human
+   who wanders off does not leave the conversation dead.
+
+Amara already proves the two hard parts: a message arrives by webhook, and a
+reply typed in an admin dashboard reaches the phone. The new part is the AI
+sitting in the middle and knowing when to get out of the way.
+
+### How it connects, given Amara already owns the number
+
+**Amara keeps the number, the WABA and the webhook. StellaXafe becomes a
+brain it calls.** No new phone number, no second Meta approval, no webhook
+secret copied anywhere.
+
+Meta points a WhatsApp app at **one** webhook URL. Aiming it at StellaXafe
+would take it off Amara and break a system a business already runs on. So
+the direction is the other way round.
+
+Amara already has both halves of the transport, confirmed by reading the
+repo rather than assuming:
+
+- `receive-whatsapp-webhook` takes messages in.
+- `admin-send-whatsapp` sends them out. This is what already makes a reply
+  typed in the Amara dashboard reach a guest's phone.
+
+```
+customer's WhatsApp
+  -> Meta
+  -> Amara receive-whatsapp-webhook        (already approved, unchanged)
+  -> POST to StellaXafe, with a shared secret
+  -> the customer environment answers, from admin material only
+  -> reply comes back
+  -> Amara admin-send-whatsapp             (already built)
+  -> customer's WhatsApp
+```
+
+The two are **separate Supabase projects**, `xdvvidenbpsyzxgkofjj` for Amara
+and `cbunsqzkhidwjtxdsmxd` for StellaXafe, so the middle step is an
+authenticated HTTP hop. That is the normal shape and keeps them
+independently deployable.
+
+### What has to be built
+
+1. **A customer environment in the assistant.** A mode that reads only admin
+   material, never staff material, refuses uploads and refuses work
+   requests. This does not exist yet and it is the real work, not the
+   plumbing.
+2. **StellaXafe: a `whatsapp-ask` function.** Sender, message, which
+   workspace answers, behind a shared secret. Returns text, or returns
+   "hand this to a person".
+3. **Amara: a branch in `receive-whatsapp-webhook`.** Route to the above and
+   send the reply with the existing sender. Everything else untouched.
+4. **The handover state.** Per conversation: who is answering, when the
+   human last spoke, and the five minute timer that gives it back.
+5. **One shared secret**, and a number to workspace mapping.
+
+### One thing that will bite
+
+**The interview loop reads badly on a phone**, and it does not belong in the
+customer environment anyway. A customer asking about opening hours must not
+be interviewed. The loop stays in the staff environment, where somebody
+asked for work to be done. The customer side answers, or hands over.
+
+---
+
 ## What this means for the copy, and one problem with it
 
 The reviewer Anthony was sent got one thing right that matters more than
