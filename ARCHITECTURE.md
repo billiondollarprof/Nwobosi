@@ -127,6 +127,107 @@ See the No passwords section in `CLAUDE.md`.
 
 ---
 
+## Zero data retention, and who it belongs to
+
+**The strongest answer is not "I have zero data retention". It is that the
+customer's traffic never touches my account.**
+
+A deployment runs on **the customer's own API key, on the customer's own
+Anthropic or OpenAI account.** Their prompts go from their deployment to
+their provider under their contract. StellaXafe is not in that path and
+cannot be, which also means there is nothing for me to promise about and
+nothing for a reviewer to take my word on.
+
+So the honest three layers, in the order a buyer should hear them:
+
+1. **Nothing is trained on.** True by default on the API. Neither provider
+   trains on API traffic. This costs nothing and needs no arrangement.
+2. **Nothing is retained by us.** No document sits in our database. Work
+   goes back to the customer's own storage.
+3. **Retention at the provider is the customer's own arrangement.** Both
+   Anthropic and OpenAI keep API inputs and outputs for a limited window for
+   abuse monitoring, and both will agree **zero data retention** on an
+   account, so that inputs and outputs are not kept once the response is
+   served. The customer asks for it on their account. It then covers every
+   call the deployment makes, without me being party to it.
+
+**Do not put a retention period or a ZDR claim on a public page until it is
+in writing from the provider**, and even then say whose account it applies
+to. `DIRECTION.md` forbids a claim a reviewer can falsify, and "we have zero
+data retention" invites exactly one question: on whose account, and show me.
+
+### Is it possible in the demo? No.
+
+The demo runs on **our** `ANTHROPIC_API_KEY`, in the StellaXafe Supabase
+secrets. So demo traffic goes to our account under whatever retention that
+account has, which is the default.
+
+That is fine and it should simply be said. The demo is a blueprint. What is
+true of it is layers 1 and 2 above, and those are worth saying on their own.
+Layer 3 arrives with a deployment, because layer 3 is a property of whose
+key is in the box.
+
+---
+
+## WhatsApp, and why Amara is the way in
+
+**Amara keeps the number, the WABA and the webhook. StellaXafe becomes a
+brain it calls.** No new phone number, no second Meta approval, no copying a
+webhook secret anywhere.
+
+Meta points a WhatsApp app at **one** webhook URL. Pointing it at StellaXafe
+would take it away from Amara and break a system a business already runs on.
+So the direction is the other way round.
+
+Amara already has both halves of the transport:
+
+- `receive-whatsapp-webhook` takes messages in.
+- `admin-send-whatsapp` sends them out. This is what makes a reply typed in
+  the Amara admin dashboard reach the guest's phone.
+
+So the flow becomes:
+
+```
+guest's WhatsApp
+  -> Meta
+  -> Amara receive-whatsapp-webhook        (already approved, unchanged)
+  -> POST to StellaXafe, with a shared secret
+  -> StellaXafe runs the assistant against a workspace
+  -> reply comes back
+  -> Amara admin-send-whatsapp             (already built)
+  -> guest's WhatsApp
+```
+
+The two live in **different Supabase projects**, `xdvvidenbpsyzxgkofjj` for
+Amara and `cbunsqzkhidwjtxdsmxd` for StellaXafe, so the middle step is an
+authenticated HTTP hop rather than a function call. That is not a problem,
+it is the normal shape, and it keeps the two systems independently
+deployable.
+
+### What has to be built
+
+1. **StellaXafe: a `whatsapp-ask` function.** Takes the sender, the message
+   and which workspace answers, checks a shared secret, runs the assistant,
+   returns text. Not public: the secret is the whole door.
+2. **Amara: a branch in `receive-whatsapp-webhook`.** When a message is for
+   the assistant rather than for a human, call the above and send the reply
+   with the existing sender. Everything else in Amara is untouched.
+3. **One shared secret**, set in both projects.
+4. **A number to workspace mapping**, so the system knows which company's
+   AI is answering for this WhatsApp number.
+
+### Two things that will bite
+
+**The 24 hour window.** WhatsApp only allows free form messages within 24
+hours of the person's last message. Fine for a demo where the person writes
+first. It matters the moment anything wants to start a conversation.
+
+**The interview loop reads differently on WhatsApp.** On the web the
+assistant asks its questions in a thread somebody is watching. On WhatsApp
+those become separate notifications, and the read back is a wall of text on
+a phone. Worth shortening for that channel rather than shipping the web
+copy into it.
+
 ## What this means for the copy, and one problem with it
 
 The reviewer Anthony was sent got one thing right that matters more than
