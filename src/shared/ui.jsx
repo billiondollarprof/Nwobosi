@@ -121,10 +121,20 @@ export function SectionHeading({ children, hint }) {
    -------------------------------------------------------------------------- */
 
 export function PrimaryButton({ children, className = "", style = {}, ...rest }) {
+  /* Disabled drops the gradient rather than fading it. Half opacity on a
+     navy gradient reads fine on the dark ground and reads as a muddy purple
+     smear on a white card, which looks like a rendering fault rather than a
+     button waiting for input. A flat chip and grey text is unambiguous in
+     both themes. Inline, because an inline background beats any class. */
+  const off = Boolean(rest.disabled);
   return (
     <button
-      className={`px-5 py-2.5 rounded-[12px] text-[14px] font-semibold text-white transition-transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100 ${className}`}
-      style={{ background: GRADIENTS.action, ...style }}
+      className={`px-5 py-2.5 rounded-[12px] text-[14px] font-semibold transition-transform hover:scale-[1.02] active:scale-[0.98] disabled:hover:scale-100 disabled:cursor-not-allowed ${className}`}
+      style={{
+        background: off ? "var(--chip)" : GRADIENTS.action,
+        color: off ? "var(--text-3)" : "#fff",
+        ...style,
+      }}
       {...rest}
     >
       {children}

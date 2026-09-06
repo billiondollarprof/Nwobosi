@@ -304,6 +304,7 @@ export default function Setup() {
                     error={error}
                     onChange={(v) => setCode(normaliseCode(v))}
                     onSubmit={submitCode}
+                    onRequestCode={() => navigate("/contact")}
                   />
                 )}
 
@@ -520,7 +521,7 @@ function ErrorLine({ children }) {
    4. ACCESS CODE STEP
    ========================================================================== */
 
-function AccessCodeStep({ code, busy, error, onChange, onSubmit }) {
+function AccessCodeStep({ code, busy, error, onChange, onSubmit, onRequestCode }) {
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -564,17 +565,32 @@ function AccessCodeStep({ code, busy, error, onChange, onSubmit }) {
         {!busy && <ArrowRight size={15} />}
       </PrimaryButton>
 
-      <p className="text-[12.5px] mt-5 text-center leading-relaxed" style={{ color: "var(--text-3)" }}>
-        No code? Ask whoever sent you the proposal, codes are handed out one at a time. Or{" "}
-        <a
-          href={`mailto:${PRODUCT.supportEmail}?subject=Access%20code%20request`}
-          className="underline underline-offset-2 hover:opacity-80"
-          style={{ color: "var(--text-2)" }}
+      {/* The way out for someone who does not have a code.
+
+          The hero's second button says "Demo it live" and it lands here, on
+          a locked door. That is fine as long as the door has a bell. It
+          used to have a mailto, which is not one: on a phone it opens a mail
+          app that may not be set up, and on a desktop it hands someone a
+          blank message to compose. This goes to the contact form instead,
+          which is the same form the hero's first button goes to, and it is
+          the one place that reliably reaches us.
+
+          Drawn as a real second action rather than a link inside a
+          sentence, because for a share of the people who arrive here it is
+          the only thing on the screen they can actually do. */}
+      <div className="mt-6 pt-5 border-t" style={{ borderColor: "var(--border)" }}>
+        <p className="text-[12.5px] text-center leading-relaxed" style={{ color: "var(--text-3)" }}>
+          No code yet? They are handed out one at a time, so ask whoever sent you the proposal.
+        </p>
+        <button
+          type="button"
+          onClick={onRequestCode}
+          className="w-full mt-3 rounded-[11px] border py-2.5 text-[13px] font-medium transition-opacity hover:opacity-80"
+          style={{ borderColor: "var(--border-2)", color: "var(--text-2)" }}
         >
-          request one from {PRODUCT.name}
-        </a>
-        .
-      </p>
+          Ask {PRODUCT.name} for one
+        </button>
+      </div>
     </form>
   );
 }

@@ -1376,23 +1376,36 @@ Five steps. All your staff ever do is talk.
               for. It is not. The blueprint is the honest word for what a
               reader can drive, and saying so is stronger than implying
               otherwise: an architecture that already runs is the reason a
-              deployment is fast. */}
+              deployment is fast.
+
+              This used to open on "Bring your access code", which put the
+              demo first in the copy as well as in the button. That was the
+              same mistake the hero made: the thing being sold is a
+              deployment, and the demo is how someone looks at it before
+              asking for one. Deployment first, demo second, and the two
+              buttons below say the same thing in the same order. */}
           <p className="text-[15px] leading-relaxed mb-3" style={{ color: "var(--text-3)" }}>
-            Bring your access code. Name your company, answer three questions, and watch it build
-            something that already sounds like you.
+            Tell us what your organization runs on and what it needs to stop leaking. Your
+            deployment is built into your own systems, not bought from a page.
           </p>
           <p className="text-[14px] leading-relaxed mb-8 max-w-lg mx-auto" style={{ color: "var(--text-3)", opacity: 0.85 }}>
-            This is not software you subscribe to. What you drive here is the blueprint. Your
-            deployment is built into your own systems, and it is fast because the architecture, the
-            guardrails and the isolation already exist and already work.
+            This is not software you subscribe to. What you can drive here is the blueprint: bring
+            an access code, name your company, answer three questions, and watch it produce
+            something that already sounds like you. A deployment is fast because that architecture
+            already exists and already works.
           </p>
-          <PrimaryButton
-            onClick={() => navigate("/setup")}
-            className="flex items-center gap-2 px-7 py-3.5 text-[15px] mx-auto"
-          >
-            Build your company's AI
-            <ArrowRight size={16} />
-          </PrimaryButton>
+          <div className="flex flex-col sm:flex-row items-stretch justify-center gap-3">
+            <PrimaryButton
+              onClick={() => navigate("/contact")}
+              className="flex items-center justify-center gap-2 px-7 py-3.5 text-[15px]"
+            >
+              Build your company's AI
+              <ArrowRight size={16} />
+            </PrimaryButton>
+            <GlassButton icon={Play} onClick={() => navigate("/setup")} className="justify-center">
+              Demo it live
+            </GlassButton>
+          </div>
         </Reveal>
       </section>
 
