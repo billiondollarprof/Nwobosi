@@ -123,6 +123,14 @@ const HOW = [
     body: "The architecture, the guardrails, and the isolation model already exist and already run, so most deployments are configuration and integration work rather than a build from zero.",
   },
   {
+    title: "I integrate AI into systems that already exist",
+    body: "Not every engagement starts from zero. I work inside a stack a company already runs, and connect AI to it without asking them to rebuild what already works.",
+  },
+  {
+    title: "I teach professionals to get the best out of AI",
+    body: "Most people using AI are not getting good output from it, and the gap is usually the approach, not the tool. I train teams on how to work with it, so the learning curve gets shorter instead of staying in my head.",
+  },
+  {
     title: "I follow AI governance research, on the side",
     body: "How a checkpoint should oversee an agent that keeps gaining reach faster than a written rule can keep up. It is a personal interest, not a shipped feature, and it is the reason the guardrails I build adapt instead of sitting still.",
   },
@@ -364,13 +372,15 @@ export default function Anthony() {
             className="text-[26px] sm:text-[34px] font-medium leading-[1.15] tracking-tight mb-4"
             style={{ fontFamily: FONTS.display, color: "var(--text-1)", textWrap: "balance" }}
           >
-            Hiring the AI person, or want a system built?
+            Hiring, integrating AI, or want your team trained?
           </h2>
           <p className="text-[15.5px] leading-relaxed mb-8" style={{ color: "var(--text-3)" }}>
-            Tell me what your team is doing by hand today, or what the role actually needs from
-            whoever fills it. I will tell you plainly whether I am the right fit, for a tech
-            company, a law firm, a hospital, a school, or any organisation that wants its staff
-            working at full capacity without having to become engineers first.
+            Tell me what your team is doing by hand today, what you want AI to do inside a
+            system you already run, or what your people need to get better output from the
+            tools they already have. I work with anyone who wants AI integrated into their
+            systems or their work accelerated by it, and I teach professionals how to use it
+            well. Tech company, law firm, hospital, school, or any organisation that wants its
+            staff working at full capacity without having to become engineers first.
           </p>
           <PrimaryButton
             onClick={() => navigate("/contact")}
