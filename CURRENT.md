@@ -36,36 +36,59 @@ finished and were not. Trust this list over anything a screen says.
 
 ---
 
-## The one thing nobody has done yet
+## Reaching Supabase, and what has actually run
 
-**Nothing has ever run end to end against the real Supabase.** Every piece
-is tested in a browser against stand-in responses, and the whole chat flow
-passes that way, but the model has never once spoken through this chain
-with real credentials. The first live run is still the real test.
+**This section was wrong for three sessions. Corrected 2026-09-06 by
+querying the live database.**
 
-The session that built most of this could not reach `supabase.co` at all:
-the environment's network policy answers 403. Testing has to be done by
-the user, or by a session whose environment allows that host.
+It used to say nothing had ever run end to end against real Supabase. The
+database says otherwise: **2 companies, 3 staff, 7 knowledge sources, 42
+chunks, 6 saved conversations.** It has run.
 
-An unspent access code is held for it: **SX-4M8G-T4P3**, to be registered
-under **ofilifire@gmail.com**.
+It also held `SX-4M8G-T4P3` as an unspent code for the first live run. That
+code was redeemed on 2026-08-27 and belongs to the `buildfest` workspace.
+**Unused codes, checked live:** `SX-3NKZ-GCYJ`, `SX-LNDA-4KHU`,
+`SX-F3MP-LWAV`, `SX-KNA9-KQ6E`, `SX-Y9YA-TBE9`.
+
+**Two different paths to Supabase, and only one of them is blocked.**
+
+- Plain HTTP from a session's shell or browser still fails:
+  `supabase.co` answers `CONNECT tunnel failed, 403`. So an edge function
+  cannot be called, and the app cannot be driven against the real backend
+  from inside a session.
+- **The Supabase MCP connection works.** Migrations apply, SQL runs, edge
+  functions deploy, straight from a session. That is how
+  `resolve_access_code` and `resume-demo` were shipped.
+
+So: the database layer can be built and tested here. Anything that has to
+go through an edge function over HTTP still has to be tried by the user in
+a real browser.
 
 ---
 
 ## What is genuinely real
 
-- **Setup.** `/setup` takes an access code, creates the auth user, the
-  company and the staff row, signs the admin in, and lands them on
-  `/{slug}/admin`. Rollback on every step. It is also the page every Demo
-  link lands on, so it carries the marketing nav and footer rather than
-  bare app chrome, and a rail down the left says which of the four steps
-  you are on and what the next one costs. **`/setup?step=N` opens any of
-  the four screens with stand in values, in dev only.** Three of them sit
-  behind a real code and a real Supabase, so without that they cannot be
-  opened to be looked at, which is why the page went so long without a
-  design pass. The block is compiled out of production, checked by
-  grepping `dist` after a build.
-- **Sign in.** Real Supabase password sign in. It reads who you are from
+- **Setup, and the code is the identity.** `/setup` is three steps: enter
+  your code, tell it about your company, start using it. **Nobody types an
+  email or a password.** Asking a stranger for their address before they
+  have seen anything is where they leave, and the code is already a better
+  credential: unguessable, handed out one at a time, checked server side in
+  a table no browser can read.
+  The account underneath is real, just derived. The address comes from the
+  code, the password is random and thrown away after one use, and the way
+  back in is the code itself. `resolve_access_code` now answers `new` or
+  `resume` instead of treating a used code as dead, and the new
+  `resume-demo` function mints a one time session for the workspace's admin
+  and hands it to the browser. **So a used code is no longer spent, it is
+  the key to the workspace it built.** It resolves the admin by their staff
+  row, so the two workspaces built under the old email and password flow
+  resume too.
+  None of the email and password code is deleted, only unused: a real
+  deployment still needs an identity that belongs to a person.
+  **`/setup?step=N` opens any of the three screens with stand in values, in
+  dev only**, compiled out of production and checked by grepping `dist`.
+- **Sign in.** Real Supabase password sign in, for accounts that have a
+  password. Untouched by the setup change above. It reads who you are from
   the database and sends you to your own workspace, admin side or chat
   side. A wrong password and an unknown email land in the same place on
   purpose.

@@ -65,10 +65,96 @@ export async function checkAccessCode(raw) {
       return { ok: false, reason: "Could not reach the server. Check your connection and try again." };
     }
 
-    if (data?.ok) return { ok: true, code: data.code ?? code };
+    /* mode says which of the two things this code is. "new" means nothing
+       has been built with it yet; "resume" means it already built a
+       workspace and openDemo below is what gets back into it. */
+    if (data?.ok) {
+      return {
+        ok: true,
+        code: data.code ?? code,
+        mode: data.mode === "resume" ? "resume" : "new",
+        slug: data.slug ?? null,
+      };
+    }
     return { ok: false, reason: data?.reason ?? GENERIC_FAILURE };
   } catch (err) {
     console.error("check-access-code threw", err);
+    return { ok: false, reason: "Could not reach the server. Check your connection and try again." };
+  }
+}
+
+/* --------------------------------------------------------------------------
+   SECTION: The identity the code stands for
+
+   Nobody types an email or a password to try the demo. Asking a stranger
+   for their address before they have seen anything is where most of them
+   leave, and the access code is already a better credential than either:
+   unguessable, handed out one at a time, and checked server side in a table
+   no browser can read.
+
+   So the account is real, it is just derived. The address comes from the
+   code so it is stable and cannot collide with a person's own account. The
+   password is random, used once to open the first session, and then thrown
+   away: nothing stores it and nothing needs it again, because coming back
+   is done with the code through openDemo below.
+
+   The address is not a secret and does not need to be. Knowing it gets
+   nobody anywhere without the code, and the password it was made with no
+   longer exists anywhere by the time setup finishes.
+   -------------------------------------------------------------------------- */
+
+export function demoEmail(code) {
+  return `${normaliseCode(code).toLowerCase()}@demo.stellaxafe.com`;
+}
+
+/* Long and random. It exists for the length of one function call. */
+function throwawayPassword() {
+  const rand = () =>
+    globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2).padEnd(24, "x");
+  return `${rand()}-${rand()}`;
+}
+
+/* --------------------------------------------------------------------------
+   SECTION: Open a workspace a code already built
+
+   The way back in. The server checks the code, mints a one time token for
+   the workspace's admin, and this swaps it for a real session. No password
+   is involved at any point, and the token is minted server side so nothing
+   the browser holds could be used to open somebody else's workspace.
+   -------------------------------------------------------------------------- */
+
+export async function openDemo(raw) {
+  const code = normaliseCode(raw);
+  if (!looksLikeCode(code)) return { ok: false, reason: GENERIC_FAILURE };
+
+  try {
+    const { data, error } = await supabase.functions.invoke("resume-demo", { body: { code } });
+
+    if (error) {
+      const detail = await readFunctionError(error);
+      console.error("resume-demo failed", error);
+      return { ok: false, reason: detail ?? "Could not reach the server. Check your connection and try again." };
+    }
+
+    if (!data?.ok || !data?.sessionToken) {
+      return { ok: false, reason: data?.reason ?? "Could not open that workspace. Try again." };
+    }
+
+    /* The token is single use and short lived. verifyOtp is what turns it
+       into a session on this device. */
+    const { error: sessionError } = await supabase.auth.verifyOtp({
+      token_hash: data.sessionToken,
+      type: "magiclink",
+    });
+
+    if (sessionError) {
+      console.error("resume-demo: could not use the session token", sessionError);
+      return { ok: false, reason: "Could not sign you in. Try the code again." };
+    }
+
+    return { ok: true, slug: data.slug };
+  } catch (err) {
+    console.error("resume-demo threw", err);
     return { ok: false, reason: "Could not reach the server. Check your connection and try again." };
   }
 }
@@ -84,14 +170,19 @@ export async function checkAccessCode(raw) {
    itself if step three fails halfway.
    -------------------------------------------------------------------------- */
 
-export async function createWorkspace({ code, admin, company }) {
+export async function createWorkspace({ code, company }) {
+  /* Made here, used once, never stored. See the note on the derived
+     identity above. */
+  const password = throwawayPassword();
+  const email = demoEmail(code);
+
   try {
     const { data, error } = await supabase.functions.invoke("create-workspace", {
       body: {
         code: normaliseCode(code),
-        adminName: admin.name.trim(),
-        email: admin.email.trim(),
-        password: admin.password,
+        adminName: "Admin",
+        email,
+        password,
         companyName: company.name.trim(),
         whatWeDo: company.about.trim(),
         industry: company.industry,
@@ -107,7 +198,18 @@ export async function createWorkspace({ code, admin, company }) {
       return { ok: false, reason: detail ?? "Could not reach the server. Check your connection and try again." };
     }
 
-    if (data?.ok) return { ok: true, slug: data.slug };
+    if (data?.ok) {
+      /* Sign in immediately, while the throwaway password is still in
+         memory. After this returns it is gone, and the code is the only
+         way back in. */
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+      if (signInError) {
+        /* The workspace is real either way, and the code opens it. Send
+           them on rather than stranding them on a built workspace. */
+        console.error("workspace created but the first sign in failed", signInError);
+      }
+      return { ok: true, slug: data.slug };
+    }
     return { ok: false, reason: data?.reason ?? "Could not build your workspace. Try again." };
   } catch (err) {
     console.error("create-workspace threw", err);

@@ -33,7 +33,9 @@ function json(body: unknown, status = 200) {
    being specific genuinely helps the person in front of the screen. */
 const REASONS: Record<string, string> = {
   not_found: "That code is not right. Check it and try again.",
-  already_used: "That code has already been used. Codes work once.",
+  /* Kept for anything the database still answers this way, though the
+     resolver now treats a used code as a way back in rather than a wall. */
+  already_used: "That code has already been used.",
   revoked: "That code is no longer active.",
   in_progress: "That code is being set up right now. Try again in a few minutes.",
 };
@@ -61,13 +63,29 @@ Deno.serve(async (req: Request) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
-  const { data, error } = await supabase.rpc("peek_access_code", { p_code: code });
+  /* resolve, not peek. A code that has already been used is no longer a
+     dead end: it is the key to the workspace it built, and this is where
+     that fork is decided. peek_access_code is left in the database
+     untouched for anything still calling it. */
+  const { data: rows, error } = await supabase.rpc("resolve_access_code", { p_code: code });
 
   if (error) {
-    console.error("peek_access_code failed", error);
+    console.error("resolve_access_code failed", error);
     return json({ ok: false, reason: "Something went wrong on our side. Try again." }, 500);
   }
 
-  if (data === "ok") return json({ ok: true, code });
-  return json({ ok: false, reason: REASONS[data as string] ?? REASONS.not_found });
+  const row = Array.isArray(rows) ? rows[0] : rows;
+  const outcome = row?.outcome as string | undefined;
+
+  /* Nothing built yet. Carry on into setup. */
+  if (outcome === "new") return json({ ok: true, code, mode: "new" });
+
+  /* Already built. The next call opens it. Note this returns the slug but
+     no session: minting one lives in resume-demo, so a wrong guess at a
+     code can never be answered with credentials. */
+  if (outcome === "resume") {
+    return json({ ok: true, code, mode: "resume", slug: row?.slug ?? null });
+  }
+
+  return json({ ok: false, reason: REASONS[outcome as string] ?? REASONS.not_found });
 });

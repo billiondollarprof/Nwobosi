@@ -14,13 +14,16 @@
      2. Shell and layout
      3. The rail
      4. Access code
-     5. Admin account
-     6. Company details
-     7. The read back, and build
+     5. Company details
+     6. The read back, and build
 
-   The logic is unchanged from the first version and deliberately so: three
-   forms that hold everything locally, and one call at the very end that
-   either does the whole thing or none of it.
+   Nobody types an email or a password here. The access code is the
+   identity: it builds the workspace the first time and opens the same one
+   every time after. See the note on the derived identity in setupApi.js for
+   why that is a real account underneath and not a shortcut.
+
+   One form holds everything locally and one call at the very end either
+   does the whole thing or none of it.
    ========================================================================== */
 
 import { useEffect, useRef, useState } from "react";
@@ -30,11 +33,8 @@ import {
   ArrowRight,
   Building2,
   Check,
-  Eye,
-  EyeOff,
   KeyRound,
   Lock,
-  ShieldCheck,
 } from "lucide-react";
 
 import ContainmentSeal from "../shared/ContainmentSeal.jsx";
@@ -49,13 +49,11 @@ import {
 } from "../shared/ui.jsx";
 import { MarketingPage, Eyebrow } from "../shared/marketing.jsx";
 import { PRODUCT } from "../shared/config.js";
-import { supabase } from "../shared/supabase.js";
 import {
   checkAccessCode,
   createWorkspace,
+  openDemo,
   normaliseCode,
-  emailProblem,
-  passwordProblem,
   companyNameProblem,
   companyAboutProblem,
   industryProblem,
@@ -63,14 +61,17 @@ import {
   INDUSTRIES,
 } from "../shared/setupApi.js";
 
-/* Four screens, not three. The old progress bar counted the read back as
-   part of "Your company", so it said "Step 3 of 3" on a screen that still
-   had a step left in it. */
+/* Three, and they are the three things that actually happen. There is no
+   account step any more: see the note on the derived identity in
+   setupApi.js. Nobody types an email or a password to try this.
+
+   The wording is the step, not an explanation of the step. Someone landing
+   here wants to know what they are about to do, not to read a paragraph
+   about what the product is. */
 const STEPS = [
-  { label: "Access code", note: "Checked now, spent at the end" },
-  { label: "Your account", note: "How you get back in" },
-  { label: "Your company", note: "Three questions" },
-  { label: "Build", note: "Your workspace goes live" },
+  { label: "Enter your code", note: "It is also how you get back in later" },
+  { label: "Tell it about your company", note: "Name, what you do, industry" },
+  { label: "Start using it", note: "Ask for work in plain language" },
 ];
 
 /* ==========================================================================
@@ -94,16 +95,10 @@ const STEPS = [
 function devEntry() {
   const raw = new URLSearchParams(window.location.search).get("step");
   const n = Number(raw);
-  if (raw === null || !Number.isInteger(n) || n < 0 || n > 3) return null;
+  if (raw === null || !Number.isInteger(n) || n < 0 || n > 2) return null;
 
   return {
     step: n,
-    admin: {
-      name: "Anthony Nwobosi",
-      email: "anthony@acmelogistics.com",
-      password: "",
-      confirm: "",
-    },
     company: {
       name: "Acme Logistics",
       about:
@@ -118,24 +113,23 @@ const DEV = import.meta.env.DEV ? devEntry() : null;
 export default function Setup() {
   const navigate = useNavigate();
 
-  /* 0 = code, 1 = account, 2 = company. The read back is step 2 with
-     companyReady set, because nothing new is collected on it. */
-  const [step, setStep] = useState(DEV ? Math.min(DEV.step, 2) : 0);
+  /* 0 = code, 1 = company. The read back is step 1 with companyReady set,
+     because nothing new is collected on it: it is the last look before the
+     workspace is really built. */
+  const [step, setStep] = useState(DEV ? Math.min(DEV.step, 1) : 0);
 
   const [code, setCode] = useState("");
-  const [admin, setAdmin] = useState(
-    DEV && DEV.step > 0 ? DEV.admin : { name: "", email: "", password: "", confirm: "" },
-  );
   const [company, setCompany] = useState(
-    DEV && DEV.step > 1 ? DEV.company : { name: "", about: "", industry: "" },
+    DEV && DEV.step > 0 ? DEV.company : { name: "", about: "", industry: "" },
   );
-  const [companyReady, setCompanyReady] = useState(DEV?.step === 3);
+  const [companyReady, setCompanyReady] = useState(DEV?.step === 2);
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  /* What the rail draws. Display only, so the flow below is untouched. */
-  const stage = companyReady ? 3 : step;
+  /* What the rail draws. Display only, so the flow below is untouched.
+     Building is step three arriving, which is why busy counts as it. */
+  const stage = busy && companyReady ? 2 : step;
 
   function goBack() {
     setError("");
@@ -149,9 +143,14 @@ export default function Setup() {
 
   /* ------------------------------------------------------------------------
      4. ACCESS CODE
-     Checked, not redeemed. The code is only burned at the very end when the
+     Checked, not redeemed. The code is only spent at the very end when the
      workspace is really created, so abandoning setup halfway does not cost
      someone their code.
+
+     It forks here. A code that has never been used carries on into setup. A
+     code that already built a workspace opens it instead, which is the
+     whole reason someone can come back a week later with nothing but the
+     code they were given.
      ------------------------------------------------------------------------ */
 
   async function submitCode(e) {
@@ -161,43 +160,32 @@ export default function Setup() {
 
     const result = await checkAccessCode(code);
 
-    setBusy(false);
     if (!result.ok) {
+      setBusy(false);
       setError(result.reason);
       return;
     }
+
+    if (result.mode === "resume") {
+      /* Stays busy across both calls. Two spinners in a row on one button
+         press reads as something having gone wrong and been retried. */
+      const opened = await openDemo(result.code);
+      setBusy(false);
+      if (!opened.ok) {
+        setError(opened.reason);
+        return;
+      }
+      navigate(`/${opened.slug}/admin`);
+      return;
+    }
+
+    setBusy(false);
     setCode(result.code);
     setStep(1);
   }
 
   /* ------------------------------------------------------------------------
-     5. ADMIN ACCOUNT
-     Nothing is created yet. These details are held until the end and sent
-     in one go, so a half finished setup leaves nothing behind.
-     ------------------------------------------------------------------------ */
-
-  function submitAccount(e) {
-    e.preventDefault();
-
-    if (!admin.name.trim()) return setError("Enter your name.");
-    const emailIssue = emailProblem(admin.email);
-    if (emailIssue) return setError(emailIssue);
-    const passwordIssue = passwordProblem(admin.password);
-    if (passwordIssue) return setError(passwordIssue);
-
-    /* Typed twice, because this password is the only way back into the
-       workspace afterwards. There is no reset email yet, so a typo here
-       is a workspace nobody can open again. */
-    if (admin.password !== admin.confirm) {
-      return setError("The two passwords do not match.");
-    }
-
-    setError("");
-    setStep(2);
-  }
-
-  /* ------------------------------------------------------------------------
-     6. COMPANY DETAILS
+     5. COMPANY DETAILS
      Three questions. This is the entire interview. Nothing here is sent
      anywhere yet, it just moves to the read back.
      ------------------------------------------------------------------------ */
@@ -217,7 +205,7 @@ export default function Setup() {
   }
 
   /* ------------------------------------------------------------------------
-     7. BUILD IT
+     6. BUILD IT
      The first and only call that changes anything. Everything typed across
      all three steps is sent in one go, and the server does the whole thing
      or none of it.
@@ -227,26 +215,12 @@ export default function Setup() {
     setError("");
     setBusy(true);
 
-    const result = await createWorkspace({ code, admin, company });
+    const result = await createWorkspace({ code, company });
 
     if (!result.ok) {
       setBusy(false);
       setError(result.reason);
       return;
-    }
-
-    /* The account was just created with these exact details, so sign in
-       with them and land the admin inside their own dashboard rather than
-       at a login screen asking for something they typed two minutes ago. */
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: admin.email.trim(),
-      password: admin.password,
-    });
-
-    if (signInError) {
-      /* The workspace is real either way. Send them on, the dashboard will
-         ask them to sign in and that is a recoverable place to be. */
-      console.error("workspace created but sign in failed", signInError);
     }
 
     setBusy(false);
@@ -308,16 +282,7 @@ export default function Setup() {
                   />
                 )}
 
-                {step === 1 && (
-                  <AccountStep
-                    admin={admin}
-                    error={error}
-                    onChange={(patch) => setAdmin((a) => ({ ...a, ...patch }))}
-                    onSubmit={submitAccount}
-                  />
-                )}
-
-                {step === 2 && !companyReady && (
+                {step === 1 && !companyReady && (
                   <CompanyStep
                     company={company}
                     error={error}
@@ -326,9 +291,8 @@ export default function Setup() {
                   />
                 )}
 
-                {step === 2 && companyReady && (
+                {step === 1 && companyReady && (
                   <ReviewStep
-                    admin={admin}
                     company={company}
                     busy={busy}
                     error={error}
@@ -348,10 +312,11 @@ export default function Setup() {
    3. THE RAIL
    What is being built, and where you are in building it.
 
-   The four steps carry a line each rather than a label alone. The two
-   questions this page gets asked are "how much of this is left" and "what
-   is this going to do to my access code", and both are answered here
-   instead of in a tooltip nobody opens.
+   The steps say what happens, in the order it happens. They used to carry
+   explanation instead: what the product is, what a deployment does, what
+   the code costs. That is the wrong thing to put here. Somebody on this
+   screen has decided to try it and wants to know what they are about to
+   do, and three plain lines answer that better than three paragraphs.
    ========================================================================== */
 
 function StepRail({ stage }) {
@@ -378,8 +343,7 @@ function StepRail({ stage }) {
         </h1>
 
         <p className="text-[14.5px] leading-relaxed" style={{ color: "var(--text-2)" }}>
-          Four steps, and the last one is the only one that creates anything. When it is done your
-          workspace is live and your staff can use it.
+          Three steps, about two minutes. Keep your code: it is what opens this again.
         </p>
       </div>
 
@@ -466,7 +430,7 @@ function StepRail({ stage }) {
         style={{ color: "var(--text-3)" }}
       >
         <Lock size={11} />
-        Nothing is created until the last step
+        No email, no password. Your code is the key.
       </p>
     </div>
   );
@@ -531,7 +495,8 @@ function AccessCodeStep({ code, busy, error, onChange, onSubmit, onRequestCode }
   return (
     <form onSubmit={onSubmit}>
       <StepHeading icon={KeyRound} title="Enter your access code">
-        {PRODUCT.name} is by invitation. Your code was sent to you directly, and it works once.
+        {PRODUCT.name} is by invitation. Your code was sent to you directly. It is the only thing
+        you need, now and every time after.
       </StepHeading>
 
       <Field label="Access code" required>
@@ -596,94 +561,7 @@ function AccessCodeStep({ code, busy, error, onChange, onSubmit, onRequestCode }
 }
 
 /* ==========================================================================
-   5. ADMIN ACCOUNT STEP
-   ========================================================================== */
-
-function AccountStep({ admin, error, onChange, onSubmit }) {
-  const [showPassword, setShowPassword] = useState(false);
-  const passwordIssue = admin.password ? passwordProblem(admin.password) : null;
-
-  return (
-    <form onSubmit={onSubmit}>
-      <StepHeading icon={ShieldCheck} title="Your admin account">
-        This is how you get back into your dashboard. You are the only admin until you invite
-        someone else.
-      </StepHeading>
-
-      <Field label="Your name" required>
-        <TextInput
-          value={admin.name}
-          onChange={(e) => onChange({ name: e.target.value })}
-          placeholder="Your full name"
-          autoComplete="name"
-        />
-      </Field>
-
-      <Field label="Work email" required>
-        <TextInput
-          type="email"
-          value={admin.email}
-          onChange={(e) => onChange({ email: e.target.value })}
-          placeholder="you@company.com"
-          autoComplete="email"
-        />
-      </Field>
-
-      <Field label="Password" required hint={passwordIssue || "At least 10 characters."}>
-        <div className="relative">
-          <TextInput
-            type={showPassword ? "text" : "password"}
-            value={admin.password}
-            onChange={(e) => onChange({ password: e.target.value })}
-            placeholder="Choose a password"
-            autoComplete="new-password"
-            className="pr-11"
-          />
-          <button
-            type="button"
-            onClick={() => setShowPassword((s) => !s)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 transition-opacity hover:opacity-70"
-            aria-label={showPassword ? "Hide password" : "Show password"}
-          >
-            {showPassword ? (
-              <EyeOff size={16} style={{ color: "var(--text-3)" }} />
-            ) : (
-              <Eye size={16} style={{ color: "var(--text-3)" }} />
-            )}
-          </button>
-        </div>
-      </Field>
-
-      <Field
-        label="Type it again"
-        required
-        hint={
-          admin.confirm && admin.confirm !== admin.password
-            ? "These do not match yet."
-            : "There is no reset email yet, so this is worth checking."
-        }
-      >
-        <TextInput
-          type={showPassword ? "text" : "password"}
-          value={admin.confirm}
-          onChange={(e) => onChange({ confirm: e.target.value })}
-          placeholder="Same password again"
-          autoComplete="new-password"
-        />
-      </Field>
-
-      <ErrorLine>{error}</ErrorLine>
-
-      <PrimaryButton type="submit" className="w-full flex items-center justify-center gap-2">
-        Continue
-        <ArrowRight size={15} />
-      </PrimaryButton>
-    </form>
-  );
-}
-
-/* ==========================================================================
-   6. COMPANY DETAILS STEP
+   5. COMPANY DETAILS STEP
    The whole interview. Three questions, and only these three are required.
    Logo, colours, and documents come later inside the admin dashboard, not
    here, so this never becomes the reason someone abandons setup.
@@ -700,9 +578,9 @@ function CompanyStep({ company, error, onChange, onSubmit }) {
 
   return (
     <form onSubmit={onSubmit}>
-      <StepHeading icon={Building2} title="About your company">
-        Three questions. That is all {PRODUCT.name} needs to start sounding like you. Your logo,
-        brand colours and documents are added later, from your dashboard.
+      <StepHeading icon={Building2} title="Tell it about your company">
+        Three questions, and it starts sounding like you. Your logo, brand colours and documents
+        are added later, from your dashboard.
       </StepHeading>
 
       <Field
@@ -749,7 +627,7 @@ function CompanyStep({ company, error, onChange, onSubmit }) {
 }
 
 /* ==========================================================================
-   7. THE READ BACK
+   6. THE READ BACK
    Nothing has been created yet anywhere. This is the last look before the
    workspace and the admin account are actually made, which is why it reads
    everything back rather than just saying done.
@@ -759,11 +637,10 @@ function CompanyStep({ company, error, onChange, onSubmit }) {
    the same before it spends an access code.
    ========================================================================== */
 
-function ReviewStep({ admin, company, busy, error, onBuild }) {
+function ReviewStep({ company, busy, error, onBuild }) {
   const slug = slugify(company.name);
 
   const rows = [
-    ["Admin", `${admin.name}, ${admin.email}`],
     ["Company", company.name],
     ["Industry", company.industry],
     ["Workspace", `/${slug}`],
@@ -772,7 +649,8 @@ function ReviewStep({ admin, company, busy, error, onBuild }) {
   return (
     <div style={{ animation: "sx-rise 0.3s ease" }}>
       <StepHeading icon={Check} tone="ok" title="Read this back">
-        Check it over. Your access code is spent the moment you continue from here.
+        Check it over, then it gets built. Your code stays yours: entering it again opens this same
+        workspace.
       </StepHeading>
 
       <dl className="mb-5">
