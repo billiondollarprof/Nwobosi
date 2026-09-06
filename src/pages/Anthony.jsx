@@ -87,40 +87,44 @@ const WORK = [
     href: "https://amara.ng",
     status: { tone: "ok", label: "Live" },
     line: "Guest intelligence and automated CRM for hospitality.",
-    body: "A business runs on it. Feedback capture through to WhatsApp alerts, booking follow up and engagement analytics, on an isolated workspace per property. Taken from nothing to production, including the parts nobody sees.",
+    body: "A business runs on this today. Feedback capture through to WhatsApp alerts, booking follow-up, and engagement analytics, on an isolated workspace per property. Built from nothing to production, including the parts nobody sees.",
   },
   {
     name: "StellaXafe",
     href: null,
     status: { tone: "accent", label: "In build" },
-    line: "Private, company scoped AI for organisations that cannot leak.",
-    body: "The system described above. Multi tenant isolation enforced in the database rather than in the application, connectors at both organisation and staff level, and no document ever stored on our side: work goes back to the customer's own storage.",
+    line: "Private, company-scoped AI for organisations that cannot afford to leak.",
+    body: "The system this page sits on. Multi-tenant isolation enforced in the database rather than in the application, connectors at both the organisation level and the staff level, and no document ever stored on my side: finished work goes back to the customer's own storage.",
   },
   {
     name: "XALOM",
     href: null,
     status: { tone: "neutral", label: "In build" },
     line: "Digital trust and identity infrastructure.",
-    body: "Its own codebase and its own deployment, sharing a domain by DNS only.",
+    body: "Its own codebase and its own deployment, sharing a domain with StellaXafe by DNS only.",
   },
 ];
 
 const HOW = [
   {
     title: "I design the control layer",
-    body: "The interview, the gap analysis, the confirmation gate, the constrained prompt. That is where the quality and the safety live. The model underneath is a commodity everybody has.",
+    body: "The interview, the gap analysis, the confirmation gate, the constrained prompt. That is where the quality and the safety actually live. The model underneath is a commodity everyone has access to.",
   },
   {
-    title: "I ship the whole thing",
-    body: "Architecture, auth, data model, row level security, the connectors, the interface, the deployment. Not a prototype handed to somebody else to finish.",
+    title: "I ship the whole system",
+    body: "Architecture, auth, the data model, row-level security, the connectors, the interface, the deployment. Not a prototype handed to someone else to finish. Problem to working product, under one roof.",
   },
   {
-    title: "I build for the non technical user",
-    body: "The person using it should not have to learn prompting, and should not be shown a single setting. If they need training, the design failed.",
+    title: "I build for the non-technical user",
+    body: "Nobody using what I build should have to learn prompting, and nobody should be shown a setting they didn't ask for. If a person needs training to use it, the design failed, not the person.",
   },
   {
-    title: "Delivery is measured in weeks",
-    body: "The architecture, the guardrails and the isolation model already exist and already run, so a deployment is configuration and integration rather than a twelve month project.",
+    title: "Delivery is measured in weeks, not quarters",
+    body: "The architecture, the guardrails, and the isolation model already exist and already run, so most deployments are configuration and integration work rather than a build from zero.",
+  },
+  {
+    title: "I follow AI governance research, on the side",
+    body: "How a checkpoint should oversee an agent that keeps gaining reach faster than a written rule can keep up. It is a personal interest, not a shipped feature, and it is the reason the guardrails I build adapt instead of sitting still.",
   },
 ];
 
@@ -139,26 +143,39 @@ export default function Anthony() {
           <div className="lg:col-span-7">
             <Eyebrow>Anthony Nwobosi</Eyebrow>
 
+            <p
+              className="text-[12px] font-semibold uppercase tracking-[0.12em] mt-4"
+              style={{ color: BRAND.accentSoft }}
+            >
+              AI Automation &amp; Systems Builder — Workflows, Agents &amp; Business Automation
+            </p>
+
             <h1
-              className="text-[30px] sm:text-[40px] lg:text-[46px] font-medium leading-[1.1] tracking-tight mt-5 mb-6"
+              className="text-[30px] sm:text-[40px] lg:text-[46px] font-medium leading-[1.1] tracking-tight mt-4 mb-6"
               style={{ fontFamily: FONTS.display, color: "var(--text-1)", textWrap: "balance" }}
             >
-              I design and ship private AI systems that{" "}
-              <GradientText>make non technical staff productive</GradientText> without their
-              company's data going anywhere.
+              I build <GradientText>AI systems that automate how businesses work</GradientText>,
+              end to end.
             </h1>
 
             <p className="text-[16.5px] leading-[1.65] mb-5" style={{ color: "var(--text-2)" }}>
-              Not chat with your documents. An orchestration layer that interviews the person,
-              works out what is missing against the company's own material, makes them confirm
-              anything it fetched, reads the plan back, and only then builds the work with real
-              tools.
+              I take a business problem, break it into a workflow, and work out where AI and
+              automation can remove manual effort or sharpen a decision. Then I design and build
+              the system itself: models, APIs, webhooks, databases, serverless functions, and
+              messaging platforms, wired into the tools a team already uses.
             </p>
 
-            <p className="text-[15px] leading-[1.65] mb-8" style={{ color: "var(--text-3)" }}>
-              Connectors at organisation and staff level. Isolation enforced in the database.
-              Nothing retained on my side. I take these from nothing to production, which is a
-              different job from writing about them.
+            <p className="text-[15px] leading-[1.65] mb-4" style={{ color: "var(--text-3)" }}>
+              I work the whole path: problem, workflow, architecture, interface, then a product
+              someone actually opens on a Monday morning. Assistants, company knowledge systems,
+              automated workflows, agents, internal tools, human-in-the-loop checkpoints.
+              Different shapes of the same skill, turning a process nobody enjoys into a system
+              nobody has to think about.
+            </p>
+
+            <p className="text-[13.5px] leading-[1.6] mb-8" style={{ color: "var(--text-3)" }}>
+              Working across AI orchestration and agents, workflow automation, integrations and
+              APIs, internal tools, knowledge systems, and human escalation.
             </p>
 
             <div className="flex flex-col sm:flex-row items-stretch gap-3">
@@ -256,13 +273,18 @@ export default function Anthony() {
           ==================================================================== */}
       <section className="px-5 sm:px-8 py-14 sm:py-20">
         <div className="max-w-5xl mx-auto">
-          <Eyebrow>Built</Eyebrow>
+          <Eyebrow>Proof</Eyebrow>
           <h2
-            className="text-[26px] sm:text-[32px] font-medium leading-[1.15] tracking-tight mt-4 mb-10"
+            className="text-[26px] sm:text-[32px] font-medium leading-[1.15] tracking-tight mt-4 mb-4"
             style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
           >
-            Taken from nothing to production.
+            Other systems by the same builder.
           </h2>
+          <p className="text-[15px] leading-relaxed max-w-2xl mb-10" style={{ color: "var(--text-3)" }}>
+            Not case studies written after the fact. Other systems built by the same hands, in
+            the same order every time: problem first, architecture second, then a real
+            deployment.
+          </p>
 
           <div className="space-y-4">
             {WORK.map((item) => (
@@ -342,11 +364,13 @@ export default function Anthony() {
             className="text-[26px] sm:text-[34px] font-medium leading-[1.15] tracking-tight mb-4"
             style={{ fontFamily: FONTS.display, color: "var(--text-1)", textWrap: "balance" }}
           >
-            Hiring, or want one built?
+            Hiring the AI person, or want a system built?
           </h2>
           <p className="text-[15.5px] leading-relaxed mb-8" style={{ color: "var(--text-3)" }}>
-            Tell me what your team is doing by hand, or what the role needs. I will tell you
-            plainly whether this is the right thing for it.
+            Tell me what your team is doing by hand today, or what the role actually needs from
+            whoever fills it. I will tell you plainly whether I am the right fit, for a tech
+            company, a law firm, a hospital, a school, or any organisation that wants its staff
+            working at full capacity without having to become engineers first.
           </p>
           <PrimaryButton
             onClick={() => navigate("/contact")}
