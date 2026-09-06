@@ -156,17 +156,27 @@ a real browser.
 - **Google Drive connects nothing.** Google has the client and secret,
   there is no `oauth-callback` function. Shown as **Set up**.
 - **Gmail, Slack, Notion** are examples. Shown as **Example**.
-- **Resend still sends nothing, but it is one step away.** The contact form
-  and its `send-contact` function are built and deployed, and they email
-  `anthony@stellaxafe.com`. `RESEND_API_KEY` is **not set** in the Supabase
-  dashboard, so the function fails closed and no email leaves yet. Setting
-  that key is the whole remaining step. Nothing else in the product sends
-  mail, branded or otherwise.
-- **Email OTP does not exist.** The OTP screen is in `Auth.jsx` and is
-  unreachable. Sign in is password only.
-- **There is no staff invite flow.** An admin cannot add a person. The
-  `access_requests` table has no INSERT policy, so the request path could
-  not work even if it were wired.
+- **Resend is live.** `RESEND_API_KEY` was set on 2026-09-06. Two things
+  send mail now: the contact form via `send-contact`, and staff invitations
+  via `invite-staff`. Both send from `noreply@mail.stellaxafe.com`, on a
+  domain verified with Resend. An invitation that cannot be emailed is not
+  fatal: the admin gets the link back on screen and the reply says
+  `emailed: false`, so the screen tells the truth about what happened.
+- **Email OTP does not exist yet.** The OTP screen is in `Auth.jsx` and is
+  unreachable. Sign in is still password only, which is now the odd one
+  out: setup, resuming a demo and accepting an invitation all mint sessions
+  without one. OTP is what closes that gap, and the decision is made:
+  passwords go, email OTP replaces them, admin tokens expire after 24 hours
+  and staff stay signed in until they sign out.
+- **Staff invites are real now.** An admin adds somebody and they get an
+  emailed link. Single use, 72 hours, and only the SHA-256 of the token is
+  stored, so a copy of `staff_invites` hands nobody a session. Redeeming is
+  one guarded UPDATE, so two clicks cannot both win. The link lands on
+  `/join/:token`, which spends it, mints a session and drops them in their
+  own workspace. `APP_URL` is read server side and never from the request,
+  so an admin cannot have our domain send a link to a site they control.
+  The `access_requests` table is still unwired, and is a different thing:
+  somebody asking to be let in, rather than being invited.
 - **Skills are a badge, not a capability.** PowerPoint, Word, Excel,
   Design, Mind map, Analysis are detected from wording and shown in the
   nav. Word and PDF are real now. **PowerPoint, Excel and Design are

@@ -49,5 +49,80 @@ export async function inviteStaff({ name, email, role, ceiling, dailyLimit }) {
   if (!response.ok || !payload?.ok) {
     return { ok: false, reason: payload?.reason ?? "Could not send that invite." };
   }
-  return payload;
+
+  /* The server makes the token, this side makes the link. It is the only
+     side that knows what address the app is being served from, which
+     matters because the same function answers the live site, a preview
+     deployment and a laptop. */
+  return { ...payload, link: payload.token ? inviteLink(payload.token) : null };
+}
+
+export function inviteLink(token) {
+  return `${window.location.origin}/join/${token}`;
+}
+
+/* "in 3 days", "in 8 hours", "in 40 minutes". The admin has to be able to
+   tell someone how long they have without doing arithmetic. */
+export function timeLeft(expiresAt) {
+  const ms = new Date(expiresAt).getTime() - Date.now();
+  if (!Number.isFinite(ms) || ms <= 0) return "now";
+
+  const minutes = Math.round(ms / 60000);
+  if (minutes < 60) return `${minutes} minute${minutes === 1 ? "" : "s"}`;
+
+  const hours = Math.round(minutes / 60);
+  if (hours < 48) return `${hours} hour${hours === 1 ? "" : "s"}`;
+
+  const days = Math.round(hours / 24);
+  return `${days} day${days === 1 ? "" : "s"}`;
+}
+
+/* --------------------------------------------------------------------------
+   SECTION: Accepting one
+
+   The other side of the link. The token is checked server side, spent
+   there, and answered with a one time session token this swaps for a real
+   session. No password at either end.
+   -------------------------------------------------------------------------- */
+
+export async function acceptInvite(token) {
+  if (!/^[0-9a-f]{64}$/.test(String(token || "").trim())) {
+    return { ok: false, reason: "That invitation link is not right. Ask for a new one." };
+  }
+
+  try {
+    const { data, error } = await supabase.functions.invoke("accept-invite", {
+      body: { token },
+    });
+
+    if (error) {
+      let detail = null;
+      try {
+        detail = (await error?.context?.json?.())?.reason ?? null;
+      } catch {
+        /* the body was not JSON, fall through to the generic message */
+      }
+      console.error("accept-invite failed", error);
+      return { ok: false, reason: detail ?? "Could not reach the server. Check your connection." };
+    }
+
+    if (!data?.ok || !data?.sessionToken) {
+      return { ok: false, reason: data?.reason ?? "Could not open that invitation." };
+    }
+
+    const { error: sessionError } = await supabase.auth.verifyOtp({
+      token_hash: data.sessionToken,
+      type: "magiclink",
+    });
+
+    if (sessionError) {
+      console.error("accept-invite: could not use the session token", sessionError);
+      return { ok: false, reason: "Your invitation worked but we could not sign you in. Sign in with your email instead." };
+    }
+
+    return { ok: true, slug: data.slug };
+  } catch (err) {
+    console.error("accept-invite threw", err);
+    return { ok: false, reason: "Could not reach the server. Check your connection." };
+  }
 }

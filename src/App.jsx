@@ -18,6 +18,7 @@ import { ThemeProvider } from "./shared/theme.jsx";
 
 import Landing from "./pages/Landing.jsx";
 import Setup from "./pages/Setup.jsx";
+import Join from "./pages/Join.jsx";
 import Auth from "./pages/Auth.jsx";
 import Chat from "./pages/Chat.jsx";
 import Admin from "./pages/Admin.jsx";
@@ -55,6 +56,9 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/setup" element={<Setup />} />
+          {/* An invitation link. Above the /:slug routes on purpose, or
+              "join" would be read as a company slug. */}
+          <Route path="/join/:token" element={<Join />} />
           <Route path="/auth" element={<Auth />} />
 
           {/* The public pages. Static paths, so they are matched ahead of

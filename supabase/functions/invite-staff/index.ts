@@ -35,6 +35,16 @@ function json(body: unknown, status = 200) {
    does not reach. Fable and Opus are deliberately not offered. */
 const ALLOWED_CEILINGS = ["haiku-4-5", "sonnet-5"];
 
+/* Where the invitation link points. Deliberately read here and never from
+   the request: an admin inviting their own staff could otherwise have the
+   email carry a link to a site they control, which is a phishing email sent
+   from our domain with our name on it.
+
+   Same sending address as the contact form, on a domain verified with
+   Resend. */
+const APP_URL = (Deno.env.get("APP_URL") ?? "https://stellaxafe.com").replace(/\/+$/, "");
+const FROM = Deno.env.get("CONTACT_FROM") ?? "StellaXafe <noreply@mail.stellaxafe.com>";
+
 Deno.serve(async (req) => {
   /* The preflight. A browser asks before it will send a request carrying
      an Authorization or apikey header, and if this answer is not exactly
@@ -98,14 +108,13 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
-  /* A temporary password, told to the admin once so they can pass it on.
-     There is no invitation email yet, and a password nobody is given is
-     an account nobody can open. Random, long, and never logged. */
-  const temporary = `sx-${crypto.randomUUID().replaceAll("-", "").slice(0, 14)}`;
-
+  /* The account is real from this moment, so the admin sees the person in
+     their list straight away. Its password is random and immediately
+     forgotten: nobody signs in with it. The way in is the invitation link
+     made below, and after that it is the staff member's own email. */
   const { data: created, error: createError } = await asService.auth.admin.createUser({
     email,
-    password: temporary,
+    password: `${crypto.randomUUID()}-${crypto.randomUUID()}`,
     email_confirm: true,
     user_metadata: { name },
   });
@@ -141,7 +150,131 @@ Deno.serve(async (req) => {
     return json({ ok: false, reason: "Could not add them to your company. Try again." }, 500);
   }
 
-  console.log(`invite company=${admin.company_id} by=${user.id} ceiling=${ceiling}`);
+  /* ----------------------------------------------------------------------
+     THE INVITATION LINK
+     Single use and good for 72 hours. Long enough to survive a weekend,
+     short enough that a forwarded email or a mailbox somebody else gets
+     into stops being a way in.
 
-  return json({ ok: true, name, email, temporary });
+     The raw token goes into the link and nowhere else. Only its SHA-256 is
+     stored, the same way a password would be, so a copy of the invites
+     table hands nobody a session.
+     ---------------------------------------------------------------------- */
+
+  const token = `${crypto.randomUUID()}${crypto.randomUUID()}`.replaceAll("-", "");
+  const tokenHash = await sha256(token);
+
+  const { data: lifetime } = await asService.rpc("staff_invite_lifetime");
+  const expiresAt = new Date(Date.now() + hoursFrom(lifetime) * 3600_000).toISOString();
+
+  const { error: inviteError } = await asService.from("staff_invites").insert({
+    company_id: admin.company_id,
+    staff_id: created.user.id,
+    email,
+    token_hash: tokenHash,
+    created_by: user.id,
+    expires_at: expiresAt,
+  });
+
+  if (inviteError) {
+    /* The person exists and is on the team, they just have no way in yet.
+       Worth saying plainly rather than rolling back a good staff row: the
+       admin can invite again and get a fresh link. */
+    console.error("staff row created but the invitation link failed", inviteError);
+    return json({
+      ok: true,
+      name,
+      email,
+      token: null,
+      reason: "They are on your team, but the invitation link could not be made. Invite them again to send one.",
+    });
+  }
+
+  /* ----------------------------------------------------------------------
+     SEND IT
+     Best effort, and deliberately not fatal. The invitation is already real
+     and the admin gets the link back either way, so a mail provider having
+     a bad minute must not cost them the person they just added. `emailed`
+     says which happened so the screen can tell the truth about it.
+     ---------------------------------------------------------------------- */
+
+  const link = `${APP_URL}/join/${token}`;
+  const emailed = await sendInvite({ to: email, name, link });
+
+  console.log(
+    `invite company=${admin.company_id} by=${user.id} ceiling=${ceiling} emailed=${emailed}`,
+  );
+
+  return json({ ok: true, name, email, token, expiresAt, emailed });
 });
+
+/* --------------------------------------------------------------------------
+   THE INVITATION EMAIL
+   Plain, short, and it says who invited them and how long they have. No
+   images and no tracking: this lands in corporate inboxes, and the more a
+   message looks like marketing the more likely it is to be held.
+   -------------------------------------------------------------------------- */
+
+async function sendInvite({ to, name, link }: { to: string; name: string; link: string }) {
+  const key = Deno.env.get("RESEND_API_KEY");
+  if (!key) {
+    console.error("RESEND_API_KEY is not set, invitation not emailed");
+    return false;
+  }
+
+  const first = name.split(/\s+/)[0] || "there";
+  const text =
+    `Hi ${first},\n\n` +
+    `You have been added to your company's StellaXafe workspace.\n\n` +
+    `Open it here:\n${link}\n\n` +
+    `This link works once and runs out in 72 hours. After that, sign in with this email address ` +
+    `and we will send you a code.\n\n` +
+    `StellaXafe`;
+
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: FROM,
+        to: [to],
+        subject: "Your StellaXafe workspace",
+        text,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error("resend refused the invitation email", response.status, await response.text());
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("could not reach resend", err);
+    return false;
+  }
+}
+
+/* Hex SHA-256. Deno has WebCrypto, so nothing needs importing. */
+async function sha256(value: string) {
+  const bytes = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+/* Postgres hands an interval back as "72:00:00" or as an object, depending
+   on the driver. Both are read here so the lifetime stays a database fact
+   rather than a number copied into two places. Falls back to 72. */
+function hoursFrom(interval: unknown): number {
+  if (typeof interval === "string") {
+    const [h, m] = interval.split(":").map(Number);
+    if (Number.isFinite(h)) return h + (Number.isFinite(m) ? m / 60 : 0);
+  }
+  if (interval && typeof interval === "object") {
+    const o = interval as Record<string, number>;
+    const h = (o.hours ?? 0) + (o.days ?? 0) * 24 + (o.minutes ?? 0) / 60;
+    if (h > 0) return h;
+  }
+  return 72;
+}

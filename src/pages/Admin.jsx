@@ -50,7 +50,7 @@ import {
 import { loadMe, listSources, addTextSource, removeSource, listStaff, listWork } from "../shared/session.js";
 import { readFileAsText, canBecomeText } from "../shared/readFile.js";
 import { fetchLinkSource } from "../shared/linkApi.js";
-import { inviteStaff } from "../shared/inviteApi.js";
+import { inviteStaff, timeLeft } from "../shared/inviteApi.js";
 import {
   PRODUCT,
   MAX_SOURCE_UPLOAD_KB,
@@ -1078,23 +1078,12 @@ function AccessSection({ me }) {
               </p>
             )}
 
-            {/* There is no invitation email yet, so the password is shown
-                once, here, for the admin to pass on. Saying nothing and
-                creating an account nobody can open would be worse. */}
-            {invited && (
-              <div
-                className="rounded-[12px] px-3.5 py-3 mt-3 text-[13px] leading-relaxed"
-                style={{ backgroundColor: "rgba(22,176,74,0.1)", color: "var(--text-1)" }}
-              >
-                <span className="font-semibold" style={{ color: BRAND.green }}>
-                  {invited.name} can sign in now.
-                </span>
-                <br />
-                Give them this password. It is shown once and cannot be recovered:
-                <br />
-                <code className="text-[13.5px] font-semibold">{invited.temporary}</code>
-              </div>
-            )}
+            {/* The invitation itself. It is emailed, and the link is also
+                shown here for the times email is slow, held by a filter, or
+                simply easier to paste into a chat. Shown once: it is a way
+                into the company's workspace, so it is not kept on screen or
+                fetched again later. */}
+            {invited && <InviteIssued invited={invited} />}
           </div>
         </form>
       </GlassPanel>
@@ -1350,6 +1339,79 @@ function UsageMeter({ used, limit }) {
           style={{ width: `${pct}%`, background: full ? BRAND.amber : GRADIENTS.meter }}
         />
       </div>
+    </div>
+  );
+}
+
+/* ==========================================================================
+   AN ISSUED INVITATION
+   What the admin sees the moment somebody is added.
+
+   Three facts, in the order they matter: they are on the team, the email
+   has gone (or has not), and here is the link with how long it lasts.
+
+   The link is a way into the company's workspace, so it is treated like
+   one. Shown once, never re-fetched, and the copy button exists so nobody
+   has to select 80 characters of hex by hand and get it wrong.
+   ========================================================================== */
+
+function InviteIssued({ invited }) {
+  const [copied, setCopied] = useState(false);
+  const link = invited.link;
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* Clipboard is blocked in some browsers unless the page is focused.
+         The link is on screen and selectable either way. */
+      setCopied(false);
+    }
+  }
+
+  return (
+    <div
+      className="rounded-[12px] px-3.5 py-3 mt-3 text-[13px] leading-relaxed"
+      style={{ backgroundColor: "rgba(22,176,74,0.1)", color: "var(--text-1)" }}
+    >
+      <span className="font-semibold" style={{ color: BRAND.green }}>
+        {invited.name} is on your team.
+      </span>
+      <br />
+      {invited.emailed
+        ? `We emailed their invitation to ${invited.email}.`
+        : `We could not email ${invited.email}, so send them this link yourself.`}
+
+      {link && (
+        <>
+          <div
+            className="flex items-center gap-2 mt-2.5 rounded-[10px] px-2.5 py-2 border"
+            style={{ backgroundColor: "var(--surface-solid)", borderColor: "var(--border)" }}
+          >
+            <code
+              className="flex-1 min-w-0 truncate text-[12px]"
+              style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
+              title={link}
+            >
+              {link}
+            </code>
+            <button
+              type="button"
+              onClick={copy}
+              className="shrink-0 rounded-[8px] border px-2.5 py-1 text-[12px] font-medium transition-opacity hover:opacity-80"
+              style={{ borderColor: "var(--border-2)", color: "var(--text-2)" }}
+            >
+              {copied ? "Copied" : "Copy"}
+            </button>
+          </div>
+          <span className="block mt-2 text-[12px]" style={{ color: "var(--text-3)" }}>
+            It works once and runs out in {timeLeft(invited.expiresAt)}. After that they sign in
+            with their email.
+          </span>
+        </>
+      )}
     </div>
   );
 }
