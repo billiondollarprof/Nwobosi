@@ -1127,21 +1127,21 @@ Five steps. All your staff ever do is talk.
                   system.
                 </p>
               </div>
-              <div
-                className="m-7 mt-5 rounded-[12px] border px-4 py-3.5"
-                style={{ backgroundColor: "var(--surface-2)", borderColor: "var(--border)" }}
-              >
-                <div className="text-[10.5px] uppercase tracking-wide" style={{ color: "var(--text-3)" }}>
-                  Live at
-                </div>
+              {/* The card's action, not a footnote. This one is deployed and
+                  running, so the strongest thing the card can do is send
+                  somebody to look at it. It used to be a grey line of text
+                  under a "Live at" label, which is where you put a fact you
+                  do not want clicked. */}
+              <div className="m-7 mt-5">
                 <a
                   href="https://amara.ng"
                   target="_blank"
                   rel="noreferrer"
-                  className="text-[13.5px] transition-opacity hover:opacity-70"
-                  style={{ color: "var(--text-2)" }}
+                  className="inline-flex items-center gap-2 text-[14px] font-semibold transition-all hover:gap-3"
+                  style={{ color: BRAND.accentSoft }}
                 >
-                  amara.ng
+                  Open amara.ng
+                  <ArrowRight size={15} />
                 </a>
               </div>
             </GlassPanel>
@@ -1192,35 +1192,6 @@ Five steps. All your staff ever do is talk.
               </div>
             </GlassPanel>
 
-            {/* Form Builder and Automation */}
-            <GlassPanel className="p-0 overflow-hidden" style={{ borderTop: `3px solid ${BRAND.green}` }}>
-              <div className="p-7 pb-0">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <span
-                    className="font-bold text-[16px] tracking-tight"
-                    style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
-                  >
-                    Form Builder &amp; Automation
-                  </span>
-                  <StatusPill tone="ok">Managed setup</StatusPill>
-                </div>
-                <p className="text-[14px] leading-relaxed mt-4" style={{ color: "var(--text-3)" }}>
-                  Custom intake forms, appointment scheduling, and automated WhatsApp reminders for
-                  churches, hospitals, and businesses of any size, with full guest and client CSV
-                  export.
-                </p>
-              </div>
-              <div className="m-7 mt-5">
-                <button
-                  onClick={() => navigate("/form-builder")}
-                  className="inline-flex items-center gap-2 text-[14px] font-semibold transition-all hover:gap-3"
-                  style={{ color: BRAND.accentSoft }}
-                >
-                  Explore the product
-                  <ArrowRight size={15} />
-                </button>
-              </div>
-            </GlassPanel>
           </div>
         </Reveal>
       </section>

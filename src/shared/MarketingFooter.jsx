@@ -30,9 +30,11 @@ const COLUMNS = [
     heading: "Products",
     links: [
       { label: "Demo", to: "/setup" },
-      { label: "Amara", to: "/#products" },
+      /* Deployed and running, so it goes to the product rather than to a
+         card describing it. `href` instead of `to` is what the renderer
+         reads to know this one leaves the site. */
+      { label: "Amara", href: "https://amara.ng" },
       { label: "XALOM", to: "/#products" },
-      { label: "Form Builder & Automation", to: "/form-builder" },
     ],
   },
 ];
@@ -79,16 +81,32 @@ export default function MarketingFooter() {
                 >
                   {column.heading}
                 </h4>
-                {column.links.map((link) => (
-                  <button
-                    key={link.label}
-                    onClick={() => navigate(link.to)}
-                    className="block text-[13.5px] mb-2.5 text-left transition-opacity hover:opacity-70"
-                    style={{ color: "var(--text-2)" }}
-                  >
-                    {link.label}
-                  </button>
-                ))}
+                {column.links.map((link) =>
+                  /* A link that leaves the site is a real anchor, so it can be
+                     opened in a new tab, copied, and read by a crawler. A
+                     button that calls navigate() is none of those things. */
+                  link.href ? (
+                    <a
+                      key={link.label}
+                      href={link.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block text-[13.5px] mb-2.5 text-left transition-opacity hover:opacity-70"
+                      style={{ color: "var(--text-2)" }}
+                    >
+                      {link.label}
+                    </a>
+                  ) : (
+                    <button
+                      key={link.label}
+                      onClick={() => navigate(link.to)}
+                      className="block text-[13.5px] mb-2.5 text-left transition-opacity hover:opacity-70"
+                      style={{ color: "var(--text-2)" }}
+                    >
+                      {link.label}
+                    </button>
+                  ),
+                )}
               </div>
             ))}
           </div>

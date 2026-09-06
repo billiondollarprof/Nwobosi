@@ -26,7 +26,6 @@ import Services from "./pages/Services.jsx";
 import Contact from "./pages/Contact.jsx";
 import Founder from "./pages/Founder.jsx";
 import Insights from "./pages/Insights.jsx";
-import FormBuilder from "./pages/FormBuilder.jsx";
 
 /* Every page opens at its top.
 
@@ -59,6 +58,18 @@ export default function App() {
           {/* An invitation link. Above the /:slug routes on purpose, or
               "join" would be read as a company slug. */}
           <Route path="/join/:token" element={<Join />} />
+
+          {/* Retired. It was a public page for months, so it is in search
+              results and in links. Without this it falls through to the
+              /:slug route below, gets read as a company name, and sends
+              somebody to a sign in screen for a workspace that was never
+              theirs. Home is the honest answer.
+
+              Worth knowing: every unknown single segment path does that,
+              not just this one. Fixing it properly means knowing which
+              slugs are real, which is a database call this router does not
+              make. */}
+          <Route path="/form-builder" element={<Navigate to="/" replace />} />
           <Route path="/auth" element={<Auth />} />
 
           {/* The public pages. Static paths, so they are matched ahead of
@@ -68,7 +79,6 @@ export default function App() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/founder" element={<Founder />} />
           <Route path="/insights" element={<Insights />} />
-          <Route path="/form-builder" element={<FormBuilder />} />
 
           {/* The plain paths are the demo shortcuts. Real companies live at
               their own slug, which is what setup sends people to. Static

@@ -33,6 +33,12 @@
   The code is selectable text rather than a picture, and large, because a
   good share of people will read this on a phone and type it into another
   window on the same phone.
+
+  "10 minutes" is not decoration, it has to match Authentication -> Emails ->
+  Email OTP Expiration, which Supabase ships at 3600 seconds. An hour is a
+  long time for a secret sitting in an inbox belonging to somebody who is
+  signing in right now, and it is the window an attacker who reaches that
+  inbox later gets to work with. Set it to 600 and this sentence is true.
 -->
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
        style="background-color:#f4f5fa;margin:0;padding:32px 12px;">
@@ -80,7 +86,7 @@
           <td style="padding:18px 32px 0 32px;">
             <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
                         font-size:13px;color:#5b6180;line-height:1.6;">
-              It runs out in an hour and works once.
+              It runs out in 10 minutes and works once.
             </div>
           </td>
         </tr>

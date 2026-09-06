@@ -1,0 +1,151 @@
+# ARCHITECTURE
+
+How the thing actually works, in Anthony's own description, written down
+2026-09-06 because most of it is not what the demo currently does.
+
+`CURRENT.md` says what is built. **This file says what is designed.** Where
+they disagree, this file is the target and `CURRENT.md` is the truth.
+
+---
+
+## What it is, and what it is not
+
+It does **not** train anything on your data. Nothing is fine tuned and there
+is no model of yours anywhere.
+
+It is an **orchestration layer over a closed source model**, Claude or
+OpenAI class, reached with an API key. Closed source deliberately, not open
+weights: the frontier models are the ones good enough that a non technical
+person gets an above average result on their first afternoon, and that is
+the whole product promise.
+
+So the value is not the model. Everyone has the model. The value is the
+process wrapped around it.
+
+---
+
+## Where files live, and where they do not
+
+**Documents are never stored in the platform.** This is the part most
+"company AI" products get differently: they index everything into a vector
+database that they own. This does not.
+
+- The **admin** connects the company's own sources. Drive, SharePoint,
+  Slack, email, whatever the company already runs on.
+- **Staff** connect their own tools on top of that, their own mail, their
+  own storage.
+- Work is produced, handed back as a download **and** written into the
+  person's own storage, and then it is gone from us.
+- What is kept is small and per person: a session file and a current file,
+  enough for the assistant to recall what that one staff member is working
+  on. Per staff, never pooled.
+
+---
+
+## The loop, which is the actual invention
+
+A staff member asks for something. **The system does not start building.**
+
+1. **Search the company's own material first.** Everything the admin
+   connected, plus whatever that staff member connected.
+2. **Compare that against what they asked for, and find the gaps.**
+3. **Interview them about the gaps.** Not a form. Questions, because the
+   person knows things the documents do not.
+4. **Offer to go and get what is still missing.** It can search the public
+   web. It can be pointed at a link. It can pull the data itself.
+5. **Show them what it found and make them confirm it.** Nothing fetched enters
+   the work until a human has looked at it and said yes.
+6. **Read the whole plan back.** "This is what I am about to do." They say
+   go ahead, or they correct it, and a correction re enters the loop.
+7. **Only then write the prompt.** A long, specific one, which becomes the
+   single instruction the generation runs against.
+8. **Then use the tools.** Word, Excel, Canva, Slack, email. Real files, not
+   a description of a file.
+
+**Step 4 is a deliberate concession and it is worth understanding why.**
+Refusing to fetch anything would be safer on paper and would fail in
+practice: staff are already used to a public chatbot doing it for them, so a
+tool that makes them go and do the research by hand is a tool they will quit
+and go back to pasting company documents into ChatGPT. That is the exact
+behaviour this product exists to stop. So it fetches, and step 5 is the
+price of it.
+
+**This is the anti hallucination mechanism**, and it is a process, not a
+model setting. The common failure is not the model inventing a fact in a
+sentence. It is somebody typing a vague request into a chatbot that knows
+nothing about their company and accepting whatever comes back. Interviewing,
+confirming and planning before generating removes that, and it is why the
+output already sounds like the company.
+
+**It stays on the company's subject.** Ask it something unrelated and it
+comes back to the business. That is scope control and it also reduces the
+chance of somebody wandering into a conversation where they paste something
+they should not.
+
+---
+
+## What this means for the copy, and one problem with it
+
+The reviewer Anthony was sent got one thing right that matters more than
+everything else they wrote:
+
+> Because it still calls closed-source models, "nothing ever leaves" is only
+> partially true. The documents may not be stored on their servers, but the
+> content of the prompts, the interview answers, and any data the LLM sees
+> still goes to Anthropic/OpenAI.
+
+**That is correct and the landing page currently says "Nothing ever
+leaves."** As written that is a claim a technical reviewer can falsify in
+one question, on the page whose entire job is being trusted.
+
+What is actually true, and is still a strong claim:
+
+- Nothing is **trained on**. Anthropic and OpenAI do not train on API
+  traffic.
+- Nothing is **retained by us**. No document sits in our database.
+- Nothing is **pooled**. One company's material never reaches another's, and
+  one staff member's memory never reaches another's.
+- With a **zero data retention** arrangement or an enterprise endpoint, the
+  model provider does not keep it either, and that is a real thing that can
+  be bought and named.
+
+The honest version of the headline is about the **boundary**, not about
+physics. "Nothing is trained on, nothing is retained, nothing is pooled" is
+harder to attack and is still the thing a buyer cares about.
+
+See `DIRECTION.md` for the standing rule: never put a claim on a public page
+that a reviewer can falsify.
+
+---
+
+## The rest of the reviewer's points, and which are worth planning for
+
+**Worth planning for:**
+
+- **Confirm and publish the data handling.** Zero data retention on the API
+  account, or an enterprise endpoint. This is the single remaining trust
+  question and it is answerable with a fact rather than an argument.
+- **The interview loop against messy reality.** Incomplete metadata,
+  contradictory sources, and the lazy user who types "go ahead" without
+  reading. That last one is the real risk: a confirmation step nobody reads
+  is not a confirmation step. Worth testing deliberately with bad data.
+- **Connector reliability.** The loop is only as good as what it can see.
+- **Who owns the orchestration after handover**, and what happens when a
+  model API changes under it.
+
+**Not worth acting on:**
+
+- The reviewer's "almost zero hallucination is overstated" is right, and
+  `DIRECTION.md` already forbids the numeric claim. Nothing to change.
+
+---
+
+## What the demo does not do yet
+
+Recorded so nobody reads the section above and assumes it is built.
+
+- Connectors are not live. Canva and Drive are registered and unwired.
+- Delivery into the person's own storage is not built. Work downloads.
+- The web fetch, the confirm step and the source suggestions are not built.
+- The interview and read back **are** built, and are the part of this that
+  already runs.

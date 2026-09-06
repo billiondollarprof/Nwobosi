@@ -166,6 +166,12 @@ a real browser.
   demo link goes to `/setup`, which is built to be landed on cold: it is on
   the same nav and footer as the rest of the site and it says what the four
   steps are before asking for the code.
+- **`ARCHITECTURE.md` is new and matters.** It records how the product is
+  designed to work, in Anthony's own description, and most of it is not what
+  the demo does yet. `CURRENT.md` is what is built; `ARCHITECTURE.md` is the
+  target. It also carries the one live copy problem: the landing page says
+  "Nothing ever leaves" and that is falsifiable, because prompts still reach
+  the model provider even though documents are never stored here.
 - **The mark is the Containment Seal**, built to `MARK.md`. Read that file
   before touching the logo: the old interlocked rings were a drift away
   from the written spec and looked like somebody else's mark. Only the
