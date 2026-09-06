@@ -8,12 +8,14 @@
    either: what does this person build, and can they do it for us.
 
    WHO IT IS WRITTEN FOR
-   Two readers, and they want the same evidence:
+   Three readers, and they want the same evidence:
 
      A company hiring for AI orchestration, AI automation, agentic systems
      or forward deployed work. They are looking for somebody who can design
      the control layer and ship it, not somebody who can name models.
-     A company that wants a private AI built for them.
+     A company that wants a private AI built for them, or AI connected
+     into the systems it already runs.
+     A company that wants its own people trained to use AI properly.
 
    HOW IT IS WRITTEN
    In the language those roles are advertised in, because a recruiter scans
@@ -28,8 +30,8 @@
    Read top to bottom:
 
      1. Who and what
-     2. The mechanism
-     3. What is shipped
+     2. What is shipped
+     3. The mechanism
      4. How the work goes
      5. Get in touch
    ========================================================================== */
@@ -52,7 +54,7 @@ const LOOP = [
   {
     step: "01",
     title: "It reads the company first",
-    body: "Everything the organisation connected, plus whatever that person connected themselves. Before a word is generated.",
+    body: "Everything the organization connected, plus whatever that person connected themselves. Before a word is generated.",
   },
   {
     step: "02",
@@ -67,12 +69,12 @@ const LOOP = [
   {
     step: "04",
     title: "It fetches, and makes them confirm",
-    body: "It can search, follow a link, pull data. Nothing it found enters the work until a human has looked at it and said yes.",
+    body: "It can search, follow a link, or pull data. Nothing it found enters the work until a human has looked at it and said yes.",
   },
   {
     step: "05",
     title: "It reads the plan back",
-    body: "This is what I am about to do. They approve it or correct it, and a correction goes round the loop again.",
+    body: "This is what I am about to do. They approve it or correct it, and a correction goes around the loop again.",
   },
   {
     step: "06",
@@ -93,8 +95,8 @@ const WORK = [
     name: "StellaXafe",
     href: null,
     status: { tone: "accent", label: "In build" },
-    line: "Private, company-scoped AI for organisations that cannot afford to leak.",
-    body: "The system this page sits on. Multi-tenant isolation enforced in the database rather than in the application, connectors at both the organisation level and the staff level, and no document ever stored on my side: finished work goes back to the customer's own storage.",
+    line: "Private, company-scoped AI for organizations that cannot afford to leak.",
+    body: "The system this page sits on. Multi-tenant isolation enforced in the database rather than in the application, connectors at both the organization level and the staff level, and no document ever stored on my side: finished work goes back to the customer's own storage.",
   },
   {
     name: "XALOM",
@@ -116,7 +118,7 @@ const HOW = [
   },
   {
     title: "I build for the non-technical user",
-    body: "Nobody using what I build should have to learn prompting, and nobody should be shown a setting they didn't ask for. If a person needs training to use it, the design failed, not the person.",
+    body: "Nobody using what I build should have to learn prompting, and nobody should be shown a setting they did not ask for. If a person needs training to use it, the design failed, not the person.",
   },
   {
     title: "Delivery is measured in weeks, not quarters",
@@ -155,7 +157,7 @@ export default function Anthony() {
               className="text-[12px] font-semibold uppercase tracking-[0.12em] mt-4"
               style={{ color: BRAND.accentSoft }}
             >
-              AI Automation &amp; Systems Builder — Workflows, Agents &amp; Business Automation
+              AI Automation &amp; Systems Builder | Workflows, Agents &amp; Business Automation
             </p>
 
             <h1
@@ -183,7 +185,7 @@ export default function Anthony() {
 
             <p className="text-[13.5px] leading-[1.6] mb-8" style={{ color: "var(--text-3)" }}>
               Working across AI orchestration and agents, workflow automation, integrations and
-              APIs, internal tools, knowledge systems, and human escalation.
+              APIs, internal tools, and company knowledge systems.
             </p>
 
             <div className="flex flex-col sm:flex-row items-stretch gap-3">
@@ -205,10 +207,29 @@ export default function Anthony() {
                   color: "var(--text-1)",
                 }}
               >
-                See something live
+                Open Amara, live in production
                 <ArrowUpRight size={16} />
               </a>
             </div>
+
+            {/* A recruiter who wants to reach him should not have to find a
+                contact form on a company site and fill it in. The address
+                is already the published one in config.js, so this exposes
+                nothing new, and it is the single highest value thing on the
+                page for the reader who has decided in four seconds. */}
+            <p className="text-[13.5px] mt-6" style={{ color: "var(--text-3)" }}>
+              <a
+                href="mailto:anthony@stellaxafe.com"
+                className="font-medium underline underline-offset-4 transition-opacity hover:opacity-80"
+                style={{ color: BRAND.accentSoft, textDecorationColor: "var(--border-2)" }}
+              >
+                anthony@stellaxafe.com
+              </a>
+              <span className="mx-2.5" style={{ opacity: 0.35 }}>
+                |
+              </span>
+              Open to remote roles and contract work
+            </p>
           </div>
 
           {/* The photograph. Second in source order so a screen reader and a
@@ -233,49 +254,7 @@ export default function Anthony() {
       </section>
 
       {/* ====================================================================
-          2. THE MECHANISM
-          ==================================================================== */}
-      <section className="px-5 sm:px-8 py-14 sm:py-20">
-        <div className="max-w-5xl mx-auto">
-          <Eyebrow>The mechanism</Eyebrow>
-          <h2
-            className="text-[26px] sm:text-[32px] font-medium leading-[1.15] tracking-tight mt-4 mb-4 max-w-2xl"
-            style={{ fontFamily: FONTS.display, color: "var(--text-1)", textWrap: "balance" }}
-          >
-            Most company AI answers immediately. This one refuses to.
-          </h2>
-          <p className="text-[15.5px] leading-relaxed max-w-2xl mb-10" style={{ color: "var(--text-3)" }}>
-            The common failure is not a model inventing a sentence. It is somebody typing a vague
-            request into a tool that knows nothing about their company, and accepting whatever
-            comes back. Six steps remove that, and none of them is a model setting.
-          </p>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {LOOP.map((item) => (
-              <GlassPanel key={item.step} className="p-6">
-                <div
-                  className="text-[12px] font-semibold tracking-[0.14em] mb-3"
-                  style={{ color: BRAND.accentSoft }}
-                >
-                  {item.step}
-                </div>
-                <div
-                  className="text-[16px] font-semibold tracking-tight mb-2"
-                  style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
-                >
-                  {item.title}
-                </div>
-                <p className="text-[14px] leading-relaxed" style={{ color: "var(--text-3)" }}>
-                  {item.body}
-                </p>
-              </GlassPanel>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ====================================================================
-          3. WHAT IS SHIPPED
+          2. WHAT IS SHIPPED
           Status pills are honest on purpose. One live thing that a stranger
           can open beats three described ones.
           ==================================================================== */}
@@ -331,6 +310,48 @@ export default function Anthony() {
       </section>
 
       {/* ====================================================================
+          3. THE MECHANISM
+          ==================================================================== */}
+      <section className="px-5 sm:px-8 py-14 sm:py-20">
+        <div className="max-w-5xl mx-auto">
+          <Eyebrow>The mechanism</Eyebrow>
+          <h2
+            className="text-[26px] sm:text-[32px] font-medium leading-[1.15] tracking-tight mt-4 mb-4 max-w-2xl"
+            style={{ fontFamily: FONTS.display, color: "var(--text-1)", textWrap: "balance" }}
+          >
+            Most company AI answers immediately. This one refuses to.
+          </h2>
+          <p className="text-[15.5px] leading-relaxed max-w-2xl mb-10" style={{ color: "var(--text-3)" }}>
+            The common failure is not a model inventing a sentence. It is somebody typing a vague
+            request into a tool that knows nothing about their company, and accepting whatever
+            comes back. Six steps remove that, and none of them is a model setting.
+          </p>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {LOOP.map((item) => (
+              <GlassPanel key={item.step} className="p-6">
+                <div
+                  className="text-[12px] font-semibold tracking-[0.14em] mb-3"
+                  style={{ color: BRAND.accentSoft }}
+                >
+                  {item.step}
+                </div>
+                <div
+                  className="text-[16px] font-semibold tracking-tight mb-2"
+                  style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
+                >
+                  {item.title}
+                </div>
+                <p className="text-[14px] leading-relaxed" style={{ color: "var(--text-3)" }}>
+                  {item.body}
+                </p>
+              </GlassPanel>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ====================================================================
           4. HOW THE WORK GOES
           ==================================================================== */}
       <section className="px-5 sm:px-8 py-14 sm:py-20">
@@ -363,8 +384,8 @@ export default function Anthony() {
 
       {/* ====================================================================
           5. GET IN TOUCH
-          One action. Two readers arrive on this page, a company hiring and a
-          company buying, and both of them do the same next thing.
+          One action. Every reader who arrives here, hiring or buying or
+          looking for training, does the same next thing.
           ==================================================================== */}
       <section className="px-5 sm:px-8 py-16 sm:py-24 text-center">
         <div className="max-w-2xl mx-auto">
@@ -379,7 +400,7 @@ export default function Anthony() {
             system you already run, or what your people need to get better output from the
             tools they already have. I work with anyone who wants AI integrated into their
             systems or their work accelerated by it, and I teach professionals how to use it
-            well. Tech company, law firm, hospital, school, or any organisation that wants its
+            well. Tech company, law firm, hospital, school, or any organization that wants its
             staff working at full capacity without having to become engineers first.
           </p>
           <PrimaryButton

@@ -1256,7 +1256,8 @@ Five steps. All your staff ever do is talk.
               <p className="text-[15px] leading-relaxed mb-4" style={{ color: "var(--text-3)" }}>
                 Your admin decides what goes into the knowledge base. Every company fact in an
                 output traces back to a source you approved. When something is missing it says so.
-                Zero trust at the runtime layer, and your data never leaves boundaries you control.
+                Isolation is enforced in the database rather than in the application, and a
+                deployment runs inside the perimeter your organization already controls.
               </p>
               {/* The storage boundary is the part a technical reviewer will
                   look for, and it is the strongest thing on this section:
