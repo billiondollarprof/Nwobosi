@@ -4,6 +4,36 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
+    <!--
+      ONE ADDRESS FOR THE LIVE SITE
+
+      Cloudflare Pages publishes the production branch at its own alias as
+      well as at the custom domain, so stellaxafe01.pages.dev serves a second
+      complete copy of stellaxafe.com. That is a duplicate of every page for
+      a crawler and a second brand name for anyone who finds the link.
+
+      The canonical tag below already tells search engines which one counts.
+      This sends people there too.
+
+      Deliberately an exact hostname match on that one alias, and deliberately
+      not a pattern. testing.stellaxafe01.pages.dev is where work is looked at
+      before it is published and must keep working, and so must every per
+      deploy hash and localhost.
+
+      In the head rather than in the app, so it runs before the bundle loads
+      and nobody sees a frame of the wrong domain. replace, not assign, so
+      Back does not bounce them straight into it again.
+    -->
+    <script>
+      (function () {
+        if (location.hostname === "stellaxafe01.pages.dev") {
+          location.replace(
+            "https://stellaxafe.com" + location.pathname + location.search + location.hash
+          );
+        }
+      })();
+    </script>
+
     <title>StellaXafe — Private AI that already knows your company</title>
     <meta
       name="description"
