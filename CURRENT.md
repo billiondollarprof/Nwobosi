@@ -166,6 +166,18 @@ a real browser.
   demo link goes to `/setup`, which is built to be landed on cold: it is on
   the same nav and footer as the rest of the site and it says what the four
   steps are before asking for the code.
+- **One address for the workspace: `/demo`.** It renders the admin panel or
+  the assistant depending on who is signed in, with `?view=assistant` for an
+  admin who wants to see what staff see. `/{slug}` and `/{slug}/admin` are
+  gone. The slug was decorative: Chat never read it and Admin only used it to
+  build links, because both have always taken the workspace from the session,
+  which is the only source a person cannot edit in the address bar.
+  Dropping it fixed a real bug as a side effect. Every unknown single segment
+  path used to be read as a company name and sent to a sign in screen, which
+  both looked broken and let somebody probe for which companies exist. A
+  mistyped path goes home now.
+  `/chat`, `/admin` and `/{slug}/admin` redirect rather than 404, because
+  they were public.
 - **`ARCHITECTURE.md` is new and matters.** It records how the product is
   designed to work, in Anthony's own description, and most of it is not what
   the demo does yet. `CURRENT.md` is what is built; `ARCHITECTURE.md` is the

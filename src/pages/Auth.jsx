@@ -83,21 +83,15 @@ export default function Auth() {
       startAdminClock();
     }
 
-    /* Back to whatever they were trying to open, when that is a page on
-       their own workspace. Anything else, including a workspace that is
-       not theirs, falls back to their own front door. */
+    /* Back to whatever they were trying to open, when it is inside the
+       workspace. The check is still here even though there is only one
+       address now: `next` comes from the query string, so it is somebody
+       else's text until it has been looked at, and an open redirect on a
+       sign in page is how people get walked to a copy of it. */
     const wanted = new URLSearchParams(window.location.search).get("next");
-    const ownPrefix = `/${me.company.slug}`;
-    const safe = wanted && (wanted === ownPrefix || wanted.startsWith(`${ownPrefix}/`));
+    const safe = wanted === "/demo" || wanted?.startsWith("/demo?");
 
-    navigate(
-      safe
-        ? wanted
-        : me.staff?.access_level === "admin"
-        ? `${ownPrefix}/admin`
-        : ownPrefix,
-      { replace: true },
-    );
+    navigate(safe ? wanted : "/demo", { replace: true });
   }
 
   /* ------------------------------------------------------------------------

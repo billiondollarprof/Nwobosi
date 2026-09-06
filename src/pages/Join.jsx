@@ -65,10 +65,10 @@ export default function Join() {
         return;
       }
 
-      /* Straight into their own workspace, on the chat side. They are staff,
-         not an admin, and the chat is the whole product for them. replace,
-         not push, so Back does not land them on a spent link. */
-      navigate(result.slug ? `/${result.slug}` : "/", { replace: true });
+      /* One address for the workspace, which works out for itself that
+         this person is staff and shows them the assistant. replace, not
+         push, so Back does not land them on a spent link. */
+      navigate("/demo", { replace: true });
     })();
   }, [token, navigate]);
 

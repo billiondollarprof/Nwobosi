@@ -19,9 +19,8 @@ import { ThemeProvider } from "./shared/theme.jsx";
 import Landing from "./pages/Landing.jsx";
 import Setup from "./pages/Setup.jsx";
 import Join from "./pages/Join.jsx";
+import Workspace from "./pages/Workspace.jsx";
 import Auth from "./pages/Auth.jsx";
-import Chat from "./pages/Chat.jsx";
-import Admin from "./pages/Admin.jsx";
 import Services from "./pages/Services.jsx";
 import Contact from "./pages/Contact.jsx";
 import Founder from "./pages/Founder.jsx";
@@ -80,14 +79,19 @@ export default function App() {
           <Route path="/founder" element={<Founder />} />
           <Route path="/insights" element={<Insights />} />
 
-          {/* The plain paths are the demo shortcuts. Real companies live at
-              their own slug, which is what setup sends people to. Static
-              paths above win over the slug pattern below, so /setup stays
-              /setup and never gets read as a company called "setup". */}
-          <Route path="/chat" element={<Chat />} />
-          <Route path="/admin" element={<Admin />} />
-          <Route path="/:slug" element={<Chat />} />
-          <Route path="/:slug/admin" element={<Admin />} />
+          {/* One address for the product. What it renders depends on who is
+              signed in, not on what is in the path. See Workspace.jsx for
+              why the slug went: it was decorative, it leaked which companies
+              exist, and it made every mistyped path look like one. */}
+          <Route path="/demo" element={<Workspace />} />
+
+          {/* Where the old addresses went. These were public and are in
+              bookmarks, so they move rather than break. The slug is dropped
+              on the way through because the session already knows which
+              workspace the person belongs to. */}
+          <Route path="/chat" element={<Navigate to="/demo?view=assistant" replace />} />
+          <Route path="/admin" element={<Navigate to="/demo" replace />} />
+          <Route path="/:slug/admin" element={<Navigate to="/demo" replace />} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

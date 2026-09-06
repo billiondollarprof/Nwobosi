@@ -175,7 +175,7 @@ export default function Setup() {
         setError(opened.reason);
         return;
       }
-      navigate(`/${opened.slug}/admin`);
+      navigate("/demo");
       return;
     }
 
@@ -224,7 +224,7 @@ export default function Setup() {
     }
 
     setBusy(false);
-    navigate(`/${result.slug}/admin`);
+    navigate("/demo");
   }
 
   /* ========================================================================

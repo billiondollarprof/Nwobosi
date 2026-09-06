@@ -84,6 +84,49 @@ they should not.
 
 ---
 
+## Who signs in, and how
+
+**The demo and a real deployment are deliberately different, and the demo is
+the one that is cut down.**
+
+### The demo, which is what is built
+
+One address, `/demo`. It renders the panel if you run the place and the
+assistant if you use it, and an admin can cross to the assistant view. There
+is no slug in the URL: the workspace comes from the session, because that is
+the only source a person cannot edit in the address bar.
+
+- **Admin:** access code, nothing else. No email, no password. The code
+  builds the workspace the first time and opens the same one every time
+  after.
+- **Staff:** an invitation link, then a code to their email.
+
+**The admin path is short on purpose and only for the demo.** Somebody
+trying this has not bought anything yet. Asking them for an email before
+they have seen a single screen is where they close the tab, and every field
+between them and the thing they came to look at costs some of them. So the
+demo trades a factor away to get them moving.
+
+### A real deployment, which is not built yet
+
+The same shape, with the factor put back:
+
+- **Admin: access code, then a code to their email.** The access code says
+  which workspace and that this person is an admin of it. The emailed code
+  proves they are them. Two factors, and the access code stays valid rather
+  than being spent, because it is now an identifier rather than a ticket.
+- **Staff: an emailed code**, or the invitation link the first time.
+
+An access code on its own is not enough for a real company. It is a string
+that can be forwarded, screenshotted, or left in a chat thread, and an admin
+can change what the company's AI knows and who may read it. The demo can
+live with that because there is nothing real behind it. A deployment cannot.
+
+Passwords appear in neither, unless a customer's own policy demands them.
+See the No passwords section in `CLAUDE.md`.
+
+---
+
 ## What this means for the copy, and one problem with it
 
 The reviewer Anthony was sent got one thing right that matters more than
