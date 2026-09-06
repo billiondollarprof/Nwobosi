@@ -24,6 +24,7 @@ import Auth from "./pages/Auth.jsx";
 import Services from "./pages/Services.jsx";
 import Contact from "./pages/Contact.jsx";
 import Founder from "./pages/Founder.jsx";
+import Anthony from "./pages/Anthony.jsx";
 import Insights from "./pages/Insights.jsx";
 
 /* Every page opens at its top.
@@ -77,6 +78,18 @@ export default function App() {
           <Route path="/services" element={<Services />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/founder" element={<Founder />} />
+
+          {/* The page that goes on a LinkedIn profile and in a job
+              application. Its own address rather than /founder, because the
+              two answer different questions: /founder is who is behind
+              StellaXafe, this is what this person builds and can they do it
+              for us.
+
+              A path rather than a subdomain on purpose, for now. It works
+              the moment this deploys, where anthony.stellaxafe.com needs DNS
+              and a certificate first. When that lands it points here and the
+              address on a profile does not have to change again. */}
+          <Route path="/anthony" element={<Anthony />} />
           <Route path="/insights" element={<Insights />} />
 
           {/* One address for the product. What it renders depends on who is

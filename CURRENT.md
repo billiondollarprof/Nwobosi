@@ -178,6 +178,14 @@ a real browser.
   mistyped path goes home now.
   `/chat`, `/admin` and `/{slug}/admin` redirect rather than 404, because
   they were public.
+- **`/anthony` is the page for job applications and LinkedIn.** Separate
+  from `/founder` on purpose: that one answers "who is behind StellaXafe"
+  for somebody already reading about StellaXafe, this one answers "what does
+  this person build and can they do it for us" for somebody who has never
+  heard of either. Written in the language those roles are advertised in.
+  A path rather than a subdomain for now, because it works the moment it
+  deploys. `anthony.stellaxafe.com` needs DNS and a certificate; when that
+  lands it points here and the address on a profile never has to change.
 - **`ARCHITECTURE.md` is new and matters.** It records how the product is
   designed to work, in Anthony's own description, and most of it is not what
   the demo does yet. `CURRENT.md` is what is built; `ARCHITECTURE.md` is the
