@@ -74,6 +74,37 @@ Switching between tasks is free and keeps the whole conversation. Do not switch 
 
 The bigger cost in a long session is not the tier, it is the length of the conversation being resent every turn. When a chunk of work is finished and the next chunk is unrelated, a fresh session saves more than a tier change does.
 
+## Direction is not copy
+
+Anthony briefs Claude so the work goes in the right direction. **A briefing
+is not text to publish.** It is context. Claude translates it, and the
+translation is the actual job.
+
+- **Never transcribe a briefing onto a page.** "XALOM is just remaining
+  wiring" tells Claude the state of things. On a public page it becomes a
+  progress bar shown to a buyer, which is nobody's business and reads as
+  half finished. Internal status stays internal. A public surface names a
+  product and its stage in the same language the rest of the site uses.
+- **Write for the person in front of the page.** A recruiter, a buyer, or
+  somebody who needs a job done. Ask what they want to know, not what is
+  true to say. Everything true does not go on.
+- **Cut.** If one word does it, use one word. If two lines do it, never
+  write a paragraph. Nobody arrives to read a textbook, they arrive to find
+  one thing.
+- **Delete every line that defends against an accusation nobody made.** No
+  disclaimers, no "not a prototype", no explaining what Anthony does not
+  personally do. A confession above the fold prices the work down before
+  the reader has decided they want it. What he can and cannot take on is an
+  interview conversation, and he handles it himself.
+- **Sound certain.** Use the real term where it carries weight:
+  orchestration, multi tenant isolation, human in the loop, production.
+  Reaching for the softest possible word to seem humble reads as somebody
+  who is not sure of themselves, and it sells him short. Do not overpromise
+  and do not undersell. A claim that is true gets stated flat, not hedged.
+- **Then read it back as the person it is aimed at.** Would you hire him?
+  Would you buy? If the answer is no, the copy is not finished, however
+  accurate it is.
+
 ## The product principle
 
 The product should feel like an unfair advantage to someone who is not technical. Simple to set up, simple to use, working at full intelligence underneath. It should feel like cheating.

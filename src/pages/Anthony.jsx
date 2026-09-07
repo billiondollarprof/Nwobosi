@@ -7,30 +7,16 @@
    answers a different question, asked by somebody who has never heard of
    either: what can this person do for us.
 
-   THE ONE RULE THIS PAGE IS WRITTEN UNDER
-   A recruiter is not hiring somebody who owns a business. They are hiring
-   somebody who can do the job in front of them. So nothing here is framed
-   as ownership, funding, traction or a founder story. Amara and StellaXafe
-   appear only as evidence of a capability, never as assets.
+   THE RULE THIS PAGE IS WRITTEN UNDER
+   A recruiter is not hiring somebody who owns a business, they are hiring
+   somebody who can do the job in front of them. Nothing here is framed as
+   ownership, funding or traction. Amara, StellaXafe and XALOM appear as
+   evidence of a capability, never as assets.
 
-   That also decides what is left out. There are no user counts and no
-   revenue figures, because the question is not how the business is doing,
-   it is whether the person can deliver. And there is no repository link,
-   because the repositories are private and a link to one shows a stranger
-   nothing at all. Access is offered on request instead, which is the
-   honest version of the same thing.
-
-   WHAT THIS PAGE DOES NOT DO
-   It does not explain how the work gets done. A page that opens by
-   volunteering what its author does not personally type is a disclaimer
-   nobody asked for, and it prices the work down before the reader has
-   even decided they want it.
-
-   The page never claims he is a software engineer, so there is nothing to
-   walk back. It claims what he delivers, and "AI automation" already tells
-   a reader everything true about the method. What he can and cannot take
-   on is a conversation for an interview, where it belongs, not a
-   confession printed above the fold.
+   See "Direction is not copy" in CLAUDE.md before editing any line of it.
+   Short version: no internal status on a public surface, no disclaimers,
+   no paragraph where two lines will do, and state a true claim flat rather
+   than hedged.
 
    Read top to bottom:
 
@@ -49,41 +35,39 @@ import { GlassPanel, PrimaryButton, StatusPill } from "../shared/ui.jsx";
 import { MarketingPage, GradientText, Eyebrow } from "../shared/marketing.jsx";
 import Photo from "../shared/Photo.jsx";
 
-/* --------------------------------------------------------------------------
-   What a company gets, written as deliverables rather than as skills. A
-   skills list asks the reader to work out what it would mean for them. This
-   names the thing they would actually receive.
-   -------------------------------------------------------------------------- */
+/* Deliverables, not skills. A skills list asks the reader to work out what
+   it would mean for them. Two lines each, because a scanner reads titles
+   and stops. */
 
 const DELIVERS = [
   {
-    title: "Turn a manual process into a system that runs",
-    body: "Point me at what your team does by hand every week. I map the workflow, work out where AI belongs and where a person has to stay, and build it into something that runs on its own. First conversation to production, without it being handed off halfway.",
+    title: "Automate what your team repeats",
+    body: "Point me at the work that happens every week by hand. I map it, decide where a person still belongs, and ship it as a system that runs itself.",
   },
   {
-    title: "Give your staff answers from your own material",
-    body: "A knowledge system scoped to what your organization has approved, so somebody in their first week gets the same standard of answer as the person who has been there nine years. No prompt course and no power user in the middle.",
+    title: "Put your company's knowledge on tap",
+    body: "Staff get answers out of your own approved material. Someone in their first week works to the standard of someone in their ninth year.",
   },
   {
-    title: "Put an assistant in front of your customers",
-    body: "On the channels they already use, answering from material you approved, and handing over to a person the moment it should. It steps back while a human is in the conversation and picks up again when the room goes quiet.",
+    title: "Assistants your customers actually talk to",
+    body: "On WhatsApp, or wherever they already are. It answers from your material and hands over to a person the moment it should.",
   },
   {
-    title: "Connect AI to the systems you already run",
-    body: "I work inside your stack rather than around it. APIs, webhooks, databases, serverless functions, messaging platforms, whatever you are already paying for. Nobody has to rebuild what works in order to get AI into it.",
+    title: "AI inside the stack you already run",
+    body: "APIs, webhooks, databases, messaging platforms. I work inside what you have. Nothing gets rebuilt to make room for it.",
   },
   {
-    title: "Design the guardrails before the feature ships",
-    body: "Approved sources only, isolation enforced at the data layer, and a human checkpoint before anything is sent or spent. Where something is missing the system says so rather than filling the gap with something that reads well.",
+    title: "Guardrails built in, not bolted on",
+    body: "Approved sources only, isolation at the data layer, and human sign off before anything sends or spends.",
   },
   {
     title: "Train your people to get real output",
-    body: "Most teams with AI are getting very little back from it, and the gap is almost always the approach rather than the tool. I teach them how to work with it, so the capability stays in the building after I leave.",
+    body: "Most teams get very little back from AI, and the gap is approach rather than tools. I fix that, and the capability stays after I leave.",
   },
 ];
 
-/* Evidence, not a portfolio of assets. Each entry says what was delivered
-   and what state it is in, and nothing about who owns it. */
+/* Evidence. What was delivered and what it does, never who owns it and
+   never how far along the build is. */
 
 const WORK = [
   {
@@ -91,58 +75,57 @@ const WORK = [
     href: "https://amara.ng",
     status: { tone: "ok", label: "Live" },
     line: "Guest experience and automated CRM for hospitality.",
-    body: "A guest scans a code and rates their stay privately, so a complaint reaches the manager while the guest is still on the property instead of appearing on Google a week later. Around that sits a returning guest record, an authenticated check-in webhook a property system can call, and automated arrival and departure messages on WhatsApp. Live, with businesses running on it. Idea to production, mine the whole way.",
+    body: "A guest rates their stay privately, so a complaint reaches the manager while they are still on the property instead of landing on Google a week later. Returning guest records, an authenticated check-in webhook, and automated WhatsApp messaging on arrival and departure.",
   },
   {
     name: "StellaXafe",
     href: null,
     status: { tone: "accent", label: "In build" },
-    line: "Private, company-scoped AI for organizations that cannot afford to leak.",
-    body: "The architecture this page is running on. Multi-tenant isolation enforced in the database rather than in the application, connectors at both the organization level and the staff level, and no document stored on our side: finished work is written back into the customer's own storage.",
+    line: "Private, company-scoped AI for organizations that cannot afford a leak.",
+    body: "Multi-tenant isolation enforced in the database, connectors at the organization and staff level, and deployment inside infrastructure the customer controls. Documents never rest on our side.",
   },
   {
     name: "XALOM",
     href: null,
-    status: { tone: "neutral", label: "Designed, wiring left" },
+    status: { tone: "neutral", label: "In development" },
     line: "Digital trust and identity infrastructure.",
-    body: "Architecture and interface are done and the remaining work is wiring. Built as its own codebase and its own deployment, sharing a root domain by DNS only, so an identity layer never inherits the blast radius of whatever sits next to it.",
+    body: "Verifiable identity for fintech and digital ecosystems. Its own codebase and its own deployment, so the identity layer never inherits the blast radius of whatever sits beside it.",
   },
 ];
 
-/* The method, in the order it happens. This is the same shape whatever is
-   being built, which is the point of showing it: it is a way of working,
-   not one product's internals. */
+/* The method. The same shape whatever is being built, which is the point of
+   showing it: it transfers to the reader's company. */
 
 const METHOD = [
   {
     step: "01",
-    title: "Understand the process before touching a tool",
-    body: "What the team actually does, where the time goes, and which step everybody quietly dreads. Most failed AI projects were pointed at the wrong step.",
+    title: "Understand the process",
+    body: "What the team actually does, and which step everybody dreads. Most failed AI projects were aimed at the wrong one.",
   },
   {
     step: "02",
-    title: "Decide where a person has to stay",
-    body: "Some steps must keep a human on them, because of judgement, money, or risk. Choosing those first is what stops the system from being switched off in month two.",
+    title: "Decide where a person stays",
+    body: "Judgement, money, risk. Settling this first is what stops a system being switched off in month two.",
   },
   {
     step: "03",
-    title: "Design the system around approved material",
-    body: "It reads what the organization has approved and works out what is missing before it produces anything. The gaps matter more than the matches.",
+    title: "Design around approved material",
+    body: "It reads what the organization approved, and works out what is missing before it produces anything.",
   },
   {
     step: "04",
     title: "Make it confirm before it commits",
-    body: "It reads back what it understood and what it is about to do. The person approves it or corrects it, and a correction goes around again in cheap conversation instead of an expensive rewrite.",
+    body: "It reads back what it understood. Corrections happen in conversation, not in an expensive rewrite.",
   },
   {
     step: "05",
-    title: "Build it, with AI as the accelerator",
-    body: "This is where the work compresses. What used to be quoted in quarters lands in weeks, because the building is directed rather than typed.",
+    title: "Build it",
+    body: "The architecture, the guardrails and the isolation model already exist, so most of the work is fitting rather than inventing. Quarters compress into weeks here.",
   },
   {
     step: "06",
-    title: "Ship it, then keep it honest",
-    body: "Deployed, documented, and handed over so somebody else can maintain it. A system nobody but me can run is not finished, it is a dependency.",
+    title: "Ship it and hand it over",
+    body: "Deployed and documented. A system only I can run is a dependency, not a delivery.",
   },
 ];
 
@@ -153,10 +136,8 @@ export default function Anthony() {
     <MarketingPage>
       {/* ====================================================================
           1. WHO AND WHAT
-          The first screen has to answer "what can this person do for us" in
-          one sentence, because a recruiter gives it about four seconds. Not
-          "what has he built", which is the founder version of the question
-          and the wrong one to be answering here.
+          Four seconds. One claim, one sentence under it, and the row of
+          terms a recruiter scans for. Nothing explaining itself.
           ==================================================================== */}
       <section className="px-5 sm:px-8 pt-10 sm:pt-16 pb-14">
         <div className="max-w-5xl mx-auto lg:grid lg:grid-cols-12 lg:gap-14 items-center">
@@ -178,22 +159,14 @@ export default function Anthony() {
               <GradientText>product thinking to production</GradientText>.
             </h1>
 
-            <p className="text-[16.5px] leading-[1.65] mb-5" style={{ color: "var(--text-2)" }}>
-              I work out what a company actually needs, break it into a workflow, decide where AI
-              belongs and where a person has to stay, and then build the thing and put it in
-              front of real users. Not a strategy deck, and not a prototype for somebody else to
-              finish. The working system.
-            </p>
-
-            <p className="text-[15px] leading-[1.65] mb-5" style={{ color: "var(--text-2)" }}>
-              AI is the accelerator, and it is why this lands in weeks rather than quarters. I
-              design it, I build it, and I stay on it until it is running in production and your
-              own team can carry it without me.
+            <p className="text-[16.5px] leading-[1.65] mb-6" style={{ color: "var(--text-2)" }}>
+              I design and ship AI automation: the workflows, agents and internal systems a company
+              runs on. End to end, first conversation to production, in weeks.
             </p>
 
             <p className="text-[13.5px] leading-[1.6] mb-8" style={{ color: "var(--text-3)" }}>
-              Working across AI orchestration and agents, workflow automation, integrations and
-              APIs, internal tools, and company knowledge systems.
+              AI orchestration and agents, workflow automation, integrations and APIs, internal
+              tools, and company knowledge systems.
             </p>
 
             <div className="flex flex-col sm:flex-row items-stretch gap-3">
@@ -220,11 +193,9 @@ export default function Anthony() {
               </a>
             </div>
 
-            {/* A recruiter who wants to reach him should not have to find a
-                contact form on a company site and fill it in. The address
-                is already the published one in config.js, so this exposes
-                nothing new, and it is the single highest value thing on the
-                page for the reader who has decided in four seconds. */}
+            {/* A recruiter who has decided in four seconds should not have to
+                find a contact form on a company site. This address is
+                already the published one in config.js. */}
             <p className="text-[13.5px] mt-6" style={{ color: "var(--text-3)" }}>
               <a
                 href="mailto:anthony@stellaxafe.com"
@@ -263,22 +234,17 @@ export default function Anthony() {
 
       {/* ====================================================================
           2. WHAT I CAN DO FOR A COMPANY
-          The section that has to come second, because it is the answer to
-          the only question the reader is actually asking.
+          Second, because it is the only question the reader is asking.
           ==================================================================== */}
       <section className="px-5 sm:px-8 py-14 sm:py-20">
         <div className="max-w-5xl mx-auto">
           <Eyebrow>What I can do for you</Eyebrow>
           <h2
-            className="text-[26px] sm:text-[32px] font-medium leading-[1.15] tracking-tight mt-4 mb-4 max-w-2xl"
+            className="text-[26px] sm:text-[32px] font-medium leading-[1.15] tracking-tight mt-4 mb-10 max-w-2xl"
             style={{ fontFamily: FONTS.display, color: "var(--text-1)", textWrap: "balance" }}
           >
             The work your team is doing by hand is the work I automate.
           </h2>
-          <p className="text-[15.5px] leading-relaxed max-w-2xl mb-10" style={{ color: "var(--text-3)" }}>
-            Every one of these is something I have built and put in front of real users, not a
-            service line written to fill a grid.
-          </p>
 
           <div className="grid sm:grid-cols-2 gap-4">
             {DELIVERS.map((item) => (
@@ -300,9 +266,6 @@ export default function Anthony() {
 
       {/* ====================================================================
           3. WHERE I HAVE DONE IT
-          Evidence for the section above it. Status pills are honest on
-          purpose: one thing a stranger can open right now beats three
-          described ones.
           ==================================================================== */}
       <section className="px-5 sm:px-8 py-14 sm:py-20">
         <div className="max-w-5xl mx-auto">
@@ -314,8 +277,7 @@ export default function Anthony() {
             Three systems, taken the whole way.
           </h2>
           <p className="text-[15px] leading-relaxed max-w-2xl mb-10" style={{ color: "var(--text-3)" }}>
-            Product thinking, architecture, interface, deployment. Same person on every layer, on
-            all three.
+            Product thinking, architecture, interface, deployment. Same person on every layer.
           </p>
 
           <div className="space-y-4">
@@ -351,21 +313,11 @@ export default function Anthony() {
               </GlassPanel>
             ))}
           </div>
-
-          {/* Said plainly rather than left as a gap. A private repository
-              link shows a stranger nothing, so offering the walkthrough is
-              the honest version of "here is my code". */}
-          <p className="text-[14px] leading-relaxed mt-6" style={{ color: "var(--text-3)" }}>
-            The repositories are private. I will walk anyone through the architecture, the code, or
-            the decisions behind any of it on request.
-          </p>
         </div>
       </section>
 
       {/* ====================================================================
           4. HOW I WORK
-          The method, shown as a method rather than as one product's
-          internals, because it is what transfers to the reader's company.
           ==================================================================== */}
       <section className="px-5 sm:px-8 py-14 sm:py-20">
         <div className="max-w-5xl mx-auto">
@@ -377,8 +329,7 @@ export default function Anthony() {
             The model is the commodity. The system around it is the work.
           </h2>
           <p className="text-[15.5px] leading-relaxed max-w-2xl mb-10" style={{ color: "var(--text-3)" }}>
-            The same six steps whatever is being built, which is why a deployment takes weeks
-            rather than quarters. The thinking is already done and only the fitting is new.
+            The same six steps whatever is being built. It is why delivery is weeks, not quarters.
           </p>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -407,8 +358,6 @@ export default function Anthony() {
 
       {/* ====================================================================
           5. GET IN TOUCH
-          One action. Every reader who arrives here, hiring or buying or
-          looking for training, does the same next thing.
           ==================================================================== */}
       <section className="px-5 sm:px-8 py-16 sm:py-24 text-center">
         <div className="max-w-2xl mx-auto">
@@ -419,9 +368,8 @@ export default function Anthony() {
             Tell me what needs building.
           </h2>
           <p className="text-[15.5px] leading-relaxed mb-8" style={{ color: "var(--text-3)" }}>
-            A role you are hiring for, a process your team is still doing by hand, or a system you
-            already run that should have AI inside it. I will tell you plainly whether I am the
-            right person for it, and what I would do first.
+            A role you are hiring for, a process still being done by hand, or a system that should
+            have AI inside it. I will tell you what I would do first.
           </p>
           <PrimaryButton
             onClick={() => navigate("/contact")}
