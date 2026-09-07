@@ -85,7 +85,7 @@ const DELIVERS = [
   },
   {
     title: "Train your people to get real output",
-    body: "Most teams get very little back from AI, and the gap is approach rather than tools. I fix that, and the capability stays after I leave.",
+    body: "Most teams get very little back out of Claude or ChatGPT, and the gap is approach rather than tools. I train them on how to work with it, and the capability stays after I leave.",
   },
 ];
 
@@ -189,7 +189,8 @@ export default function Anthony() {
 
             <p className="text-[13.5px] leading-[1.6] mb-8" style={{ color: "var(--text-3)" }}>
               AI orchestration and agents, workflow automation, RAG and knowledge systems,
-              integrations, APIs and webhooks, human-in-the-loop design.
+              integrations, APIs and webhooks, human-in-the-loop design, prompt engineering and
+              LLM tooling.
             </p>
 
             <div className="flex flex-col sm:flex-row items-stretch gap-3">
