@@ -81,7 +81,7 @@ const DELIVERS = [
   },
   {
     title: "Guardrails built in, not bolted on",
-    body: "Approved sources only, isolation at the data layer, and human sign off before anything sends or spends.",
+    body: "Approved sources only, isolation at the data layer, and a human in the loop before anything sends or spends.",
   },
   {
     title: "Train your people to get real output",
@@ -188,8 +188,8 @@ export default function Anthony() {
             </p>
 
             <p className="text-[13.5px] leading-[1.6] mb-8" style={{ color: "var(--text-3)" }}>
-              AI orchestration and agents, workflow automation, integrations and APIs, internal
-              tools, and company knowledge systems.
+              AI orchestration and agents, workflow automation, RAG and knowledge systems,
+              integrations, APIs and webhooks, human-in-the-loop design.
             </p>
 
             <div className="flex flex-col sm:flex-row items-stretch gap-3">
@@ -343,6 +343,21 @@ export default function Anthony() {
               </GlassPanel>
             ))}
           </div>
+
+          {/* One line, and it is the only place on the page that names
+              things rather than describing them. It is here because a
+              recruiter filters on proper nouns before a human ever reads a
+              sentence, and the rest of the page deliberately speaks in
+              plain words. Every term is in the repositories behind the
+              three systems above. Nothing aspirational goes in this line. */}
+          <p className="text-[13px] leading-[1.7] mt-8" style={{ color: "var(--text-3)" }}>
+            <span className="font-semibold" style={{ color: "var(--text-2)" }}>
+              Built with
+            </span>{" "}
+            Claude API with stage-based model routing, retrieval over approved sources, Postgres
+            with row-level security, edge functions, webhooks, WhatsApp Business API, OAuth
+            connectors, transactional email, Cloudflare.
+          </p>
         </div>
       </section>
 
