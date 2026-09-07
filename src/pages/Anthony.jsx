@@ -163,8 +163,14 @@ export default function Anthony() {
           terms a recruiter scans for. Nothing explaining itself.
           ==================================================================== */}
       <section className="px-5 sm:px-8 pt-10 sm:pt-16 pb-14">
-        <div className="max-w-5xl mx-auto lg:grid lg:grid-cols-12 lg:gap-14 items-center">
-          <div className="lg:col-span-7">
+        {/* Flex column on a phone, explicit grid above it. The portrait is a
+            sibling of the two text blocks rather than living inside one, so
+            document order alone puts it between them on a phone and the grid
+            placement below lifts it back into the right hand column on a wide
+            screen. No duplicated image markup, which would cost a second
+            fetch for something only one of the two ever shows. */}
+        <div className="max-w-5xl mx-auto flex flex-col lg:grid lg:grid-cols-12 lg:gap-x-14 lg:items-center">
+          <div className="lg:col-start-1 lg:col-span-7 lg:row-start-1">
             <Eyebrow>Anthony Nwobosi</Eyebrow>
 
             <p
@@ -181,7 +187,30 @@ export default function Anthony() {
               I take a business problem from{" "}
               <GradientText>product thinking to production</GradientText>.
             </h1>
+          </div>
 
+          {/* The portrait. On a phone it lands here, straight after the
+              headline: the claim is read first, then the face, and neither
+              waits behind three paragraphs of body copy. It used to sit
+              815px down a phone screen, below both buttons. */}
+          <div className="mt-8 mb-9 lg:mt-0 lg:mb-0 lg:col-start-8 lg:col-span-5 lg:row-start-1 lg:row-span-2">
+            <div
+              className="relative rounded-[20px] overflow-hidden border"
+              style={{ borderColor: "var(--card-edge)", backgroundColor: "#05060C", aspectRatio: "4 / 5" }}
+            >
+              <Photo
+                name="anthony-nwobosi"
+                alt="Anthony Nwobosi"
+                widths={[640, 1024]}
+                sizes="(max-width: 1024px) 100vw, 40vw"
+                priority
+                fill
+                imgClassName="object-top"
+              />
+            </div>
+          </div>
+
+          <div className="lg:col-start-1 lg:col-span-7 lg:row-start-2">
             <p className="text-[16.5px] leading-[1.65] mb-6" style={{ color: "var(--text-2)" }}>
               I design and ship AI automation: the workflows, agents and internal systems a company
               runs on. End to end, first conversation to production, in weeks.
@@ -254,24 +283,6 @@ export default function Anthony() {
             </p>
           </div>
 
-          {/* The photograph. Second in source order so a screen reader and a
-              phone both meet the sentence before the portrait. */}
-          <div className="lg:col-span-5 mt-10 lg:mt-0">
-            <div
-              className="relative rounded-[20px] overflow-hidden border"
-              style={{ borderColor: "var(--card-edge)", backgroundColor: "#05060C", aspectRatio: "4 / 5" }}
-            >
-              <Photo
-                name="anthony-nwobosi"
-                alt="Anthony Nwobosi"
-                widths={[640, 1024]}
-                sizes="(max-width: 1024px) 100vw, 40vw"
-                priority
-                fill
-                imgClassName="object-top"
-              />
-            </div>
-          </div>
         </div>
       </section>
 
