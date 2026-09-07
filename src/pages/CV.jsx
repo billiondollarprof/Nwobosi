@@ -49,7 +49,11 @@ const ME = {
   name: "Anthony Nwobosi",
   title: "AI Native Builder | AI Automation, Workflows, Agents & Business Systems",
   email: "anthony@stellaxafe.com",
-  phone: "+234 706 949 8610",
+  /* International format, because the reader is usually not in Nigeria. A
+     local 0902 number is undiallable from abroad and some parsers will not
+     recognise it as a phone number at all. Same number, +234 and the leading
+     zero dropped. */
+  phone: "+234 902 147 0715",
   linkedin: "linkedin.com/in/anthony-nwobosi-575b3717a",
   linkedinHref: "https://www.linkedin.com/in/anthony-nwobosi-575b3717a",
   site: "stellaxafe.com/anthony",
