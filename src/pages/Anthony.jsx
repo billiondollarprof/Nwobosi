@@ -102,8 +102,11 @@ const WORK = [
   },
   {
     name: "StellaXafe",
-    href: null,
-    status: { tone: "accent", label: "In build" },
+    /* The site, not the demo. The demo sits behind an access code, and
+       sending a stranger to a locked door is worse than not linking at
+       all: they cannot get in, and the last thing they saw was a refusal. */
+    href: "https://stellaxafe.com",
+    status: { tone: "ok", label: "Live" },
     line: "Private, company-scoped AI for organizations that cannot afford a leak.",
     body: "Multi-tenant isolation enforced in the database, connectors at the organization and staff level, and deployment inside infrastructure the customer controls. Documents never rest on our side.",
   },
