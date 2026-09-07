@@ -46,6 +46,14 @@ Anthony is in charge. That is not a formality, it is the working rule.
 
 - After building or changing any UI, take a screenshot and check it against the design (sleek, clean, premium feel) before calling it done.
 - Click through buttons and interactive elements yourself and confirm they work before calling it done.
+- **A screenshot cannot see content clipped off the right edge, so run
+  `scripts/overflow-audit.cjs` as well.** `PageShell` uses `overflow-x-clip`,
+  which means anything wider than the viewport is cut off rather than
+  scrolled, and `scrollWidth` still reports the page as clean. The Insights
+  page shipped with its heading and body clipped on every phone under 374px
+  and passed every check that was being run. The script measures real
+  element edges at four phone widths across every public route. Read the
+  header in that file before trusting or changing it.
 
 ## Model choice
 
