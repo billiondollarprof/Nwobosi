@@ -35,7 +35,7 @@
 const { chromium } = require('playwright');
 
 const BASE = process.env.BASE || 'http://localhost:4328';
-const routes = ['/', '/anthony', '/insights', '/services', '/founder', '/contact', '/setup', '/auth'];
+const routes = ['/', '/anthony', '/anthony/cv', '/insights', '/services', '/founder', '/contact', '/setup', '/auth'];
 const widths = [320, 360, 390, 414];
 
 (async () => {
