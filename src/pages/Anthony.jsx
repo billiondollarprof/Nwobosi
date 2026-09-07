@@ -171,7 +171,7 @@ export default function Anthony() {
               className="text-[12px] font-semibold uppercase tracking-[0.12em] mt-4"
               style={{ color: BRAND.accentSoft }}
             >
-              AI Automation &amp; Systems Builder | Workflows, Agents &amp; Business Automation
+              AI Native Builder | AI Automation, Workflows, Agents &amp; Business Systems
             </p>
 
             <h1
@@ -234,6 +234,18 @@ export default function Anthony() {
                 style={{ color: BRAND.accentSoft, textDecorationColor: "var(--border-2)" }}
               >
                 anthony@stellaxafe.com
+              </a>
+              <span className="mx-2.5" style={{ opacity: 0.35 }}>
+                |
+              </span>
+              <a
+                href="https://www.linkedin.com/in/anthony-nwobosi-575b3717a"
+                target="_blank"
+                rel="noreferrer"
+                className="font-medium underline underline-offset-4 transition-opacity hover:opacity-80"
+                style={{ color: BRAND.accentSoft, textDecorationColor: "var(--border-2)" }}
+              >
+                LinkedIn
               </a>
               <span className="mx-2.5" style={{ opacity: 0.35 }}>
                 |
