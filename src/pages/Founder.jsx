@@ -10,6 +10,7 @@
    ========================================================================== */
 
 import { useNavigate } from "react-router-dom";
+import { ArrowRight } from "lucide-react";
 
 import { BRAND, FONTS } from "../shared/tokens";
 import { AmaraWordmark } from "../shared/icons.jsx";
@@ -162,6 +163,34 @@ export default function Founder() {
               </GlassPanel>
             ))}
           </div>
+
+          {/* The way through to /anthony, which is the page that actually
+              sells him. This one answers "who is behind StellaXafe" for a
+              buyer already reading about StellaXafe. That one answers "what
+              can this person do for us" for somebody who has never heard of
+              either, and nothing in the nav points at it, so without this
+              a reader who gets interested here has nowhere to go. Placed
+              after the cards on purpose: by this point they have read the
+              bio, and this is the moment they want more. */}
+          <button
+            type="button"
+            onClick={() => navigate("/anthony")}
+            className="w-full text-left mt-6 rounded-[14px] border px-5 py-4 flex items-center justify-between gap-4 transition-all hover:gap-3"
+            style={{ borderColor: "var(--border-2)", backgroundColor: "var(--surface)" }}
+          >
+            <span>
+              <span
+                className="block text-[15px] font-semibold"
+                style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
+              >
+                More about Anthony
+              </span>
+              <span className="block text-[13px] mt-1" style={{ color: "var(--text-3)" }}>
+                What he builds for companies, and how the work goes.
+              </span>
+            </span>
+            <ArrowRight size={17} style={{ color: BRAND.accentSoft }} className="shrink-0" />
+          </button>
         </div>
       </ModalCard>
     </MarketingPage>
