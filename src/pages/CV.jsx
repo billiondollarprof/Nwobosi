@@ -97,7 +97,7 @@ const EXPERIENCE = [
     org: "StellaXafe",
     place: "Port Harcourt, Nigeria",
     dates: "2026 – Present",
-    lead: "Design and ship AI automation end to end: architecture, data model, access control, integrations, interface and deployment. Three products taken from problem to production.",
+    lead: "Design and ship AI automation end to end: architecture, data model, access control, integrations, interface and deployment. Three products taken from problem to production inside a year.",
     items: [
       {
         name: "Amara",
