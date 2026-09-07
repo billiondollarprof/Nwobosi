@@ -205,6 +205,51 @@ a real browser.
   `access_codes` has RLS on and zero policies, so only the service role
   reaches it. Verified against the live database.
 
+## Support, the second environment
+
+Added 2026-09-07. The plan for all of it is `SUPPORT.md`, which is the
+current record and takes precedence over the older section in
+`ARCHITECTURE.md`.
+
+**What is live in the database, applied and walked through against the real
+project:**
+
+- `knowledge_sources.customer_visible`, default false, and
+  `customer_knowledge(company_id)`, the only read path the support side has.
+  The filter is inside the function so no call site can widen it.
+- `support_threads`, `support_messages`, `escalations`, and the quiet window
+  that hands a conversation back on its own.
+- `support_routes`, so a billing question reaches billing, plus
+  `support_message_add`, `support_route_labels`, `support_escalate` and
+  `support_escalation_notified`.
+- `company_spend`, an atomic decrement. The staff assistant's read then
+  write loses charges when two calls land together, which is rare with one
+  person in one conversation and normal on an open inbox.
+
+Every one of those was exercised end to end in SQL: a repeat delivery is
+recorded once, an unknown route falls to the default, a second default is
+refused, and support presence turns on when a colleague speaks and lapses
+by itself.
+
+**What is deployed:** `support-ask`, with `verify_jwt` off and a shared
+secret. Haiku only, no connectors, published sources only.
+
+**What is not done yet:**
+
+- `SUPPORT_SHARED_SECRET` is not set on the project. Until it is, every
+  call to `support-ask` answers 401, which is the correct closed state.
+- Nothing has called it. `supabase.co` is unreachable from a session, so the
+  function has never been exercised over HTTP. That test is a browser or a
+  live webhook, not something this repository can prove.
+- No company has a support route yet, so an escalation would be recorded
+  with nobody emailed.
+- The Amara branch is not written. Amara keeps the number, the WABA and the
+  webhook, and calls this. About twenty lines in
+  `receive-whatsapp-webhook`, guarded so a slow or missing StellaXafe leaves
+  Amara exactly as it is today.
+
+---
+
 ## What is not real, and must not be claimed
 
 - **Canva makes nothing.** The app is registered, the keys are in place,

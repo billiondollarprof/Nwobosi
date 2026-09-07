@@ -9,3 +9,6 @@ dist
 # Image originals. Only the optimised output in public/img/ is served,
 # and originals are large enough that they do not belong in the history.
 assets/source
+
+# Supabase CLI scratch
+supabase/.temp/

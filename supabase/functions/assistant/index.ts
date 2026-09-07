@@ -59,26 +59,21 @@ const PRICE: Record<Tier, { input: number; output: number }> = {
   "fable-5": { input: 10, output: 50 },
 };
 
-/* What each stage of the flow wants, before the staff member's ceiling is
-   applied. The ceiling can only ever pull these down, never push them up. */
-const STAGE_TIER: Record<string, Tier> = {
-  interview: "haiku-4-5",
-  analyse: "sonnet-5",
-  generate: "sonnet-5",
-};
+/* ONE MODEL FOR THE STAFF SIDE, AND IT IS SONNET
+   There used to be a picker here: cheap for the interview, capable for the
+   work, capped by the ceiling the admin set for each person.
 
-function tierIndex(tier: string) {
-  const i = LADDER.indexOf(tier as Tier);
-  return i === -1 ? 0 : i;
-}
+   It is gone, deliberately. A model chosen for you is a way for the product
+   to be quietly worse than you expected, on a turn you cannot see the
+   reason for, with no screen anywhere that would tell you. One good model
+   everywhere is predictable, and predictable is the thing a person trusts.
 
-/* The heart of rule 2. Whatever the stage wants, capped by what this
-   person is allowed. Ask for Opus on a Sonnet ceiling and you get Sonnet. */
-function resolveTier(stage: string, ceiling: string | null): Tier {
-  const wanted = STAGE_TIER[stage] ?? "haiku-4-5";
-  const cap = ceiling ?? "sonnet-5";
-  return LADDER[Math.min(tierIndex(wanted), tierIndex(cap))];
-}
+   The ladder, the price table and the metering all stay. It is only the
+   automatic selection that stops. The ceiling column stays on the row too,
+   unread for now, because the enterprise version of this is routing that
+   asks: the assistant says a step needs more than Sonnet, and the person
+   allows it or does not. See SUPPORT.md. */
+const STAFF_TIER: Tier = "sonnet-5";
 
 function centsFor(tier: Tier, inputTokens: number, outputTokens: number) {
   const { input, output } = PRICE[tier];
@@ -499,7 +494,7 @@ Deno.serve(async (req: Request) => {
      RULE 2: WHICH MODEL
      ---------------------------------------------------------------------- */
 
-  const tier = resolveTier(stage, staff.model_ceiling ?? null);
+  const tier = STAFF_TIER;
 
   /* The catalogue: names and one line descriptions. This is what the
      interview sees, and it is enough to talk about what exists without
