@@ -371,6 +371,17 @@ export default function Anthony() {
             with row-level security, edge functions, webhooks, WhatsApp Business API, OAuth
             connectors, transactional email, Cloudflare.
           </p>
+          {/* Named because the outcome is the point and the tool is not. Most
+              of what ships here is custom, and saying so is the honest order
+              to put these in, but a filter still looks for the platform
+              names and there is no reason to be invisible to it. */}
+          <p className="text-[13px] leading-[1.7] mt-2" style={{ color: "var(--text-3)" }}>
+            <span className="font-semibold" style={{ color: "var(--text-2)" }}>
+              Platforms
+            </span>{" "}
+            n8n, Make and Zapier where one is the right answer. Most of what I ship is custom,
+            because it fits exactly and costs less to run.
+          </p>
         </div>
       </section>
 

@@ -236,16 +236,16 @@ const RESEARCH = [
     source: "Gartner survey of 302 cybersecurity leaders, 2025",
   },
   {
-    figure: "57%",
-    title: "Leaked data in AI code",
-    body: "Of developers worry that AI generated code will expose sensitive company or customer data.",
-    source: "Sonar, State of Code developer survey, 2026",
+    figure: "79%",
+    title: "Struggling to make it work",
+    body: "Of organizations report real difficulty getting AI adopted, a double digit rise on the year before, despite the spend.",
+    source: "WRITER and Workplace Intelligence, 2,400 employees and leaders, 2026",
   },
   {
-    figure: "40%",
-    title: "Projected shadow AI incidents",
-    body: "Of enterprises are predicted to face a security or compliance incident tied to unauthorized shadow AI by 2030.",
-    source: "Gartner, 2025",
+    figure: "54%",
+    title: "Say it is splitting the company",
+    body: "Of senior leaders say adopting AI is tearing their organization apart, between the people using it and the people refusing to.",
+    source: "WRITER and Workplace Intelligence, 2,400 employees and leaders, 2026",
   },
 ];
 
@@ -1256,8 +1256,8 @@ Five steps. All your staff ever do is talk.
               <p className="text-[15px] leading-relaxed mb-4" style={{ color: "var(--text-3)" }}>
                 Your admin decides what goes into the knowledge base. Every company fact in an
                 output traces back to a source you approved. When something is missing it says so.
-                Isolation is enforced in the database rather than in the application, and a
-                deployment runs inside the perimeter your organization already controls.
+                Isolation is enforced in the database rather than in the application, not left to
+                the code above it to remember.
               </p>
               {/* The storage boundary is the part a technical reviewer will
                   look for, and it is the strongest thing on this section:
@@ -1265,10 +1265,17 @@ Five steps. All your staff ever do is talk.
                   "your own storage" rather than naming a vendor, because
                   which one it is belongs to the requirements conversation
                   with each organization. */}
-              <p className="text-[15px] leading-relaxed mb-7" style={{ color: "var(--text-3)" }}>
+              <p className="text-[15px] leading-relaxed mb-4" style={{ color: "var(--text-3)" }}>
                 Your files stay in your own storage, not inside ours. What each person works
                 on is remembered for them and for nobody else, so the assistant keeps its context
                 between conversations without one person's work ever reaching another's.
+              </p>
+              <p className="text-[15px] leading-relaxed mb-7" style={{ color: "var(--text-3)" }}>
+                And the model runs inside your own cloud account, through Amazon Bedrock or Azure
+                OpenAI, in the region you choose. The model provider has no access to the
+                infrastructure your prompts run on and never receives them. With a private
+                endpoint the traffic does not leave your cloud network at all. That is what lets
+                us say nothing leaves and mean it literally.
               </p>
 
               <div className="flex flex-wrap gap-2.5">
