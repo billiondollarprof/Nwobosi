@@ -820,3 +820,161 @@ body {
     animation: none !important;
   }
 }
+
+/* ==========================================================================
+   PRINT: THE CV
+   What turns /anthony/cv into an ATS readable PDF.
+
+   The rule these are written against: applicant tracking systems misparse
+   multi column layouts, text boxes, icons and image based exports. Columns
+   get merged into one stream or a whole sidebar gets dropped silently, and
+   nobody is ever told. So the printed sheet is one column of black text on
+   white, and every decorative or interactive part of the page is removed.
+
+   Colour is forced rather than inherited, because the site paints from theme
+   tokens and a printer would otherwise be handed near black on near black.
+   ========================================================================== */
+
+@media print {
+  /* Kill the site chrome. The document is the only thing on the paper. */
+  .print\:hidden,
+  nav,
+  footer,
+  .sx-grain::before,
+  .sx-grain::after,
+  .sx-hero-aura,
+  .sx-field,
+  /* Everything decorative the shell paints behind the page. Chrome leaves
+     background graphics off by default so these would not print anyway, but
+     one ticked checkbox should not put a purple wash across somebody's CV. */
+  .sx-ambient,
+  [aria-hidden="true"] {
+    display: none !important;
+  }
+
+  html,
+  body,
+  #root {
+    background: #fff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* One column, real margins, and a size a parser and a person both read
+     comfortably. 11pt body is the safe floor for ATS extraction. */
+  @page {
+    margin: 14mm 15mm;
+    size: A4;
+  }
+
+  .cv-sheet {
+    max-width: none !important;
+    background: #fff !important;
+    color: #000 !important;
+    font-size: 10.5pt !important;
+    line-height: 1.45 !important;
+  }
+
+  /* Every token driven colour collapses to black, with headings allowed a
+     dark grey so the structure still reads on paper. A parser ignores colour
+     entirely, so this is purely for the human at the other end. */
+  .cv-sheet *,
+  .cv-sheet *::before,
+  .cv-sheet *::after {
+    color: #000 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    -webkit-text-fill-color: #000 !important;
+  }
+
+  .cv-name {
+    font-size: 20pt !important;
+    letter-spacing: -0.01em !important;
+  }
+
+  /* letter-spacing has to go on anything printed. A tracked heading is
+     extracted one character at a time, so SUMMARY comes out of a parser as
+     "S U M M A RY" and stops matching the section name an applicant tracking
+     system is looking for. It looks correct to a person and segments wrong
+     for the machine, which is the worst combination. Weight and case carry
+     the hierarchy on paper instead. */
+  .cv-title {
+    font-size: 9pt !important;
+    letter-spacing: normal !important;
+  }
+
+  .cv-contact {
+    font-size: 9.5pt !important;
+    line-height: 1.55 !important;
+  }
+
+  .cv-h2 {
+    font-size: 10.5pt !important;
+    letter-spacing: normal !important;
+    font-weight: 700 !important;
+    border-bottom: 1px solid #999 !important;
+    padding-bottom: 3pt !important;
+    margin-bottom: 7pt !important;
+  }
+
+  .cv-role,
+  .cv-product-name {
+    font-size: 11pt !important;
+  }
+
+  .cv-org {
+    font-size: 10.5pt !important;
+  }
+
+  .cv-dates,
+  .cv-note {
+    font-size: 9.5pt !important;
+  }
+
+  .cv-body {
+    font-size: 10pt !important;
+  }
+
+  /* Real bullets. A list that renders as unmarked paragraphs loses the
+     structure a parser uses to separate one achievement from the next. */
+  .cv-list {
+    list-style: disc !important;
+    padding-left: 16pt !important;
+    margin-top: 4pt !important;
+  }
+
+  .cv-list li {
+    display: list-item !important;
+    margin-bottom: 2pt !important;
+  }
+
+  /* Nothing splits across a page. An entry broken over a boundary is where
+     a parser loses which employer a bullet belonged to. */
+  .cv-section,
+  .cv-entry,
+  .cv-product {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .cv-h2 {
+    break-after: avoid !important;
+    page-break-after: avoid !important;
+  }
+
+  header {
+    border-bottom: 1px solid #999 !important;
+  }
+
+  /* Links stay text. Printing the href after every link is the usual trick
+     and it wrecks a CV, because the address ends up inside the sentence a
+     parser is trying to read. */
+  .cv-link {
+    text-decoration: none !important;
+  }
+
+  .cv-link::after {
+    content: "" !important;
+  }
+}

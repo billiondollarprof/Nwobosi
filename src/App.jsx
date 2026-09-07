@@ -25,6 +25,7 @@ import Services from "./pages/Services.jsx";
 import Contact from "./pages/Contact.jsx";
 import Founder from "./pages/Founder.jsx";
 import Anthony from "./pages/Anthony.jsx";
+import CV from "./pages/CV.jsx";
 import Insights from "./pages/Insights.jsx";
 
 /* Every page opens at its top.
@@ -90,6 +91,12 @@ export default function App() {
               and a certificate first. When that lands it points here and the
               address on a profile does not have to change again. */}
           <Route path="/anthony" element={<Anthony />} />
+
+          {/* The CV, on the same path as the page it belongs to. One source
+              for the live document and for the PDF that comes out of it, so
+              the two can never drift apart. See CV.jsx for why it prints
+              rather than being generated. */}
+          <Route path="/anthony/cv" element={<CV />} />
           <Route path="/insights" element={<Insights />} />
 
           {/* One address for the product. What it renders depends on who is

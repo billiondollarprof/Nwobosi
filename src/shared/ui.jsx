@@ -17,7 +17,10 @@ import { BRAND, GRADIENTS, FONTS } from "./tokens";
 
 export function AmbientGlow() {
   return (
-    <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+    <div
+      className="sx-ambient pointer-events-none absolute inset-0 z-0 overflow-hidden"
+      aria-hidden="true"
+    >
       <div
         className="absolute top-[-10%] left-[10%] w-[60vw] h-[60vw] max-w-[560px] max-h-[560px] rounded-full"
         style={{

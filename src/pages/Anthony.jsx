@@ -28,7 +28,7 @@
    ========================================================================== */
 
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, ArrowUpRight, Linkedin, Mail } from "lucide-react";
+import { ArrowRight, ArrowUpRight, FileText, Linkedin, Mail } from "lucide-react";
 
 import { BRAND, FONTS } from "../shared/tokens";
 import { GlassPanel, PrimaryButton, StatusPill } from "../shared/ui.jsx";
@@ -269,6 +269,19 @@ export default function Anthony() {
                 <Linkedin size={15} style={{ color: BRAND.accentSoft }} />
                 LinkedIn
               </a>
+              <button
+                type="button"
+                onClick={() => navigate("/anthony/cv")}
+                className="inline-flex items-center gap-2.5 rounded-[11px] border px-4 py-2.5 text-[14px] font-medium transition-transform hover:scale-[1.02]"
+                style={{
+                  borderColor: "var(--border-2)",
+                  backgroundColor: "var(--surface)",
+                  color: "var(--text-1)",
+                }}
+              >
+                <FileText size={15} style={{ color: BRAND.accentSoft }} />
+                CV
+              </button>
             </div>
 
             <p className="text-[13.5px] mt-4" style={{ color: "var(--text-3)" }}>
