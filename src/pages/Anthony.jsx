@@ -35,6 +35,29 @@ import { GlassPanel, PrimaryButton, StatusPill } from "../shared/ui.jsx";
 import { MarketingPage, GradientText, Eyebrow } from "../shared/marketing.jsx";
 import Photo from "../shared/Photo.jsx";
 
+/* The prefilled email. Written from the sender's side, because they are the
+   one who has to send it: it opens on their situation, not on a greeting. */
+
+const MAILTO =
+  "mailto:anthony@stellaxafe.com" +
+  "?subject=" +
+  encodeURIComponent("Work with you") +
+  "&body=" +
+  encodeURIComponent(
+    [
+      "Hi Anthony,",
+      "",
+      "I found your page. Here is what we are looking at:",
+      "",
+      "What we need:",
+      "Where it sits today:",
+      "Timeline:",
+      "",
+      "Company:",
+      "Name:",
+    ].join("\n"),
+  );
+
 /* Deliverables, not skills. A skills list asks the reader to work out what
    it would mean for them. Two lines each, because a scanner reads titles
    and stops. */
@@ -195,10 +218,17 @@ export default function Anthony() {
 
             {/* A recruiter who has decided in four seconds should not have to
                 find a contact form on a company site. This address is
-                already the published one in config.js. */}
+                already the published one in config.js.
+
+                Subject and body are prefilled, so the mail app opens on a
+                message that is already started. A blank compose window is
+                where a warm lead goes cold: the reader has to work out how
+                to open, and half of them close the tab instead. Everything
+                prefilled is editable, and the lines are short enough to
+                read at a glance before they send. */}
             <p className="text-[13.5px] mt-6" style={{ color: "var(--text-3)" }}>
               <a
-                href="mailto:anthony@stellaxafe.com"
+                href={MAILTO}
                 className="font-medium underline underline-offset-4 transition-opacity hover:opacity-80"
                 style={{ color: BRAND.accentSoft, textDecorationColor: "var(--border-2)" }}
               >

@@ -95,7 +95,17 @@ export default function Insights() {
 
       <section className="relative z-10 px-5 sm:px-8 pb-20">
         <div className="max-w-5xl mx-auto grid gap-10 lg:grid-cols-[1.1fr_0.9fr] items-start">
-          <div>
+          {/* min-w-0 on both grid items, and it is load bearing. A grid item
+              defaults to min-width:auto, so it refuses to shrink below the
+              intrinsic width of its content. The readout in the second
+              column holds nowrap monospace lines, so that column demanded
+              374px at every viewport, and because both columns sit in one
+              grid the text column was dragged to 374px with it. On a 360px
+              phone the heading and the paragraph were clipped off the right
+              edge, and the overflow-x-auto on the readout never got to do
+              its job. min-w-0 lets the column shrink and hands the
+              scrolling back to the code block where it belongs. */}
+          <div className="min-w-0">
             <h2
               className="text-[22px] sm:text-[26px] font-bold tracking-tight"
               style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
@@ -141,7 +151,7 @@ export default function Insights() {
           {/* The monitor readout. One of the two places on the whole site
               where machine output is shown as machine output, because
               here the mechanism is the point being made. */}
-          <GlassPanel className="p-6 lg:sticky lg:top-24">
+          <GlassPanel className="p-6 min-w-0 lg:sticky lg:top-24">
             <div
               className="rounded-[12px] border p-4 font-mono text-[11.5px] leading-[2] overflow-x-auto"
               style={{ backgroundColor: "var(--surface-2)", borderColor: "var(--border)" }}
