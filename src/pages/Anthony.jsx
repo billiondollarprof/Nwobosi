@@ -28,7 +28,7 @@
    ========================================================================== */
 
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, ArrowUpRight } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Linkedin, Mail } from "lucide-react";
 
 import { BRAND, FONTS } from "../shared/tokens";
 import { GlassPanel, PrimaryButton, StatusPill } from "../shared/ui.jsx";
@@ -230,20 +230,6 @@ export default function Anthony() {
                 Work with me
                 <ArrowRight size={16} />
               </PrimaryButton>
-              <a
-                href="https://amara.ng"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center justify-center gap-2 rounded-[12px] border py-3.5 px-6 text-[15px] font-medium backdrop-blur-xl transition-transform hover:scale-[1.02]"
-                style={{
-                  borderColor: "var(--border-2)",
-                  backgroundColor: "var(--surface)",
-                  color: "var(--text-1)",
-                }}
-              >
-                Open Amara, live in production
-                <ArrowUpRight size={16} />
-              </a>
             </div>
 
             {/* A recruiter who has decided in four seconds should not have to
@@ -256,30 +242,37 @@ export default function Anthony() {
                 to open, and half of them close the tab instead. Everything
                 prefilled is editable, and the lines are short enough to
                 read at a glance before they send. */}
-            <p className="text-[13.5px] mt-6" style={{ color: "var(--text-3)" }}>
+            <div className="flex flex-wrap items-center gap-2.5 mt-5">
               <a
                 href={MAILTO}
-                className="font-medium underline underline-offset-4 transition-opacity hover:opacity-80"
-                style={{ color: BRAND.accentSoft, textDecorationColor: "var(--border-2)" }}
+                className="inline-flex items-center gap-2.5 rounded-[11px] border px-4 py-2.5 text-[14px] font-medium transition-transform hover:scale-[1.02]"
+                style={{
+                  borderColor: "var(--border-2)",
+                  backgroundColor: "var(--surface)",
+                  color: "var(--text-1)",
+                }}
               >
+                <Mail size={15} style={{ color: BRAND.accentSoft }} />
                 anthony@stellaxafe.com
               </a>
-              <span className="mx-2.5" style={{ opacity: 0.35 }}>
-                |
-              </span>
               <a
                 href="https://www.linkedin.com/in/anthony-nwobosi-575b3717a"
                 target="_blank"
                 rel="noreferrer"
-                className="font-medium underline underline-offset-4 transition-opacity hover:opacity-80"
-                style={{ color: BRAND.accentSoft, textDecorationColor: "var(--border-2)" }}
+                className="inline-flex items-center gap-2.5 rounded-[11px] border px-4 py-2.5 text-[14px] font-medium transition-transform hover:scale-[1.02]"
+                style={{
+                  borderColor: "var(--border-2)",
+                  backgroundColor: "var(--surface)",
+                  color: "var(--text-1)",
+                }}
               >
+                <Linkedin size={15} style={{ color: BRAND.accentSoft }} />
                 LinkedIn
               </a>
-              <span className="mx-2.5" style={{ opacity: 0.35 }}>
-                |
-              </span>
-              Open to remote roles and contract work
+            </div>
+
+            <p className="text-[13.5px] mt-4" style={{ color: "var(--text-3)" }}>
+              Open to remote roles and contract work.
             </p>
           </div>
 
