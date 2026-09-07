@@ -57,11 +57,20 @@ const ME = {
   location: "Port Harcourt, Nigeria · WAT (UTC+1) · Open to remote",
 };
 
-/* Two sentences. A summary that runs longer is skimmed rather than read, and
-   the second one is the part that separates him from every other applicant
-   claiming to build with AI. */
+/* The first thing anyone reads, and the only part of a CV that gets a
+   reader's full attention rather than a scan.
+
+   It opens on the belief rather than on the job title, because "I make
+   complicated work simple to do" is a position somebody can agree with
+   before they have assessed anything, and every line under it is then read
+   as evidence for a claim already accepted. Opening on a list of
+   technologies gets the opposite: assessment first, and the rest of the
+   page read sceptically.
+
+   Three sentences. What he is for, what that produces for the company, and
+   how he works. Anything longer stops being read and starts being skimmed. */
 const SUMMARY =
-  "I turn business processes into working software: workflows, agents, knowledge systems and internal tools, taken from the first conversation through to production. I scope hard to what matters now, build with what is already available, and ship inside the timeframe rather than after it.";
+  "I make complicated work simple to do. I turn the processes a business repeats by hand into systems that run on their own, so someone in their first week produces work to the standard of the best person in the room. I scope to what matters now, build with what is already there, and ship inside the timeframe rather than after it.";
 
 /* One role, three products beneath it.
 

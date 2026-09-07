@@ -457,13 +457,33 @@ export default function Anthony() {
             A role you are hiring for, a process still being done by hand, or a system that should
             have AI inside it. I will tell you what I would do first.
           </p>
-          <PrimaryButton
-            onClick={() => navigate("/contact")}
-            className="flex items-center justify-center gap-2 px-7 py-3.5 text-[15px] mx-auto"
-          >
-            Get in touch
-            <ArrowRight size={16} />
-          </PrimaryButton>
+          {/* Two doors at the point a reader decides. Someone who has read
+              this far either wants to talk or wants the formal document, and
+              until now only the first had a way out of the page: the CV was
+              linked once, in the hero, which a scroller has long since
+              passed. */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => navigate("/anthony/cv")}
+              className="order-2 sm:order-1 inline-flex items-center justify-center gap-2.5 rounded-[12px] border px-6 py-3.5 text-[15px] font-medium transition-transform hover:scale-[1.02]"
+              style={{
+                borderColor: "var(--border-2)",
+                backgroundColor: "var(--surface)",
+                color: "var(--text-1)",
+              }}
+            >
+              <FileText size={16} style={{ color: BRAND.accentSoft }} />
+              Read the CV
+            </button>
+            <PrimaryButton
+              onClick={() => navigate("/contact")}
+              className="order-1 sm:order-2 flex items-center justify-center gap-2 px-7 py-3.5 text-[15px]"
+            >
+              Get in touch
+              <ArrowRight size={16} />
+            </PrimaryButton>
+          </div>
         </div>
       </section>
     </MarketingPage>
