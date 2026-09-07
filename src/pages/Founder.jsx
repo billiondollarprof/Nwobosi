@@ -77,18 +77,21 @@ export default function Founder() {
               fill
               imgClassName="object-top"
             />
-            {/* The picture should sit in the card, not on top of it. On a
-                phone the column is above the text and the fade runs down
-                into it; side by side it runs across. Both fade to the
-                card's own surface, so there is no seam to see. */}
-            <div
-              className="md:hidden absolute inset-x-0 bottom-0 h-24 pointer-events-none"
-              style={{ background: "linear-gradient(to bottom, transparent, var(--surface-solid))" }}
-            />
-            <div
-              className="hidden md:block absolute inset-y-0 right-0 w-28 pointer-events-none"
-              style={{ background: "linear-gradient(to right, transparent, var(--surface-solid))" }}
-            />
+            {/* There were two fades here, painting the card's own surface
+                over the edges of the photograph so it would dissolve into
+                the card rather than sit on top of it. That works on the dark
+                theme and fails badly on the light one, for the reason
+                index.css already gives about the security section: paint a
+                light colour over a dark photograph and the result is fog,
+                not a dissolve. On white it read as a grey smear down the side
+                of the portrait, as though the picture had been buried in the
+                page.
+
+                A dark panel meeting a light one on a clean edge is a
+                deliberate looking composition in either theme, and it needs
+                no gradient at all. The column keeps its own near black
+                ground, so the seam is between two intentional surfaces
+                rather than between a photograph and a wash. */}
           </div>
 
           <div className="p-7 sm:p-10 flex flex-col justify-center">

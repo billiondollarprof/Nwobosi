@@ -26,6 +26,7 @@ import Contact from "./pages/Contact.jsx";
 import Founder from "./pages/Founder.jsx";
 import Anthony from "./pages/Anthony.jsx";
 import CV from "./pages/CV.jsx";
+import RouteMeta from "./shared/meta.jsx";
 import Insights from "./pages/Insights.jsx";
 
 /* Every page opens at its top.
@@ -53,6 +54,10 @@ export default function App() {
     <ThemeProvider>
       <BrowserRouter>
         <ScrollToTop />
+        {/* Writes title, description and canonical per route. See meta.jsx:
+              index.html shipped one canonical pointing at the home page, which
+              told crawlers every other page was a duplicate of it. */}
+        <RouteMeta />
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/setup" element={<Setup />} />
