@@ -23,7 +23,7 @@ import Photo from "../shared/Photo.jsx";
    -------------------------------------------------------------------------- */
 
 const BACKGROUND = [
-  "Anthony builds systems that take work off people. Automating a process a team repeats by hand, putting a company's own knowledge where its staff can actually reach it, and connecting AI into the tools a business already runs on. Amara went from an idea to a platform businesses use. XALOM is in development. Each one taken the whole way, from the first conversation through to production.",
+  "Anthony builds systems that take work off people. Automating a process a team repeats by hand, putting a company's own knowledge where its staff can actually reach it, and connecting AI into the tools a business already runs on. Every one of them taken the whole way, from the first conversation through to production.",
   "StellaXafe started with a friend uploading his company's documents into a public chatbot. Not carelessly. He did it because it produced better work, and better work was the job. Every company bans that. Nobody had given their staff another way.",
   "The discipline behind all of it is the same. Assume failure, assume misuse, and build the guardrail before the feature ships. A guardrail is not something added later, it is the thing the feature gets built inside.",
 ];
@@ -106,8 +106,7 @@ export default function Founder() {
             </p>
             <p className="text-[15px] leading-relaxed mt-5" style={{ color: "var(--text-2)" }}>
               Builds AI automation: the workflows, agents and internal systems a company runs on.
-              Amara is live with businesses on it. XALOM is in development. StellaXafe is where
-              that work meets enterprise data protection.
+              StellaXafe is where that work meets enterprise data protection.
             </p>
             <PrimaryButton
               onClick={() => navigate("/contact")}
