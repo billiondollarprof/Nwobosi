@@ -1,11 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- The public marketing pages. The demo, chat and admin are behind an
-     access code and are excluded here and in robots.txt. -->
+<!-- The public marketing pages, plus Anthony's own pages. The demo, chat and
+     admin sit behind an access code and are excluded here and in robots.txt.
+
+     /form-builder was removed and now redirects home, so it is not listed:
+     a sitemap that points a crawler at a redirect wastes the crawl and
+     teaches the index the wrong URL. -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://stellaxafe.com/</loc><priority>1.0</priority></url>
+  <url><loc>https://stellaxafe.com/anthony</loc><priority>0.9</priority></url>
   <url><loc>https://stellaxafe.com/services</loc><priority>0.8</priority></url>
-  <url><loc>https://stellaxafe.com/form-builder</loc><priority>0.8</priority></url>
   <url><loc>https://stellaxafe.com/insights</loc><priority>0.7</priority></url>
+  <url><loc>https://stellaxafe.com/anthony/cv</loc><priority>0.6</priority></url>
   <url><loc>https://stellaxafe.com/founder</loc><priority>0.6</priority></url>
   <url><loc>https://stellaxafe.com/contact</loc><priority>0.6</priority></url>
 </urlset>
