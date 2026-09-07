@@ -626,22 +626,37 @@ body {
    laid on top.
    -------------------------------------------------------------------------- */
 
+/* HOW MUCH OF A PHOTOGRAPH IS ALLOWED TO DISSOLVE
+
+   These were far too strong and it showed. fade-b ran solid only to 62%,
+   so the bottom 38% of the picture faded out; on the security section the
+   man on the right of the frame was erased to a ghost, in BOTH themes. A
+   softened edge is meant to stop a photograph reading as a stock rectangle
+   dropped on the page. It is not meant to delete a person out of it.
+
+   The working range for this effect is roughly the last tenth. Past that it
+   stops looking like light falling off and starts looking like a rendering
+   fault, which is what somebody notices without being able to name it.
+
+   Anything that needs to lose more of an image than this wants a different
+   crop, not a longer gradient. */
+
 .sx-photo-fade-y {
-  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent);
-  mask-image: linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 6%, #000 94%, transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 6%, #000 94%, transparent);
 }
 
 .sx-photo-fade-b {
-  -webkit-mask-image: linear-gradient(to bottom, #000 62%, transparent);
-  mask-image: linear-gradient(to bottom, #000 62%, transparent);
+  -webkit-mask-image: linear-gradient(to bottom, #000 88%, transparent);
+  mask-image: linear-gradient(to bottom, #000 88%, transparent);
 }
 
 @media (min-width: 1024px) {
   /* Side by side, the picture meets the copy on its right edge instead of
      its bottom one. */
   .lg\:sx-photo-fade-r {
-    -webkit-mask-image: linear-gradient(to right, #000 62%, transparent);
-    mask-image: linear-gradient(to right, #000 62%, transparent);
+    -webkit-mask-image: linear-gradient(to right, #000 88%, transparent);
+    mask-image: linear-gradient(to right, #000 88%, transparent);
   }
 }
 
