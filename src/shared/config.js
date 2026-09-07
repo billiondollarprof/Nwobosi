@@ -49,6 +49,13 @@ export const OAUTH_CLIENTS = {
    browser reports as a send failure rather than a not found, so it looks
    like a network problem and sends everybody hunting in the wrong place.
    The slugs live here, named, so the next person sees them.
+
+   There is also a function whose slug really is `assistant`, with no
+   hyphen, created by accident on 2026-09-07 by a deploy that passed the
+   display name instead of the slug. It holds no assistant. It answers 410
+   and says where the real one is, so nothing can quietly run a second copy
+   against the same budget. Delete it in the Supabase dashboard when
+   somebody is next in there.
    -------------------------------------------------------------------------- */
 
 export const FUNCTIONS = {

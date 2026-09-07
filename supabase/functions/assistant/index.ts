@@ -75,6 +75,15 @@ const PRICE: Record<Tier, { input: number; output: number }> = {
    allows it or does not. See SUPPORT.md. */
 const STAFF_TIER: Tier = "sonnet-5";
 
+/* Which tiers take adaptive thinking. Haiku 4.5 predates it and rejects it,
+   everything above it expects it. */
+const ADAPTIVE_THINKING: Record<Tier, boolean> = {
+  "haiku-4-5": false,
+  "sonnet-5": true,
+  "opus-5": true,
+  "fable-5": true,
+};
+
 function centsFor(tier: Tier, inputTokens: number, outputTokens: number) {
   const { input, output } = PRICE[tier];
   const dollars = (inputTokens / 1_000_000) * input + (outputTokens / 1_000_000) * output;
@@ -136,10 +145,10 @@ function buildBasePrompt(
     "how to export a PDF. That is the app's job and it already works. Write the",
     "document in Markdown and stop.",
     "",
-    "The app also decides which model runs each part of this, and moves the work up to",
-    "a stronger one when the time comes. You do not control that and you must never",
-    "tell somebody you cannot switch models or that they should start again elsewhere.",
-    "From where they sit there is one assistant, and it is you.",
+    "There is one assistant in this product and it is you. Never tell somebody you",
+    "cannot do something because of which model you are, never offer to switch to a",
+    "different one, and never suggest they start again somewhere else. From where they",
+    "sit you are simply the assistant, and how that is run is not their concern.",
     "",
     "YOUR SOURCES OF TRUTH",
     "There are exactly four ways a fact about the world reaches your draft, and this",
@@ -593,13 +602,22 @@ Deno.serve(async (req: Request) => {
 
   const anthropic = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY")! });
 
-  /* Haiku 4.5 predates adaptive thinking and effort, and rejects both.
-     Sonnet 5 and above want them. Same request either way, different
-     knobs, so build the extras rather than branching the whole call. */
-  const thinkingExtras =
-    tier === "haiku-4-5"
-      ? {}
-      : { thinking: { type: "adaptive" as const }, output_config: { effort: "high" as const } };
+  /* Haiku 4.5 predates adaptive thinking and effort, and rejects both with a
+     400. Sonnet 5 and above want them. A lookup rather than a comparison,
+     because only one tier is in use today and a comparison against it reads
+     as dead code to the type checker while still being the right shape for
+     the day routing comes back.
+
+     The cast is the SDK's typings being behind the API. 0.68.0 knows
+     thinking as enabled or disabled and not as adaptive, which is the shape
+     Sonnet 5 actually takes. Nothing else in the request needs loosening,
+     so this is cast on its own rather than over the whole call. */
+  const thinkingExtras = ADAPTIVE_THINKING[tier]
+    ? {
+        thinking: { type: "adaptive" } as unknown as Anthropic.ThinkingConfigParam,
+        output_config: { effort: "high" as const },
+      }
+    : {};
 
   const encoder = new TextEncoder();
 
@@ -673,10 +691,14 @@ Deno.serve(async (req: Request) => {
             Deno.env.get("SUPABASE_URL")!,
             Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
           );
-          const { error: spendError } = await admin
-            .from("companies")
-            .update({ budget_cents_remaining: Math.max(0, remaining - cents) })
-            .eq("id", staff.company_id);
+          /* One statement, computed in the database. Reading the balance
+             here and writing the difference back loses a charge whenever
+             two calls finish together, and the read happened at the top of
+             this request, a whole model call ago. */
+          const { error: spendError } = await admin.rpc("company_spend", {
+            p_company_id: staff.company_id,
+            p_cents: cents,
+          });
 
           if (spendError) {
             /* The work was done and the user has it. Losing the meter

@@ -232,7 +232,17 @@ refused, and support presence turns on when a colleague speaks and lapses
 by itself.
 
 **What is deployed:** `support-ask`, with `verify_jwt` off and a shared
-secret. Haiku only, no connectors, published sources only.
+secret. Haiku only, no connectors, published sources only. `add-link` and
+`assistant-` were redeployed the same day, so the live project and this
+repository match.
+
+**One thing to tidy in the dashboard.** The assistant's slug is
+`assistant-`, with the trailing hyphen, and always has been. A deploy on
+2026-09-07 passed the display name instead and created a second function
+whose slug is `assistant`. It never held the assistant and now answers 410
+saying where the real one is. Nothing calls it. Delete that row next time
+somebody is in Edge Functions. `src/shared/config.js` says the same thing
+next to the slug table.
 
 **What is not done yet:**
 
