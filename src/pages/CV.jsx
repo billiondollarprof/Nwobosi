@@ -83,8 +83,14 @@ const SUMMARY =
    would notice and the last thing worth noticing. Held together under one
    heading, the same facts read as a continuous body of work, and the speed
    becomes the argument rather than the weakness: production in under three
-   months, deployed in four working days. That framing only survives scrutiny
-   because Amara is live and a stranger can open it. */
+   months, a full product in two weeks. That framing only survives scrutiny
+   because Amara is live and a stranger can open it.
+
+   The StellaXafe line deliberately says two weeks rather than the four days
+   the build itself took. Four days is true of the coding and invites the
+   obvious interview question, and the honest answer is the better one:
+   the product thinking is the work and the build falls out of it. Claiming
+   the smaller number would trade a strong answer for a weak boast. */
 const EXPERIENCE = [
   {
     role: "Founder and AI Systems Builder",
@@ -101,7 +107,7 @@ const EXPERIENCE = [
       {
         name: "StellaXafe",
         note: null,
-        body: "Private, company-scoped AI for organizations that cannot risk a data leak. Multi-tenant isolation enforced in the database rather than in application code, retrieval restricted to admin-approved sources, staged model routing to control cost, and a human checkpoint before anything is sent or spent. Architecture to deployed product in four working days.",
+        body: "Private, company-scoped AI for organizations that cannot risk a data leak. Multi-tenant isolation enforced in the database rather than in application code, retrieval restricted to admin-approved sources, staged model routing to control cost, and a human checkpoint before anything is sent or spent. Two weeks from start to finished product, most of it spent on product thinking and design rather than on building. A deployment for a company is faster again, where the long pole is getting API access approved rather than the work itself.",
       },
       {
         name: "XALOM",
