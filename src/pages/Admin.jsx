@@ -47,7 +47,15 @@ import {
   SelectInput,
   Spinner,
 } from "../shared/ui.jsx";
-import { loadMe, listSources, addTextSource, removeSource, listStaff, listWork } from "../shared/session.js";
+import {
+  loadMe,
+  listSources,
+  addTextSource,
+  removeSource,
+  setSourceVisibility,
+  listStaff,
+  listWork,
+} from "../shared/session.js";
 import { adminSessionExpired } from "../shared/adminClock.js";
 import { readFileAsText, canBecomeText } from "../shared/readFile.js";
 import { fetchLinkSource } from "../shared/linkApi.js";
@@ -232,6 +240,47 @@ export default function Admin() {
    name and a short description, which is what lets the assistant pull
    only what a task needs instead of sweeping everything.
    ========================================================================== */
+
+/* ONE SWITCH, TWO AUDIENCES
+   Staff read everything in this list. Support, the side that answers people
+   outside the company, reads only what is switched on here, and nothing is
+   switched on until an admin does it.
+
+   Plain words, because this is a company's own screen: customers can see
+   this, or staff only. Not visibility, not scope, not published. An admin
+   should be able to get this right without being told what it means. */
+function CustomerSwitch({ on, label, onChange }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      aria-label={`Customers can see ${label}`}
+      onClick={onChange}
+      className="inline-flex items-center gap-2.5 rounded-full pl-1 pr-3 py-1 border transition-colors"
+      style={{
+        borderColor: on ? BRAND.accentSoft : "var(--border)",
+        backgroundColor: on ? "rgba(88,112,248,0.08)" : "transparent",
+      }}
+    >
+      <span
+        className="relative w-[30px] h-[17px] rounded-full transition-colors shrink-0"
+        style={{ backgroundColor: on ? BRAND.accentSoft : "var(--chip)" }}
+      >
+        <span
+          className="absolute top-[2.5px] w-3 h-3 rounded-full transition-all"
+          style={{ left: on ? 15 : 3, backgroundColor: on ? "#fff" : "var(--text-3)" }}
+        />
+      </span>
+      <span
+        className="text-[12px] font-medium whitespace-nowrap"
+        style={{ color: on ? BRAND.accentSoft : "var(--text-3)" }}
+      >
+        {on ? "Customers can see this" : "Staff only"}
+      </span>
+    </button>
+  );
+}
 
 function KnowledgeSection({ me, loading: loadingMe }) {
   const navigate = useNavigate();
@@ -426,7 +475,7 @@ function KnowledgeSection({ me, loading: loadingMe }) {
      when an admin vouches for it. The assistant never fetches anything. */
   async function addLink(e) {
     e.preventDefault();
-    if (!linkUrl.trim() || !linkNote.trim() || !me?.company?.id) return;
+    if (!linkUrl.trim() || !me?.company?.id) return;
 
     setSaving(true);
     const result = await fetchLinkSource({ url: linkUrl.trim(), description: linkNote.trim() });
@@ -447,6 +496,22 @@ function KnowledgeSection({ me, loading: loadingMe }) {
     const ok = await removeSource(id);
     if (ok) setItems((prev) => prev.filter((i) => i.id !== id));
     else show("Could not remove that. Try again.");
+  }
+
+  /* Turning a source over to the support side, or taking it back.
+
+     Written to the row straight away and reflected in the list, because a
+     switch that waits for a round trip before it moves reads as broken and
+     gets clicked twice. If the write fails the switch goes back and the
+     admin is told, which is the only honest way to do it: this decides what
+     a stranger can be told. */
+  async function setVisible(id, visible) {
+    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, customer_visible: visible } : i)));
+    const ok = await setSourceVisibility(id, visible);
+    if (!ok) {
+      setItems((prev) => prev.map((i) => (i.id === id ? { ...i, customer_visible: !visible } : i)));
+      show("Could not change that. Try again.");
+    }
   }
 
   if (loading || loadingMe) {
@@ -497,6 +562,37 @@ function KnowledgeSection({ me, loading: loadingMe }) {
         <SectionHeading hint="Brand guidelines, templates, past work, anything the assistant should write from. Give each one a clear name and a line saying what it holds, because that is how it decides which to open.">
           Add company knowledge
         </SectionHeading>
+
+        {/* ==============================================================
+            WHERE THIS WORKSPACE IS RUNNING
+
+            This sits above the upload controls, which is the only place it
+            can do its job. Somebody about to hand over a payroll file has
+            to read it before they choose the file, not after.
+
+            IT DOES NOT SAY "DEMO", AND THAT IS THE POINT.
+            A shared workspace is a real product for a company that cannot
+            fund its own cloud, and plenty of them can run on this one
+            exactly as it stands. Calling it a demo would price that work at
+            nothing and talk a paying customer out of a thing that already
+            works for them. So it says where the workspace is hosted, which
+            is the fact somebody needs, and it says the limit lifts on a
+            deployment rather than dangling a warning with no way out.
+
+            One line, one time, in a quiet band. A warning repeated on every
+            screen stops being read on the second screen.
+            ============================================================== */}
+        <div
+          className="flex items-start gap-3 rounded-[12px] border px-4 py-3 mb-5"
+          style={{ borderColor: "var(--border-2)", backgroundColor: "var(--surface-2)" }}
+        >
+          <Shield size={15} className="shrink-0 mt-0.5" style={{ color: BRAND.accentSoft }} />
+          <p className="text-[13px] leading-relaxed" style={{ color: "var(--text-3)" }}>
+            This workspace is hosted by us for now, so use it with real work but leave out
+            anything you would not want outside your office. That limit goes when it runs
+            inside your own systems.
+          </p>
+        </div>
 
         {/* Paste first, because it is the path that always works. A file
             only helps if it is a format a browser can read as text, and
@@ -673,17 +769,20 @@ function KnowledgeSection({ me, loading: loadingMe }) {
               placeholder="company.com/about"
             />
           </Field>
-          <Field label="What it holds" required>
+          {/* No longer required. The page is read when it is added, and a
+              name and a line come back with it. Somebody who wants to say
+              it in their own words still can, and their words win. */}
+          <Field label="What it holds" hint="Leave this empty and it will be filled in from the page.">
             <TextInput
               value={linkNote}
               onChange={(e) => setLinkNote(e.target.value)}
-              placeholder="Short description"
+              placeholder="Optional"
             />
           </Field>
           <div className="mb-4">
             <PrimaryButton
               type="submit"
-              disabled={saving || !linkUrl.trim() || !linkNote.trim()}
+              disabled={saving || !linkUrl.trim()}
               className="flex items-center gap-2 w-full sm:w-auto justify-center"
             >
               {saving ? <Spinner size={14} color="#fff" /> : <Plus size={15} />}
@@ -702,7 +801,7 @@ function KnowledgeSection({ me, loading: loadingMe }) {
 
       {/* What is in the index */}
       <GlassPanel className="p-6">
-        <SectionHeading hint="This is the assistant's entire world. Nothing outside this list is read.">
+        <SectionHeading hint="This is the assistant's entire world. Nothing outside this list is read. Your staff read all of it. Customers only ever see what you switch on.">
           In the knowledge base
         </SectionHeading>
 
@@ -716,44 +815,58 @@ function KnowledgeSection({ me, loading: loadingMe }) {
           {items.map((item) => (
             <div
               key={item.id}
-              className="flex items-center gap-3 rounded-[12px] px-3.5 py-3 border"
+              className="rounded-[12px] px-3.5 py-3 border"
               style={{ backgroundColor: "var(--surface-2)", borderColor: "var(--border)" }}
             >
-              <span
-                className="w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0"
-                style={{ backgroundColor: "var(--chip)" }}
-              >
-                {item.kind === "link" ? (
-                  <Link2 size={15} style={{ color: "var(--text-2)" }} />
-                ) : (
-                  <FileText size={15} style={{ color: "var(--text-2)" }} />
-                )}
-              </span>
+              <div className="flex items-center gap-3">
+                <span
+                  className="w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0"
+                  style={{ backgroundColor: "var(--chip)" }}
+                >
+                  {item.kind === "link" ? (
+                    <Link2 size={15} style={{ color: "var(--text-2)" }} />
+                  ) : (
+                    <FileText size={15} style={{ color: "var(--text-2)" }} />
+                  )}
+                </span>
 
-              <div className="min-w-0 flex-1">
-                <p className="text-[14px] font-medium truncate" style={{ color: "var(--text-1)" }}>
-                  {item.name}
-                </p>
-                <p className="text-[12.5px] truncate" style={{ color: "var(--text-3)" }}>
-                  {item.description}
-                </p>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[14px] font-medium truncate" style={{ color: "var(--text-1)" }}>
+                    {item.name}
+                  </p>
+                  <p className="text-[12.5px] truncate" style={{ color: "var(--text-3)" }}>
+                    {item.description}
+                  </p>
+                </div>
+
+                {item.status === "ready" ? (
+                  <StatusPill tone="ok">Ready</StatusPill>
+                ) : item.status === "failed" ? (
+                  <StatusPill tone="error">Could not read</StatusPill>
+                ) : (
+                  <StatusPill tone="pending">Being read</StatusPill>
+                )}
+
+                <button
+                  onClick={() => remove(item.id)}
+                  className="shrink-0 p-1.5 rounded-[8px] transition-opacity hover:opacity-70"
+                  aria-label={`Remove ${item.name}`}
+                >
+                  <Trash2 size={15} style={{ color: "var(--text-3)" }} />
+                </button>
               </div>
 
-              {item.status === "ready" ? (
-                <StatusPill tone="ok">Ready</StatusPill>
-              ) : item.status === "failed" ? (
-                <StatusPill tone="error">Could not read</StatusPill>
-              ) : (
-                <StatusPill tone="pending">Being read</StatusPill>
-              )}
-
-              <button
-                onClick={() => remove(item.id)}
-                className="shrink-0 p-1.5 rounded-[8px] transition-opacity hover:opacity-70"
-                aria-label={`Remove ${item.name}`}
-              >
-                <Trash2 size={15} style={{ color: "var(--text-3)" }} />
-              </button>
+              {/* Its own line rather than a fifth thing in the row above.
+                  On a phone that row is already at its limit, and this is
+                  a decision worth reading before making, not a control to
+                  brush past on the way to the bin. */}
+              <div className="mt-2.5 sm:pl-12">
+                <CustomerSwitch
+                  on={item.customer_visible === true}
+                  label={item.name}
+                  onChange={() => setVisible(item.id, !item.customer_visible)}
+                />
+              </div>
             </div>
           ))}
         </div>

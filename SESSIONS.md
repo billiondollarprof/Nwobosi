@@ -4,6 +4,53 @@ Log of each work session. Newest at the top. Keep entries short.
 
 ---
 
+## Session 7: 2026-09-07
+
+**Support, the second environment**
+
+- **`SUPPORT.md` is the plan**, written before any of it was built and split
+  into what is being built now and what is deliberately not. It replaces the
+  customer environment section in `ARCHITECTURE.md`, including the name:
+  support, not customer support, because a church answering members is the
+  same mechanism as a hotel answering guests.
+- **One model on the support side, Haiku, no routing.** That inbox is open
+  to the street, so the per message cost is set by strangers rather than by
+  the company. Haiku also reads images, which is what makes "send me the
+  receipt" work.
+- **No connectors on the support side, ever.** A connector is a live reach
+  into a company's systems and this endpoint answers people from outside it.
+  The boundary is what the function can call, not what the prompt tells it.
+- **Two knowledge bases, one switch.** Every source now carries "Customers
+  can see this", default off. Staff read everything, support reads only what
+  is switched on. Enforced by `customer_knowledge()`, a security definer
+  function, because the support path runs as the service role and the
+  service role goes straight through row level security.
+- **Escalations are routed.** `support_routes` gives a company a label and
+  an address, one of them the default. The assistant is shown the labels and
+  never the addresses. Unknown label falls to the default, and no default
+  still records the question.
+- **The staff assistant is Sonnet now, with no routing.** The stage picker
+  and the ceiling lookup are gone. A model chosen for you is a way for the
+  product to be quietly worse than expected on a turn you cannot see the
+  reason for. The ladder and the metering stay; the automatic selection
+  stops. Routing that asks permission is the enterprise version, and it is
+  in `SUPPORT.md` as a later thing.
+- **A link now names itself.** `add-link` fetched a page and made the admin
+  write the title and the summary. Sonnet reads the page at ingestion and
+  writes both. The rule does not move: the assistant still cannot browse,
+  the fetch happens once when a person adds it, and what is stored is what
+  the page said then.
+- **`company_spend`**, one statement instead of read, subtract, write. The
+  old shape loses a charge when two calls finish together, which is rare
+  with one person in a conversation and normal on a support inbox.
+- Checked: every database door walked through in SQL against the live
+  project, build clean, the new switch rendered at 320, 390 and 1280 in both
+  themes with no overflow, and clicked both ways. `support-ask` is deployed
+  but has never been called: `supabase.co` is unreachable from a session and
+  `SUPPORT_SHARED_SECRET` is not set yet.
+
+---
+
 ## Session 6: 2026-09-04
 
 **The hero, rewritten to sell the capability**

@@ -16,15 +16,25 @@
    are actually enforced rather than merely displayed:
 
      1. WHO      the caller must be a signed in staff member of a real
-                 company. verify_jwt is ON here, unlike the setup
-                 functions, because by now they do have an account.
-     2. WHICH    a staff member cannot use a model above the ceiling their
-                 admin set for them, no matter what the browser asks for.
+                 company, checked below with auth.getUser() against the
+                 token they sent.
+     2. WHICH    the model is decided here and never read from the request,
+                 so a browser cannot ask for a different one.
      3. HOW MUCH the company's remaining budget is checked before the call
                  and decremented by what the call actually cost after it.
 
    A browser that lies about any of the three gets nowhere, because none of
    the three are read from the request body.
+
+   VERIFY JWT IS OFF, AND THAT IS DELIBERATE
+   -----------------------------------------
+   The dashboard toggle is "verify JWT with legacy secret", and it is not an
+   identity check: the public anon key satisfies it, so everything it lets
+   through still has to be checked here anyway. What it can do is refuse a
+   real staff member, because this project issues the newer key format and a
+   token that is not signed by the legacy secret is rejected at the gateway
+   before this file runs. Off at the door, checked properly inside. Every
+   function in this project is set the same way, and CURRENT.md says so.
    ========================================================================== */
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -59,26 +69,30 @@ const PRICE: Record<Tier, { input: number; output: number }> = {
   "fable-5": { input: 10, output: 50 },
 };
 
-/* What each stage of the flow wants, before the staff member's ceiling is
-   applied. The ceiling can only ever pull these down, never push them up. */
-const STAGE_TIER: Record<string, Tier> = {
-  interview: "haiku-4-5",
-  analyse: "sonnet-5",
-  generate: "sonnet-5",
+/* ONE MODEL FOR THE STAFF SIDE, AND IT IS SONNET
+   There used to be a picker here: cheap for the interview, capable for the
+   work, capped by the ceiling the admin set for each person.
+
+   It is gone, deliberately. A model chosen for you is a way for the product
+   to be quietly worse than you expected, on a turn you cannot see the
+   reason for, with no screen anywhere that would tell you. One good model
+   everywhere is predictable, and predictable is the thing a person trusts.
+
+   The ladder, the price table and the metering all stay. It is only the
+   automatic selection that stops. The ceiling column stays on the row too,
+   unread for now, because the enterprise version of this is routing that
+   asks: the assistant says a step needs more than Sonnet, and the person
+   allows it or does not. See SUPPORT.md. */
+const STAFF_TIER: Tier = "sonnet-5";
+
+/* Which tiers take adaptive thinking. Haiku 4.5 predates it and rejects it,
+   everything above it expects it. */
+const ADAPTIVE_THINKING: Record<Tier, boolean> = {
+  "haiku-4-5": false,
+  "sonnet-5": true,
+  "opus-5": true,
+  "fable-5": true,
 };
-
-function tierIndex(tier: string) {
-  const i = LADDER.indexOf(tier as Tier);
-  return i === -1 ? 0 : i;
-}
-
-/* The heart of rule 2. Whatever the stage wants, capped by what this
-   person is allowed. Ask for Opus on a Sonnet ceiling and you get Sonnet. */
-function resolveTier(stage: string, ceiling: string | null): Tier {
-  const wanted = STAGE_TIER[stage] ?? "haiku-4-5";
-  const cap = ceiling ?? "sonnet-5";
-  return LADDER[Math.min(tierIndex(wanted), tierIndex(cap))];
-}
 
 function centsFor(tier: Tier, inputTokens: number, outputTokens: number) {
   const { input, output } = PRICE[tier];
@@ -141,10 +155,10 @@ function buildBasePrompt(
     "how to export a PDF. That is the app's job and it already works. Write the",
     "document in Markdown and stop.",
     "",
-    "The app also decides which model runs each part of this, and moves the work up to",
-    "a stronger one when the time comes. You do not control that and you must never",
-    "tell somebody you cannot switch models or that they should start again elsewhere.",
-    "From where they sit there is one assistant, and it is you.",
+    "There is one assistant in this product and it is you. Never tell somebody you",
+    "cannot do something because of which model you are, never offer to switch to a",
+    "different one, and never suggest they start again somewhere else. From where they",
+    "sit you are simply the assistant, and how that is run is not their concern.",
     "",
     "YOUR SOURCES OF TRUTH",
     "There are exactly four ways a fact about the world reaches your draft, and this",
@@ -499,7 +513,7 @@ Deno.serve(async (req: Request) => {
      RULE 2: WHICH MODEL
      ---------------------------------------------------------------------- */
 
-  const tier = resolveTier(stage, staff.model_ceiling ?? null);
+  const tier = STAFF_TIER;
 
   /* The catalogue: names and one line descriptions. This is what the
      interview sees, and it is enough to talk about what exists without
@@ -598,13 +612,22 @@ Deno.serve(async (req: Request) => {
 
   const anthropic = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY")! });
 
-  /* Haiku 4.5 predates adaptive thinking and effort, and rejects both.
-     Sonnet 5 and above want them. Same request either way, different
-     knobs, so build the extras rather than branching the whole call. */
-  const thinkingExtras =
-    tier === "haiku-4-5"
-      ? {}
-      : { thinking: { type: "adaptive" as const }, output_config: { effort: "high" as const } };
+  /* Haiku 4.5 predates adaptive thinking and effort, and rejects both with a
+     400. Sonnet 5 and above want them. A lookup rather than a comparison,
+     because only one tier is in use today and a comparison against it reads
+     as dead code to the type checker while still being the right shape for
+     the day routing comes back.
+
+     The cast is the SDK's typings being behind the API. 0.68.0 knows
+     thinking as enabled or disabled and not as adaptive, which is the shape
+     Sonnet 5 actually takes. Nothing else in the request needs loosening,
+     so this is cast on its own rather than over the whole call. */
+  const thinkingExtras = ADAPTIVE_THINKING[tier]
+    ? {
+        thinking: { type: "adaptive" } as unknown as Anthropic.ThinkingConfigParam,
+        output_config: { effort: "high" as const },
+      }
+    : {};
 
   const encoder = new TextEncoder();
 
@@ -678,10 +701,14 @@ Deno.serve(async (req: Request) => {
             Deno.env.get("SUPABASE_URL")!,
             Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
           );
-          const { error: spendError } = await admin
-            .from("companies")
-            .update({ budget_cents_remaining: Math.max(0, remaining - cents) })
-            .eq("id", staff.company_id);
+          /* One statement, computed in the database. Reading the balance
+             here and writing the difference back loses a charge whenever
+             two calls finish together, and the read happened at the top of
+             this request, a whole model call ago. */
+          const { error: spendError } = await admin.rpc("company_spend", {
+            p_company_id: staff.company_id,
+            p_cents: cents,
+          });
 
           if (spendError) {
             /* The work was done and the user has it. Losing the meter

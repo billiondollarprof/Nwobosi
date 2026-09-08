@@ -10,6 +10,19 @@ This file tells Claude how to work on this project. The product is StellaXafe.
 - Use a hyphen only when the word actually needs one.
 - Keep sentences short and simple. This matters most in UI text (buttons, labels, messages the end user sees). Inside code, comments can use normal technical language.
 - Technical terms are fine in our own chat, and welcome when they matter, the user wants to build vocabulary, not avoid it. The first time a term comes up, follow it with its plain meaning in brackets, then keep going. Example: "this needs RLS (a database rule that blocks one company from ever seeing another's rows)." Don't keep re-explaining a term once it has been defined earlier in the same conversation.
+- **The bracket is not optional.** Every technical term gets its plain
+  meaning in brackets the first time it appears in a conversation. Digest
+  (a fingerprint of a value, used to compare two secrets without showing
+  either one). Idempotent (safe to run twice, because the second run
+  changes nothing). This is not politeness, it is how Anthony builds the
+  vocabulary, so skipping it takes something from him.
+- **Anything he has to do himself is a numbered list.** Not a paragraph he
+  has to mine for the actions. One step per line, in the order he does
+  them, with the exact thing to type or click. Say where he is (which
+  project, which screen) before saying what to do there. If a step can be
+  skipped because it is already done, say so and say how you know.
+- **Say what is already done before saying what is left.** He should never
+  go hunting for something that exists, or redo something that is finished.
 
 ## Taking direction
 
@@ -150,6 +163,60 @@ Where a password still exists in the code, it is either an account made
 before this rule or a random value the server generates and throws away.
 Neither is ever shown to anybody.
 
+## Databases and edge functions
+
+The database has real customer conversations in it and the edge functions
+are live. Both are things that keep working right up until the moment
+somebody changes them from memory. These rules exist so that cannot happen.
+
+### Every SQL statement is shown and explained before it runs
+
+Claude does not run SQL on a project without walking Anthony through it
+first. Not a summary afterwards, before.
+
+1. Say what the SQL is for, in one plain line.
+2. Show the statement itself.
+3. Say plainly whether it only reads (a SELECT, which changes nothing) or
+   whether it writes (INSERT, UPDATE, DELETE, ALTER, which change or
+   destroy data).
+4. Wait. Anthony approves it or he does not.
+
+He has said it directly: if he is not carried along, he will not approve.
+An approval he did not understand is not an approval, it is a guess.
+
+### An edge function that already works is never rewritten from the repo
+
+The code in the repo and the code that is actually deployed drift apart.
+A file existing in `supabase/functions/` means it is written, not that it
+is live. Handing over a whole function assembled from the repo can silently
+undo something that was fixed directly in the console and never came back
+to git.
+
+So, for any function that is already deployed and working:
+
+1. **Anthony pastes the currently deployed source into the chat.** Claude
+   asks for it and waits. Claude does not skip this because it thinks it
+   already knows what is there.
+2. **Claude adds only the new lines to that pasted code.** Nothing else
+   moves. No tidying, no renaming, no reformatting, no improving something
+   on the way past.
+3. **Claude says exactly what was added and where**, so Anthony can see the
+   change without reading the whole file.
+4. **Claude hands back the whole function in one copyable block**, so he
+   replaces all of it and deploys once.
+5. **Claude says plainly whether it is NEW or a REDEPLOY**, in those words,
+   before he touches anything.
+
+A brand new function has nothing to break, so it can come straight from the
+repo. Every other one follows the five steps.
+
+### Slug and display name stay identical
+
+A function's slug is what the URL is built from. Its display name is a
+label. Renaming the label does not rename the slug, and deploying by the
+label creates a second function instead of updating the first. That is how
+`assistant-` happened. Keep both strings the same and the trap cannot fire.
+
 ## Branching and deploying
 
 The site is live. `main` deploys straight to stellaxafe.com with nothing
@@ -190,6 +257,28 @@ This project is not one big file. Each major part of the app is its own page, in
 - Auth pages: its own page.
 
 Inside each page, break the code into clearly labeled sections (for example, inside the auth page: login, signup, OTP verification). Each section should be easy to find and read top to bottom.
+
+**Every page and every section has to stand on its own.** This is not a
+style preference, it is the rule that decides whether the next person can
+work on this at all, and the next person includes a tired Anthony at 2am
+and every fresh Claude session that has never seen the file before.
+
+- **A header at the top of every file**, saying what this is, why it
+  exists, and what it must never do. If a decision in the file would look
+  wrong to somebody who was not in the conversation, the reason goes in the
+  header. A file whose header is out of date is worse than one with no
+  header, so when the code changes the header changes with it.
+- **A labeled section for every distinct job in the file**, numbered where
+  order matters, so anybody can scroll and land on the right one without
+  reading the parts either side.
+- **Written for the slowest engineer in the room, not the fastest.** No
+  cleverness that has to be decoded, no abbreviation only the author
+  understands, no reliance on knowing what happened three files away. If a
+  line needs a paragraph to explain it, either write the paragraph or write
+  a simpler line.
+- **Read it back cold before calling it done.** Open the file as though you
+  have never seen it. Can you tell in ten seconds what it does and where to
+  change one thing? If not, it is not finished.
 
 These pages come together to form the app, but the source for each stays separate and clean.
 

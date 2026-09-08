@@ -16,12 +16,22 @@
    a page that changes next week cannot quietly change what the assistant
    believes, and a link pasted into the chat is still just text.
 
-   verify_jwt must be ON. Only a signed in admin of a company may add to
-   that company's knowledge base, and the check is here rather than in the
-   browser because a browser can be told to say anything.
+   ONLY AN ADMIN, AND THE CHECK IS HERE
+   ------------------------------------
+   Only a signed in admin of a company may add to that company's knowledge
+   base. The check is in this file rather than in the browser, because a
+   browser can be told to say anything.
+
+   The dashboard's verify_jwt toggle stays OFF, as it does on every function
+   in this project. It reads "verify with legacy secret", the public anon key
+   satisfies it, so it proves nothing this file does not prove properly a few
+   lines down, and it can refuse a real admin: this project issues the newer
+   key format, and a token not signed by the legacy secret is turned away at
+   the gateway before any of this runs. See CURRENT.md.
    ========================================================================== */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import Anthropic from "npm:@anthropic-ai/sdk@0.68.0";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -130,6 +140,99 @@ function splitIntoChunks(text: string) {
   return chunks.filter((c) => c.trim());
 }
 
+/* --------------------------------------------------------------------------
+   UNDERSTANDING THE PAGE
+
+   An admin used to have to name the page and write the line saying what it
+   holds. That is the worst part of adding a link: the address is the thing
+   they have, the summary is homework, and a page filed under a title like
+   "Home | Acme" is a page the assistant will never choose.
+
+   So the page is read once, here, by a capable model, and it writes both.
+   The admin pastes an address and gets a finished source back.
+
+   This changes nothing about the rule the product rests on. The assistant
+   still cannot browse. The fetch and the reading both happen at the moment
+   a person adds the link, on a server, and what is stored is what the page
+   said then.
+   -------------------------------------------------------------------------- */
+
+const UNDERSTAND_MODEL = "claude-sonnet-5";
+const UNDERSTAND_PRICE = { input: 2, output: 10 };
+
+/* Enough of the page to know what it is. A summary does not get better for
+   having read the footer of a long document. */
+const UNDERSTAND_CHARS = 12000;
+
+const DESCRIBE_TOOL: Anthropic.Tool = {
+  name: "describe",
+  description: "Name this page and say in one line what it holds.",
+  input_schema: {
+    type: "object",
+    properties: {
+      name: {
+        type: "string",
+        description:
+          "A short name, the way somebody at the company would refer to it in conversation. Under 60 characters. No site name, no tagline.",
+      },
+      description: {
+        type: "string",
+        description:
+          "One line saying what somebody would come to this page to find out. Under 160 characters. Plain words.",
+      },
+    },
+    required: ["name", "description"],
+  },
+};
+
+async function understand(text: string, url: string, fallbackName: string) {
+  const key = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!key) {
+    console.error("ANTHROPIC_API_KEY is not set, link stored without understanding it");
+    return { name: fallbackName, description: "", cents: 0 };
+  }
+
+  try {
+    const anthropic = new Anthropic({ apiKey: key });
+    const result = await anthropic.messages.create({
+      model: UNDERSTAND_MODEL,
+      max_tokens: 300,
+      tools: [DESCRIBE_TOOL],
+      tool_choice: { type: "tool", name: "describe" },
+      messages: [
+        {
+          role: "user",
+          content:
+            `This page has just been added to a company's knowledge base, so their assistant can ` +
+            `use it when it answers. Read it and file it.\n\nAddress: ${url}\n\n` +
+            text.slice(0, UNDERSTAND_CHARS),
+        },
+      ],
+    });
+
+    const call = result.content.find((block) => block.type === "tool_use");
+    const input = (call?.type === "tool_use" ? call.input : {}) as Record<string, unknown>;
+
+    const usage = result.usage;
+    const cents = Math.ceil(
+      (((usage?.input_tokens ?? 0) / 1_000_000) * UNDERSTAND_PRICE.input +
+        ((usage?.output_tokens ?? 0) / 1_000_000) * UNDERSTAND_PRICE.output) * 100,
+    );
+
+    return {
+      name: String(input.name ?? "").trim().slice(0, 120) || fallbackName,
+      description: String(input.description ?? "").trim().slice(0, 300),
+      cents,
+    };
+  } catch (err) {
+    /* A page that was fetched is worth keeping even if nothing summarised
+       it. The title off the page and an empty line are worse than a good
+       summary and better than losing the source. */
+    console.error("could not understand the page", err);
+    return { name: fallbackName, description: "", cents: 0 };
+  }
+}
+
 /* Addresses that are not out on the internet at all. A server fetching a
    URL on someone's behalf will happily fetch its own neighbourhood, so
    without this an admin could type a private address and use this
@@ -227,7 +330,6 @@ Deno.serve(async (req) => {
   if (!url) {
     return json({ ok: false, reason: "That does not look like a public web address." }, 400);
   }
-  if (!description) return json({ ok: false, reason: "Say in one line what the page holds." }, 400);
 
   /* Who they are, read under their own identity so the database decides
      rather than this function taking the browser's word for it. */
@@ -302,7 +404,6 @@ Deno.serve(async (req) => {
     return json({ ok: false, reason: "Could not open that page. Check the address and try again." }, 400);
   }
 
-  const name = titleFrom(html, url);
   const text = htmlToText(html).slice(0, MAX_PAGE_CHARS);
 
   if (text.length < 80) {
@@ -311,6 +412,20 @@ Deno.serve(async (req) => {
       400,
     );
   }
+
+  /* Read it, unless the admin already said what it is. Somebody who took
+     the trouble to write a line knows their own company better than a
+     model reading one page, so their words win. */
+  const read = description
+    ? { name: titleFrom(html, url), description, cents: 0 }
+    : await understand(text, url, titleFrom(html, url));
+
+  const name = read.name;
+  /* Never empty. The description is what the assistant reads when it
+     decides whether a source is worth opening, so a blank one is a source
+     that never gets chosen. If nothing wrote a line, say where it came
+     from, which is at least true and at least a clue. */
+  const note = read.description || `Saved from ${new URL(url).hostname}`;
 
   /* ------------------------------------------------------------------
      STORE IT
@@ -323,7 +438,7 @@ Deno.serve(async (req) => {
     .insert({
       company_id: staff.company_id,
       name,
-      description,
+      description: note,
       kind: "link",
       location: url,
       status: "pending",
@@ -351,7 +466,24 @@ Deno.serve(async (req) => {
 
   await asUser.from("knowledge_sources").update({ status: "ready" }).eq("id", source.id);
 
-  console.log(`add-link company=${staff.company_id} url=${url} chars=${text.length} chunks=${chunks.length}`);
+  /* Reading the page cost something, so it comes off the company's budget
+     like any other call. Service role, because a member of staff must not
+     be able to write to their own company's balance, only spend against
+     it. A failure here is a bookkeeping problem, never a reason to throw
+     away a source that is already saved and working. */
+  if (read.cents > 0) {
+    const admin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+    const { error: spendError } = await admin.rpc("company_spend", {
+      p_company_id: staff.company_id,
+      p_cents: read.cents,
+    });
+    if (spendError) console.error("could not record link spend", spendError);
+  }
 
-  return json({ ok: true, name, chunks: chunks.length });
+  console.log(`add-link company=${staff.company_id} url=${url} chars=${text.length} chunks=${chunks.length} cents=${read.cents}`);
+
+  return json({ ok: true, name, description: note, chunks: chunks.length });
 });

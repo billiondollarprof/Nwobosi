@@ -205,6 +205,72 @@ a real browser.
   `access_codes` has RLS on and zero policies, so only the service role
   reaches it. Verified against the live database.
 
+## Support, the second environment
+
+Added 2026-09-07. The plan for all of it is `SUPPORT.md`, which is the
+current record and takes precedence over the older section in
+`ARCHITECTURE.md`.
+
+**What is live in the database, applied and walked through against the real
+project:**
+
+- `knowledge_sources.customer_visible`, default false, and
+  `customer_knowledge(company_id)`, the only read path the support side has.
+  The filter is inside the function so no call site can widen it.
+- `support_threads`, `support_messages`, `escalations`, and the quiet window
+  that hands a conversation back on its own.
+- `support_routes`, so a billing question reaches billing, plus
+  `support_message_add`, `support_route_labels`, `support_escalate` and
+  `support_escalation_notified`.
+- `company_spend`, an atomic decrement. The staff assistant's read then
+  write loses charges when two calls land together, which is rare with one
+  person in one conversation and normal on an open inbox.
+
+Every one of those was exercised end to end in SQL: a repeat delivery is
+recorded once, an unknown route falls to the default, a second default is
+refused, and support presence turns on when a colleague speaks and lapses
+by itself.
+
+**What is deployed:** `support-ask`, with `verify_jwt` off and a shared
+secret. Haiku only, no connectors, published sources only. `add-link` and
+`assistant` were redeployed the same day, so the live project and this
+repository match.
+
+**The assistant's slug is now `assistant`, with no hyphen.** It used to be
+`assistant-`, a trailing hyphen it was created with, while the dashboard
+showed the name as "assistant". That trap is gone: the hyphenated function
+was deleted on 2026-09-08 and the code redeployed on the clean slug.
+`src/shared/config.js` points at it.
+
+**What is not done yet:**
+
+- `SUPPORT_SHARED_SECRET` is not set on the project. Until it is, every
+  call to `support-ask` answers 401, which is the correct closed state.
+- Nothing has called it. `supabase.co` is unreachable from a session, so the
+  function has never been exercised over HTTP. That test is a browser or a
+  live webhook, not something this repository can prove.
+- No company has a support route yet, so an escalation would be recorded
+  with nobody emailed.
+- **The Amara branch is written and pushed**, on Amara's `testing` branch,
+  in `receive-whatsapp-webhook`. It sits at the one point where a message
+  was being thrown away: after the guest pipeline declines it. Guarded three
+  ways, and the first is the one that matters: with no
+  `STELLAXAFE_SUPPORT_URL` or `STELLAXAFE_SUPPORT_SECRET` it returns at once
+  and that function behaves exactly as it did before, so it can be deployed
+  ahead of the secrets. **Not deployed.** Amara's Rule 7 says the owner
+  deploys and the ledger records it, and `DEPLOYMENTS.md` there now says the
+  repo is ahead.
+
+- **Amara's demo data is set.** Two support routes: Billing to
+  anthony@stellaxafe.com, and Everything else to support@amara.ng as the
+  default. Three of the five knowledge sources are published to the support
+  side, 37 chunks: the summary of Amara, the landing page and the partner
+  programme. `PaymentReceipt26-08-2026` and the executive brief stay off,
+  the receipt because it must and the brief because that is a judgement
+  call, not a default.
+
+---
+
 ## What is not real, and must not be claimed
 
 - **Canva makes nothing.** The app is registered, the keys are in place,
@@ -238,17 +304,20 @@ a real browser.
   Supabase dashboard by hand, or pushed straight to the project by a
   session with Supabase access, which is how `send-contact` got there.
   Sources live in `supabase/functions/`.
-- Deployed: `assistant-`, `add-link`, `invite-staff`, `check-access-code`,
-  `create-workspace`, `send-contact`.
+- Deployed: `assistant`, `add-link`, `support-ask`, `invite-staff`,
+  `check-access-code`, `create-workspace`, `send-contact`, `resume-demo`,
+  `accept-invite`.
 - **Secrets are still by hand.** `send-contact` reads `RESEND_API_KEY`, and
   optionally `CONTACT_TO` and `CONTACT_FROM` if the inbox or the sending
   address ever changes. The from address has to be on a domain verified
   with Resend. `stellaxafe.com` and `mail.stellaxafe.com` both are.
-- **The assistant's slug is `assistant-`, with a trailing hyphen.** The
-  dashboard shows its Name as "assistant", and renaming does not change a
-  slug. Calling the wrong one is a 404 with no CORS headers, which a
-  browser reports as a send failure, so it looks like a network fault.
-  Slugs are named in `src/shared/config.js` under `FUNCTIONS`.
+- **Slug and display name are two different things**, and renaming a
+  function does not rename its slug. That is what left the assistant on
+  `assistant-` for months while the dashboard showed "assistant". It now
+  lives on the clean `assistant` slug. Calling a slug that does not exist
+  is a 404 with no CORS headers, which a browser reports as a send failure,
+  so it looks like a network fault. Slugs are named in
+  `src/shared/config.js` under `FUNCTIONS`.
 - **`verify_jwt` is OFF on all of them, deliberately.** The toggle is
   "verify with legacy secret" and this project uses the new key system
   (`sb_publishable_...`), so ON can reject valid user tokens. Every

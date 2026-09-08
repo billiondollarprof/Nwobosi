@@ -39,20 +39,22 @@ export const OAUTH_CLIENTS = {
    somewhere a browser can read it. */
 /* --------------------------------------------------------------------------
    SECTION: Edge function slugs
-   The name shown in the Supabase dashboard and the slug in the URL are two
-   different things. Renaming a function does not rename its slug: the
-   dashboard says so under the Name field, and this project has an
-   `assistant-` that was created with a trailing hyphen and displays as
-   "assistant".
 
-   Calling the wrong slug is a 404 with no CORS headers on it, which a
-   browser reports as a send failure rather than a not found, so it looks
-   like a network problem and sends everybody hunting in the wrong place.
-   The slugs live here, named, so the next person sees them.
+   The name shown in the Supabase dashboard and the slug in the URL are two
+   different things, and renaming a function does not rename its slug. That
+   caught this project once: the assistant lived at `assistant-`, with a
+   trailing hyphen it was created with, while the dashboard displayed it as
+   "assistant". It was redeployed on the clean slug on 2026-09-08 and the
+   hyphenated one is gone.
+
+   Calling a slug that does not exist is a 404 with no CORS headers on it,
+   which a browser reports as a send failure rather than a not found, so it
+   looks like a network problem and sends everybody hunting in the wrong
+   place. The slugs live here, named, so nobody has to guess.
    -------------------------------------------------------------------------- */
 
 export const FUNCTIONS = {
-  assistant: "assistant-",
+  assistant: "assistant",
   addLink: "add-link",
   inviteStaff: "invite-staff",
   sendContact: "send-contact",

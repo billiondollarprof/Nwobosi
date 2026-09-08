@@ -47,7 +47,7 @@ import MarketingNav from "../shared/MarketingNav.jsx";
 
 const ME = {
   name: "Anthony Nwobosi",
-  title: "AI Native Builder | AI Automation, Workflows, Agents & Business Systems",
+  title: "AI Automation Engineer",
   email: "anthony@stellaxafe.com",
   /* International format, because the reader is usually not in Nigeria. A
      local 0902 number is undiallable from abroad and some parsers will not
@@ -93,7 +93,13 @@ const SUMMARY =
    the smaller number would trade a strong answer for a weak boast. */
 const EXPERIENCE = [
   {
-    role: "Founder and AI Systems Builder",
+    /* The searched title first, "Founder" second. An applicant tracking
+       system weights the role headings in Experience as heavily as the one
+       at the top, so a CV that says Engineer in the header and Builder in
+       every role scores worse than it should. Both words are true of this
+       job, so the order is the only decision, and the order that helps is
+       the one that leads with what the posting is called. */
+    role: "AI Automation Engineer and Founder",
     org: "StellaXafe",
     place: "Port Harcourt, Nigeria",
     dates: "2026 – Present",

@@ -93,7 +93,7 @@ export function splitIntoChunks(text) {
 export async function listSources(companyId) {
   const { data, error } = await supabase
     .from("knowledge_sources")
-    .select("id, name, description, kind, status, location, created_at")
+    .select("id, name, description, kind, status, location, customer_visible, created_at")
     .eq("company_id", companyId)
     .order("created_at", { ascending: false });
 
@@ -155,6 +155,25 @@ export async function addTextSource({ companyId, userId, name, description, text
   if (readyError) console.error("could not mark source ready", readyError);
 
   return { ok: true, source: { ...source, status: "ready" }, chunks: chunks.length };
+}
+
+/* THE ONE SWITCH THAT DECIDES WHAT A STRANGER CAN BE TOLD
+   Staff read everything in the knowledge base. Support reads only the
+   sources with this turned on, and it is off until somebody deliberately
+   turns it on.
+
+   The rule is not enforced here. This writes an admin's decision; the
+   enforcement is customer_knowledge() in the database, which the support
+   function has to go through and which cannot be widened by a caller. A
+   check in a browser is a label, not a lock. */
+export async function setSourceVisibility(id, visible) {
+  const { error } = await supabase
+    .from("knowledge_sources")
+    .update({ customer_visible: visible })
+    .eq("id", id);
+
+  if (error) console.error("could not change who can see that source", error);
+  return !error;
 }
 
 export async function removeSource(id) {
