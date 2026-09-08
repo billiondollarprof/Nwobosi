@@ -176,18 +176,29 @@ export default function Anthony() {
           <div className="lg:col-start-1 lg:col-span-7 lg:row-start-1">
             <Eyebrow>Anthony Nwobosi</Eyebrow>
 
-            {/* The title, and only the title. It carried a list of four
-                specialisms until it ran to three lines of tracked capitals on
-                a phone, which pushed the headline off the first screen and
-                made the loudest thing on the page a subtitle. The keywords it
-                held are two paragraphs below in the scan row, which is where
-                a recruiter's eye and an applicant tracking system both look
-                for them anyway. */}
+            {/* The title, then three words of what kind of engineering.
+
+                Length is the whole design problem here. Tracked capitals eat
+                horizontal space fast, and the first version carried four
+                specialisms, ran to three lines on a phone, and pushed the
+                headline off the first screen: the loudest thing on the page
+                became a subtitle. Cut to the bare title it fixed the layout
+                and told a human almost nothing.
+
+                This is the measured middle. Two lines at 320, 360, 390 and
+                414, with the headline still ending 319px down, so the claim
+                and the face both land on the first screen.
+
+                Keep it under about sixty characters. Past that it wraps to a
+                third line and the problem comes back. The rest of the
+                vocabulary lives in the scan row below, in the page
+                description and in the Person schema, so nothing here is
+                carrying the search on its own. */}
             <p
               className="text-[12px] font-semibold uppercase tracking-[0.12em] mt-4"
               style={{ color: BRAND.accentSoft }}
             >
-              AI Automation Engineer
+              AI Automation Engineer | Agents, Workflows &amp; Integrations
             </p>
 
             <h1
