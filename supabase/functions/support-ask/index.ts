@@ -65,14 +65,22 @@ const MAX_SOURCE_CHARS = 40000;
    here rather than written by the model, because it is a promise about how
    the company behaves and a model must not invent one of those.
 
-   The offer of another question was added 2026-09-08. Without it the
-   handover was correct and the conversation still died on the spot, which
-   reads like a desk that has stopped listening. Fixed here for the same
-   reason as the first sentence: it is the company's manner, not the
-   model's. */
+   Built up over 2026-09-08, one observed gap at a time:
+
+   The offer of another question, because without it the handover was
+   correct and the conversation still died on the spot, which reads like a
+   desk that has stopped listening.
+
+   The email, because a person on WhatsApp has no way to say "not here" to
+   something they would rather not have in WhatsApp. Asking costs one line
+   and gives them the choice. It is only honest because messages arriving
+   after a handover are now forwarded to the colleague, so an address typed
+   here actually reaches them. */
 const HANDOVER_LINE =
   "Let me get someone to answer that properly. They will reply right here. " +
-  "Is there anything else I can help you with in the meantime?";
+  "If it is something private, send me your email address and they can " +
+  "reply there instead, so keep an eye on your inbox. " +
+  "Anything else I can help with in the meantime?";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -157,6 +165,19 @@ function buildSystem(
   lines.push(
     "\nIf the answer is not there, or it needs somebody who can act on this person's account or money, " +
       "hand it to a person. Handing over is the right answer, not a failure. Never guess.",
+  );
+  /* Two lines, and no more. The material carries the company's own email
+     and phone number, so left alone the model offers those as a way out of
+     a question it cannot answer. That reads helpful and is not: it pushes
+     the person into a second queue where the reply we just promised does
+     not exist. A colleague answers in this same conversation, so there is
+     nowhere else to send anybody. */
+  lines.push(
+    "\nNever send them to another email address or phone number to get an answer. " +
+      "A colleague replies in this same conversation, so hand over instead.",
+  );
+  lines.push(
+    "\nEnd every reply by asking whether there is anything else you can help with.",
   );
 
   if (routeLabels.length) {
@@ -257,6 +278,44 @@ async function notify(
 
   if (!response.ok) {
     console.error("resend rejected the escalation", response.status, await response.text());
+    return false;
+  }
+  return true;
+}
+
+/* Told once, when the question is raised. This tells them the rest.
+
+   Separate from notify() rather than a flag on it, because the two say
+   different things and a subject line that lies about which one this is
+   would get it filed as a duplicate and ignored. */
+async function notifyMore(
+  to: string,
+  companyName: string,
+  who: string,
+  openQuestion: string,
+  saidNow: string,
+) {
+  const key = Deno.env.get("RESEND_API_KEY");
+  if (!key) return false;
+
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: "StellaXafe <support@stellaxafe.com>",
+      to: [to],
+      subject: `${companyName}: they said more while waiting`,
+      text:
+        `${who} has added to a question that is still open with you.\n\n` +
+        `THE OPEN QUESTION\n${openQuestion}\n\n` +
+        `WHAT THEY JUST SAID\n${saidNow}\n\n` +
+        `If that is an email address, it is because they were asked for one ` +
+        `and would rather have the answer there.`,
+    }),
+  });
+
+  if (!response.ok) {
+    console.error("resend rejected the follow up", response.status, await response.text());
     return false;
   }
   return true;
@@ -380,6 +439,46 @@ Deno.serve(async (req) => {
 
   if (state?.support_active) {
     return json({ ok: true, threadId, reply: null, held: true });
+  }
+
+  /* ------------------------------------------------------------------
+     Keep the colleague in the loop.
+
+     No screen anywhere shows this conversation. The escalation email is
+     the only window a colleague has into it, and it is sent once, at the
+     moment the question is raised. So everything the person says
+     afterwards, including the email address the handover line now asks
+     them for, would reach nobody.
+
+     While a question is open on this thread, each further message from the
+     person is forwarded to whoever it was routed to. It stops on its own
+     when the escalation is closed, so there is nothing to switch off.
+
+     Before the budget check on purpose. A workspace out of credit still
+     has a colleague on the hook for an answer, and an email costs nothing.
+     ------------------------------------------------------------------ */
+
+  if (openQuestions.length && text) {
+    const { data: openEsc } = await admin
+      .from("escalations")
+      .select("question, support_routes ( email )")
+      .eq("thread_id", threadId)
+      .is("closed_at", null)
+      .not("notified_at", "is", null)
+      .order("raised_at", { ascending: false })
+      .limit(1);
+
+    const row = openEsc?.[0] as
+      | { question?: string; support_routes?: { email?: string } | null }
+      | undefined;
+    const routeEmail = row?.support_routes?.email;
+
+    if (routeEmail) {
+      const who = customerName ? `${customerName} (${customerRef})` : customerRef;
+      await notifyMore(routeEmail, company.name, who, row?.question ?? "", text);
+    } else {
+      console.error("open question with no reachable route, nobody was told", threadId);
+    }
   }
 
   /* Budget. Checked before spending, same rule as the staff side. A silent
