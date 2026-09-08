@@ -563,6 +563,37 @@ function KnowledgeSection({ me, loading: loadingMe }) {
           Add company knowledge
         </SectionHeading>
 
+        {/* ==============================================================
+            WHERE THIS WORKSPACE IS RUNNING
+
+            This sits above the upload controls, which is the only place it
+            can do its job. Somebody about to hand over a payroll file has
+            to read it before they choose the file, not after.
+
+            IT DOES NOT SAY "DEMO", AND THAT IS THE POINT.
+            A shared workspace is a real product for a company that cannot
+            fund its own cloud, and plenty of them can run on this one
+            exactly as it stands. Calling it a demo would price that work at
+            nothing and talk a paying customer out of a thing that already
+            works for them. So it says where the workspace is hosted, which
+            is the fact somebody needs, and it says the limit lifts on a
+            deployment rather than dangling a warning with no way out.
+
+            One line, one time, in a quiet band. A warning repeated on every
+            screen stops being read on the second screen.
+            ============================================================== */}
+        <div
+          className="flex items-start gap-3 rounded-[12px] border px-4 py-3 mb-5"
+          style={{ borderColor: "var(--border-2)", backgroundColor: "var(--surface-2)" }}
+        >
+          <Shield size={15} className="shrink-0 mt-0.5" style={{ color: BRAND.accentSoft }} />
+          <p className="text-[13px] leading-relaxed" style={{ color: "var(--text-3)" }}>
+            This workspace is hosted by us for now, so use it with real work but leave out
+            anything you would not want outside your office. That limit goes when it runs
+            inside your own systems.
+          </p>
+        </div>
+
         {/* Paste first, because it is the path that always works. A file
             only helps if it is a format a browser can read as text, and
             most of a company's material is not. */}
