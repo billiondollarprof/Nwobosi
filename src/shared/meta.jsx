@@ -50,14 +50,14 @@ const PAGES = {
     index: true,
   },
   "/anthony": {
-    title: "Anthony Nwobosi — AI Automation & Systems Builder",
+    title: "Anthony Nwobosi — AI Automation Engineer",
     description:
       "I design and ship AI automation: AI agents, RAG knowledge systems, workflow automation and custom integrations, deployed to production. APIs and webhooks, WhatsApp Business API, edge functions, multi-tenant isolation. Open to remote roles and contract work.",
     index: true,
     person: true,
   },
   "/anthony/cv": {
-    title: "Anthony Nwobosi — CV | AI Automation & Systems Builder",
+    title: "Anthony Nwobosi — CV | AI Automation Engineer",
     description:
       "Experience, publications, education and skills. AI orchestration, workflow automation, RAG and knowledge systems, integrations and APIs, human-in-the-loop design.",
     index: true,
@@ -167,7 +167,7 @@ function setPersonSchema(on) {
     "@context": "https://schema.org",
     "@type": "Person",
     name: "Anthony Nwobosi",
-    jobTitle: "AI Automation & Systems Builder",
+    jobTitle: "AI Automation Engineer",
     url: `${SITE}/anthony`,
     email: "mailto:anthony@stellaxafe.com",
     address: {
@@ -176,6 +176,11 @@ function setPersonSchema(on) {
       addressCountry: "NG",
     },
     sameAs: ["https://www.linkedin.com/in/anthony-nwobosi-575b3717a"],
+    /* Two kinds of term, and both earn their place. The first half is what
+       the work is. The second half is the proper nouns a recruiter filters
+       on before a human reads anything, and leaving them out of the one
+       machine readable block on the site would be choosing to be invisible
+       to the search that finds him. */
     knowsAbout: [
       "AI automation",
       "AI agents",
@@ -187,6 +192,13 @@ function setPersonSchema(on) {
       "API integration",
       "Webhooks",
       "Product design",
+      "n8n",
+      "Make",
+      "Zapier",
+      "WhatsApp Business API",
+      "Edge functions",
+      "Multi-tenant architecture",
+      "Postgres row level security",
     ],
     worksFor: { "@type": "Organization", name: "StellaXafe", url: SITE },
   };

@@ -187,7 +187,7 @@ export default function Anthony() {
               className="text-[12px] font-semibold uppercase tracking-[0.12em] mt-4"
               style={{ color: BRAND.accentSoft }}
             >
-              AI Automation &amp; Systems Builder
+              AI Automation Engineer
             </p>
 
             <h1
