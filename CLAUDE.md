@@ -184,27 +184,26 @@ first. Not a summary afterwards, before.
 He has said it directly: if he is not carried along, he will not approve.
 An approval he did not understand is not an approval, it is a guess.
 
-### Pushing to `main` redeploys every edge function
+### Something redeploys functions without being asked, cause unknown
 
-Supabase's GitHub integration is connected to this repo. A push to `main`
-redeploys all of the edge functions from `supabase/functions/`, without
-anybody asking for it. Confirmed 2026-09-08: one push, and all nine
-functions jumped a version at the same second, with content identical to
-the repo.
+On 2026-09-08 three edge functions (`add-link`, `assistant`, `support-ask`)
+jumped a version at the same instant, 17:25:33 UTC, with content matching
+the repo. Nobody in that session deployed them by hand.
 
-Two things follow, and they pull in opposite directions:
+The first guess was that a push to `main` triggers it, because a merge to
+`main` had just happened. **That guess was tested and it failed.** A later
+push to `main` changing only `support-ask` produced no deploy at all, five
+minutes on. So a push to `main` is not the trigger, and the real cause is
+still unknown. Other candidates, none confirmed: another session using the
+Supabase tools, or a deploy someone ran elsewhere.
 
-- **A publish is also a function deploy.** Say so before merging to `main`,
-  not afterwards. Anthony is approving both.
-- **A fix made only in the Supabase console does not survive.** The next
-  push to `main` overwrites it from the repo. Anything fixed in the console
-  has to come back into the repo the same day or it is lost.
+What to do until somebody establishes the cause:
 
-The rule below still holds and is not softened by this. The console is
-still where the truth lives at any given moment, because a function can be
-edited there between pushes. Check the deployed source before handing back
-a redeploy, every time. What changes is only the reason: here the repo can
-silently overwrite the console, as well as the other way round.
+- **Never assume a push made a function live.** Check the version and the
+  `ezbr_sha256` before saying anything is deployed. Repo state is not
+  deployment state on this project either.
+- **Say so plainly when a deploy has not landed**, rather than reporting
+  the push as though it were the deploy.
 
 ### An edge function that already works is never rewritten from the repo
 
