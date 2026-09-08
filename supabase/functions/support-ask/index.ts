@@ -63,9 +63,18 @@ const MAX_SOURCE_CHARS = 40000;
 
 /* What the customer is told when their question goes to a person. Fixed
    here rather than written by the model, because it is a promise about how
-   the company behaves and a model must not invent one of those. */
+   the company behaves and a model must not invent one of those.
+
+   The second sentence was added 2026-09-08, after a test where the handover
+   was correct and the conversation still died on the spot. Somebody who has
+   just been told to wait has nothing to do next, and a support desk that
+   goes quiet reads as one that has stopped listening. Offering the next
+   question costs nothing and keeps the thread alive while the colleague
+   gets to it. It is fixed here for the same reason as the first sentence:
+   it is the company's manner, not the model's. */
 const HANDOVER_LINE =
-  "Let me get someone to answer that properly. They will reply right here.";
+  "Let me get someone to answer that properly. They will reply right here. " +
+  "Is there anything else I can help you with in the meantime?";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
