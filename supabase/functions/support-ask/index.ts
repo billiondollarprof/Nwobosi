@@ -110,8 +110,24 @@ function secretMatches(given: string | null) {
 
 /* --------------------------------------------------------------------------
    SECTION: What the model is told
+
    Short. It gets who it is, what the company does, what it can see, and the
    one decision it has to make. Nothing else.
+
+   IT COMES IN TWO PIECES, AND THE SPLIT IS THE WHOLE POINT
+   A cache only works on text that never changes, and it matches from the
+   start, so one changed character throws away everything after it. So the
+   part that is the same for every customer of this company is built here
+   and cached, and the part that differs from one conversation to the next
+   is built separately and sent after the cache mark.
+
+   Before this split the list of questions already with a colleague sat
+   inside the cached piece. It changes the moment an escalation opens, and
+   it is different for every person who writes in, so the published
+   material was being re-read from scratch on almost every message and
+   every customer had their own copy of the cache instead of sharing one.
+   Measured 2026-09-08: two messages 49 seconds apart, both cache misses,
+   because an escalation had opened between them.
    -------------------------------------------------------------------------- */
 
 type Source = { name: string; description: string | null; content: string[] };
@@ -121,7 +137,6 @@ function buildSystem(
   whatWeDo: string | null,
   sources: Source[],
   routeLabels: string[],
-  openQuestions: string[],
 ) {
   const lines: string[] = [];
 
@@ -148,14 +163,6 @@ function buildSystem(
     lines.push(`\nWhen you hand over, say who it should reach: ${routeLabels.join(", ")}.`);
   }
 
-  if (openQuestions.length) {
-    lines.push(
-      "\nThese questions from this person are already with a colleague. " +
-        "If they ask again, tell them it is still with somebody, and do not hand it over a second time:\n" +
-        openQuestions.map((q) => `- ${q}`).join("\n"),
-    );
-  }
-
   lines.push("\n----- PUBLISHED MATERIAL -----");
   if (!sources.length) {
     lines.push("(nothing published yet, so hand every question to a person)");
@@ -168,6 +175,18 @@ function buildSystem(
   }
 
   return lines.join("\n");
+}
+
+/* The part that changes. This is per conversation, so it must never sit in
+   front of the cache mark. Returns null when there is nothing to say, and
+   then no second block is sent at all. */
+function buildOpenQuestions(openQuestions: string[]) {
+  if (!openQuestions.length) return null;
+  return (
+    "These questions from this person are already with a colleague. " +
+    "If they ask again, tell them it is still with somebody, and do not hand it over a second time:\n" +
+    openQuestions.map((q) => `- ${q}`).join("\n")
+  );
 }
 
 /* One tool, forced. Two fields decide everything: what to say, and whether
@@ -463,12 +482,31 @@ Deno.serve(async (req) => {
   /* ------------------------------------------------------------------
      Ask.
 
-     The system prompt is cached. It is the same for every customer of this
-     company and changes only when the admin publishes something, so the
-     second message onwards reads it at about a tenth of the price. The
-     conversation comes after it, because a cache is a prefix match and
-     anything that varies has to sit behind everything that does not.
+     Two system blocks, in this order, and the order is load bearing.
+
+     The first is the same for every customer of this company and changes
+     only when the admin publishes something. It carries the cache mark, so
+     from the second message onwards it is read at about a tenth of the
+     price instead of being processed again.
+
+     The second is the open questions for this one conversation. It sits
+     after the mark, so when it changes it costs a few hundred tokens
+     rather than throwing away the whole ten thousand. The conversation
+     itself comes after both, for the same reason.
      ------------------------------------------------------------------ */
+
+  const systemBlocks: Anthropic.TextBlockParam[] = [
+    {
+      type: "text",
+      text: buildSystem(company.name, company.what_we_do, sources, routeLabels ?? []),
+      cache_control: { type: "ephemeral" },
+    },
+  ];
+
+  const openQuestionsBlock = buildOpenQuestions(openQuestions);
+  if (openQuestionsBlock) {
+    systemBlocks.push({ type: "text", text: openQuestionsBlock });
+  }
 
   const anthropic = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY")! });
 
@@ -482,19 +520,7 @@ Deno.serve(async (req) => {
     const result = await anthropic.messages.create({
       model: MODEL,
       max_tokens: 700,
-      system: [
-        {
-          type: "text",
-          text: buildSystem(
-            company.name,
-            company.what_we_do,
-            sources,
-            routeLabels ?? [],
-            openQuestions,
-          ),
-          cache_control: { type: "ephemeral" },
-        },
-      ],
+      system: systemBlocks,
       tools: [REPLY_TOOL],
       tool_choice: { type: "tool", name: "reply" },
       messages,
