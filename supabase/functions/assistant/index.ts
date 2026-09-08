@@ -16,15 +16,25 @@
    are actually enforced rather than merely displayed:
 
      1. WHO      the caller must be a signed in staff member of a real
-                 company. verify_jwt is ON here, unlike the setup
-                 functions, because by now they do have an account.
-     2. WHICH    a staff member cannot use a model above the ceiling their
-                 admin set for them, no matter what the browser asks for.
+                 company, checked below with auth.getUser() against the
+                 token they sent.
+     2. WHICH    the model is decided here and never read from the request,
+                 so a browser cannot ask for a different one.
      3. HOW MUCH the company's remaining budget is checked before the call
                  and decremented by what the call actually cost after it.
 
    A browser that lies about any of the three gets nowhere, because none of
    the three are read from the request body.
+
+   VERIFY JWT IS OFF, AND THAT IS DELIBERATE
+   -----------------------------------------
+   The dashboard toggle is "verify JWT with legacy secret", and it is not an
+   identity check: the public anon key satisfies it, so everything it lets
+   through still has to be checked here anyway. What it can do is refuse a
+   real staff member, because this project issues the newer key format and a
+   token that is not signed by the legacy secret is rejected at the gateway
+   before this file runs. Off at the door, checked properly inside. Every
+   function in this project is set the same way, and CURRENT.md says so.
    ========================================================================== */
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";

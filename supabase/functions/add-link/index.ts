@@ -16,9 +16,18 @@
    a page that changes next week cannot quietly change what the assistant
    believes, and a link pasted into the chat is still just text.
 
-   verify_jwt must be ON. Only a signed in admin of a company may add to
-   that company's knowledge base, and the check is here rather than in the
-   browser because a browser can be told to say anything.
+   ONLY AN ADMIN, AND THE CHECK IS HERE
+   ------------------------------------
+   Only a signed in admin of a company may add to that company's knowledge
+   base. The check is in this file rather than in the browser, because a
+   browser can be told to say anything.
+
+   The dashboard's verify_jwt toggle stays OFF, as it does on every function
+   in this project. It reads "verify with legacy secret", the public anon key
+   satisfies it, so it proves nothing this file does not prove properly a few
+   lines down, and it can refuse a real admin: this project issues the newer
+   key format, and a token not signed by the legacy secret is turned away at
+   the gateway before any of this runs. See CURRENT.md.
    ========================================================================== */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";

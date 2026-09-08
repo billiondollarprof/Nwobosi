@@ -233,16 +233,14 @@ by itself.
 
 **What is deployed:** `support-ask`, with `verify_jwt` off and a shared
 secret. Haiku only, no connectors, published sources only. `add-link` and
-`assistant-` were redeployed the same day, so the live project and this
+`assistant` were redeployed the same day, so the live project and this
 repository match.
 
-**One thing to tidy in the dashboard.** The assistant's slug is
-`assistant-`, with the trailing hyphen, and always has been. A deploy on
-2026-09-07 passed the display name instead and created a second function
-whose slug is `assistant`. It never held the assistant and now answers 410
-saying where the real one is. Nothing calls it. Delete that row next time
-somebody is in Edge Functions. `src/shared/config.js` says the same thing
-next to the slug table.
+**The assistant's slug is now `assistant`, with no hyphen.** It used to be
+`assistant-`, a trailing hyphen it was created with, while the dashboard
+showed the name as "assistant". That trap is gone: the hyphenated function
+was deleted on 2026-09-08 and the code redeployed on the clean slug.
+`src/shared/config.js` points at it.
 
 **What is not done yet:**
 
@@ -293,17 +291,20 @@ next to the slug table.
   Supabase dashboard by hand, or pushed straight to the project by a
   session with Supabase access, which is how `send-contact` got there.
   Sources live in `supabase/functions/`.
-- Deployed: `assistant-`, `add-link`, `invite-staff`, `check-access-code`,
-  `create-workspace`, `send-contact`.
+- Deployed: `assistant`, `add-link`, `support-ask`, `invite-staff`,
+  `check-access-code`, `create-workspace`, `send-contact`, `resume-demo`,
+  `accept-invite`.
 - **Secrets are still by hand.** `send-contact` reads `RESEND_API_KEY`, and
   optionally `CONTACT_TO` and `CONTACT_FROM` if the inbox or the sending
   address ever changes. The from address has to be on a domain verified
   with Resend. `stellaxafe.com` and `mail.stellaxafe.com` both are.
-- **The assistant's slug is `assistant-`, with a trailing hyphen.** The
-  dashboard shows its Name as "assistant", and renaming does not change a
-  slug. Calling the wrong one is a 404 with no CORS headers, which a
-  browser reports as a send failure, so it looks like a network fault.
-  Slugs are named in `src/shared/config.js` under `FUNCTIONS`.
+- **Slug and display name are two different things**, and renaming a
+  function does not rename its slug. That is what left the assistant on
+  `assistant-` for months while the dashboard showed "assistant". It now
+  lives on the clean `assistant` slug. Calling a slug that does not exist
+  is a 404 with no CORS headers, which a browser reports as a send failure,
+  so it looks like a network fault. Slugs are named in
+  `src/shared/config.js` under `FUNCTIONS`.
 - **`verify_jwt` is OFF on all of them, deliberately.** The toggle is
   "verify with legacy secret" and this project uses the new key system
   (`sb_publishable_...`), so ON can reject valid user tokens. Every
