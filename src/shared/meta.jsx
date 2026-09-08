@@ -52,7 +52,7 @@ const PAGES = {
   "/anthony": {
     title: "Anthony Nwobosi — AI Automation & Systems Builder",
     description:
-      "I design and ship AI automation: workflows, AI agents, RAG knowledge systems, integrations and internal tools, taken from the problem through to production. Open to remote roles and contract work.",
+      "I design and ship AI automation: AI agents, RAG knowledge systems, workflow automation and custom integrations, deployed to production. APIs and webhooks, WhatsApp Business API, edge functions, multi-tenant isolation. Open to remote roles and contract work.",
     index: true,
     person: true,
   },

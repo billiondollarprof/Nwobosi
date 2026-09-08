@@ -47,7 +47,7 @@ import MarketingNav from "../shared/MarketingNav.jsx";
 
 const ME = {
   name: "Anthony Nwobosi",
-  title: "AI Native Builder | AI Automation, Workflows, Agents & Business Systems",
+  title: "AI Automation & Systems Builder",
   email: "anthony@stellaxafe.com",
   /* International format, because the reader is usually not in Nigeria. A
      local 0902 number is undiallable from abroad and some parsers will not

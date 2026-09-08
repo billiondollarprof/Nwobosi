@@ -176,11 +176,18 @@ export default function Anthony() {
           <div className="lg:col-start-1 lg:col-span-7 lg:row-start-1">
             <Eyebrow>Anthony Nwobosi</Eyebrow>
 
+            {/* The title, and only the title. It carried a list of four
+                specialisms until it ran to three lines of tracked capitals on
+                a phone, which pushed the headline off the first screen and
+                made the loudest thing on the page a subtitle. The keywords it
+                held are two paragraphs below in the scan row, which is where
+                a recruiter's eye and an applicant tracking system both look
+                for them anyway. */}
             <p
               className="text-[12px] font-semibold uppercase tracking-[0.12em] mt-4"
               style={{ color: BRAND.accentSoft }}
             >
-              AI Native Builder | AI Automation, Workflows, Agents &amp; Business Systems
+              AI Automation &amp; Systems Builder
             </p>
 
             <h1
@@ -214,15 +221,33 @@ export default function Anthony() {
           </div>
 
           <div className="lg:col-start-1 lg:col-span-7 lg:row-start-2">
+            {/* The level line. "AI automation" alone reads the same whether
+                somebody wires two apps together in an afternoon or ships a
+                system a business runs on, and a recruiter scanning fast will
+                assume the cheaper of the two. "Custom integrations, deployed
+                to production" is the half sentence that settles it, and it
+                does so without claiming to be an engineer: it says what was
+                shipped, not who typed it. */}
             <p className="text-[16.5px] leading-[1.65] mb-6" style={{ color: "var(--text-2)" }}>
               I design and ship AI automation: the workflows, agents and internal systems a company
-              runs on. End to end, first conversation to production, in weeks.
+              runs on. Custom integrations, deployed to production, first conversation to live in
+              weeks.
             </p>
 
+            {/* The scan row. This one is written for the eye that moves at
+                speed, and for the filter a recruiter types into, so it is
+                allowed to be dense in a way no other line on the page is.
+
+                Ordered strongest first. The terms that actually separate
+                this from wiring two apps together are the platform ones:
+                WhatsApp Business API, edge functions, multi-tenant
+                isolation. Somebody who has only ever used a no-code tool
+                does not have those on their page, and a technical screener
+                knows it on sight. */}
             <p className="text-[13.5px] leading-[1.6] mb-8" style={{ color: "var(--text-3)" }}>
-              AI orchestration and agents, workflow automation, RAG and knowledge systems,
-              integrations, APIs and webhooks, human-in-the-loop design, prompt engineering and
-              LLM tooling.
+              AI agents and orchestration, RAG and knowledge systems, workflow automation, custom
+              integrations, APIs and webhooks, WhatsApp Business API, edge functions, multi-tenant
+              isolation, human-in-the-loop design, prompt engineering.
             </p>
 
             <div className="flex flex-col sm:flex-row items-stretch gap-3">
