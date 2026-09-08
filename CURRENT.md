@@ -251,10 +251,23 @@ was deleted on 2026-09-08 and the code redeployed on the clean slug.
   live webhook, not something this repository can prove.
 - No company has a support route yet, so an escalation would be recorded
   with nobody emailed.
-- The Amara branch is not written. Amara keeps the number, the WABA and the
-  webhook, and calls this. About twenty lines in
-  `receive-whatsapp-webhook`, guarded so a slow or missing StellaXafe leaves
-  Amara exactly as it is today.
+- **The Amara branch is written and pushed**, on Amara's `testing` branch,
+  in `receive-whatsapp-webhook`. It sits at the one point where a message
+  was being thrown away: after the guest pipeline declines it. Guarded three
+  ways, and the first is the one that matters: with no
+  `STELLAXAFE_SUPPORT_URL` or `STELLAXAFE_SUPPORT_SECRET` it returns at once
+  and that function behaves exactly as it did before, so it can be deployed
+  ahead of the secrets. **Not deployed.** Amara's Rule 7 says the owner
+  deploys and the ledger records it, and `DEPLOYMENTS.md` there now says the
+  repo is ahead.
+
+- **Amara's demo data is set.** Two support routes: Billing to
+  anthony@stellaxafe.com, and Everything else to support@amara.ng as the
+  default. Three of the five knowledge sources are published to the support
+  side, 37 chunks: the summary of Amara, the landing page and the partner
+  programme. `PaymentReceipt26-08-2026` and the executive brief stay off,
+  the receipt because it must and the brief because that is a judgement
+  call, not a default.
 
 ---
 
