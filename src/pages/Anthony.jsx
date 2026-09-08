@@ -176,29 +176,35 @@ export default function Anthony() {
           <div className="lg:col-start-1 lg:col-span-7 lg:row-start-1">
             <Eyebrow>Anthony Nwobosi</Eyebrow>
 
-            {/* The title, then three words of what kind of engineering.
+            {/* The title, then what kind of engineering it is.
 
-                Length is the whole design problem here. Tracked capitals eat
-                horizontal space fast, and the first version carried four
-                specialisms, ran to three lines on a phone, and pushed the
-                headline off the first screen: the loudest thing on the page
-                became a subtitle. Cut to the bare title it fixed the layout
-                and told a human almost nothing.
+                "Custom" is the word this line exists for. Everything else
+                here could describe somebody wiring two apps together in an
+                afternoon, and that one word cannot.
 
-                This is the measured middle. Two lines at 320, 360, 390 and
-                414, with the headline still ending 319px down, so the claim
-                and the face both land on the first screen.
+                LENGTH IS THE DESIGN PROBLEM
+                Tracked capitals eat horizontal space fast, so this block
+                grows downward quickly and it sits directly above the
+                headline. Measured at 63 characters: three lines at 320, two
+                at 360 and above. The headline ends 337px down at 320 and
+                319px above it, so the claim and the portrait both land on
+                the first screen at every phone width.
 
-                Keep it under about sixty characters. Past that it wraps to a
-                third line and the problem comes back. The rest of the
-                vocabulary lives in the scan row below, in the page
-                description and in the Person schema, so nothing here is
-                carrying the search on its own. */}
+                Three lines at 320 is the ceiling, not a failure. Past about
+                65 characters it goes to three lines on common phones too,
+                and at that point a subtitle is the loudest thing on the page
+                and the headline it introduces has been pushed under it. That
+                is what an earlier 87 character version did.
+
+                Nothing here is carrying the search on its own. The full
+                vocabulary is in the scan row below, the page description and
+                the Person schema, so this line is free to be chosen for the
+                person reading rather than for the filter. */}
             <p
               className="text-[12px] font-semibold uppercase tracking-[0.12em] mt-4"
               style={{ color: BRAND.accentSoft }}
             >
-              AI Automation Engineer | Agents, Workflows &amp; Integrations
+              AI Automation Engineer | Agents, Workflows &amp; Custom Integrations
             </p>
 
             <h1
