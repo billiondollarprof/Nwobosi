@@ -71,16 +71,29 @@ const MAX_SOURCE_CHARS = 40000;
    correct and the conversation still died on the spot, which reads like a
    desk that has stopped listening.
 
-   The email, because a person on WhatsApp has no way to say "not here" to
-   something they would rather not have in WhatsApp. Asking costs one line
-   and gives them the choice. It is only honest because messages arriving
-   after a handover are now forwarded to the colleague, so an address typed
-   here actually reaches them. */
+   Asking for the email moved OUT of here on 2026-09-09. Anthony took the
+   earlier version apart and he was right: the escalation email to the
+   colleague is sent at this exact moment, so an address given now arrives
+   one step too late to be in it. It is asked for at the start of the
+   conversation instead, and by the time anything escalates it is already on
+   file and travels with the question. */
 const HANDOVER_LINE =
   "Let me get someone to answer that properly. They will reply right here. " +
-  "If it is something private, send me your email address and they can " +
-  "reply there instead, so keep an eye on your inbox. " +
   "Anything else I can help with in the meantime?";
+
+/* Added only when an address is actually on file. No address, no line,
+   because promising somebody an inbox we cannot reach is worse than saying
+   nothing. */
+const HANDOVER_INBOX_LINE =
+  "If it is something private they may send it to your email instead, so " +
+  "keep an eye on your inbox as well.";
+
+/* Anthony's words, kept exactly. Said once, on the first message of a new
+   conversation, and never again. It is an offer, not a question that needs
+   answering, and nothing anywhere waits on the reply. */
+const EMAIL_INVITE =
+  "You may share your email address here, as we may prefer to send any " +
+  "sensitive information directly to your inbox.";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -236,6 +249,13 @@ const REPLY_TOOL: Anthropic.Tool = {
         type: "string",
         description: "When handing over, which of the offered names it should reach.",
       },
+      customer_email: {
+        type: "string",
+        description:
+          "Set this only when the person has just given their own email address so we can " +
+          "reach them there. Leave it out otherwise, including when they mention somebody " +
+          "else's address or an address they are asking a question about.",
+      },
     },
     required: ["text", "needs_person"],
   },
@@ -254,6 +274,7 @@ async function notify(
   who: string,
   question: string,
   conversation: string,
+  customerEmail: string | null,
 ) {
   const key = Deno.env.get("RESEND_API_KEY");
   if (!key) {
@@ -271,8 +292,15 @@ async function notify(
       text:
         `${who} asked something the assistant could not answer.\n\n` +
         `THE QUESTION\n${question}\n\n` +
+        (customerEmail
+          ? `THEIR EMAIL\n${customerEmail}\n` +
+            `They gave this so anything sensitive can go to their inbox instead of the chat.\n\n`
+          : `THEIR EMAIL\nNot given. Answer them in the chat.\n\n`) +
         `THE CONVERSATION SO FAR\n${conversation}\n\n` +
-        `Reply where you normally reply. The assistant stays out of the way once you do.`,
+        `DO NOT REPLY TO THIS EMAIL. Nobody reads this address, so a reply here reaches ` +
+        `no one. Answer them where you already answer them, which for a WhatsApp ` +
+        `conversation is your own admin inbox. The assistant stays out of the way once ` +
+        `you do.`,
     }),
   });
 
@@ -432,6 +460,18 @@ Deno.serve(async (req) => {
      last spoke, so it lapses on its own and nobody has to hand the
      conversation back.
      ------------------------------------------------------------------ */
+
+  /* The address, if this person has already given one. Read here rather than
+     returned by support_thread_upsert, because changing that function's
+     return type would mean dropping and recreating a function that is in use
+     for the sake of one column. */
+  const { data: threadRow } = await admin
+    .from("support_threads")
+    .select("customer_email")
+    .eq("id", threadId)
+    .maybeSingle();
+
+  let customerEmail: string | null = threadRow?.customer_email ?? null;
 
   const { data: stateRows } = await admin.rpc("support_state", { p_thread_id: threadId });
   const state = Array.isArray(stateRows) ? stateRows[0] : stateRows;
@@ -633,6 +673,22 @@ Deno.serve(async (req) => {
     needsPerson = input.needs_person === true;
     question = String(input.question ?? "").trim() || text;
     route = String(input.route ?? "").trim() || null;
+
+    /* Saved before anything below reads it, so an address given in this very
+       message is already on file when the escalation is written. That is the
+       whole point of asking early. The function returns null and stores
+       nothing when what came back is not shaped like an address. */
+    const offered = String(input.customer_email ?? "").trim();
+    if (offered && offered.toLowerCase() !== (customerEmail ?? "")) {
+      const { data: saved } = await admin.rpc("support_thread_email_set", {
+        p_thread_id: threadId,
+        p_email: offered,
+      });
+      if (saved) {
+        customerEmail = String(saved);
+        console.log("support: email stored for thread", threadId);
+      }
+    }
   } catch (err) {
     console.error("haiku call failed", err);
     return json({ ok: false, reason: "could not answer" }, 502);
@@ -675,6 +731,7 @@ Deno.serve(async (req) => {
           who,
           question,
           transcript,
+          customerEmail,
         );
         if (sent) {
           await admin.rpc("support_escalation_notified", {
@@ -686,10 +743,25 @@ Deno.serve(async (req) => {
       }
     }
 
-    reply = reply ? `${reply}\n\n${HANDOVER_LINE}` : HANDOVER_LINE;
+    /* The inbox sentence only when there is an inbox to point at. */
+    const handover = customerEmail
+      ? `${HANDOVER_LINE} ${HANDOVER_INBOX_LINE}`
+      : HANDOVER_LINE;
+    reply = reply ? `${reply}\n\n${handover}` : handover;
   }
 
   if (!reply) reply = HANDOVER_LINE;
+
+  /* The invitation. Once, on the first message of a new conversation, and
+     only when we do not already have an address.
+
+     history holds every message on this thread including the one just
+     recorded, so a length of one means this person has never written before.
+     Appended in code rather than asked of the model, so the wording is the
+     company's and cannot drift. */
+  if (history.length <= 1 && !customerEmail) {
+    reply = `${reply}\n\n${EMAIL_INVITE}`;
+  }
 
   await admin.rpc("support_message_add", {
     p_thread_id: threadId,

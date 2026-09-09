@@ -302,6 +302,40 @@ say it does not have that, and hand it to a person.
 
 ---
 
+## How it would be sold, direction only
+
+Not a decision. Written down because it shapes what gets built, and Anthony
+said plainly that no payment work happens until a real business asks.
+
+**Admin is not a plan. Admin is a person.** The two products are Support and
+Staff. A company buys one or both, and an admin sets up whichever they have.
+
+| Product | Who it answers | Shape of the price |
+|---|---|---|
+| Support | people outside the company | flat, around $20 a month |
+| Staff   | the company's own people   | by size and workload, on credits |
+
+Support can be flat priced because the cost is known and small. Measured
+2026-09-08: about a fifth of a cent of model cost per reply, and WhatsApp
+service replies are free at Meta. Twenty dollars covers thousands of them.
+
+Staff cannot, because the tools, the models and the length of the work all
+move. Credits, topped up when they run out.
+
+**No mode switch is needed for a company holding both.** Each file already
+carries "customers can see this", so one upload screen with a flag per file
+is the same thing as two knowledge bases, without a toggle anybody can get
+wrong.
+
+**A trial is credit, not a free tier.** Set a workspace up with fifty cents
+in it. They watch it work, it stops on its own, and it says why. That is a
+better demonstration than a sales call and it costs almost nothing.
+
+Still to design when the time comes: the email that tells a workspace its
+credit has run out.
+
+---
+
 ## The flow, end to end
 
 ```
