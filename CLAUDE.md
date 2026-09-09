@@ -24,6 +24,32 @@ This file tells Claude how to work on this project. The product is StellaXafe.
 - **Say what is already done before saying what is left.** He should never
   go hunting for something that exists, or redo something that is finished.
 
+### Write so it can be read once
+
+Anthony, 2026-09-10: "the English language you are using sometimes I don't
+used to follow... sometimes your words are not connecting properly."
+
+That is a failure of the writing, not of the reading. Fix it here.
+
+- **Short sentences.** One idea each. If a sentence has two commas in it,
+  it is probably two sentences.
+- **British English.** Colour, realise, behaviour, whilst never.
+- **Plain words over clever ones.** "Stops" not "obviates". "Read again"
+  not "re-derive". If a shorter word does the job, the longer one is showing
+  off.
+- **No sentence that needs reading twice.** Read it back. If the meaning
+  arrives on the second pass and not the first, rewrite it.
+- **Say the thing, then explain it.** Not the other way round. The answer
+  goes first, the reasoning goes after.
+- **Careful with subordinate clauses.** A sentence that starts with "while"
+  or "although" or "given that" makes somebody hold the first half in their
+  head. Split it.
+- **Numbers as numbers.** "0.3 cents", not "a third of a cent".
+
+The technical terms stay, with their plain meaning in brackets the first
+time. That rule has not changed. The problem is not the terms, it is the
+sentences they sit in.
+
 ## Taking direction
 
 Anthony is in charge. That is not a formality, it is the working rule.
