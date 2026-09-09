@@ -12,30 +12,34 @@
    in the way. A payment receipt was switched on in testing and nothing
    said a word.
 
-   THE RULE IT ENFORCES
-   Every file gets asked about. Not only the ones that look risky, not only
-   the ones a model flagged. Every single one, every time. A warning that
-   only appears sometimes trains people to trust the silence, and the
-   silence is exactly what fails on the file nobody thought to check.
+   TWO LEVELS, AND THEY DO NOT LOOK THE SAME
+   The point of a warning is that it still means something the tenth time.
+   A dialog that shouts every time gets clicked through every time, so this
+   one has a quiet setting and a loud one.
 
-   TWO LAYERS, AND THE FIRST NEVER DEPENDS ON THE SECOND
-     Layer one is this dialog. It is written into the app, it needs no
-     network, and it fires even if everything else is down.
-     Layer two is the reading, which is a model that opens the file and
-     says what it actually found. It makes the warning specific. When it
-     is slow, or fails, or has nothing to say, layer one still stands
-     alone and the admin still has to answer.
+     SOFT is the default, and it is most of the time. One short line
+     confirming what is about to happen, the plain button, no colour. The
+     same weight as a tool asking "are you sure" before something ordinary.
+     It is a reminder, not a lecture, and it does not tell an admin to go
+     and read their own file. They know what is in it.
+
+     FIRM is only when the reading came back with something. Then the
+     dialog turns amber, the reading is the thing you look at, and the safe
+     button becomes the loud one so getting through takes a deliberate
+     press rather than the same reflex as every other time.
+
+   THE READING IS THE SPECIFIC HALF, NOT THIS
+   This file never lists what to look for. A model opens the file and says
+   what it actually found, which beats any checklist written in advance.
+   This file's job is to make sure the question gets asked at all, every
+   file, every time, including when the reading is slow, failed, or absent.
 
    WHAT IT MUST NEVER DO
-     - Never ask when something is being taken back. Turning a file off
-       is always safe, so it happens instantly. A confirmation on a safe
-       action is noise, and noise is what makes people stop reading.
-     - Never confirm by default. Cancel holds the focus, Escape and the
-       backdrop both cancel, and the only way through is a deliberate
-       press on the one button that says yes.
+     - Never ask when something is being taken back. Turning a file off is
+       always safe, so it happens instantly.
+     - Never confirm by default. Escape and the backdrop both cancel.
      - Never let the reading hold the door shut. If the model has not
-       answered, the admin can still decide. They are the authority here,
-       not the model.
+       answered, the admin still decides. They are the authority, not it.
 
    SECTIONS
      1. The reading strip, which shows what the model found
@@ -43,20 +47,20 @@
    ========================================================================== */
 
 import { useEffect, useRef } from "react";
-import { AlertTriangle, Check, Eye, ShieldAlert } from "lucide-react";
+import { AlertTriangle, Check, Eye, Globe } from "lucide-react";
 
 import { PrimaryButton, Spinner } from "./ui.jsx";
 
 /* ==========================================================================
    1. THE READING STRIP
 
-   `review` is whatever the checker gave back, and every one of its shapes
-   has to render as something an admin can act on:
+   `review` is whatever the checker gave back, and every shape has to render
+   as something an admin can act on:
 
-     null                     nothing asked for yet
-     { state: "reading" }     the model has the file and is working
-     { state: "clear",  note} it read the file and found nothing private
-     { state: "warn",   note} it read the file and found something
+     null                      nothing asked for yet, or no checker wired in
+     { state: "reading" }      the model has the file and is working
+     { state: "clear",   note} it read the file and found nothing private
+     { state: "warn",    note} it read the file and found something
      { state: "unknown", note} it could not read it, so nobody knows
 
    "unknown" is deliberately not styled as reassurance. A checker that
@@ -69,11 +73,11 @@ function ReadingStrip({ review }) {
   if (review.state === "reading") {
     return (
       <div
-        className="flex items-center gap-2.5 rounded-[12px] px-3.5 py-3 text-[13px]"
+        className="flex items-center gap-2.5 rounded-[12px] px-3.5 py-2.5 text-[13px] mt-3"
         style={{ backgroundColor: "var(--surface-2)", color: "var(--text-3)" }}
       >
-        <Spinner size={14} />
-        Reading the file to see what is in it
+        <Spinner size={13} />
+        Reading the file
       </div>
     );
   }
@@ -89,10 +93,10 @@ function ReadingStrip({ review }) {
 
   return (
     <div
-      className="flex items-start gap-2.5 rounded-[12px] px-3.5 py-3 text-[13px] leading-relaxed"
+      className="flex items-start gap-2.5 rounded-[12px] px-3.5 py-2.5 text-[13px] leading-relaxed mt-3"
       style={{ backgroundColor: tone.background, color: tone.color }}
     >
-      <Icon size={15} className="shrink-0 mt-0.5" />
+      <Icon size={14} className="shrink-0 mt-0.5" />
       <span>{review.note}</span>
     </div>
   );
@@ -110,16 +114,19 @@ function ReadingStrip({ review }) {
    ========================================================================== */
 
 export default function PublishGate({ name, review, busy = false, onCancel, onConfirm }) {
-  const cancelRef = useRef(null);
+  const firstRef = useRef(null);
 
-  /* Cancel takes the focus, not confirm. Somebody who opens this with a
-     finger already moving, or who hits space out of habit, lands on the
-     safe half. */
+  /* Firm only when the reading found something. Everything else, including
+     a reading that failed, stays soft: a checker that could not open the
+     file is not evidence against the file, and dressing it up as one would
+     spend the loud setting on nothing and leave nothing for the real
+     thing. */
+  const firm = review?.state === "warn";
+
   useEffect(() => {
-    cancelRef.current?.focus();
+    firstRef.current?.focus();
   }, []);
 
-  /* Escape closes it, the way it would anywhere else. */
   useEffect(() => {
     function onKey(event) {
       if (event.key === "Escape" && !busy) onCancel();
@@ -138,14 +145,16 @@ export default function PublishGate({ name, review, busy = false, onCancel, onCo
     };
   }, []);
 
+  const accent = firm ? "var(--caution)" : "var(--audience-open)";
+
   return (
     <div
       className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4"
       style={{ backgroundColor: "rgba(4,5,12,0.62)", backdropFilter: "blur(6px)" }}
       onMouseDown={(event) => {
-        /* Only a press that starts and ends on the backdrop closes it.
-           A drag that began inside the card and finished outside is
-           somebody selecting text, not somebody cancelling. */
+        /* Only a press that starts and ends on the backdrop closes it. A
+           drag that began inside the card and finished outside is somebody
+           selecting text, not somebody cancelling. */
         if (event.target === event.currentTarget && !busy) onCancel();
       }}
     >
@@ -153,7 +162,7 @@ export default function PublishGate({ name, review, busy = false, onCancel, onCo
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="publish-gate-title"
-        className="w-full sm:max-w-[460px] rounded-t-[22px] sm:rounded-[22px] border p-6 max-h-[92vh] overflow-y-auto"
+        className="w-full sm:max-w-[420px] rounded-t-[22px] sm:rounded-[22px] border p-5 sm:p-6 max-h-[92vh] overflow-y-auto"
         style={{
           backgroundColor: "var(--surface-solid)",
           borderColor: "var(--border-2)",
@@ -161,98 +170,88 @@ export default function PublishGate({ name, review, busy = false, onCancel, onCo
           animation: "sx-rise 0.22s ease",
         }}
       >
-        <div className="flex items-start gap-3 mb-4">
+        <div className="flex items-start gap-3">
           <span
-            className="w-10 h-10 rounded-[12px] flex items-center justify-center shrink-0"
-            style={{ backgroundColor: "rgba(232,152,10,0.14)" }}
+            className="w-9 h-9 rounded-[11px] flex items-center justify-center shrink-0"
+            style={{ backgroundColor: firm ? "rgba(232,152,10,0.14)" : "var(--chip)" }}
           >
-            <ShieldAlert size={19} style={{ color: "var(--caution)" }} />
+            {firm ? (
+              <AlertTriangle size={17} style={{ color: accent }} />
+            ) : (
+              <Globe size={17} style={{ color: accent }} />
+            )}
           </span>
+
           <div className="min-w-0">
             <h2
               id="publish-gate-title"
-              className="text-[17px] font-semibold leading-snug"
+              className="text-[16px] font-semibold leading-snug"
               style={{ color: "var(--text-1)" }}
             >
-              Let people outside your company read this?
+              Turn this on for customers?
             </h2>
-            <p className="text-[13px] mt-1 break-words" style={{ color: "var(--text-3)" }}>
-              {name}
+            {/* One line, and it says what changes. Not a list of things to
+                go and check, which is the model's job and is what the
+                strip below carries when it has something to say. */}
+            <p className="text-[13.5px] leading-relaxed mt-1.5" style={{ color: "var(--text-2)" }}>
+              People outside your company can then be told what is in{" "}
+              <span style={{ color: "var(--text-1)" }}>{name}</span>.
             </p>
           </div>
         </div>
 
-        {/* The warning itself. Plain words, and concrete about what to look
-            for, because "is it sensitive" is a question people answer yes
-            to without checking. A list of the actual things is a question
-            they can answer. */}
-        <p className="text-[14px] leading-relaxed mb-3" style={{ color: "var(--text-2)" }}>
-          Anyone who asks your support assistant a question can be told what is in this
-          file. Open it and check first.
-        </p>
-
-        {/* A box, not four sentences. Prose gets skimmed. A bordered list
-            with a rule between each line reads as things to check off, and
-            that is the difference between somebody glancing at this and
-            somebody actually opening the file. */}
-        <ul
-          className="text-[13.5px] leading-relaxed mb-4 rounded-[12px] border overflow-hidden"
-          style={{ borderColor: "var(--border-2)", color: "var(--text-2)" }}
-        >
-          {[
-            "No bank details, invoices, receipts or card numbers.",
-            "No prices, margins or terms you have not published.",
-            "Nothing about your staff, and nothing about one customer that another should not read.",
-            "No passwords, keys or logins.",
-          ].map((line, index) => (
-            <li
-              key={line}
-              className="px-3.5 py-2.5"
-              style={{
-                borderTop: index === 0 ? "none" : "1px solid var(--border)",
-                backgroundColor: "var(--surface-2)",
-              }}
-            >
-              {line}
-            </li>
-          ))}
-        </ul>
-
         <ReadingStrip review={review} />
 
-        {/* THE SAFE BUTTON IS THE LOUD ONE, AND THAT IS DELIBERATE
-
-            The first build had "Yes" as the filled brand button, which made
-            the riskiest action in the entire admin the most attractive thing
-            on the screen. A dialog whose whole job is to slow somebody down
-            cannot draw them straight to the exit.
-
-            So Cancel is filled and Yes is a quiet amber outline. Yes is
-            still one press away, nothing is hidden, but it takes reading
-            rather than reflex.
-
-            On a phone Cancel sits at the bottom, where the thumb already
-            is. On a desktop the order is the usual Cancel then confirm,
-            left to right. */}
+        {/* Soft: the plain button gets on with it, because most of the time
+            this is somebody publishing exactly what they meant to.
+            Firm: Cancel becomes the filled one and going ahead becomes a
+            quiet amber outline, so the reflex press lands on the safe half.
+            On a phone the filled button sits at the bottom either way,
+            where the thumb already is. */}
         <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-5">
-          <PrimaryButton
-            ref={cancelRef}
-            onClick={onCancel}
-            disabled={busy}
-            className="w-full sm:w-auto justify-center"
-          >
-            Cancel
-          </PrimaryButton>
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={busy}
-            className="w-full sm:w-auto px-5 py-2.5 rounded-[12px] border text-[14px] font-semibold flex items-center gap-2 justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ borderColor: "var(--caution)", color: "var(--caution)", backgroundColor: "rgba(232,152,10,0.08)" }}
-          >
-            {busy ? <Spinner size={13} color="var(--caution)" /> : <Check size={15} />}
-            {busy ? "Saving" : "Yes, customers can read it"}
-          </button>
+          {firm ? (
+            <>
+              <PrimaryButton
+                ref={firstRef}
+                onClick={onCancel}
+                disabled={busy}
+                className="w-full sm:w-auto justify-center"
+              >
+                Cancel
+              </PrimaryButton>
+              <button
+                type="button"
+                onClick={onConfirm}
+                disabled={busy}
+                className="w-full sm:w-auto px-5 py-2.5 rounded-[12px] border text-[14px] font-semibold flex items-center gap-2 justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ borderColor: accent, color: accent, backgroundColor: "rgba(232,152,10,0.08)" }}
+              >
+                {busy && <Spinner size={13} color="var(--caution)" />}
+                {busy ? "Saving" : "Turn it on anyway"}
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                ref={firstRef}
+                type="button"
+                onClick={onCancel}
+                disabled={busy}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-[12px] border text-[13.5px] transition-colors hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ borderColor: "var(--border-2)", color: "var(--text-2)" }}
+              >
+                Cancel
+              </button>
+              <PrimaryButton
+                onClick={onConfirm}
+                disabled={busy}
+                className="w-full sm:w-auto flex items-center gap-2 justify-center"
+              >
+                {busy && <Spinner size={13} color="#fff" />}
+                {busy ? "Saving" : "Turn it on"}
+              </PrimaryButton>
+            </>
+          )}
         </div>
       </div>
     </div>

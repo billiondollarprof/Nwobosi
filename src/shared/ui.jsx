@@ -76,6 +76,20 @@ export function PageShell({ children, scroll = false, className = "" }) {
         fontFamily: FONTS.body,
       }}
     >
+      {/* A CHILD OF THIS MUST CARRY w-full
+
+         This is a column flex container, so every child is a flex item. A
+         flex line is as wide as its widest item and stretch only grows
+         items up to that line, so a child whose content will not wrap
+         makes the line wider than the phone and drags every sibling out
+         with it. overflow-x-clip then hides the result instead of
+         scrolling it, and document.scrollWidth still reads clean, so
+         nothing catches it.
+
+         That is how the admin knowledge list ended up 512px wide on a
+         320px phone with the Ready pill and the bin off screen. Give the
+         page's own wrapper w-full and its width becomes definite, which
+         stops it. min-w-0 on its own does not. */}
       <AmbientGlow />
       {children}
     </div>

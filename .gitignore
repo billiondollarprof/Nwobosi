@@ -12,3 +12,8 @@ assets/source
 
 # Supabase CLI scratch
 supabase/.temp/
+
+# Throwaway rendering harness. Lets a component be clicked through without a
+# signed in workspace. Never part of the build, never committed.
+/harness.html
+/src/__harness.jsx

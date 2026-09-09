@@ -33,6 +33,7 @@ import {
 
 import { LogoMark } from "../shared/icons.jsx";
 import PublishGate from "../shared/PublishGate.jsx";
+import AudienceControl from "../shared/AudienceControl.jsx";
 import { BRAND, GRADIENTS, FONTS } from "../shared/tokens";
 import {
   PageShell,
@@ -208,8 +209,21 @@ export default function Admin() {
         </div>
       </FloatingNav>
 
-      <div className="relative z-10 px-4 sm:px-6 pb-16">
-        <div className="max-w-5xl mx-auto">
+      {/* w-full is load bearing, it is not decoration.
+
+         PageShell is a column flex container, so this div is a flex item.
+         A flex line takes the width of its widest item and stretch only
+         grows items up to that line, it never shrinks them. So one long
+         file name in the knowledge list, held on one line by `truncate`,
+         made this div 512px wide inside a 320px phone. PageShell clips
+         rather than scrolls, so the page still measured clean while the
+         Ready pill and the bin on every row sat off the right edge,
+         invisible and unreachable.
+
+         width:100% makes the width definite, so nothing inside can push it
+         wider. min-w-0 alone does not fix it, that was tried. */}
+      <div className="relative z-10 w-full min-w-0 px-4 sm:px-6 pb-16">
+        <div className="max-w-5xl mx-auto min-w-0">
           {/* Tabs */}
           <div className="flex gap-1.5 overflow-x-auto pb-1 mb-6">
             {TABS.map((t) => {
@@ -267,47 +281,6 @@ export default function Admin() {
    name and a short description, which is what lets the assistant pull
    only what a task needs instead of sweeping everything.
    ========================================================================== */
-
-/* ONE SWITCH, TWO AUDIENCES
-   Staff read everything in this list. Support, the side that answers people
-   outside the company, reads only what is switched on here, and nothing is
-   switched on until an admin does it.
-
-   Plain words, because this is a company's own screen: customers can see
-   this, or staff only. Not visibility, not scope, not published. An admin
-   should be able to get this right without being told what it means. */
-export function CustomerSwitch({ on, label, onChange }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={on}
-      aria-label={`Customers can see ${label}`}
-      onClick={onChange}
-      className="inline-flex items-center gap-2.5 rounded-full pl-1 pr-3 py-1 border transition-colors"
-      style={{
-        borderColor: on ? BRAND.accentSoft : "var(--border)",
-        backgroundColor: on ? "rgba(88,112,248,0.08)" : "transparent",
-      }}
-    >
-      <span
-        className="relative w-[30px] h-[17px] rounded-full transition-colors shrink-0"
-        style={{ backgroundColor: on ? BRAND.accentSoft : "var(--chip)" }}
-      >
-        <span
-          className="absolute top-[2.5px] w-3 h-3 rounded-full transition-all"
-          style={{ left: on ? 15 : 3, backgroundColor: on ? "#fff" : "var(--text-3)" }}
-        />
-      </span>
-      <span
-        className="text-[12px] font-medium whitespace-nowrap"
-        style={{ color: on ? BRAND.accentSoft : "var(--text-3)" }}
-      >
-        {on ? "Customers can see this" : "Staff only"}
-      </span>
-    </button>
-  );
-}
 
 function KnowledgeSection({ me, loading: loadingMe }) {
   const navigate = useNavigate();
@@ -896,22 +869,31 @@ function KnowledgeSection({ me, loading: loadingMe }) {
                   )}
                 </span>
 
+                {/* The name wraps to two lines rather than truncating on
+                    the first. Somebody about to decide whether strangers
+                    can read a file has to be able to tell which file it
+                    is, and on a phone "Executive brief wit..." and
+                    "Executive brief for the board" cut to the same thing.
+                    The description below it still truncates, because that
+                    is a hint, not an identity. */}
                 <div className="min-w-0 flex-1">
-                  <p className="text-[14px] font-medium truncate" style={{ color: "var(--text-1)" }}>
+                  <p
+                    className="text-[14px] font-medium"
+                    style={{
+                      color: "var(--text-1)",
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
+                      wordBreak: "break-word",
+                    }}
+                  >
                     {item.name}
                   </p>
                   <p className="text-[12.5px] truncate" style={{ color: "var(--text-3)" }}>
                     {item.description}
                   </p>
                 </div>
-
-                {item.status === "ready" ? (
-                  <StatusPill tone="ok">Ready</StatusPill>
-                ) : item.status === "failed" ? (
-                  <StatusPill tone="error">Could not read</StatusPill>
-                ) : (
-                  <StatusPill tone="pending">Being read</StatusPill>
-                )}
 
                 <button
                   onClick={() => remove(item.id)}
@@ -922,18 +904,43 @@ function KnowledgeSection({ me, loading: loadingMe }) {
                 </button>
               </div>
 
-              {/* Its own line rather than a fifth thing in the row above.
-                  On a phone that row is already at its limit, and this is
-                  a decision worth reading before making, not a control to
-                  brush past on the way to the bin. */}
-              <div className="mt-2.5 sm:pl-12">
-                <CustomerSwitch
-                  on={item.customer_visible === true}
-                  label={item.name}
-                  onChange={() =>
-                    item.customer_visible ? hide(item.id) : askBeforeShowing(item)
-                  }
-                />
+              {/* SECOND LINE: the decision, and the state of the file
+
+                  Both moved off the row above so the file name gets that
+                  whole width. The name is the only thing that says which
+                  file this is, and it was being cut to eighteen characters
+                  to make room for a pill saying "Ready", which is the same
+                  on nearly every row.
+
+                  The audience control scrolls sideways on its own under
+                  about 380px, where the two options together are wider
+                  than the card. Clipping the second option would hide the
+                  very thing that makes this control readable without
+                  being taught, and the whole point of it is that nobody
+                  has to be taught. */}
+              <div className="mt-2.5 sm:pl-12 flex items-center gap-3 flex-wrap">
+                <div className="min-w-0 max-w-full overflow-x-auto -my-1 py-1">
+                  <AudienceControl
+                    on={item.customer_visible === true}
+                    label={item.name}
+                    onPick={(open) => (open ? askBeforeShowing(item) : hide(item.id))}
+                  />
+                </div>
+
+                {/* A pill only when something is wrong or still working.
+
+                   Every row used to carry a green "Ready", which is the
+                   normal state of nearly every file, so it said nothing
+                   and took the width the decision needed. A list where
+                   every line shouts the same word is a list people stop
+                   reading, and then the one row that says "Could not
+                   read" goes past unnoticed. How many are ready is
+                   already counted in the tile at the top of this tab. */}
+                {item.status === "failed" ? (
+                  <StatusPill tone="error">Could not read</StatusPill>
+                ) : item.status !== "ready" ? (
+                  <StatusPill tone="pending">Being read</StatusPill>
+                ) : null}
               </div>
             </div>
           ))}

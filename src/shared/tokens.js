@@ -77,6 +77,10 @@ export const THEME_VARS = {
        button label. */
     "--caution": "#E8980A",
     "--all-clear": "#16B04A",
+    /* The filled half of the audience control when a file is open to
+       customers. It has to hold white text, so it is the lifted navy on
+       dark and the true brand navy on light. */
+    "--audience-open": "#2E42E0",
     /* The mark. Named here so it flips with the theme like everything
        else, rather than the component branching on which theme is on. */
     "--seal-outer": "rgba(255, 255, 255, 0.34)",
@@ -142,6 +146,7 @@ export const THEME_VARS = {
     "--text-3": "#7880A8",
     "--caution": "#9A5B00",
     "--all-clear": "#0C7A31",
+    "--audience-open": "#1420A0",
     "--seal-outer": "rgba(8, 17, 58, 0.30)",
     "--seal-outer-hi": "rgba(8, 17, 58, 0.72)",
     "--seal-in-a": "#2030C8",
