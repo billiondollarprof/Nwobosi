@@ -4,6 +4,132 @@ Log of each work session. Newest at the top. Keep entries short.
 
 ---
 
+## Session 9: 2026-09-09 (evening)
+
+**The publishing guard, and one outage that was mine**
+
+The day started with three questions from Anthony looking at the Knowledge
+tab on testing: does it flag a sensitive file by itself, where does the
+customer toggle actually live, and where is support's own screen. The answers
+were no, you have not scrolled to it, and there isn't one. All three turned
+into work.
+
+**Nothing reaches a customer without being asked first.**
+`src/shared/PublishGate.jsx`. Turning a file ON always asks, every file,
+every time. Turning one OFF never asks, because taking something back is
+safe. A payment receipt had been switched on during testing with nothing
+said.
+
+**Two levels, after Anthony cut the first version down.** The wall of text
+telling an admin to go and read their own file is gone. Soft is the default:
+one line, plain button, no colour. Firm only when the reader found something:
+amber, and the button reads "Turn it on anyway". His reasoning, and it is
+right: a warning that shouts every time gets clicked through every time.
+
+**A control that explains itself.** `src/shared/AudienceControl.jsx`. "Staff
+only" and "Customers too", both on screen, the one in force filled in. The
+old toggle showed the state and nothing else. A control that has to be taught
+is a broken control, not an untrained person.
+
+**The reader.** `supabase/functions/read-before-publish`, deployed, version 2.
+Sonnet opens the file and says in one line what is in it. Leans internal on
+purpose, and never quotes the private part, so a dialog left open in an
+office does not print a card number.
+
+**THE RULE THE WHOLE THING TURNS ON.** The reading can add a warning. It can
+never remove one and it can never encourage. Anthony proposed the opposite,
+that the model decide whether to ask and offer the file when it came back
+clean, then talked himself out of it in the same message: "what if the AI is
+wrong and there's sensitive data in it?" That design turns a model's mistake
+into the product inviting somebody to publish a payroll sheet with a green
+tick beside it. It was built, then deleted.
+
+**A false positive within an hour of going live**, which is the failure mode
+that makes a guard useless. A file called "Pricing update" came back as
+internal, because it held lines like "the Founders' Spot has ended, never
+mention it". Those are instructions, not secrets. A reader that flags the
+ordinary file gets ignored on the day it flags the payroll file. Prompt
+fixed, version 2.
+
+**The bin asks first.** It deleted on one tap with no undo, a few
+millimetres from the file name in a list people scroll with a thumb.
+
+**Duplicate detection, built to Anthony's cheaper design.** No model. A
+string comparison against a list the browser already has, instant and free.
+His split, and it is the right one: a model is for judgement, two identical
+names is an equals sign.
+
+**A link is a photograph, not a file.** He caught this: `add-link` reads a
+page once and never again, so the same address a second time is somebody
+refreshing a page they edited, not a mistake. The red duplicate warning was
+telling them off for doing the right thing. It became a question instead:
+replace the old reading, keep both, or cancel. Nothing is fetched until they
+answer, and replace adds before it deletes.
+
+**Newest wins.** `customer_knowledge` returned oldest first, which is the
+worst possible order: the stale copy went in front, and when the 40,000
+character ceiling ran out it was always the newest material that got dropped.
+A pricing file added that evening would not have reached the model at all.
+
+**The contradiction log.** `knowledge_contradictions`. Anthony: "so they
+don't say that it's the AI that is at fault." Two named sources, what each
+claimed, which one reached the customer, and how often. One row per
+disagreement, not per message.
+
+**THE WRONG PRICE, WHICH WAS NEVER A RETRIEVAL PROBLEM.** Support quoted
+13,050 naira. The page says 26,100 and the model halved a number that was
+already halved. Digging established that the page was read perfectly, 59,837
+characters, that three copies of it existed with two switched on, and that
+`MAX_SOURCE_CHARS = 40000` silently drops a third of it including the entire
+partner programme. None of that was visible from any screen.
+
+**A comma cost a round trip.** "amara.ng," was pasted with a comma.
+`new URL("https://amara.ng,")` does not throw, it accepts the comma as part
+of the hostname. The screen said "could not open that page", which was true
+and useless.
+
+**AND THEN I TOOK SUPPORT DOWN.** ReferenceError, three 500s on Amara's real
+WhatsApp. Every reply was composed, saved to the database, and then the
+function threw on the way out, so the record showed a perfect answer and the
+customer got silence. Cause: an edit script asserted on three anchors, the
+third missed, Python raised, and the file was never written, losing the two
+edits that had matched. Then the type checker was run as
+`| grep -E "TS1[0-9]{3}"`, which is syntax errors only, and a missing name is
+TS2304. The check had been told not to report the one thing that was wrong.
+Fixed and deployed at version 10 the same night. `scripts/check-functions.mjs`
+now type checks all ten functions and excuses only the Deno global and
+jsr/npm imports.
+
+**Two rules out of it, in `CLAUDE.md`:** an edit that was not written to disk
+is not an edit, and bookkeeping never fails a reply. Both the contradiction
+log and the metering now have their own try, because they run after the
+customer's answer already exists.
+
+**A trap worth remembering.** `PageShell` is a column flex container, so a
+flex line takes the width of its widest item and stretch never shrinks it.
+One long file name held on one line by `truncate` made the admin wrapper
+512px wide inside a 320px phone, and `overflow-x-clip` hid the result while
+`document.scrollWidth` read clean. The bin and the status pill sat off the
+right edge on every row. Same failure as the Insights page. `w-full` on the
+page wrapper fixes it; `min-w-0` alone does not.
+
+**Decided, not built.** Capping how many answers one customer gets, set per
+business rather than by us, because Anthony's church is not a business and
+somebody who realises it is an AI will keep typing. Not silence when the cap
+hits: one honest line and the escalation fires, because being ignored reads
+as broken.
+
+**Also decided:** a staff member's attachment beats the admin knowledge base
+for that conversation, and it gets logged the same way. See `DIRECTION.md`.
+
+**Checked, because he asked:** uploading files and links is what the industry
+does. Support uses long context with caching rather than retrieval, which the
+2026 data says wins on quality under roughly 200,000 tokens. Amara's whole
+knowledge base is 20,000. Our own 40,000 character ceiling binds long before
+the method does.
+
+---
+
 ## Session 7: 2026-09-07
 
 **Support, the second environment**

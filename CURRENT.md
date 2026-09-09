@@ -228,14 +228,77 @@ a real payment receipt got turned on during testing with nothing said.
   it on anyway". A warning that shouts every time gets clicked through
   every time.
 - **The reader.** `supabase/functions/read-before-publish`, deployed
-  2026-09-09, version 1, `verify_jwt` false like every function here,
-  `ezbr_sha256` 22dde2419f55b142ee27f3e7e8f021c22405dc439940976a72cd412b053dec32.
+  2026-09-09, now **version 2**, `verify_jwt` false like every function here,
+  `ezbr_sha256` e3580d26deb00ba2bb8fa67cce4a11f9d0d654756e442b2a4e40d22bcbbe4db2.
   Admin only, checked in the function. Sonnet. Returns clear, warn or
   unknown plus one plain line. It leans internal on purpose and its reason
-  never quotes the private part.
-  Note: it was deployed through the Supabase tools and the deployed URL
-  could not be called from the machine that deployed it, so the first real
-  proof of it answering is a toggle on `testing`.
+  never quotes the private part. **Confirmed working on a real file**: it
+  identified a bank transfer receipt without printing the account number.
+
+  Version 2 fixed the first false positive, found within an hour of going
+  live. A file of pricing instructions came back as "internal", because
+  instruction was being read as secrecy. The prompt now says plainly that a
+  document written to steer the assistant is not private information.
+
+- **A quiet delete guard.** `src/shared/ConfirmDelete.jsx`. The bin removed a
+  file and its text on one tap with no undo.
+
+- **Duplicate detection.** `src/shared/duplicates.js`. No model, no tokens, a
+  string comparison against the list the browser already holds. A file name
+  already taken gets red text. A link already in the base is different: it is
+  a photograph of a page, so the same address again is a refresh, and
+  `src/shared/RefreshOrKeep.jsx` asks what to do with the old reading.
+
+- **Newest wins.** `customer_knowledge` now orders `k.created_at desc`.
+  Applied and verified 2026-09-09: security definer preserved, grants still
+  postgres and service_role only. It used to be oldest first, which put the
+  stale copy in front and made the 40,000 character ceiling drop the newest
+  material first.
+
+- **The contradiction log.** `knowledge_contradictions` plus
+  `knowledge_contradiction_log`. Written by support-ask when a company's own
+  published material disagrees with itself while answering. One row per
+  disagreement, not per message. No insert policy; the only way in is the
+  security definer function, granted to service_role. Verified with a self
+  test that wrote twice, confirmed one row with times_seen 2, confirmed a
+  resolved row reopens, then deleted itself.
+
+- **support-ask is at version 10**, `ezbr_sha256`
+  283e8b1e521503acee33e7b03e98a8abd3ea9acc8e913300543f104c2842e230. It
+  carries the writing rules, the dash line, the newest-first line, and the
+  contradiction reporting.
+
+### The outage on 2026-09-09, and what it changed
+
+Version 9 of support-ask went live with a variable used and never declared.
+Three 500s on Amara's real WhatsApp. Every reply was composed, appended to
+the thread and saved, then the function threw on the way out, so the database
+showed a perfect answer and the customer got silence.
+
+Two checks both looked like they passed. An edit script asserted on three
+anchors, the third missed, Python raised, and the file was never written,
+taking the two edits that HAD matched with it. Then the type checker was run
+as `| grep -E "TS1[0-9]{3}"`, which is syntax only, and a missing name is
+TS2304.
+
+**`scripts/check-functions.mjs` exists because of this.** It type checks every
+edge function and excuses only the Deno global and jsr/npm/https imports.
+Run it before any deploy. Never narrow a check to a class of error guessed at
+in advance.
+
+**The contradiction log and the metering now each have their own try**, and
+`CLAUDE.md` carries the rule: bookkeeping never fails a reply. Both run after
+the customer's answer already exists.
+
+### The 40,000 character ceiling, which nothing on any screen mentions
+
+`MAX_SOURCE_CHARS` in support-ask is 40,000. Amara's landing page alone is
+59,837, so a third of it never reaches the model, including the whole partner
+programme. Nothing warns anybody. This is the binding constraint on what
+support knows, and it binds long before the model's own limits do.
+
+Ask support about the partner programme today and it knows nothing, with no
+sign anything is missing.
 
 **The rule the whole thing turns on, and it is not negotiable:**
 

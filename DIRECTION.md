@@ -238,6 +238,83 @@ that no model is involved.
 
 ---
 
+## When two things the company gave it disagree
+
+Added 2026-09-09, out of a real wrong answer on Amara's WhatsApp. Anthony's
+rule, and the whole value of it is that it is short.
+
+**Newest wins. Do not overcomplicate it.**
+
+Not "weigh the sources". Not "ask the model to reason about which is more
+authoritative". Newest. The person who uploaded the newer file did it on
+purpose and more recently, and any cleverness beyond that is a guess dressed
+up as a policy.
+
+It holds in both directions, whether the two files are near identical or
+whether they merely disagree about a number:
+
+> "When the contents are slightly different and numbers are slightly
+> different, but they are saying the same thing, newest wins. There's no need
+> trying to overcomplicate this thing."
+
+**One exception, and it is a different axis, not a special case.** A file a
+staff member attaches inside a conversation beats the admin's knowledge base
+for that conversation. Anthony:
+
+> "Between what assistant uploaded and what admin uploaded, the assistant's
+> file should override, because that's what the assistant gave it."
+
+That is right, and it is not really an exception to newest wins, it is newest
+wins at a finer grain. An attachment is the most recent and most specific
+thing anybody has said, handed over for this task, by somebody who is looking
+at it. The knowledge base is standing instruction. The attachment is the
+instruction for right now.
+
+It gets logged the same way an admin contradiction does, so nobody has to
+wonder later why one draft used a different number from every other one.
+
+**And the load stays where it belongs.** "Much of the work still lies on the
+business to actually upload what is correct." No amount of resolution logic
+makes wrong material right. All we owe them is that the newest thing they
+told us is the thing that gets used, and that they can see when their own
+material fought itself.
+
+## How everyone else builds this, and why ours is not behind
+
+Checked 2026-09-09, because Anthony asked whether uploading files and links
+is what people actually do or whether there is a better way.
+
+There are two methods in the industry and the split is about size.
+
+**Retrieval, usually called RAG.** Chop documents into pieces, turn each into
+numbers, store them in a vector database, and at question time fetch only the
+handful that look relevant. This is the default for large corpora. Fifty
+thousand documents and a hundred thousand questions a day cannot go in a
+prompt.
+
+**Long context with caching.** Put the whole knowledge base in the prompt
+every time and let the cache pay for it. The current data says this wins on
+quality when the corpus is under roughly 200,000 tokens, reasonably stable,
+and the question needs the whole picture rather than one fact.
+
+**Support does the second one, and that is the correct call at this size.**
+Amara's entire published knowledge base is about 20,000 tokens, a tenth of
+where the method stops paying.
+
+It also happens to serve the thing this product is actually for. Retrieval
+can miss the file that held the answer, and a model handed nothing fills the
+gap itself. Sending everything cannot miss. So the method that is cheaper to
+build here is also the one that fails less often in the way we care about.
+
+**Where it stops.** A company with thousands of documents needs retrieval,
+and the plumbing is half there: `knowledge_chunks` already carries an
+`embedding` column and `match_knowledge` exists for the staff side.
+
+**The real ceiling today is ours, not the model's.** `MAX_SOURCE_CHARS` in
+support-ask is 40,000 characters. One 60,000 character landing page already
+loses a third of itself to it, silently. That number is the binding
+constraint long before 200,000 tokens is.
+
 ## Browsing, when it comes
 
 The assistant cannot browse today, and that is stated plainly in
