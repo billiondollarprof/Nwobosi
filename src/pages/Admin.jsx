@@ -65,6 +65,7 @@ import { adminSessionExpired } from "../shared/adminClock.js";
 import { readFileAsText, canBecomeText } from "../shared/readFile.js";
 import { fetchLinkSource } from "../shared/linkApi.js";
 import { readBeforePublish, loadSourceText } from "../shared/publishCheck.js";
+import { findByName, findByAddress, whenAdded } from "../shared/duplicates.js";
 import { inviteStaff, timeLeft } from "../shared/inviteApi.js";
 import {
   PRODUCT,
@@ -283,6 +284,40 @@ export default function Admin() {
    name and a short description, which is what lets the assistant pull
    only what a task needs instead of sweeping everything.
    ========================================================================== */
+
+/* ALREADY THERE
+
+   Red text under the box somebody is typing in, the moment what they typed
+   matches something they already have. No dialog, nothing to dismiss, and it
+   never stops the upload.
+
+   Anthony's design and the reasoning is his: a name comparison costs nothing
+   and answers instantly, so it has no business waiting on a model. "Instead
+   of burning tokens to start reading the file to know whether it is... the
+   only time the system should actually read file is first of all when you
+   are toggling to customer facing."
+
+   It warns and leaves the decision alone, because somebody adding a second
+   version on purpose is not doing anything wrong, and a product that argues
+   with a person about their own files is one they work around. */
+function AlreadyThere({ match, what, advice }) {
+  if (!match) return null;
+  const added = whenAdded(match);
+
+  return (
+    <p
+      className="text-[12.5px] leading-relaxed mt-1.5 flex items-start gap-1.5"
+      style={{ color: "var(--danger)" }}
+      role="status"
+    >
+      <AlertCircle size={13} className="shrink-0 mt-0.5" />
+      <span>
+        {what}
+        {added ? `, added ${added}` : ""}. {advice}
+      </span>
+    </p>
+  );
+}
 
 function KnowledgeSection({ me, loading: loadingMe }) {
   const navigate = useNavigate();
@@ -792,6 +827,11 @@ function KnowledgeSection({ me, loading: loadingMe }) {
                     onChange={(e) => setPasteName(e.target.value)}
                     placeholder="Brand voice guide"
                   />
+                  <AlreadyThere
+                    match={findByName(items, pasteName)}
+                    what="You already have something called this"
+                    advice="Give this one a different name, or you will end up with two."
+                  />
                 </Field>
                 <Field label="What it holds" required>
                   <TextInput
@@ -880,6 +920,11 @@ function KnowledgeSection({ me, loading: loadingMe }) {
                 value={staged.name}
                 onChange={(e) => setStaged({ ...staged, name: e.target.value })}
                 placeholder="Brand guidelines 2026"
+              />
+              <AlreadyThere
+                match={findByName(items, staged.name)}
+                what="You already have something called this"
+                advice="Give this one a different name, or you will end up with two."
               />
             </Field>
             <Field label="What it holds" required>
@@ -990,6 +1035,15 @@ function KnowledgeSection({ me, loading: loadingMe }) {
               value={linkUrl}
               onChange={(e) => setLinkUrl(e.target.value)}
               placeholder="company.com/about"
+            />
+            {/* Address, not name, because a link is named by the page itself
+                after it is read, so the name box is usually empty at the
+                point this needs to fire. The address is what somebody pastes
+                twice. */}
+            <AlreadyThere
+              match={findByAddress(items, linkUrl)}
+              what="This page is already in the knowledge base"
+              advice="Adding it again gives you a second copy of the same page."
             />
           </Field>
           {/* No longer required. The page is read when it is added, and a
