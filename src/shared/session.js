@@ -224,6 +224,47 @@ export async function setSourceVisibility(id, visible) {
   return !error;
 }
 
+/* --------------------------------------------------------------------------
+   SECTION: Where the company's own material disagrees with itself
+
+   Written by support-ask while it answers a customer, never from here. This
+   only reads them and marks one dealt with, which is the only thing an admin
+   is allowed to change about a log.
+
+   Open ones only. A resolved contradiction is kept for the record, not for
+   the screen, and a panel that lists everything ever fixed is a panel people
+   stop reading.
+   -------------------------------------------------------------------------- */
+
+export async function listContradictions(companyId) {
+  const { data, error } = await supabase
+    .from("knowledge_contradictions")
+    .select("id, topic, source_a, said_a, source_b, said_b, answered_with, times_seen, last_seen_at")
+    .eq("company_id", companyId)
+    .is("resolved_at", null)
+    .order("last_seen_at", { ascending: false })
+    .limit(20);
+
+  if (error) {
+    console.error("could not read the disagreements", error);
+    return [];
+  }
+  return data ?? [];
+}
+
+/* Marks it dealt with. It comes back on its own if support hits the same
+   disagreement again, because the log function clears resolved_at when it
+   sees one a second time. Nothing here has to remember that. */
+export async function resolveContradiction(id) {
+  const { error } = await supabase
+    .from("knowledge_contradictions")
+    .update({ resolved_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (error) console.error("could not mark that as sorted", error);
+  return !error;
+}
+
 export async function removeSource(id) {
   /* Chunks first. A source row with orphaned chunks behind it is
      recoverable; chunks with no source to explain them are litter the

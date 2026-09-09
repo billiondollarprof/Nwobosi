@@ -14,40 +14,7 @@ repo". Nothing here goes out any other way.
 
 ---
 
-## support-ask, one line about dashes
+## Nothing pending
 
-**Raised 2026-09-09.** Anthony, reading a real reply on his phone:
-
-> "the way the model types, it doesn't really write clean"
-
-The writing rules deployed the same day fixed the length and the paragraphs.
-One thing did not hold. The reply still read:
-
-> "completely free right now – no card needed"
-
-The instruction said *no dashes standing in for a pause*. The model took that
-as no em dashes and used an en dash instead. That is a wording failure in the
-instruction, not a failure to follow it: describing a character class and
-hoping the model shares your definition of it is not an instruction, it is a
-guess.
-
-**The line to add**, at the end of the HOW TO WRITE block in `buildSystem`,
-right after the punctuation line:
-
-```js
-  lines.push(
-    "Never put a dash between words, of any kind. Not - and not – and not —. " +
-      "Use a full stop, a comma, or start a new sentence instead.",
-  );
-```
-
-Naming the three characters rather than describing them, because that is the
-part that failed.
-
-**Nothing else in that file changes.** This is a REDEPLOY and it follows the
-paste rule: Anthony pastes the deployed source, the line is added to that, and
-the whole function comes back in one block.
-
----
-
-## Nothing else pending
+The dash line raised on 2026-09-09 went out bundled with the contradiction
+log the same evening, which is exactly what this file is for.

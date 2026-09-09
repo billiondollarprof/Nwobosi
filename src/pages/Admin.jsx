@@ -26,6 +26,7 @@ import {
   Users,
   Gauge,
   AlertCircle,
+  AlertTriangle,
   X,
   Sparkles,
   LogOut,
@@ -58,6 +59,8 @@ import {
   addTextSource,
   removeSource,
   setSourceVisibility,
+  listContradictions,
+  resolveContradiction,
   listStaff,
   listWork,
   signOutCompletely,
@@ -320,6 +323,90 @@ function AlreadyThere({ match, what, advice }) {
   );
 }
 
+/* ==========================================================================
+   WHERE YOUR OWN MATERIAL DISAGREES WITH ITSELF
+
+   Written by support-ask while it answers a real customer, so everything in
+   here has already reached somebody outside the company. That is what makes
+   it worth a panel rather than a page nobody visits.
+
+   Anthony asked for it in these terms: "so they don't say that it's the AI
+   that is at fault. So if they uploaded this, the AI sees contradictory
+   files, it names them and it's logged."
+
+   The panel does not appear at all when there is nothing in it. A dashboard
+   that always shows a section headed "problems" with nothing under it trains
+   people to skip that part of the screen, and then the day it has something
+   in it, nobody looks.
+
+   Only open ones. A resolved row is kept for the record, not for the screen.
+   ========================================================================== */
+
+function Disagreements({ items, onResolve, busyId }) {
+  if (!items.length) return null;
+
+  return (
+    <GlassPanel className="p-6">
+      <SectionHeading hint="Your assistant found two of your own sources saying different things while answering a real customer. It went with the newer one. Fix the older one, or take it out.">
+        Your material disagrees with itself
+      </SectionHeading>
+
+      <div className="space-y-2">
+        {items.map((row) => (
+          <div
+            key={row.id}
+            className="rounded-[12px] px-3.5 py-3 border"
+            style={{ backgroundColor: "var(--surface-2)", borderColor: "var(--border)" }}
+          >
+            <div className="flex items-start gap-2.5">
+              <AlertTriangle size={15} className="shrink-0 mt-0.5" style={{ color: "var(--caution)" }} />
+              <p className="text-[14px] font-medium min-w-0" style={{ color: "var(--text-1)" }}>
+                {row.topic}
+              </p>
+            </div>
+
+            {/* Both sides, named, in the order the assistant saw them. The
+                one it answered from is marked, so nobody has to work out
+                which of the two reached the customer. */}
+            <div className="mt-2.5 space-y-1.5 sm:pl-[26px]">
+              {[
+                { source: row.source_a, said: row.said_a },
+                { source: row.source_b, said: row.said_b },
+              ].map((side, index) => {
+                const used = row.answered_with && row.answered_with === side.source;
+                return (
+                  <p key={index} className="text-[12.5px] leading-relaxed" style={{ color: "var(--text-3)" }}>
+                    <span style={{ color: used ? "var(--text-1)" : "var(--text-2)" }}>{side.source}</span>
+                    {used ? (
+                      <span style={{ color: "var(--all-clear)" }}> (used)</span>
+                    ) : null}
+                    {side.said ? `: ${side.said}` : ""}
+                  </p>
+                );
+              })}
+            </div>
+
+            <div className="mt-2.5 sm:pl-[26px] flex items-center gap-3 flex-wrap">
+              <GhostButton
+                onClick={() => onResolve(row.id)}
+                disabled={busyId === row.id}
+                className="text-[12.5px] py-1.5 px-3"
+              >
+                {busyId === row.id ? "Saving" : "Sorted it"}
+              </GhostButton>
+              {row.times_seen > 1 ? (
+                <span className="text-[12px]" style={{ color: "var(--text-3)" }}>
+                  Come up {row.times_seen} times
+                </span>
+              ) : null}
+            </div>
+          </div>
+        ))}
+      </div>
+    </GlassPanel>
+  );
+}
+
 function KnowledgeSection({ me, loading: loadingMe }) {
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
@@ -384,6 +471,11 @@ function KnowledgeSection({ me, loading: loadingMe }) {
      Holds the existing row so Replace knows what to take away afterwards. */
   const [refresh, setRefresh] = useState(null);
 
+  /* Read once with the sources. It is a short list and it only changes when
+     a customer asks something, so there is nothing to poll for. */
+  const [clashes, setClashes] = useState([]);
+  const [clashBusy, setClashBusy] = useState(null);
+
   /* WHAT THE READER FOUND, IF ANYTHING
 
      A model opens the material and says what is actually in it, which is
@@ -442,9 +534,13 @@ function KnowledgeSection({ me, loading: loadingMe }) {
     let alive = true;
     (async () => {
       if (me?.company?.id) {
-        const rows = await listSources(me.company.id);
+        const [rows, disagreements] = await Promise.all([
+          listSources(me.company.id),
+          listContradictions(me.company.id),
+        ]);
         if (!alive) return;
         setItems(rows);
+        setClashes(disagreements);
       }
       setLoading(false);
     })();
@@ -659,6 +755,18 @@ function KnowledgeSection({ me, loading: loadingMe }) {
     setLinkUrl("");
     setLinkNote("");
     setRefresh(null);
+  }
+
+  async function markSorted(id) {
+    setClashBusy(id);
+    const ok = await resolveContradiction(id);
+    setClashBusy(null);
+
+    if (!ok) {
+      show("Could not save that. Try again.");
+      return;
+    }
+    setClashes((prev) => prev.filter((row) => row.id !== id));
   }
 
   function askBeforeRemoving(item) {
@@ -1125,6 +1233,8 @@ function KnowledgeSection({ me, loading: loadingMe }) {
           </p>
         )}
       </GlassPanel>
+
+      <Disagreements items={clashes} onResolve={markSorted} busyId={clashBusy} />
 
       {/* What is in the index */}
       <GlassPanel className="p-6">

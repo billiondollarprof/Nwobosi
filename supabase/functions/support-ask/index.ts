@@ -226,6 +226,15 @@ function buildSystem(
     "Use ordinary punctuation. Full stops and commas. No dashes standing in for a " +
       "pause, no bullet symbols, no bold, no headings, no emoji.",
   );
+  /* ADDED 2026-09-09, a day after the line above, because the line above did
+     not hold. The reply still read "completely free right now - no card
+     needed", with an en dash. "No dashes standing in for a pause" describes a
+     class of character and hopes the model shares the definition. Naming the
+     three characters is an instruction. */
+  lines.push(
+    "Never put a dash between words, of any kind. Not - and not \u2013 and not \u2014. " +
+      "Use a full stop, a comma, or start a new sentence instead.",
+  );
   lines.push(
     "When somebody has to do something in a certain order, number the steps, one " +
       "per line, and name the exact thing to tap or type. Otherwise write in plain " +
@@ -253,6 +262,16 @@ function buildSystem(
       "the one nearer the top is the company's current position and anything lower " +
       "down is out of date. Answer from the newer one, and do not tell the person " +
       "that your material disagreed with itself.",
+  );
+  /* ADDED 2026-09-09. The customer never hears about this. It goes to the
+     company, so that a wrong answer can be traced to two files that disagreed
+     rather than filed under "the AI made something up". */
+  lines.push(
+    "When you do find two parts of the material disagreeing about something you " +
+      "actually used in this answer, fill in the disagreement fields on the reply " +
+      "tool. Name both sources, say what each of them claims, and keep answering " +
+      "normally. Only for a real conflict of fact, never for two documents that " +
+      "simply cover different ground.",
   );
 
   lines.push("\n----- PUBLISHED MATERIAL -----");
@@ -313,6 +332,33 @@ const REPLY_TOOL: Anthropic.Tool = {
           "Set this only when the person has just given their own email address so we can " +
           "reach them there. Leave it out otherwise, including when they mention somebody " +
           "else's address or an address they are asking a question about.",
+      },
+      /* ADDED 2026-09-09. All five or none. The customer never sees any of
+         it; it goes to the company so a wrong answer can be traced to the
+         material rather than to the model. */
+      disagreement_topic: {
+        type: "string",
+        description:
+          "Only when two parts of the published material contradicted each other about " +
+          "something you used in this answer. What they disagreed about, in a few plain " +
+          "words, such as 'the price of the Essential plan'. Leave out entirely if there " +
+          "was no conflict.",
+      },
+      disagreement_source_a: {
+        type: "string",
+        description: "The name of the first source, exactly as it appears above the material.",
+      },
+      disagreement_said_a: {
+        type: "string",
+        description: "In one short line, what that first source claims.",
+      },
+      disagreement_source_b: {
+        type: "string",
+        description: "The name of the second source, exactly as it appears above the material.",
+      },
+      disagreement_said_b: {
+        type: "string",
+        description: "In one short line, what that second source claims.",
       },
     },
     required: ["text", "needs_person"],
@@ -828,6 +874,51 @@ Deno.serve(async (req) => {
     p_body: reply,
     p_external_id: null,
   });
+
+  /* ------------------------------------------------------------------
+     ADDED 2026-09-09. The company's own material disagreeing with itself.
+
+     Anthony asked for this so that a wrong answer can be traced to two
+     files that disagreed rather than filed under "the AI made something
+     up". The customer is never told any of it.
+
+     All the fields or nothing. A half filled report names one source and is
+     worse than silence, because somebody would go looking for a second file
+     that was never identified.
+
+     It runs after the reply is already written and after the person has
+     been answered, and a failure only ever reaches the log. A bookkeeping
+     row is not worth a customer waiting for.
+     ------------------------------------------------------------------ */
+
+  if (
+    disagreement &&
+    disagreement.topic &&
+    disagreement.sourceA &&
+    disagreement.sourceB &&
+    disagreement.sourceA.toLowerCase() !== disagreement.sourceB.toLowerCase()
+  ) {
+    const { error: logError } = await admin.rpc("knowledge_contradiction_log", {
+      p_company_id: company.id,
+      p_topic: disagreement.topic,
+      p_source_a: disagreement.sourceA,
+      p_said_a: disagreement.saidA,
+      p_source_b: disagreement.sourceB,
+      p_said_b: disagreement.saidB,
+      /* Newest wins and the material is ordered newest first, so the one it
+         answered from is the one listed higher up, which is A. Recorded
+         rather than left to be inferred, because that ordering has already
+         changed once. */
+      p_answered_with: disagreement.sourceA,
+    });
+    if (logError) {
+      console.error("could not record the disagreement", logError);
+    } else {
+      console.log(
+        `support: material disagreed company=${company.id} topic=${JSON.stringify(disagreement.topic)}`,
+      );
+    }
+  }
 
   /* ------------------------------------------------------------------
      Meter it. A cache read costs about a tenth and a cache write a little
