@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 
 import { LogoMark } from "../shared/icons.jsx";
+import PublishGate from "../shared/PublishGate.jsx";
 import { BRAND, GRADIENTS, FONTS } from "../shared/tokens";
 import {
   PageShell,
@@ -275,7 +276,7 @@ export default function Admin() {
    Plain words, because this is a company's own screen: customers can see
    this, or staff only. Not visibility, not scope, not published. An admin
    should be able to get this right without being told what it means. */
-function CustomerSwitch({ on, label, onChange }) {
+export function CustomerSwitch({ on, label, onChange }) {
   return (
     <button
       type="button"
@@ -340,6 +341,14 @@ function KnowledgeSection({ me, loading: loadingMe }) {
 
   /* Files chosen together and still waiting their turn. */
   const [queue, setQueue] = useState([]);
+
+  /* THE ONE THING THAT CAN SEND A FILE OUT OF THE BUILDING
+     Holds the row an admin has asked to open up, until they answer the
+     question. Null means no question is on screen. `gateBusy` locks the
+     buttons while the write is in flight so a double press cannot fire
+     two writes. See src/shared/PublishGate.jsx for why this exists. */
+  const [gate, setGate] = useState(null);
+  const [gateBusy, setGateBusy] = useState(false);
 
   const fileInputRef = useRef(null);
 
@@ -524,20 +533,51 @@ function KnowledgeSection({ me, loading: loadingMe }) {
     else show("Could not remove that. Try again.");
   }
 
-  /* Turning a source over to the support side, or taking it back.
+  /* TURNING A SOURCE OVER TO THE SUPPORT SIDE, OR TAKING IT BACK
 
-     Written to the row straight away and reflected in the list, because a
-     switch that waits for a round trip before it moves reads as broken and
-     gets clicked twice. If the write fails the switch goes back and the
-     admin is told, which is the only honest way to do it: this decides what
-     a stranger can be told. */
-  async function setVisible(id, visible) {
-    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, customer_visible: visible } : i)));
-    const ok = await setSourceVisibility(id, visible);
+     The two directions are not the same action and must never be treated
+     as one.
+
+     TAKING IT BACK is safe, so it happens on the spot. It is written to
+     the row straight away and reflected in the list, because a switch that
+     waits for a round trip before it moves reads as broken and gets
+     clicked twice. If the write fails the switch goes back and the admin
+     is told.
+
+     OPENING IT UP is the only action in this whole admin that can put a
+     company's own material in front of a stranger, so it never happens on
+     one tap. It opens the gate and waits for a deliberate answer. Every
+     file, every time, including the ones that look harmless. */
+  async function hide(id) {
+    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, customer_visible: false } : i)));
+    const ok = await setSourceVisibility(id, false);
     if (!ok) {
-      setItems((prev) => prev.map((i) => (i.id === id ? { ...i, customer_visible: !visible } : i)));
+      setItems((prev) => prev.map((i) => (i.id === id ? { ...i, customer_visible: true } : i)));
       show("Could not change that. Try again.");
     }
+  }
+
+  function askBeforeShowing(item) {
+    setGate({ id: item.id, name: item.name });
+  }
+
+  /* The optimistic write is deliberately not used here. On the way out of
+     the building the list must only ever show what the database actually
+     accepted, so this waits for the write and closes on success. */
+  async function confirmShowing() {
+    if (!gate) return;
+    setGateBusy(true);
+    const ok = await setSourceVisibility(gate.id, true);
+    setGateBusy(false);
+
+    if (!ok) {
+      setGate(null);
+      show("Could not change that. Try again.");
+      return;
+    }
+
+    setItems((prev) => prev.map((i) => (i.id === gate.id ? { ...i, customer_visible: true } : i)));
+    setGate(null);
   }
 
   if (loading || loadingMe) {
@@ -890,13 +930,25 @@ function KnowledgeSection({ me, loading: loadingMe }) {
                 <CustomerSwitch
                   on={item.customer_visible === true}
                   label={item.name}
-                  onChange={() => setVisible(item.id, !item.customer_visible)}
+                  onChange={() =>
+                    item.customer_visible ? hide(item.id) : askBeforeShowing(item)
+                  }
                 />
               </div>
             </div>
           ))}
         </div>
       </GlassPanel>
+
+      {gate && (
+        <PublishGate
+          name={gate.name}
+          review={null}
+          busy={gateBusy}
+          onCancel={() => setGate(null)}
+          onConfirm={confirmShowing}
+        />
+      )}
     </div>
   );
 }
