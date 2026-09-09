@@ -34,6 +34,7 @@ import {
 import { LogoMark } from "../shared/icons.jsx";
 import PublishGate from "../shared/PublishGate.jsx";
 import ConfirmDelete from "../shared/ConfirmDelete.jsx";
+import RefreshOrKeep from "../shared/RefreshOrKeep.jsx";
 import AudienceControl from "../shared/AudienceControl.jsx";
 import { BRAND, GRADIENTS, FONTS } from "../shared/tokens";
 import {
@@ -379,6 +380,10 @@ function KnowledgeSection({ me, loading: loadingMe }) {
   const [doomed, setDoomed] = useState(null);
   const [doomedBusy, setDoomedBusy] = useState(false);
 
+  /* The link being added when the same address is already in the list.
+     Holds the existing row so Replace knows what to take away afterwards. */
+  const [refresh, setRefresh] = useState(null);
+
   /* WHAT THE READER FOUND, IF ANYTHING
 
      A model opens the material and says what is actually in it, which is
@@ -605,19 +610,55 @@ function KnowledgeSection({ me, loading: loadingMe }) {
     e.preventDefault();
     if (!linkUrl.trim() || !me?.company?.id) return;
 
+    /* Already have this address? Then this is a refresh, not a duplicate, and
+       the only real question is what happens to the reading already stored.
+       Ask before spending a fetch on it. */
+    const existing = findByAddress(items, linkUrl);
+    if (existing) {
+      setRefresh(existing);
+      return;
+    }
+
+    await readLink({ replacing: null });
+  }
+
+  /* THE ONE PLACE A LINK IS ACTUALLY FETCHED
+
+     `replacing` is the row to remove once the new reading is safely in, or
+     null to just add.
+
+     THE ORDER IS LOAD BEARING. The new copy goes in first and the old one is
+     only removed once that has worked. Backwards, a page that fails to fetch
+     would take the working copy with it and leave the company with nothing
+     about that page at all. */
+  async function readLink({ replacing }) {
+    if (!me?.company?.id) return;
+
     setSaving(true);
     const result = await fetchLinkSource({ url: linkUrl.trim(), description: linkNote.trim() });
-    setSaving(false);
 
     if (!result.ok) {
+      setSaving(false);
+      setRefresh(null);
       show(result.message);
       return;
     }
 
+    if (replacing) {
+      const removed = await removeSource(replacing.id);
+      /* The new reading is already saved, so a failure here is untidy rather
+         than lost. Say so plainly instead of pretending it worked. */
+      if (!removed) {
+        show("Read the page, but could not remove the old copy. Remove it from the list yourself.");
+      }
+    }
+
+    setSaving(false);
     setItems(await listSources(me.company.id));
     setJustAdded(result.name);
     setLinkUrl("");
     setLinkNote("");
+    setRefresh(null);
   }
 
   function askBeforeRemoving(item) {
@@ -1036,15 +1077,24 @@ function KnowledgeSection({ me, loading: loadingMe }) {
               onChange={(e) => setLinkUrl(e.target.value)}
               placeholder="company.com/about"
             />
-            {/* Address, not name, because a link is named by the page itself
-                after it is read, so the name box is usually empty at the
-                point this needs to fire. The address is what somebody pastes
-                twice. */}
-            <AlreadyThere
-              match={findByAddress(items, linkUrl)}
-              what="This page is already in the knowledge base"
-              advice="Adding it again gives you a second copy of the same page."
-            />
+            {/* A QUIET NOTE, NOT A WARNING, AND THE DIFFERENCE IS THE WHOLE
+                POINT ON THIS ONE FORM
+
+                A link is a photograph of a page taken when it was added, and
+                nothing ever re-reads it. So adding the same address again is
+                almost never a mistake, it is somebody refreshing a page they
+                have edited since. The first build put red text here and told
+                them off for doing the right thing.
+
+                Pressing Add asks what should happen to the old reading.
+                See RefreshOrKeep.jsx. */}
+            {findByAddress(items, linkUrl) && (
+              <p className="text-[12.5px] leading-relaxed mt-1.5" style={{ color: "var(--text-3)" }}>
+                You already have this page from{" "}
+                {whenAdded(findByAddress(items, linkUrl)) ?? "before"}. Adding it reads the page
+                again, and we will ask what to do with the old copy.
+              </p>
+            )}
           </Field>
           {/* No longer required. The page is read when it is added, and a
               name and a line come back with it. Somebody who wants to say
@@ -1184,6 +1234,17 @@ function KnowledgeSection({ me, loading: loadingMe }) {
           ))}
         </div>
       </GlassPanel>
+
+      {refresh && (
+        <RefreshOrKeep
+          address={refresh.location ?? linkUrl}
+          addedWhen={whenAdded(refresh)}
+          busy={saving}
+          onCancel={() => setRefresh(null)}
+          onReplace={() => readLink({ replacing: refresh })}
+          onKeepBoth={() => readLink({ replacing: null })}
+        />
+      )}
 
       {doomed && (
         <ConfirmDelete
