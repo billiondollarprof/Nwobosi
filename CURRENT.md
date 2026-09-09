@@ -205,6 +205,68 @@ a real browser.
   `access_codes` has RLS on and zero policies, so only the service role
   reaches it. Verified against the live database.
 
+## Publishing a file to customers, and the guard on it
+
+Added 2026-09-09. The one action in the admin that can send a company's own
+material to somebody outside the company is turning a knowledge file on for
+customers. Until this day it was a single tap with nothing in the way, and
+a real payment receipt got turned on during testing with nothing said.
+
+**What is live in the repo and on `testing`:**
+
+- **A pair of options, not a toggle.** `src/shared/AudienceControl.jsx`.
+  "Staff only" and "Customers too", both on screen at once, the one in
+  force filled in. The old control showed the state and nothing else: not
+  that there was a choice, not what the other choice was, not that it
+  mattered. A control that has to be taught is a broken control.
+- **A gate on the way out.** `src/shared/PublishGate.jsx`. Turning a file
+  ON always asks, every file, every time. Turning one OFF never asks,
+  because taking something back is always safe.
+- **Two levels.** Soft is the default: one line, plain button, no colour.
+  Firm only when the reader found something: amber, the finding is what
+  you read, Cancel becomes the loud button, and the other one says "Turn
+  it on anyway". A warning that shouts every time gets clicked through
+  every time.
+- **The reader.** `supabase/functions/read-before-publish`, deployed
+  2026-09-09, version 1, `verify_jwt` false like every function here,
+  `ezbr_sha256` 22dde2419f55b142ee27f3e7e8f021c22405dc439940976a72cd412b053dec32.
+  Admin only, checked in the function. Sonnet. Returns clear, warn or
+  unknown plus one plain line. It leans internal on purpose and its reason
+  never quotes the private part.
+  Note: it was deployed through the Supabase tools and the deployed URL
+  could not be called from the machine that deployed it, so the first real
+  proof of it answering is a toggle on `testing`.
+
+**The rule the whole thing turns on, and it is not negotiable:**
+
+> The reading can add a warning. It can never remove one, and it can never
+> encourage.
+
+The gate opens whatever the reader says or fails to say. A clean reading
+does not skip the question, it only leaves the dialog quiet. A reading that
+failed says "nobody has checked it" and is never dressed up as clean.
+
+The design that was tried and rejected was to let the reader decide whether
+to ask, and pop up an offer when it came back clean. That turns a model's
+mistake into the product actively inviting somebody to publish a payroll
+sheet with a green tick beside it. A model that can wave something through
+will eventually wave the wrong thing through.
+
+**Not built yet:** the override log, meaning a record of the times the
+reader warned and an admin turned the file on anyway. Nothing is logged for
+the soft path, deliberately.
+
+**A trap fixed on the way past, worth knowing about.** `PageShell` is a
+column flex container, so a flex line takes the width of its widest item
+and stretch only grows items up to it, never shrinks them. One long file
+name held on one line by `truncate` made the admin content wrapper 512px
+wide inside a 320px phone. `overflow-x-clip` then hid the result instead of
+scrolling it and `document.scrollWidth` still read clean, so the bin and
+the status pill on every row sat off the right edge with nothing reporting
+it. The fix is `w-full` on the page's own wrapper, which makes its width
+definite. `min-w-0` alone does not do it. Any new page inside `PageShell`
+needs the same.
+
 ## Support, the second environment
 
 Added 2026-09-07. The plan for all of it is `SUPPORT.md`, which is the
