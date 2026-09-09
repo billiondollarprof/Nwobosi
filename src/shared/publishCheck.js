@@ -68,18 +68,26 @@ export async function readBeforePublish({ text, name }) {
 /* Pull a saved source's own text back so it can be read. Runs under the
    admin's session, so row level security decides what comes back. */
 export async function loadSourceText(sourceId) {
-  /* No ORDER BY, deliberately, and it is a gap not a preference.
-     knowledge_chunks was created in the Supabase console and has no
-     migration in this repo, so nothing here can confirm it has a
-     created_at or any other column safe to sort on, and guessing a column
-     name into a query that then throws is worse than taking the rows as
-     they come. For deciding whether a document holds a card number the
-     order does not matter much; for showing the start of a long file it
-     would. Confirm the column and add the sort. */
+  /* Ordered by created_at, which is as good as this table can do, and it
+     is worth knowing why it is not perfect.
+
+     knowledge_chunks holds id, source_id, company_id, content, embedding
+     and created_at. Every chunk of one file is written in a single insert,
+     so they all take the same transaction timestamp and their order within
+     that file is not recoverable from any column here. id is a random
+     uuid, so it does not help either.
+
+     created_at still earns its place: it keeps separate writes to the same
+     source in the order they happened. And for the job this text is being
+     read for, whether the document holds a card number or a salary table,
+     paragraphs arriving out of order changes nothing. If a feature ever
+     needs the true start of a long file, this table needs a position
+     column first. */
   const { data, error } = await supabase
     .from("knowledge_chunks")
     .select("content")
     .eq("source_id", sourceId)
+    .order("created_at", { ascending: true })
     .limit(12);
 
   if (error) {
