@@ -143,7 +143,20 @@ export async function listSources(companyId) {
    chunks fail the source is marked failed rather than left sitting at
    ready with nothing behind it, which would be the worst of both: a
    knowledge base that lists something it cannot actually quote. */
-export async function addTextSource({ companyId, userId, name, description, text, kind = "file", location = null }) {
+/* `customerVisible` defaults to false and every call site has to pass true
+   on purpose, so a missed argument can only ever close a file, never open
+   one. The admin screen only passes true after the publish gate came back
+   with a yes. */
+export async function addTextSource({
+  companyId,
+  userId,
+  name,
+  description,
+  text,
+  kind = "file",
+  location = null,
+  customerVisible = false,
+}) {
   const { data: source, error: sourceError } = await supabase
     .from("knowledge_sources")
     .insert({
@@ -154,6 +167,7 @@ export async function addTextSource({ companyId, userId, name, description, text
       location,
       status: "pending",
       added_by: userId,
+      customer_visible: customerVisible === true,
     })
     .select()
     .single();

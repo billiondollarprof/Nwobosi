@@ -149,7 +149,12 @@ export default function PublishGate({ name, review, busy = false, onCancel, onCo
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4"
+      /* Centred on a phone as well as a desktop, not a sheet slid up from
+         the bottom edge. A bottom sheet reads as a notification the page
+         threw at you on the way past. Centred, with the page dimmed behind
+         it, reads as the page stopping and waiting for an answer, which is
+         what this is. */
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
       style={{ backgroundColor: "rgba(4,5,12,0.62)", backdropFilter: "blur(6px)" }}
       onMouseDown={(event) => {
         /* Only a press that starts and ends on the backdrop closes it. A
@@ -162,7 +167,7 @@ export default function PublishGate({ name, review, busy = false, onCancel, onCo
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="publish-gate-title"
-        className="w-full sm:max-w-[420px] rounded-t-[22px] sm:rounded-[22px] border p-5 sm:p-6 max-h-[92vh] overflow-y-auto"
+        className="w-full max-w-[420px] rounded-[20px] border p-5 sm:p-6 max-h-[86vh] overflow-y-auto"
         style={{
           backgroundColor: "var(--surface-solid)",
           borderColor: "var(--border-2)",

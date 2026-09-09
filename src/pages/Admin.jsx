@@ -316,12 +316,34 @@ function KnowledgeSection({ me, loading: loadingMe }) {
   const [queue, setQueue] = useState([]);
 
   /* THE ONE THING THAT CAN SEND A FILE OUT OF THE BUILDING
-     Holds the row an admin has asked to open up, until they answer the
-     question. Null means no question is on screen. `gateBusy` locks the
-     buttons while the write is in flight so a double press cannot fire
-     two writes. See src/shared/PublishGate.jsx for why this exists. */
+
+     Holds whatever an admin has asked to open up, until they answer the
+     question. Null means no question is on screen.
+
+       { target: "row", id, name }   a file already in the list
+       { target: "staged", name }    a file being uploaded right now
+       { target: "paste", name }     text being pasted in right now
+
+     A row writes to the database on yes, so it needs `gateBusy` to lock the
+     buttons while that write is in flight. The two forms only set a choice
+     that will be written when the form is saved, so they answer instantly.
+
+     See src/shared/PublishGate.jsx for why any of this exists. */
   const [gate, setGate] = useState(null);
   const [gateBusy, setGateBusy] = useState(false);
+
+  /* The audience chosen inside the upload forms, before anything is saved.
+
+     WHY THE FORMS HAVE THIS AT ALL
+     Anthony's point, and he is right: somebody uploading a page for
+     customers should be able to say so while they are uploading it, not
+     have to save it, find it in the list, and turn it on as a second job.
+     The list still works exactly as before, so forgetting here costs
+     nothing. Two ways in, neither of them redundant.
+
+     Both start false. Opening a file up is always a deliberate act. */
+  const [stagedVisible, setStagedVisible] = useState(false);
+  const [pasteVisible, setPasteVisible] = useState(false);
 
   const fileInputRef = useRef(null);
 
@@ -398,6 +420,7 @@ function KnowledgeSection({ me, loading: loadingMe }) {
       return;
     }
 
+    setStagedVisible(false);
     setStaged({
       fileName: file.name,
       name: file.name.replace(/\.[^.]+$/, ""),
@@ -424,6 +447,7 @@ function KnowledgeSection({ me, loading: loadingMe }) {
       description: pasteNote.trim(),
       text: pasteText,
       kind: "file",
+      customerVisible: pasteVisible,
     });
     setSaving(false);
 
@@ -437,6 +461,7 @@ function KnowledgeSection({ me, loading: loadingMe }) {
     setPasteName("");
     setPasteNote("");
     setPasteText("");
+    setPasteVisible(false);
     setPasteOpen(false);
   }
 
@@ -455,6 +480,7 @@ function KnowledgeSection({ me, loading: loadingMe }) {
       description: staged.description.trim(),
       text: staged.text,
       kind: "file",
+      customerVisible: stagedVisible,
     });
     setSaving(false);
 
@@ -466,6 +492,11 @@ function KnowledgeSection({ me, loading: loadingMe }) {
     setItems((prev) => [result.source, ...prev]);
     setJustAdded(`${result.source.name}, ${result.chunks} ${result.chunks === 1 ? "piece" : "pieces"} of text`);
     setStaged(null);
+
+    /* The audience choice does NOT carry over to the next file in the
+       batch. Somebody who opened up a price list should not silently open
+       up the payroll file behind it because the control kept its answer. */
+    setStagedVisible(false);
 
     /* Straight on to the next one they chose, so a batch feels like a
        batch rather than something that quietly dropped everything after
@@ -531,14 +562,40 @@ function KnowledgeSection({ me, loading: loadingMe }) {
   }
 
   function askBeforeShowing(item) {
-    setGate({ id: item.id, name: item.name });
+    setGate({ target: "row", id: item.id, name: item.name });
   }
 
-  /* The optimistic write is deliberately not used here. On the way out of
-     the building the list must only ever show what the database actually
-     accepted, so this waits for the write and closes on success. */
+  /* The gate wants something to call the file. A form is often answered
+     before the name box is, so fall back to the file itself rather than
+     asking "turn this on for customers?" about a blank. */
+  function askBeforeStaged() {
+    setGate({ target: "staged", name: staged?.name.trim() || staged?.fileName || "this file" });
+  }
+
+  function askBeforePaste() {
+    setGate({ target: "paste", name: pasteName.trim() || "this text" });
+  }
+
   async function confirmShowing() {
     if (!gate) return;
+
+    /* A form has saved nothing yet, so yes only sets the choice. The write
+       happens when they add it, through addTextSource. */
+    if (gate.target === "staged") {
+      setStagedVisible(true);
+      setGate(null);
+      return;
+    }
+    if (gate.target === "paste") {
+      setPasteVisible(true);
+      setGate(null);
+      return;
+    }
+
+    /* A row is live, so this writes now. The optimistic update used
+       everywhere else is deliberately not used here: on the way out of the
+       building the list must only ever show what the database actually
+       accepted. */
     setGateBusy(true);
     const ok = await setSourceVisibility(gate.id, true);
     setGateBusy(false);
@@ -654,6 +711,21 @@ function KnowledgeSection({ me, loading: loadingMe }) {
                     placeholder="How we write, the words we use and avoid"
                   />
                 </Field>
+                {/* SET IT HERE, OR SET IT LATER, BOTH WORK
+                    It starts on Staff only and picking the other half goes
+                    through the same gate as the list does, so there is no
+                    quiet way into the customer side no matter which screen
+                    somebody uses. */}
+                <Field label="Who can read it">
+                  <div className="-mx-1 px-1 overflow-x-auto py-0.5">
+                    <AudienceControl
+                      on={pasteVisible}
+                      label={pasteName.trim() || "this text"}
+                      onPick={(open) => (open ? askBeforePaste() : setPasteVisible(false))}
+                    />
+                  </div>
+                </Field>
+
                 <Field label="The text" required>
                   <TextArea
                     value={pasteText}
@@ -728,6 +800,21 @@ function KnowledgeSection({ me, loading: loadingMe }) {
                 placeholder="Colors, fonts, logo rules, and tone of voice"
               />
             </Field>
+            {/* SET IT HERE, OR SET IT LATER, BOTH WORK
+                It starts on Staff only and picking the other half goes
+                through the same gate as the list does, so there is no
+                quiet way into the customer side no matter which screen
+                somebody uses. */}
+            <Field label="Who can read it">
+              <div className="-mx-1 px-1 overflow-x-auto py-0.5">
+                <AudienceControl
+                  on={stagedVisible}
+                  label={staged.name.trim() || staged.fileName}
+                  onPick={(open) => (open ? askBeforeStaged() : setStagedVisible(false))}
+                />
+              </div>
+            </Field>
+
             <div className="flex gap-2">
               <PrimaryButton
                 onClick={saveStaged}
@@ -796,7 +883,14 @@ function KnowledgeSection({ me, loading: loadingMe }) {
 
       {/* Add a link */}
       <GlassPanel className="p-6">
-        <SectionHeading hint="Give the assistant a page to learn from. It is read once, now, and what it says is saved here. The assistant never opens a link itself.">
+        {/* No audience control on this one, and that is not an oversight.
+            A link is created by the add-link edge function, which is
+            deployed and working, and this build does not rewrite a working
+            function from the repo. A link therefore arrives staff only and
+            is opened up from the list below, which is one tap and now says
+            plainly what it does. The hint says so rather than leaving
+            somebody hunting for a control that is not there. */}
+        <SectionHeading hint="Give the assistant a page to learn from. It is read once, now, and what it says is saved here. The assistant never opens a link itself. A link starts as staff only, set who can read it in the list below.">
           Add a link
         </SectionHeading>
 
