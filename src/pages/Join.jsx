@@ -68,7 +68,7 @@ export default function Join() {
       /* One address for the workspace, which works out for itself that
          this person is staff and shows them the assistant. replace, not
          push, so Back does not land them on a spent link. */
-      navigate("/demo", { replace: true });
+      navigate("/workspace", { replace: true });
     })();
   }, [token, navigate]);
 

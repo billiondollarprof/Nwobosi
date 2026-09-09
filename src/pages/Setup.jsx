@@ -175,7 +175,7 @@ export default function Setup() {
         setError(opened.reason);
         return;
       }
-      navigate("/demo");
+      navigate("/workspace");
       return;
     }
 
@@ -224,7 +224,7 @@ export default function Setup() {
     }
 
     setBusy(false);
-    navigate("/demo");
+    navigate("/workspace");
   }
 
   /* ========================================================================

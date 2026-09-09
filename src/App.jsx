@@ -104,19 +104,41 @@ export default function App() {
           <Route path="/anthony/cv" element={<CV />} />
           <Route path="/insights" element={<Insights />} />
 
-          {/* One address for the product. What it renders depends on who is
-              signed in, not on what is in the path. See Workspace.jsx for
-              why the slug went: it was decorative, it leaked which companies
-              exist, and it made every mistyped path look like one. */}
-          <Route path="/demo" element={<Workspace />} />
+          {/* THE WORKSPACE, AND THE COMPANY ADDRESS
+
+              /workspace is the address that always works and never needs to
+              know who you are. It sends a signed in person straight on to
+              their own company, so the bar reads /amara rather than
+              something generic.
+
+              /:slug is that company address. It is a LABEL AND NOTHING MORE.
+              It grants nothing, because the company a person belongs to is
+              read from their staff row and enforced by RLS. Typing another
+              company's name gets you your own workspace, not theirs.
+
+              This reverses an earlier decision, and the two reasons that
+              decision was made are handled rather than ignored. It used to
+              be that a stranger typing a company name got a sign in screen
+              for it, which confirmed the company existed, and that every
+              mistyped path looked like a company. Now every unknown path and
+              every real company look exactly alike to somebody not signed
+              in, so guessing tells them nothing. Workspace.jsx does that
+              part. */}
+          <Route path="/workspace" element={<Workspace />} />
 
           {/* Where the old addresses went. These were public and are in
-              bookmarks, so they move rather than break. The slug is dropped
-              on the way through because the session already knows which
-              workspace the person belongs to. */}
-          <Route path="/chat" element={<Navigate to="/demo?view=assistant" replace />} />
-          <Route path="/admin" element={<Navigate to="/demo" replace />} />
-          <Route path="/:slug/admin" element={<Navigate to="/demo" replace />} />
+              bookmarks, so they move rather than break. */}
+          <Route path="/demo" element={<Navigate to="/workspace" replace />} />
+          <Route path="/chat" element={<Navigate to="/workspace?view=assistant" replace />} />
+          <Route path="/admin" element={<Navigate to="/workspace" replace />} />
+          <Route path="/:slug/admin" element={<Navigate to="/workspace" replace />} />
+
+          {/* Last, and deliberately so. Every static route above wins over
+              this one, so no company slug can ever take /services or
+              /anthony off the site. React Router ranks a fixed segment above
+              a dynamic one on its own, and the order here says the same
+              thing to anybody reading it. */}
+          <Route path="/:slug" element={<Workspace />} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

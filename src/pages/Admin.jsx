@@ -125,7 +125,7 @@ export default function Admin() {
          let the panel open at all: hiding the link is a courtesy, this is
          the check. Send them to their own side. */
       if (who.staff?.access_level !== "admin") {
-        navigate("/demo?view=assistant", { replace: true });
+        navigate("/workspace?view=assistant", { replace: true });
         return;
       }
 
@@ -157,7 +157,7 @@ export default function Admin() {
               the door, and it says so rather than being an arrow you have
               to guess at. */}
           <button
-            onClick={() => navigate("/demo?view=assistant")}
+            onClick={() => navigate("/workspace?view=assistant")}
             className="h-9 rounded-[10px] flex items-center gap-1.5 px-2.5 border transition-colors hover:opacity-80 shrink-0"
             style={{ borderColor: "var(--border-2)", backgroundColor: "var(--surface)" }}
             aria-label="Open the assistant"
@@ -215,7 +215,7 @@ export default function Admin() {
           {me?.company?.slug && (
             <div className="mb-5">
               <PrimaryButton
-                onClick={() => navigate("/demo?view=assistant")}
+                onClick={() => navigate("/workspace?view=assistant")}
                 className="w-full sm:w-auto flex items-center justify-center gap-2"
               >
                 <Sparkles size={15} />

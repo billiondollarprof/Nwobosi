@@ -1,18 +1,34 @@
 /* ==========================================================================
    WORKSPACE
-   One address for the whole product: /demo.
+   Two addresses, one screen: /workspace and /{company}.
 
-   There used to be two, /{slug} for the assistant and /{slug}/admin for the
-   panel, and the slug was decorative in both. Chat never read it at all and
-   Admin only used it to build links. The workspace a person belongs to has
-   always come from their session, because that is the only source that
-   cannot be edited in the address bar: their staff row names their company
-   and RLS enforces it.
+   /workspace always works and needs to know nothing about you. The moment
+   it learns who you are it sends you on to your own company, so the address
+   bar ends up reading /amara rather than something generic.
 
-   So the slug bought nothing and cost two things. It let somebody type a
-   company name that was not theirs and get a sign in screen for it, which
-   is a way of finding out which companies exist. And it made every unknown
-   path look like a company, so a typo landed on sign in rather than home.
+   THE SLUG IS A LABEL AND GRANTS NOTHING
+   This is the part to understand before changing anything here. The company
+   a person belongs to is read from their staff row and enforced by RLS (a
+   database rule that stops one company ever reading another's data). The
+   path is never consulted for that. So typing another company's name in the
+   bar does not get you their workspace, it gets you your own, and the bar is
+   corrected to match.
+
+   WHY THE SLUG CAME BACK, AND WHAT WAS FIXED ON THE WAY
+   The slug was removed once, and for two fair reasons, both now handled:
+
+     1. It confirmed which companies exist. A stranger typing a real company
+        name saw a sign in screen; typing a made up one saw something else.
+        Now both look identical, because nobody signed in is ever told
+        whether the slug is real. The sign in it lands on says /workspace,
+        never the slug, so even the address it is sent to gives nothing away.
+     2. Every mistyped path looked like a company. It still does, to a
+        stranger, and that is now the point: /amara and /asdfgh behave
+        exactly the same until somebody proves who they are.
+
+   A company address is the reason this exists. Amara is told their workspace
+   is at /amara, and that link has to work for somebody who has not signed in
+   yet, which is why an unknown slug leads to sign in rather than home.
 
    WHAT THIS RENDERS
    The panel if you run the place, the assistant if you use it. An admin can
@@ -28,7 +44,7 @@
    ========================================================================== */
 
 import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import Admin from "./Admin.jsx";
 import Chat from "./Chat.jsx";
@@ -39,6 +55,7 @@ import { loadMe } from "../shared/session.js";
 export default function Workspace() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
+  const { slug } = useParams();
   const [me, setMe] = useState(undefined);
 
   /* ------------------------------------------------------------------------
@@ -51,10 +68,25 @@ export default function Workspace() {
       const who = await loadMe();
       if (!alive) return;
 
-      /* Nobody signed in on this browser. Sign in knows where to send them
-         afterwards, so hand it the path rather than dropping them home. */
+      /* Nobody signed in on this browser.
+
+         It is sent to /workspace and never to the slug, on purpose. A
+         stranger typing a real company name and a stranger typing nonsense
+         both end up on exactly the same screen, at exactly the same
+         address, so neither one learns whether the company exists. */
       if (!who) {
-        navigate(`/auth?next=${encodeURIComponent("/demo")}`, { replace: true });
+        navigate(`/auth?next=${encodeURIComponent("/workspace")}`, { replace: true });
+        return;
+      }
+
+      /* The address bar is made to agree with the session, never the other
+         way round. Somebody at /workspace is moved on to their own company,
+         and somebody who typed a company that is not theirs is moved to the
+         one that is. Nothing here decides what they can see: that was
+         settled by their staff row before this ran. */
+      const mine = who.company?.slug ?? null;
+      if (mine && slug !== mine) {
+        navigate({ pathname: `/${mine}`, search: window.location.search }, { replace: true });
         return;
       }
 
@@ -63,7 +95,7 @@ export default function Workspace() {
     return () => {
       alive = false;
     };
-  }, [navigate]);
+  }, [navigate, slug]);
 
   /* Both screens below load their own data and run their own guards, so
      this waits rather than rendering one and letting it flash the other. */
