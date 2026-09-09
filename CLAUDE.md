@@ -251,6 +251,44 @@ So, for any function that is already deployed and working:
 A brand new function has nothing to break, so it can come straight from the
 repo. Every other one follows the five steps.
 
+### An edit that was not written to disk is not an edit
+
+On 2026-09-09 support went down for three messages. Every reply was written,
+saved to the database, and then the function threw on the way out, so the
+customer sat there getting nothing while the record showed a perfect answer.
+
+The cause was not the code. It was two checks that both looked like they had
+passed.
+
+**One.** An edit script made three changes and asserted on each anchor. The
+third anchor missed, the script raised, and the file was never written. The
+two changes that HAD matched were lost with it. A later script then added the
+code that USED a variable without the code that DECLARED it.
+
+**Two.** The type checker was run, and it knew. It was run as
+`npx tsc ... | grep -E "TS1[0-9]{3}"`, which shows only syntax errors. A
+missing name is TS2304. The check had been told not to report the one thing
+that was wrong.
+
+So, before any edge function is handed over or deployed:
+
+1. **Look at the file, not at the script's output.** `grep` for the thing you
+   just added. A script that printed "ok" and a file that contains the change
+   are two different facts.
+2. **Run `node scripts/check-functions.mjs`.** It type checks every function
+   and excuses only the Deno global and jsr/npm/https imports. Never narrow a
+   check to a class of error you guessed at in advance, which is exactly how
+   this one got through.
+3. **Diff against the version before your change** and count the deletions.
+   Adding lines to a working function should delete nothing.
+
+### Bookkeeping never fails a reply
+
+The same outage taught this. The thing that threw was a log write, running
+after the customer's answer was already composed. Anything that happens after
+the real work is done gets its own `try`, because a row nobody reads is never
+worth a person getting silence.
+
 ### Slug and display name stay identical
 
 A function's slug is what the URL is built from. Its display name is a

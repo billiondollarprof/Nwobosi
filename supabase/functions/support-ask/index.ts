@@ -758,6 +758,18 @@ Deno.serve(async (req) => {
   let question = text;
   let route: string | null = null;
   let usage: Anthropic.Usage | null = null;
+  /* Declared out here, alongside the others, because it is written inside
+     the try below and read a long way after it. An earlier version of this
+     change lost this line to a failed edit and left the reader in place,
+     which took support down: every reply was composed and saved and then the
+     function threw on the way out, so the customer got silence. */
+  let disagreement: {
+    topic: string;
+    sourceA: string;
+    saidA: string;
+    sourceB: string;
+    saidB: string;
+  } | null = null;
 
   try {
     const result = await anthropic.messages.create({
@@ -777,6 +789,17 @@ Deno.serve(async (req) => {
     needsPerson = input.needs_person === true;
     question = String(input.question ?? "").trim() || text;
     route = String(input.route ?? "").trim() || null;
+
+    /* Collected here and written much later, after the reply is already
+       composed, because a bookkeeping row must never be the reason a
+       customer waits or gets nothing. */
+    disagreement = {
+      topic: String(input.disagreement_topic ?? "").trim(),
+      sourceA: String(input.disagreement_source_a ?? "").trim(),
+      saidA: String(input.disagreement_said_a ?? "").trim(),
+      sourceB: String(input.disagreement_source_b ?? "").trim(),
+      saidB: String(input.disagreement_said_b ?? "").trim(),
+    };
 
     /* Saved before anything below reads it, so an address given in this very
        message is already on file when the escalation is written. That is the
@@ -889,65 +912,81 @@ Deno.serve(async (req) => {
      It runs after the reply is already written and after the person has
      been answered, and a failure only ever reaches the log. A bookkeeping
      row is not worth a customer waiting for.
+
+     WRAPPED IN ITS OWN TRY. The first version of this took support down.
+     Nothing about recording a disagreement is worth a customer getting
+     silence, so from here to the end of the handler, anything that throws
+     is caught and the reply still goes back.
      ------------------------------------------------------------------ */
 
-  if (
-    disagreement &&
-    disagreement.topic &&
-    disagreement.sourceA &&
-    disagreement.sourceB &&
-    disagreement.sourceA.toLowerCase() !== disagreement.sourceB.toLowerCase()
-  ) {
-    const { error: logError } = await admin.rpc("knowledge_contradiction_log", {
-      p_company_id: company.id,
-      p_topic: disagreement.topic,
-      p_source_a: disagreement.sourceA,
-      p_said_a: disagreement.saidA,
-      p_source_b: disagreement.sourceB,
-      p_said_b: disagreement.saidB,
-      /* Newest wins and the material is ordered newest first, so the one it
-         answered from is the one listed higher up, which is A. Recorded
-         rather than left to be inferred, because that ordering has already
-         changed once. */
-      p_answered_with: disagreement.sourceA,
-    });
-    if (logError) {
-      console.error("could not record the disagreement", logError);
-    } else {
-      console.log(
-        `support: material disagreed company=${company.id} topic=${JSON.stringify(disagreement.topic)}`,
-      );
+  try {
+    if (
+      disagreement &&
+      disagreement.topic &&
+      disagreement.sourceA &&
+      disagreement.sourceB &&
+      disagreement.sourceA.toLowerCase() !== disagreement.sourceB.toLowerCase()
+    ) {
+      const { error: logError } = await admin.rpc("knowledge_contradiction_log", {
+        p_company_id: company.id,
+        p_topic: disagreement.topic,
+        p_source_a: disagreement.sourceA,
+        p_said_a: disagreement.saidA,
+        p_source_b: disagreement.sourceB,
+        p_said_b: disagreement.saidB,
+        /* Newest wins and the material is ordered newest first, so the one it
+           answered from is the one listed higher up, which is A. Recorded
+           rather than left to be inferred, because that ordering has already
+           changed once. */
+        p_answered_with: disagreement.sourceA,
+      });
+      if (logError) {
+        console.error("could not record the disagreement", logError);
+      } else {
+        console.log(
+          `support: material disagreed company=${company.id} topic=${JSON.stringify(disagreement.topic)}`,
+        );
+      }
     }
+  } catch (err) {
+    console.error("recording the disagreement threw, reply is unaffected", err);
   }
 
   /* ------------------------------------------------------------------
      Meter it. A cache read costs about a tenth and a cache write a little
      over full price, so counting either at face value would take the wrong
      amount off a real budget.
+
+     Also wrapped, for the same reason as above. Bookkeeping must never be
+     the reason somebody gets no answer.
      ------------------------------------------------------------------ */
 
-  if (!exempt && usage) {
-    const cacheRead = usage.cache_read_input_tokens ?? 0;
-    const cacheWrite = usage.cache_creation_input_tokens ?? 0;
-    const fresh = usage.input_tokens ?? 0;
-    const out = usage.output_tokens ?? 0;
+  try {
+    if (!exempt && usage) {
+      const cacheRead = usage.cache_read_input_tokens ?? 0;
+      const cacheWrite = usage.cache_creation_input_tokens ?? 0;
+      const fresh = usage.input_tokens ?? 0;
+      const out = usage.output_tokens ?? 0;
 
-    const inputTokens = fresh + cacheWrite * 1.25 + cacheRead * 0.1;
-    const cents = Math.ceil(
-      ((inputTokens / 1_000_000) * PRICE.input + (out / 1_000_000) * PRICE.output) * 100,
-    );
+      const inputTokens = fresh + cacheWrite * 1.25 + cacheRead * 0.1;
+      const cents = Math.ceil(
+        ((inputTokens / 1_000_000) * PRICE.input + (out / 1_000_000) * PRICE.output) * 100,
+      );
 
-    console.log(
-      `support usage fresh=${fresh} cacheWrite=${cacheWrite} cacheRead=${cacheRead} out=${out} cents=${cents}`,
-    );
+      console.log(
+        `support usage fresh=${fresh} cacheWrite=${cacheWrite} cacheRead=${cacheRead} out=${out} cents=${cents}`,
+      );
 
-    if (cents > 0) {
-      const { error: spendError } = await admin.rpc("company_spend", {
-        p_company_id: company.id,
-        p_cents: cents,
-      });
-      if (spendError) console.error("could not record support spend", spendError);
+      if (cents > 0) {
+        const { error: spendError } = await admin.rpc("company_spend", {
+          p_company_id: company.id,
+          p_cents: cents,
+        });
+        if (spendError) console.error("could not record support spend", spendError);
+      }
     }
+  } catch (err) {
+    console.error("metering threw, reply is unaffected", err);
   }
 
   return json({ ok: true, threadId, reply, escalated: needsPerson });
