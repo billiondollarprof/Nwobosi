@@ -68,6 +68,26 @@ Anthony is in charge. That is not a formality, it is the working rule.
   element edges at four phone widths across every public route. Read the
   header in that file before trusting or changing it.
 
+### Nothing is finished until it has been walked through
+
+This is not the optional half of the job. A change that has not been used
+is a change that has not been tested, and every time that step got skipped
+something shipped broken: the clipped Insights page, the log out that did
+not log out, the six digit box against an eight digit code.
+
+So, every time, no exceptions:
+
+1. **Use the thing you just built, as the person who will use it.** Click
+   the button. Toggle the toggle. Cancel the dialog and confirm it did
+   nothing. Type the wrong thing and see what happens.
+2. **Look at it, do not read the markup.** Screenshot at a phone width and
+   a desktop width, in both themes.
+3. **Run `scripts/overflow-audit.cjs`** for anything that changes layout.
+4. **Judge the UI as somebody who was never told how it works.** If a
+   control needs explaining, the control is wrong, not the person. Anthony
+   should never have to teach an admin what a switch does.
+5. Only then say it is done, and say what you actually checked.
+
 ## Model choice
 
 Claude cannot switch its own model. Only the user can, with `/model`. So Claude names the tier before starting anything substantial, in one short line, and the user decides.
