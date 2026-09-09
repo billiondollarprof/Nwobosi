@@ -33,6 +33,7 @@ import {
 
 import { LogoMark } from "../shared/icons.jsx";
 import PublishGate from "../shared/PublishGate.jsx";
+import ConfirmDelete from "../shared/ConfirmDelete.jsx";
 import AudienceControl from "../shared/AudienceControl.jsx";
 import { BRAND, GRADIENTS, FONTS } from "../shared/tokens";
 import {
@@ -333,6 +334,16 @@ function KnowledgeSection({ me, loading: loadingMe }) {
   const [gate, setGate] = useState(null);
   const [gateBusy, setGateBusy] = useState(false);
 
+  /* THE BIN USED TO FIRE ON ONE TAP
+
+     No question, no undo, and on a phone it sits a few millimetres from the
+     file name in a list people scroll with a thumb. Anthony found it by
+     looking: somebody can delete a file and never know they did.
+
+     Holds the row somebody asked to remove until they answer. */
+  const [doomed, setDoomed] = useState(null);
+  const [doomedBusy, setDoomedBusy] = useState(false);
+
   /* WHAT THE READER FOUND, IF ANYTHING
 
      A model opens the material and says what is actually in it, which is
@@ -574,10 +585,24 @@ function KnowledgeSection({ me, loading: loadingMe }) {
     setLinkNote("");
   }
 
-  async function remove(id) {
-    const ok = await removeSource(id);
-    if (ok) setItems((prev) => prev.filter((i) => i.id !== id));
-    else show("Could not remove that. Try again.");
+  function askBeforeRemoving(item) {
+    setDoomed(item);
+  }
+
+  async function confirmRemoving() {
+    if (!doomed) return;
+    setDoomedBusy(true);
+    const ok = await removeSource(doomed.id);
+    setDoomedBusy(false);
+
+    if (!ok) {
+      setDoomed(null);
+      show("Could not remove that. Try again.");
+      return;
+    }
+
+    setItems((prev) => prev.filter((i) => i.id !== doomed.id));
+    setDoomed(null);
   }
 
   /* TURNING A SOURCE OVER TO THE SUPPORT SIDE, OR TAKING IT BACK
@@ -1055,7 +1080,7 @@ function KnowledgeSection({ me, loading: loadingMe }) {
                 </div>
 
                 <button
-                  onClick={() => remove(item.id)}
+                  onClick={() => askBeforeRemoving(item)}
                   className="shrink-0 p-1.5 rounded-[8px] transition-opacity hover:opacity-70"
                   aria-label={`Remove ${item.name}`}
                 >
@@ -1105,6 +1130,20 @@ function KnowledgeSection({ me, loading: loadingMe }) {
           ))}
         </div>
       </GlassPanel>
+
+      {doomed && (
+        <ConfirmDelete
+          name={doomed.name}
+          note={
+            doomed.customer_visible
+              ? "Your customers can currently read this one."
+              : null
+          }
+          busy={doomedBusy}
+          onCancel={() => setDoomed(null)}
+          onConfirm={confirmRemoving}
+        />
+      )}
 
       {gate && (
         <PublishGate

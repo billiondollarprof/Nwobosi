@@ -81,6 +81,10 @@ export const THEME_VARS = {
        customers. It has to hold white text, so it is the lifted navy on
        dark and the true brand navy on light. */
     "--audience-open": "#2E42E0",
+    /* Destructive, as text and as a border on its own tinted panel. Theme
+       aware for the same reason as --caution: the brand red was picked for a
+       near black ground. */
+    "--danger": "#FF6B6B",
     /* The mark. Named here so it flips with the theme like everything
        else, rather than the component branching on which theme is on. */
     "--seal-outer": "rgba(255, 255, 255, 0.34)",
@@ -147,6 +151,7 @@ export const THEME_VARS = {
     "--caution": "#9A5B00",
     "--all-clear": "#0C7A31",
     "--audience-open": "#1420A0",
+    "--danger": "#C42B2B",
     "--seal-outer": "rgba(8, 17, 58, 0.30)",
     "--seal-outer-hi": "rgba(8, 17, 58, 0.72)",
     "--seal-in-a": "#2030C8",
