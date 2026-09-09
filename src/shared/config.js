@@ -58,6 +58,7 @@ export const FUNCTIONS = {
   addLink: "add-link",
   inviteStaff: "invite-staff",
   sendContact: "send-contact",
+  readBeforePublish: "read-before-publish",
 };
 
 export const OAUTH_REDIRECT_URI =

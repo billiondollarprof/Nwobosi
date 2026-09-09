@@ -63,6 +63,7 @@ import {
 import { adminSessionExpired } from "../shared/adminClock.js";
 import { readFileAsText, canBecomeText } from "../shared/readFile.js";
 import { fetchLinkSource } from "../shared/linkApi.js";
+import { readBeforePublish, loadSourceText } from "../shared/publishCheck.js";
 import { inviteStaff, timeLeft } from "../shared/inviteApi.js";
 import {
   PRODUCT,
@@ -332,6 +333,44 @@ function KnowledgeSection({ me, loading: loadingMe }) {
   const [gate, setGate] = useState(null);
   const [gateBusy, setGateBusy] = useState(false);
 
+  /* WHAT THE READER FOUND, IF ANYTHING
+
+     A model opens the material and says what is actually in it, which is
+     worth more than any checklist written in advance. It is shown inside
+     the gate and nowhere else.
+
+     THE READING CAN ONLY EVER ADD A WARNING, NEVER REMOVE ONE
+     This is the rule the whole design turns on, so it is written here
+     rather than left to be inferred. The gate opens for every file, every
+     time, whatever the reader says or fails to say. A clean reading does
+     not skip the question, it just leaves the dialog quiet. Anything else
+     would let a model that got it wrong wave a payroll file through, and a
+     model that can wave something through will eventually wave the wrong
+     thing through at three in the morning with nobody watching.
+
+     So: it adds friction, it never removes it, and it never encourages.
+
+     `readingFor` is the gate the reading belongs to. A read that comes
+     back after somebody has cancelled and opened a different file must not
+     paint its answer onto that one. */
+  const [review, setReview] = useState(null);
+  const readingFor = useRef(0);
+
+  /* Started the moment a file is read into the browser, long before
+     anybody asks to publish it, so the answer is usually already sitting
+     there when the gate opens instead of making somebody wait. */
+  const stagedReading = useRef(null);
+
+  async function runReview(work) {
+    const token = readingFor.current + 1;
+    readingFor.current = token;
+    setReview({ state: "reading" });
+
+    const result = await work;
+    if (readingFor.current !== token) return;
+    setReview(result);
+  }
+
   /* The audience chosen inside the upload forms, before anything is saved.
 
      WHY THE FORMS HAVE THIS AT ALL
@@ -421,6 +460,10 @@ function KnowledgeSection({ me, loading: loadingMe }) {
     }
 
     setStagedVisible(false);
+    /* The admin is about to spend half a minute writing a name and a line
+       about what it holds. That is time the reading can use. */
+    stagedReading.current = readBeforePublish({ text: result.text, name: file.name });
+
     setStaged({
       fileName: file.name,
       name: file.name.replace(/\.[^.]+$/, ""),
@@ -563,6 +606,11 @@ function KnowledgeSection({ me, loading: loadingMe }) {
 
   function askBeforeShowing(item) {
     setGate({ target: "row", id: item.id, name: item.name });
+    /* This one is already saved, so its text has to be read back out of
+       the knowledge base before anything can look at it. */
+    runReview(
+      loadSourceText(item.id).then((text) => readBeforePublish({ text, name: item.name })),
+    );
   }
 
   /* The gate wants something to call the file. A form is often answered
@@ -570,10 +618,18 @@ function KnowledgeSection({ me, loading: loadingMe }) {
      asking "turn this on for customers?" about a blank. */
   function askBeforeStaged() {
     setGate({ target: "staged", name: staged?.name.trim() || staged?.fileName || "this file" });
+    /* Almost always finished by now, because it started when the file was
+       chosen. If it somehow is not, the gate shows it working. */
+    runReview(
+      stagedReading.current ??
+        readBeforePublish({ text: staged?.text ?? "", name: staged?.name ?? "" }),
+    );
   }
 
   function askBeforePaste() {
     setGate({ target: "paste", name: pasteName.trim() || "this text" });
+    /* Pasted text has no earlier moment to start from, so this is it. */
+    runReview(readBeforePublish({ text: pasteText, name: pasteName.trim() }));
   }
 
   async function confirmShowing() {
@@ -583,12 +639,12 @@ function KnowledgeSection({ me, loading: loadingMe }) {
        happens when they add it, through addTextSource. */
     if (gate.target === "staged") {
       setStagedVisible(true);
-      setGate(null);
+      closeGate();
       return;
     }
     if (gate.target === "paste") {
       setPasteVisible(true);
-      setGate(null);
+      closeGate();
       return;
     }
 
@@ -601,12 +657,20 @@ function KnowledgeSection({ me, loading: loadingMe }) {
     setGateBusy(false);
 
     if (!ok) {
-      setGate(null);
+      closeGate();
       show("Could not change that. Try again.");
       return;
     }
 
     setItems((prev) => prev.map((i) => (i.id === gate.id ? { ...i, customer_visible: true } : i)));
+    closeGate();
+  }
+
+  /* One place to close it, so the reading from the last file can never be
+     left on screen above the next one. */
+  function closeGate() {
+    readingFor.current += 1;
+    setReview(null);
     setGate(null);
   }
 
@@ -828,6 +892,7 @@ function KnowledgeSection({ me, loading: loadingMe }) {
                 onClick={() => {
                   setStaged(null);
                   setQueue([]);
+                  stagedReading.current = null;
                 }}
               >
                 Cancel
@@ -1044,9 +1109,9 @@ function KnowledgeSection({ me, loading: loadingMe }) {
       {gate && (
         <PublishGate
           name={gate.name}
-          review={null}
+          review={review}
           busy={gateBusy}
-          onCancel={() => setGate(null)}
+          onCancel={closeGate}
           onConfirm={confirmShowing}
         />
       )}
