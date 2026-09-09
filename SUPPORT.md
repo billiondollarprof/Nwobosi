@@ -215,6 +215,93 @@ Recorded so none of it gets half started.
 
 ---
 
+## The ceiling this build has, found 2026-09-09
+
+Everything above works because Amara owns a WhatsApp number and a send
+function of its own. Take that away and it stops working, so the limit is
+worth stating plainly rather than discovering it with a paying customer.
+
+### StellaXafe cannot send a customer anything
+
+There is no outbound path. `support-ask` makes exactly two calls to the
+outside world and both are Resend, both to the colleague. The customer's
+answer travels in one place only: the `reply` field of the HTTP response,
+going back to whoever posted the question, in the same request.
+
+Synchronous, or nothing.
+
+So a colleague who replies to the escalation email is replying to
+`support@stellaxafe.com`, which nobody reads. The reply is gone. It only
+works for Amara because Amara delivers the answer itself.
+
+**A business subscribing to support alone would get escalation emails it
+can read and cannot answer.** That is a hole in the product.
+
+### What has to exist first
+
+One primitive, symmetric with how a question arrives. The company registers
+a delivery address and a secret; StellaXafe posts an answer to it; the
+company's own system puts it in front of the person. The same arrangement as
+the inbound secret, pointing the other way.
+
+Only once that exists do either of these become possible:
+
+- **A support console.** They sign in, see what is waiting, type. For a
+  business whose staff will use a screen.
+- **Reply by email.** The escalation carries a per conversation reply
+  address, support hits Reply in their normal inbox, StellaXafe delivers it
+  back on the channel the person came in on. Support never signs into
+  anything. This is the one for a small business.
+
+### The email address is a preference, not a route
+
+Worth stating because it is easy to get backwards. The address a customer
+gives is for when the **answer** is too sensitive for WhatsApp. It is never
+how the reply is delivered. Somebody who declines to give one is answered on
+the channel they arrived on, exactly like everybody else.
+
+---
+
+## A business whose customers are businesses
+
+Amara sells to hotels. A hotel writes in and asks something about its own
+account. The assistant has no idea who that hotel is, because a knowledge
+base holds what a company says, not what it knows.
+
+### Their details must never be uploaded
+
+The obvious fix is for Amara to upload every hotel's details as published
+material. It must not, for three reasons, and the third is the one that
+decides it.
+
+1. It is stale the moment it is uploaded. Plans and numbers move; documents
+   do not.
+2. It is read on every message, because it lands inside the cached block. A
+   thousand hotels' details would be re-read to answer "what time is check
+   in".
+3. **It leaks between the customers of the customer.** Publish every hotel's
+   details and the assistant can tell hotel A about hotel B. Tenant
+   isolation would hold at the top level and break one level down, which is
+   the exact failure this product exists to prevent, reintroduced through an
+   upload form.
+
+### What it should be instead
+
+A narrow lookup, not connectors and not uploads. The company registers one
+address. The assistant may ask it exactly one question: the person I am
+speaking to is this identifier, who are they and what is their standing. It
+cannot ask about anyone else and it cannot reach anything else.
+
+That keeps the founding rule nearly intact. Support still reaches nothing of
+its own choosing. It reaches one door the company built, about one person,
+the one already in front of it. Hotel A cannot be told about hotel B because
+the assistant can only ever ask about the number that just wrote in.
+
+With no lookup configured, today's behaviour is already the right fallback:
+say it does not have that, and hand it to a person.
+
+---
+
 ## The flow, end to end
 
 ```
