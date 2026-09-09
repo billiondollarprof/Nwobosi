@@ -504,7 +504,6 @@ export default function Chat() {
       }
 
       setMe(who);
-      setGreetingText(buildGreetingText(who.staff?.name?.split(" ")[0]));
 
       const recent = await listConversations(who.user.id);
       if (!alive) return;
@@ -514,13 +513,34 @@ export default function Chat() {
          blank page with their work one menu away. A refresh, a dead
          battery or a second phone should all feel like picking the thread
          back up, which is the whole reason conversations are saved. */
+      let restored = false;
       const latest = recent[0];
       if (latest && !conversationIdRef.current) {
         const row = await loadConversation(latest.id);
-        if (!alive || !row) return;
-        conversationIdRef.current = row.id;
-        setFlowStage(row.stage ?? "interview");
-        updateMessages((row.messages ?? []).map((m) => ({ id: nextId(), ...m })));
+        if (!alive) return;
+        if (row) {
+          conversationIdRef.current = row.id;
+          setFlowStage(row.stage ?? "interview");
+          updateMessages((row.messages ?? []).map((m) => ({ id: nextId(), ...m })));
+          restored = true;
+        }
+      }
+
+      /* THE GREETING WAITS UNTIL WE KNOW THERE IS NOTHING TO GO BACK TO.
+
+         It used to be set the moment the person loaded, before their
+         history had even been fetched. So signing in typed out "Good
+         evening, Anthony" letter by letter, and then their last
+         conversation arrived and replaced it mid sentence. Two things
+         competing for the same space, and the one that lost was the one
+         that had already started.
+
+         A greeting belongs to a blank page. Somebody picking a thread back
+         up is not arriving, they are returning, and being greeted for it
+         reads as software that was not paying attention. handleNewChat
+         still greets, because that genuinely is a fresh start. */
+      if (!restored) {
+        setGreetingText(buildGreetingText(who.staff?.name?.split(" ")[0]));
       }
 
       if (who.company?.id) {
