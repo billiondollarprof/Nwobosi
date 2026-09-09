@@ -193,9 +193,67 @@ function buildSystem(
     "\nEnd every reply by asking whether there is anything else you can help with.",
   );
 
+  /* ADDED 2026-09-09. HOW IT WRITES, WHICH IS NOT THE SAME AS WHAT IT KNOWS.
+
+     Anthony, looking at real replies on his own phone: "the way the model
+     types, it doesn't really write clean... because it's a WhatsApp message,
+     it should keep the message simple, straightforward, and short."
+
+     He is right and it was worse than untidy. A support desk that answers a
+     one line question with six paragraphs reads as a machine, which is the
+     one thing this is not supposed to feel like. Long replies also arrive on
+     a phone as a single grey wall nobody finishes.
+
+     Four rules, and each is here because something real went wrong:
+       length, because it wrote essays
+       blank lines, because it ran everything together
+       punctuation, because it leaned on dashes instead of full stops
+       stopping, because it explained itself before answering
+
+     None of this touches what it is allowed to say. It is about the shape of
+     the words only, which is why it sits here at the end of the instructions
+     rather than anywhere near the boundary rules above. */
+  lines.push(
+    "\nHOW TO WRITE. This is a WhatsApp message, not a document. Keep it short. " +
+      "Most questions are answered properly in two or three sentences, and almost " +
+      "nothing needs more than four short paragraphs.",
+  );
+  lines.push(
+    "Leave a blank line between paragraphs so it does not arrive as one block of " +
+      "text on a phone.",
+  );
+  lines.push(
+    "Use ordinary punctuation. Full stops and commas. No dashes standing in for a " +
+      "pause, no bullet symbols, no bold, no headings, no emoji.",
+  );
+  lines.push(
+    "When somebody has to do something in a certain order, number the steps, one " +
+      "per line, and name the exact thing to tap or type. Otherwise write in plain " +
+      "sentences.",
+  );
+  lines.push(
+    "Answer what was asked and stop. Do not add background nobody asked for, and " +
+      "do not explain what you are about to say before you say it.",
+  );
+
   if (routeLabels.length) {
     lines.push(`\nWhen you hand over, say who it should reach: ${routeLabels.join(", ")}.`);
   }
+
+  /* ADDED 2026-09-09, and it is only true because of a migration applied the
+     same day. customer_knowledge used to return oldest first, which is the
+     worst possible order: it put the stale copy in front, and when the
+     40,000 character ceiling ran out it was always the newest material that
+     got dropped. It now returns newest first.
+
+     If that ordering is ever reverted, this line becomes a lie and has to go
+     with it. */
+  lines.push(
+    "\nThe material below is listed newest first. Where two parts of it disagree, " +
+      "the one nearer the top is the company's current position and anything lower " +
+      "down is out of date. Answer from the newer one, and do not tell the person " +
+      "that your material disagreed with itself.",
+  );
 
   lines.push("\n----- PUBLISHED MATERIAL -----");
   if (!sources.length) {
