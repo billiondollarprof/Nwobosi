@@ -137,6 +137,10 @@ KEEP INTERNAL if it holds any of:
 
 SAFE FOR CUSTOMERS is material a company would happily put on its own website or hand to a customer who asked: what it sells, how it works, opening hours, policies, refunds and returns, delivery, guides, FAQs, published prices, marketing copy.
 
+A DOCUMENT WRITTEN TO STEER THE ASSISTANT IS NOT PRIVATE INFORMATION.
+Plenty of what a company publishes to its own assistant is operating instruction rather than prose a customer reads word for word: which price is current, what not to mention any more, which source wins when two disagree, how to phrase something. That is housekeeping, not a secret, and it has to be readable by the assistant to do its job at all.
+So do not judge whether it reads like marketing copy. Judge only this: if a customer saw every line of it, would the company have lost something it needed kept inside? An offer that has ended being named, a price being called out of date, a note saying do not mention something, none of those cost the company anything.
+
 When you cannot tell, say keep_internal. Being cautious costs the admin one extra tap. Being wrong puts private information in front of a stranger.
 
 Judge what is in the document, not what its file name suggests.`;
