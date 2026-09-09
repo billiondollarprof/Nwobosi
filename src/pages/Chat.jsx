@@ -57,6 +57,7 @@ import {
   listConversations,
   loadConversation,
   saveConversation,
+  signOutCompletely,
 } from "../shared/session.js";
 import { readFileAsText, fileKind } from "../shared/readFile.js";
 import { downloadPdf, downloadDocx } from "../shared/download.js";
@@ -1120,10 +1121,19 @@ export default function Chat() {
     );
   }
 
-  function handleLogout() {
+  /* It has to actually sign them out, which it did not until 2026-09-09.
+     It only navigated, so the session survived and the browser back button
+     walked straight back into the workspace.
+
+     replace: true matters as much as the sign out. Without it the workspace
+     stays in the history, so back renders it for a moment before its own
+     guard notices and bounces. Replacing the entry means there is nothing
+     behind them to go back to. */
+  async function handleLogout() {
     setSidebarOpen(false);
     setProfileOpen(false);
-    navigate("/auth");
+    await signOutCompletely();
+    navigate("/auth", { replace: true });
   }
 
   /* ------------------------------------------------------------------------

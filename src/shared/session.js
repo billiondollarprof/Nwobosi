@@ -13,6 +13,7 @@
    ========================================================================== */
 
 import { supabase } from "./supabase.js";
+import { clearAdminClock } from "./adminClock.js";
 
 /* --------------------------------------------------------------------------
    SECTION: Load the signed in person and their company
@@ -88,6 +89,39 @@ export function splitIntoChunks(text) {
 
   if (current) chunks.push(current);
   return chunks.filter((c) => c.trim());
+}
+
+/* --------------------------------------------------------------------------
+   SECTION: Leaving
+
+   ONE PLACE, ON PURPOSE. Until 2026-09-09 the Log out button in the chat
+   only called navigate("/auth"). It moved the person to the sign in screen
+   and left their session completely intact, so pressing the browser back
+   button put them straight back inside the workspace. On a shared machine
+   that is somebody clicking Log out, walking away, and the next person
+   being one back press from their company's files.
+
+   The admin screen had no way out at all. An admin waited twenty four hours
+   for the clock in adminClock.js to expire them.
+
+   Both now call this. It lives here so a third screen cannot invent its own
+   version that forgets a step.
+
+   THE ADMIN CLOCK IS CLEARED FIRST. It is a timestamp in localStorage, and
+   leaving it behind means the next person to sign in on this browser
+   inherits a countdown that started during somebody else's session.
+   -------------------------------------------------------------------------- */
+
+export async function signOutCompletely() {
+  clearAdminClock();
+
+  const { error } = await supabase.auth.signOut();
+
+  /* Reported and not thrown. A failure here is almost always the network,
+     and the local token is already gone either way, so the person is out on
+     this device. Leaving them stuck on a screen they asked to leave would be
+     worse than a quiet log line. */
+  if (error) console.error("sign out did not reach the server", error);
 }
 
 export async function listSources(companyId) {

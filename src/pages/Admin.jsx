@@ -28,6 +28,7 @@ import {
   AlertCircle,
   X,
   Sparkles,
+  LogOut,
 } from "lucide-react";
 
 import { LogoMark } from "../shared/icons.jsx";
@@ -55,6 +56,7 @@ import {
   setSourceVisibility,
   listStaff,
   listWork,
+  signOutCompletely,
 } from "../shared/session.js";
 import { adminSessionExpired } from "../shared/adminClock.js";
 import { readFileAsText, canBecomeText } from "../shared/readFile.js";
@@ -148,6 +150,14 @@ export default function Admin() {
 
   const companyName = me?.company?.name ?? "";
 
+  /* The same sign out the chat uses, from the same place, so the two cannot
+     drift. replace: true so the workspace is not left in the history for the
+     back button to walk into. */
+  async function handleLogout() {
+    await signOutCompletely();
+    navigate("/auth", { replace: true });
+  }
+
   return (
     <PageShell scroll>
       <FloatingNav maxWidth="max-w-5xl">
@@ -177,6 +187,22 @@ export default function Admin() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Added 2026-09-09. There was no way out of this screen at all.
+              An admin could reach the chat and use the one there, or wait
+              twenty four hours for adminClock to expire them, and neither
+              is a person finding a door. The icon stands alone under 640px
+              because the header is already tight there. */}
+          <button
+            onClick={handleLogout}
+            className="h-9 rounded-[10px] flex items-center gap-1.5 px-2.5 border transition-colors hover:opacity-80 shrink-0"
+            style={{ borderColor: "var(--border-2)", backgroundColor: "var(--surface)" }}
+            aria-label="Log out"
+          >
+            <LogOut size={15} style={{ color: "var(--text-2)" }} />
+            <span className="text-[13px] hidden sm:inline" style={{ color: "var(--text-2)" }}>
+              Log out
+            </span>
+          </button>
           <ThemeToggle />
         </div>
       </FloatingNav>
