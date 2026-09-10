@@ -601,8 +601,35 @@ Deno.serve(async (req: Request) => {
      is either an old client or a bug, and either way the right answer is to
      read first rather than to start asking blind. */
   const stage = String(body?.stage ?? "orient");
-  const messages = Array.isArray(body?.messages) ? body.messages : null;
-  if (!messages?.length) return json({ ok: false, reason: "Nothing to send." }, 400);
+  const sent = Array.isArray(body?.messages) ? body.messages : null;
+  if (!sent?.length) return json({ ok: false, reason: "Nothing to send." }, 400);
+
+  /* A CONVERSATION HAS TO END ON THEIR TURN.
+
+     On 2026-09-10 an interview ended, the app handed off to the analysis
+     with the assistant's closing line appended, and the model refused the
+     whole request:
+
+       "This model does not support assistant message prefill. The
+        conversation must end with a user message."
+
+     The person saw an error at the moment the work should have started.
+
+     The browser drops trailing assistant turns before it sends, and this
+     does it again here. Not belt and braces for its own sake: the browser
+     is not something this function is allowed to trust, and any client that
+     gets this wrong would otherwise turn a fixable mistake into a 400 from
+     the model with the person watching. */
+  const messages = (() => {
+    const out = [...sent];
+    while (
+      out.length &&
+      typeof out[out.length - 1] === "object" &&
+      out[out.length - 1] !== null &&
+      (out[out.length - 1] as { role?: string }).role === "assistant"
+    ) out.pop();
+    return out.length ? out : sent;
+  })();
 
   /* Who they are and what they are allowed. Read from the database under
      their own identity, never from the request. */
@@ -909,7 +936,8 @@ Deno.serve(async (req: Request) => {
            holding and something above the prompt is changing between
            turns. Cheap to log, and the only way to notice. */
         console.log(
-          `usage tier=${tier} fresh=${freshInput} cacheWrite=${cacheWrite} cacheRead=${cacheRead} out=${outputTokens} cents=${cents}`,
+          `usage stage=${stage} tier=${tier} fresh=${freshInput} cacheWrite=${cacheWrite} ` +
+            `cacheRead=${cacheRead} out=${outputTokens} cents=${cents}`,
         );
 
         if (!exempt && cents > 0) {
