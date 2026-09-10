@@ -277,6 +277,23 @@ So, for any function that is already deployed and working:
 A brand new function has nothing to break, so it can come straight from the
 repo. Every other one follows the five steps.
 
+### You can read what is actually deployed. Do that instead of guessing.
+
+`mcp__Supabase__get_edge_function` returns the live source of any function.
+It was sitting there unused for two days while a paste ritual grew up around
+not knowing what was deployed.
+
+So the honest version of the rule is now:
+
+1. **Pull the deployed source first.** Compare it against the repo copy.
+2. **If they match, the repo is safe to edit and deploy.** No paste needed.
+3. **If they differ, the deployment wins.** Something was changed in the
+   console and never came back to git. Work from the deployed copy, and say
+   so plainly rather than quietly overwriting somebody's fix.
+
+The paste rule exists because the repo and the deployment drift. It was never
+about the pasting. It was about not knowing. Now it can be known, so know it.
+
 ### An edit that was not written to disk is not an edit
 
 On 2026-09-09 support went down for three messages. Every reply was written,

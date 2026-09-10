@@ -398,22 +398,29 @@ const STAGE_PROMPT: Record<string, string> = {
    something a server may trust. */
 const MAX_REQUEST_BYTES = 5 * 1024 * 1024;
 
-/* Sixty thousand characters of company material, about fifteen thousand
-   tokens, roughly thirty pages. Enough to carry a brand guide, a template
-   and a company profile at once. It rides on the analysis and the writing
-   only, never the interview, so a conversation pays for it twice rather
-   than on every question. */
-/* RAISED FROM 60,000 TO 200,000 ON 2026-09-10, in step with support-ask.
+/* How much of the company's own material rides on a turn.
 
-   The staff side runs on Sonnet, which costs twice what support's Haiku does,
-   so the same ceiling is not the same money here:
+   RAISED FROM 60,000 TO 200,000 ON 2026-09-10, in step with support-ask.
+   The old number cut a company's material in half without telling anybody,
+   which is a worse failure than a slow reply.
 
-     first message of a session   about 12 to 13 cents
-     every message after, warm    about 1 cent
+   IT IS A CEILING, NOT A TARGET. A company with 30,000 characters sends
+   30,000 and pays for 30,000. Raising this costs nothing until somebody
+   actually has that much, and then it is visible in their budget, which is
+   the right place to notice it.
 
-   That is worth it for somebody doing real work with the company's own
-   material in front of them, but it is a different shape from support and
-   should be watched rather than assumed. */
+   It rides on the analysis and the writing only, never the interview, so a
+   conversation pays for it twice rather than on every question.
+
+   THE STAFF SIDE IS NOT THE SAME MONEY AS SUPPORT. This runs on Sonnet,
+   twice the price of support's Haiku, so if a company ever did fill this:
+
+     first turn of a session      about 12 to 13 cents
+     every turn after, cached     about 1 cent
+
+   Worth it for somebody doing real work with the company's own material in
+   front of them. Different shape from support, so watch it rather than
+   assume it. */
 const MAX_SOURCE_CHARS = 200000;
 
 const CORS = {
