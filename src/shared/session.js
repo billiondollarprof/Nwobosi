@@ -373,7 +373,7 @@ export async function listConversations(staffId) {
 export async function loadConversation(id) {
   const { data, error } = await supabase
     .from("conversations")
-    .select("id, title, stage, messages")
+    .select("id, title, stage, messages, brief, state")
     .eq("id", id)
     .maybeSingle();
 
@@ -387,7 +387,7 @@ export async function loadConversation(id) {
 /* Insert on the first save, update after that, so one conversation stays
    one row however many turns it runs to. Returns the id so the caller can
    hold on to it. */
-export async function saveConversation({ id, companyId, staffId, title, stage, messages, brief }) {
+export async function saveConversation({ id, companyId, staffId, title, stage, messages, brief, state }) {
   const row = {
     company_id: companyId,
     staff_id: staffId,
@@ -402,6 +402,12 @@ export async function saveConversation({ id, companyId, staffId, title, stage, m
      different from null, and that difference is the whole reason for the
      check rather than always setting the column. */
   if (brief !== undefined) row.brief = brief;
+
+  /* The resume log, same rule as the brief. Undefined leaves the column
+     alone; an object replaces it whole. The column is `not null default
+     '{}'`, so it is never null and a caller does not have to think about
+     that. See src/shared/resumeLog.js for what goes in it and why. */
+  if (state !== undefined) row.state = state;
 
   if (id) {
     const { error } = await supabase.from("conversations").update(row).eq("id", id);

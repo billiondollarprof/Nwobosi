@@ -25,6 +25,7 @@ import {
   FileText,
   Download,
   Lock,
+  History,
   LogOut,
   ChevronRight,
   Menu,
@@ -91,6 +92,12 @@ import {
   WORKFLOW_PLAN_NOTE,
   SAMPLE_CONNECTOR_NOTE,
 } from "../shared/config.js";
+
+/* The resume log. One small note per conversation saying where the work had
+   got to, so somebody who walks away at lunch and comes back the next day
+   gets their approved findings and their spent question allowance back, not
+   just the messages. The shape lives in that file, never inline here. */
+import { buildResumeLog, readResumeLog, resumeLine } from "../shared/resumeLog.js";
 
 /* ==========================================================================
    1. INTERVIEW HELPERS
@@ -423,6 +430,22 @@ export default function Chat() {
   const [findings, setFindings] = useState([]);
   const findingsRef = useRef([]);
 
+  /* THE THREE THINGS THE RESUME LOG NEEDS THAT NOTHING ELSE HELD.
+
+     All three used to live only in this component, so closing the tab lost
+     them silently while the messages came back looking complete.
+
+       briefRef     the read back they confirmed, frozen at the moment they
+                    pressed Build. The column was written and never read.
+       declinedRef  how many outside findings they turned down. A count and
+                    never the text, because a refused finding is not stored.
+       missingRef   the last thing it said it still needs from them, so a
+                    returning person is not asked to work out where they
+                    were. Cleared the moment the read back lands. */
+  const briefRef = useRef("");
+  const declinedRef = useRef(0);
+  const missingRef = useRef("");
+
   /* Where the conversation is in the flow. This is the stage the next turn
      runs at.
 
@@ -545,9 +568,7 @@ export default function Chat() {
         const row = await loadConversation(latest.id);
         if (!alive) return;
         if (row) {
-          conversationIdRef.current = row.id;
-          setFlowStage(row.stage ?? "interview");
-          updateMessages((row.messages ?? []).map((m) => ({ id: nextId(), ...m })));
+          restoreFrom(row);
           restored = true;
         }
       }
@@ -808,6 +829,10 @@ export default function Chat() {
             /* A fresh, specific ask, so it gets its own allowance rather
                than inheriting one the first interview already spent. */
             interviewTurnsRef.current = 0;
+            /* Kept for the resume log, so somebody coming back tomorrow is
+               told what it was waiting on rather than reading back up the
+               thread to work it out. */
+            missingRef.current = clean;
             setFlowStage("interview");
             return;
           }
@@ -815,6 +840,9 @@ export default function Chat() {
           /* Nothing missing. This is the read back, and it is the only
              thing that earns the Build card. */
           if (raw.includes(MARKER.readbackDone)) {
+            /* Nothing is outstanding any more, so the note must not still
+               claim there is. A stale "waiting on you" is worse than none. */
+            missingRef.current = "";
             updateMessages((prev) => [...prev, { id: nextId(), role: "assistant", type: "build" }]);
           }
         }
@@ -853,6 +881,19 @@ export default function Chat() {
     const keepable = list.filter((m) => m.role === "user" || m.role === "assistant");
     if (!keepable.length) return;
 
+    /* Written on every save, not only on the interesting ones. A note that
+       is only current some of the time is worse than no note, because the
+       returning person cannot tell which kind they got. Everything here is
+       read from refs, because persist is called from inside stream
+       callbacks where state is whatever it was when the turn started. */
+    const state = buildResumeLog({
+      making: autoSkill ? SKILL_LABELS[autoSkill] : "",
+      asked: interviewTurnsRef.current,
+      findings: findingsRef.current,
+      declined: declinedRef.current,
+      missing: missingRef.current,
+    });
+
     const id = await saveConversation({
       id: conversationIdRef.current,
       companyId: me.company.id,
@@ -862,6 +903,7 @@ export default function Chat() {
       /* Left alone on an ordinary turn, so a normal message cannot wipe the
          brief a build already wrote. */
       brief,
+      state,
       messages: keepable.map((m) => ({
         role: m.role,
         type: m.type,
@@ -873,6 +915,53 @@ export default function Chat() {
 
     if (id && !conversationIdRef.current) conversationIdRef.current = id;
     if (id) setRecentChats(await listConversations(me.user.id));
+  }
+
+  /* --------------------------------------------------------------------------
+     PICKING A CONVERSATION BACK UP
+
+     ONE PLACE, ON PURPOSE. There are two ways back into a conversation: the
+     page loading straight into the most recent one, and tapping one in the
+     sidebar. Until the resume log existed they each did their own three
+     lines and both were the same three lines. The moment there were six
+     things to put back, two copies became two chances to forget one.
+
+     Puts back the invisible half. The messages and the stage were already
+     coming back; the findings, the spent question allowance and the frozen
+     brief were not, and those are the ones that change what the finished
+     document says.
+     -------------------------------------------------------------------------- */
+  function restoreFrom(row) {
+    const log = readResumeLog(row.state);
+
+    conversationIdRef.current = row.id;
+    setFlowStage(row.stage ?? "interview");
+
+    /* Ref first and state second, the same rule as everywhere else in this
+       file: a turn fired straight after this reads the ref. */
+    findingsRef.current = log.findings;
+    setFindings(log.findings);
+    interviewTurnsRef.current = log.asked;
+    declinedRef.current = log.declined;
+    missingRef.current = log.missing;
+    briefRef.current = row.brief ?? "";
+
+    const restored = (row.messages ?? []).map((m) => ({ id: nextId(), ...m }));
+
+    /* Said only when something came back that they cannot see on screen.
+       The conversation itself is right there, so announcing it would be
+       noise, and a line that shows every time is a line nobody reads.
+
+       role is "system", and that one word is doing two jobs. persist keeps
+       only user and assistant turns, so this is never written to the row:
+       it belongs to this visit, not to the record. toApiMessages filters on
+       the same two roles, so it never reaches the model either, which
+       matters because a third role in that array is a 400 and would break
+       the very next turn. Do not give it a different role. */
+    const line = resumeLine(log, { hasBrief: Boolean(row.brief) });
+    if (line) restored.push({ id: nextId(), role: "system", type: "resumed", content: line });
+
+    updateMessages(restored);
   }
 
   /* Pick a conversation back up exactly where it stopped, including which
@@ -887,9 +976,7 @@ export default function Chat() {
     setGenerating(false);
     setSidebarOpen(false);
 
-    conversationIdRef.current = row.id;
-    setFlowStage(row.stage ?? "interview");
-    updateMessages((row.messages ?? []).map((m) => ({ id: nextId(), ...m })));
+    restoreFrom(row);
   }
 
   function handleUserReply(text, apiContent = text) {
@@ -1012,6 +1099,10 @@ export default function Chat() {
   }
 
   function buildFromBrief(brief) {
+    /* Held here as well as written to the row, so the rest of this visit
+       knows a brief exists without going back to the database for it. */
+    briefRef.current = brief;
+
     const resultId = nextId();
     let started = false;
     let finished = "";
@@ -1167,6 +1258,7 @@ export default function Chat() {
 
   function refuseLookup() {
     if (typing || generating) return;
+    declinedRef.current += 1;
     const kept = messages.filter((m) => m.type !== "lookup");
     updateMessages(kept);
     addMessage({ role: "user", type: "text", content: "No, work with what you have." });
@@ -1194,6 +1286,9 @@ export default function Chat() {
      correction or the data they would rather it used. */
   function dropFinding() {
     if (typing || generating) return;
+    /* The count goes up and the text does not get written anywhere.
+       Anthony: "if there is no go-ahead, it should not add it." */
+    declinedRef.current += 1;
     updateMessages((prev) => prev.filter((m) => m.type !== "useFinding"));
     setFlowStage("interview");
     textareaRef.current?.focus();
@@ -1218,7 +1313,25 @@ export default function Chat() {
     updateMessages([]);
     setGreetingText(buildGreetingText(me?.staff?.name?.split(" ")[0]));
     interviewTurnsRef.current = 0;
-    setFlowStage("interview");
+
+    /* EVERYTHING THE RESUME LOG CARRIES IS CLEARED HERE TOO, and it was not
+       before this was written. Approved findings lived in a ref that New
+       chat never touched, so a figure somebody approved in the morning was
+       still sitting in the browser in the afternoon and would have gone
+       into a completely unrelated document. Nothing carries between two
+       pieces of work. */
+    findingsRef.current = [];
+    setFindings([]);
+    declinedRef.current = 0;
+    missingRef.current = "";
+    briefRef.current = "";
+
+    /* "orient", not "interview". The first turn reads the request against
+       the whole knowledge base and then offers the interview. This line
+       said "interview" and was a leftover from before orient existed, so
+       every new chat skipped the reading and went straight to asking
+       people for things their own company had already written down. */
+    setFlowStage("orient");
     setStep(0);
     setBrief({});
     setAutoSkill(null);
@@ -2222,9 +2335,35 @@ THE GLOW AND THE PULSE STAY. They were
    avatar, staff messages sit in a neutral capsule on the right.
    ========================================================================== */
 
-function ChatBubble({ message, brief, onGenerate, onAdjust, onWantInterview, onSkipInterview, onAllowLookup, onRefuseLookup, onUseFinding, onDropFinding, onReset, onRetry, feedback, onFeedback, onCopy, onDownload }) {
+export function ChatBubble({ message, brief, onGenerate, onAdjust, onWantInterview, onSkipInterview, onAllowLookup, onRefuseLookup, onUseFinding, onDropFinding, onReset, onRetry, feedback, onFeedback, onCopy, onDownload }) {
   const isUser = message.role === "user";
   const riseStyle = { animation: "sx-rise 0.35s ease" };
+
+  /* --- Picked back up, said once and only when something invisible came
+         back with it. Not a card and not a colour: it is a note about the
+         last visit, not a thing to act on, so it reads as quiet as it is.
+         role is "system", so persist never writes it to the row. --- */
+  if (message.type === "resumed") {
+    return (
+      <div style={riseStyle} className="flex justify-center px-2">
+        {/* NO BORDER AND NO BACKGROUND, and that is the point. As a pill it
+            wrapped to two lines on a phone and read as a card, which made a
+            note about the last visit look like something to act on. Plain
+            centred text wraps at any width without changing what it is.
+
+            items-start, not items-center: on two lines a centred icon
+            floats halfway down the block with nothing to sit against. This
+            pins it to the first line. */}
+        <p
+          className="flex items-start gap-2 text-[12.5px] text-center max-w-sm"
+          style={{ color: "var(--text-3)" }}
+        >
+          <History size={12} className="shrink-0 mt-[3px]" />
+          <span className="text-left">{message.content}</span>
+        </p>
+      </div>
+    );
+  }
 
   /* --- The brief, read back for confirmation --- */
   if (message.type === "summary") {
