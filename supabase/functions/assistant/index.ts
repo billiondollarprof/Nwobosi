@@ -1027,9 +1027,11 @@ Deno.serve(async (req: Request) => {
         const inputTokens = freshInput + cacheWrite * 2 + cacheRead * 0.1;
         const cents = centsFor(tier, inputTokens, outputTokens);
 
-        /* If this stays at zero over a conversation, the cache is not
+        /* If cacheRead stays at zero over a conversation, the cache is not
            holding and something above the prompt is changing between
-           turns. Cheap to log, and the only way to notice. */
+           turns. The stage is logged too: working out which stage had
+           failed once took reading three screenshots against three output
+           token counts, because this line said tier and not stage. */
         console.log(
           `usage stage=${stage} tier=${tier} fresh=${freshInput} cacheWrite=${cacheWrite} ` +
             `cacheRead=${cacheRead} out=${outputTokens} cents=${cents}`,
