@@ -44,6 +44,7 @@ import {
   Cloud,
   ExternalLink,
   Search,
+  Globe,
   Shield,
   Info,
 } from "lucide-react";
@@ -107,6 +108,7 @@ import {
 
 const MARKER = {
   offerInterview: "OFFER_INTERVIEW",
+  needLookup: "NEED_LOOKUP",
   interviewDone: "INTERVIEW_COMPLETE",
   needInput: "NEED_INPUT",
   readbackDone: "READBACK_COMPLETE",
@@ -408,6 +410,19 @@ export default function Chat() {
   /* Stops a second Build press stacking a second paid generation. */
   const [generating, setGenerating] = useState(false);
 
+  /* WHAT WAS FOUND OUTSIDE AND ACCEPTED, one entry per thing they ticked.
+
+     Anthony, 2026-09-10: "if they are giving a go-ahead, it can add the
+     information and use it. Otherwise, if there is no go-ahead, it should
+     not add it."
+
+     So a rejected finding is never stored. It is not kept and greyed out,
+     it does not sit in a list somewhere waiting to be reconsidered. It is
+     dropped, and the only thing that ever leaves this browser is what
+     somebody said yes to. */
+  const [findings, setFindings] = useState([]);
+  const findingsRef = useRef([]);
+
   /* Where the conversation is in the flow. This is the stage the next turn
      runs at.
 
@@ -692,6 +707,12 @@ export default function Chat() {
          app's own counter, which resets whenever the work moves up. */
       askedSoFar: interviewTurnsRef.current,
 
+      /* Read from the ref rather than from state, because a turn can be
+         fired in the same tick that a finding was accepted and state has
+         not caught up yet. The ref is written first, so it is the one that
+         is always right. */
+      findings: findingsRef.current.join("\n\n"),
+
       messages: history,
 
       onMeta: ({ tier }) => setActiveTier(tier),
@@ -744,6 +765,18 @@ export default function Chat() {
           return;
         }
 
+        /* It has been and looked. What came back is marked as outside
+           material so it renders differently from the conversation, and the
+           second gate goes underneath it. Nothing is stored yet. */
+        if (stage === "research") {
+          const withCard = updateMessages((prev) => [
+            ...prev.map((m) => (m.id === replyId ? { ...m, type: "finding" } : m)),
+            { id: nextId(), role: "assistant", type: "useFinding", content: clean },
+          ]);
+          persist(withCard, "analyse");
+          return;
+        }
+
         if (stage === "interview") interviewTurnsRef.current += 1;
 
         /* The conversation has what it came for. Move up a tier and go
@@ -763,6 +796,14 @@ export default function Chat() {
              for the back and forth rather than charging Sonnet rates to
              collect a file name. It comes back up the moment that
              conversation says it is done. */
+          /* GATE ONE. It has asked to search. Nothing happens until a
+             person presses the button, and the search tool is not even in
+             the request until they do. */
+          if (raw.includes(MARKER.needLookup)) {
+            updateMessages((prev) => [...prev, { id: nextId(), role: "assistant", type: "lookup" }]);
+            return;
+          }
+
           if (raw.includes(MARKER.needInput)) {
             /* A fresh, specific ask, so it gets its own allowance rather
                than inheriting one the first interview already spent. */
@@ -861,7 +902,7 @@ export default function Chat() {
        a conversation, so it drops back to the cheap model. Working it out
        here rather than reading it back off state matters: setting state
        does not change it in time for the line below. */
-    updateMessages((prev) => prev.filter((m) => m.type !== "build" && m.type !== "offer"));
+    updateMessages((prev) => prev.filter((m) => m.type !== "build" && m.type !== "offer" && m.type !== "lookup" && m.type !== "useFinding"));
     let stage = flowStage === "analyse" ? "interview" : flowStage;
 
     /* They typed instead of tapping either button. Typing is a conversation
@@ -940,6 +981,11 @@ export default function Chat() {
 
     abortTurnRef.current = sendTurn({
       stage: "brief",
+      /* The build does not go through runTurn, so it has to carry the
+         accepted findings itself. Missing this once meant a person could
+         approve a figure, watch it appear on screen, and never see it in
+         the document. */
+      findings: findingsRef.current.join("\n\n"),
       messages: toApiMessages(messages),
 
       onMeta: ({ tier }) => setActiveTier(tier),
@@ -977,6 +1023,7 @@ export default function Chat() {
     abortTurnRef.current = sendTurn({
       stage: "generate",
       brief,
+      findings: findingsRef.current.join("\n\n"),
       messages: toApiMessages(messages),
 
       onMeta: ({ tier }) => setActiveTier(tier),
@@ -1086,6 +1133,71 @@ export default function Chat() {
      the checkpoint. */
   const handleSkipInterview = () =>
     answerOffer("No, get on with it with what you have.", "analyse");
+
+  /* ------------------------------------------------------------------------
+     GOING AND LOOKING, AND THE TWO GATES EITHER SIDE OF IT
+
+     Anthony, 2026-09-10: "for it to be allowed to research, it must be
+     guarded... Once it pulls out the data, it shows you everything, and it
+     shows it in a very simple and direct language, showing you what it has
+     discovered and how it intends to use this data."
+
+     GATE ONE is above, in the analysis. It says what it wants to find and
+     stops. The search tool is not attached to any request until the button
+     below is pressed, so before that there is nothing to talk itself into.
+
+     GATE TWO is here. What comes back is shown with its real sources, in a
+     panel that does not look like the rest of the conversation, because it
+     is not from the company and should never be mistaken for it. It goes
+     nowhere until they accept it.
+
+     A REJECTED FINDING IS DROPPED, not stored. "If there is no go-ahead, it
+     should not add it." So there is no list of things it found that nobody
+     wanted, waiting to be reconsidered on a later turn.
+     ------------------------------------------------------------------------ */
+
+  function allowLookup() {
+    if (typing || generating) return;
+    const kept = messages.filter((m) => m.type !== "lookup");
+    updateMessages(kept);
+    addMessage({ role: "user", type: "text", content: "Yes, go and look." });
+    setFlowStage("analyse");
+    runTurn("research", toApiMessages([...kept, { role: "user", content: "Yes, go and look." }]));
+  }
+
+  function refuseLookup() {
+    if (typing || generating) return;
+    const kept = messages.filter((m) => m.type !== "lookup");
+    updateMessages(kept);
+    addMessage({ role: "user", type: "text", content: "No, work with what you have." });
+    setFlowStage("analyse");
+    runTurn("analyse", toApiMessages([...kept, { role: "user", content: "No, work with what you have." }]));
+  }
+
+  /* GATE TWO, the yes. The finding is written to the ref first and the
+     state second, because the very next line fires a turn that reads the
+     ref, and state would not have caught up. */
+  function useFinding(text) {
+    if (typing || generating) return;
+    findingsRef.current = [...findingsRef.current, text];
+    setFindings(findingsRef.current);
+
+    const kept = messages.filter((m) => m.type !== "useFinding");
+    updateMessages(kept);
+    addMessage({ role: "user", type: "text", content: "Use that." });
+    setFlowStage("analyse");
+    runTurn("analyse", toApiMessages([...kept, { role: "user", content: "Use that." }]));
+  }
+
+  /* GATE TWO, the no. Nothing is kept. They are put back in the
+     conversation with the cursor, so the next thing they type is the
+     correction or the data they would rather it used. */
+  function dropFinding() {
+    if (typing || generating) return;
+    updateMessages((prev) => prev.filter((m) => m.type !== "useFinding"));
+    setFlowStage("interview");
+    textareaRef.current?.focus();
+  }
 
   /* "Something needs changing" is not a stage of its own. It just takes the
      card away, puts them back in conversation, and hands them the cursor.
@@ -1681,6 +1793,10 @@ export default function Chat() {
                 onAdjust={handleAdjust}
                 onWantInterview={handleWantInterview}
                 onSkipInterview={handleSkipInterview}
+                onAllowLookup={allowLookup}
+                onRefuseLookup={refuseLookup}
+                onUseFinding={useFinding}
+                onDropFinding={dropFinding}
                 onReset={handleNewChat}
                 onRetry={() => handleRetry(m.id)}
                 feedback={feedback[m.id]}
@@ -2106,7 +2222,7 @@ THE GLOW AND THE PULSE STAY. They were
    avatar, staff messages sit in a neutral capsule on the right.
    ========================================================================== */
 
-function ChatBubble({ message, brief, onGenerate, onAdjust, onWantInterview, onSkipInterview, onReset, onRetry, feedback, onFeedback, onCopy, onDownload }) {
+function ChatBubble({ message, brief, onGenerate, onAdjust, onWantInterview, onSkipInterview, onAllowLookup, onRefuseLookup, onUseFinding, onDropFinding, onReset, onRetry, feedback, onFeedback, onCopy, onDownload }) {
   const isUser = message.role === "user";
   const riseStyle = { animation: "sx-rise 0.35s ease" };
 
@@ -2151,6 +2267,116 @@ function ChatBubble({ message, brief, onGenerate, onAdjust, onWantInterview, onS
      Only ever rendered after a read back the person has just seen, so it
      is the one moment where pressing a button spends real money on their
      behalf and they know exactly what for. */
+  /* --- GATE ONE: may it go and look ---
+
+     Amber, not blue. This is the only moment in the whole flow where
+     something leaves the building, and it should not look like the
+     ordinary next step. The refusal is the plain button on purpose: saying
+     no is free, costs nothing, and must never feel like the awkward
+     choice. */
+  if (message.type === "lookup") {
+    return (
+      <div style={riseStyle}>
+        <div
+          className="rounded-[18px] border p-5 backdrop-blur-xl"
+          style={{ backgroundColor: "var(--surface)", borderColor: BRAND.amber + "66" }}
+        >
+          <div className="flex items-center gap-2 mb-1">
+            <Search size={15} style={{ color: BRAND.amber }} />
+            <p className="text-[15.5px] font-semibold" style={{ color: "var(--text-1)" }}>
+              May I look this up online?
+            </p>
+          </div>
+          <p className="text-[13.5px] mb-4 leading-relaxed" style={{ color: "var(--text-3)" }}>
+            It has said above what it wants to find. Nothing goes into your work until you
+            have seen it and said yes.
+          </p>
+          <PrimaryButton onClick={onAllowLookup} className="w-full flex items-center justify-center gap-2">
+            <Search size={15} />
+            Yes, go and look
+          </PrimaryButton>
+          <button
+            onClick={onRefuseLookup}
+            className="w-full mt-2.5 rounded-[12px] border py-2.5 text-[13.5px] transition-opacity hover:opacity-80"
+            style={{ borderColor: "var(--border-2)", color: "var(--text-2)" }}
+          >
+            No, work with what you have
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  /* --- What it found outside, in its own colour ---
+
+     Anthony: "even write it with a different colour. So the person sees it,
+     okay, this is important."
+
+     A tinted panel with an accent edge and a label, so it cannot be
+     mistaken at a glance for the company's own material or for something
+     the assistant simply knew. It came from outside, and it looks it. */
+  if (message.type === "finding") {
+    return (
+      <div style={riseStyle}>
+        <div
+          className="rounded-[14px] border-l-[3px] border-y border-r px-4 py-3.5"
+          style={{
+            backgroundColor: "var(--surface-2)",
+            borderColor: "var(--border)",
+            borderLeftColor: BRAND.cyan,
+          }}
+        >
+          <div className="flex items-center gap-1.5 mb-2">
+            <Globe size={13} style={{ color: BRAND.cyan }} />
+            <span
+              className="text-[11px] font-semibold uppercase"
+              style={{ color: BRAND.cyan, letterSpacing: "0.06em" }}
+            >
+              From outside your company
+            </span>
+          </div>
+          <div className="text-[14.5px] leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-1)" }}>
+            {message.content}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* --- GATE TWO: does any of it get used --- */
+  if (message.type === "useFinding") {
+    return (
+      <div style={riseStyle}>
+        <div
+          className="rounded-[18px] border p-5 backdrop-blur-xl"
+          style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
+        >
+          <p className="text-[15.5px] font-semibold mb-1" style={{ color: "var(--text-1)" }}>
+            Use this in the work?
+          </p>
+          <p className="text-[13.5px] mb-4 leading-relaxed" style={{ color: "var(--text-3)" }}>
+            Check the numbers and the sources first. If something is wrong, say no and tell
+            me what to use instead.
+          </p>
+          <PrimaryButton
+            onClick={() => onUseFinding(message.content)}
+            className="w-full flex items-center justify-center gap-2"
+          >
+            <Check size={15} />
+            Yes, use it
+          </PrimaryButton>
+          <button
+            onClick={onDropFinding}
+            className="w-full mt-2.5 rounded-[12px] border py-2.5 text-[13.5px] transition-opacity hover:opacity-80"
+            style={{ borderColor: "var(--border-2)", color: "var(--text-2)" }}
+          >
+            No, do not use it
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   /* --- The offer to interview ---
 
      Shown once, after the first turn has read the company's material. The

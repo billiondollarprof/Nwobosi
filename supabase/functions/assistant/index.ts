@@ -312,6 +312,7 @@ const MAX_OUTPUT: Record<string, number> = {
   orient: 600,
   interview: 700,
   analyse: 4000,
+  research: 3000,
   brief: 2000,
   generate: 8000,
 };
@@ -453,6 +454,16 @@ const STAGE_PROMPT: Record<string, string> = {
     "   Only for something that would change the work. A detail you can sensibly decide",
     "   yourself is not missing, it is yours to decide.",
     "",
+    "   IF THE MISSING THING IS PUBLIC, ASK TO GO AND LOOK INSTEAD OF ASKING THEM.",
+    "   A market figure, a published standard, a competitor's public pricing, a date,",
+    "   a regulation. Things that are findable and that this person would only end up",
+    "   searching for themselves. Say in one line what you want to find and why the",
+    "   work needs it, then end your message with NEED_LOOKUP on its own final line.",
+    "   You are asking permission, not announcing. You cannot search until they say",
+    "   yes, and the ability is not given to you until they do.",
+    "   Never for something only they can know: their deadline, who signs it, what",
+    "   they decided internally. That is NEED_INPUT and it stays that way.",
+    "",
     "2. YOU HAVE EVERYTHING",
     "   Say back what you understood, so they can catch a misunderstanding before it",
     "   costs them a draft. This is the moment that proves you understood, so it has to",
@@ -465,6 +476,54 @@ const STAGE_PROMPT: Record<string, string> = {
     "   invent a gap to look thorough. Then end your message with READBACK_COMPLETE on",
     "   its own final line. Do not explain the marker and do not mention it.",
   ].join("\n"),
+
+  /* GOING AND LOOKING, ONCE SOMEBODY HAS SAID YES.
+
+     Anthony, 2026-09-10: "before it does anything outside the environment,
+     it should ask for permission... and even when it brings the data in, it
+     should show the data and even write it with a different colour."
+
+     TWO GATES AND THIS IS BETWEEN THEM. The first gate has already been
+     passed to get here: the search tool is not attached to the request at
+     all until the person approves, so before that there is nothing for the
+     model to talk itself into. The second gate is after this: what comes
+     back is shown with its sources and goes nowhere until they accept it.
+
+     "Once the human gives it the go-ahead to research the internet for more
+     info, it is never limited." So inside the gates it is not hedged. It
+     searches properly and reports what it actually found. */
+  research: [
+    "",
+    "RIGHT NOW: GO AND FIND IT",
+    "They have said yes. Search for the thing you asked about and nothing else.",
+    "",
+    "HOW TO SEARCH",
+    "  - Newest wins. The most recent publication, the most recent figure. Say when",
+    "    something is dated and how old it is.",
+    "  - By region, where region matters. Work out from the company material above",
+    "    which country this business operates in, and search that country's own",
+    "    publications and bodies. A Nigerian company's market figure comes from",
+    "    Nigerian sources, not from an American article that mentions Nigeria. Where",
+    "    the question is genuinely universal, go to the most credible source there is.",
+    "  - Exact, never approximate. Report the figure that is actually on the page you",
+    "    opened. Not one you remember, not one you rounded, not one from elsewhere.",
+    "  - Open material over walls. Where the real number sits behind a paywall you",
+    "    cannot read, work from what is open and say that is what you did. Never",
+    "    report what you assume is behind it.",
+    "",
+    "WHAT TO COME BACK WITH, and write it for a person who is not technical:",
+    "  - what you found, in plain sentences, with the actual numbers",
+    "  - where each thing came from, named, and how recent it is",
+    "  - how you mean to use it in their work",
+    "  - anything you looked for and could not find, said plainly rather than filled in",
+    "",
+    "NOTHING YOU FOUND IS IN THE WORK YET. They see this and decide. So do not write",
+    "as though it is settled, and do not start drafting anything with it.",
+    "",
+    "If the search turned up nothing usable, say exactly that. An empty search is a",
+    "useful answer. Filling the gap from memory is the failure this whole product",
+    "exists to prevent, and it would arrive wearing the clothes of a real source.",
+  ].join("\\n"),
 
   /* THE PROMPT. Anthony, 2026-09-10, and this is the part he says the whole
      product turns on: "it's the prompt and the build that are together."
@@ -776,6 +835,11 @@ Deno.serve(async (req: Request) => {
      would show it on screen and would read as something somebody said. */
   const brief = String(body?.brief ?? "").slice(0, 20000).trim();
 
+  /* What was found outside and ACCEPTED. Only what somebody ticked reaches
+     this. The app holds the ones they turned down and never sends them, so
+     a rejected figure cannot leak back in through a later turn. */
+  const findings = String(body?.findings ?? "").slice(0, 20000).trim();
+
   /* Anthony, 2026-09-10: "to make the questions not to be too long or boring
      ... between three to four times asking questions and getting. Can always
      attach, if you would want me to continue like this, I can."
@@ -846,8 +910,25 @@ Deno.serve(async (req: Request) => {
     console.warn("generate ran with no approved brief, company", staff.company_id);
   }
 
+  /* Accepted outside material, handed to the stages that build with it. It
+     is kept separate from the company's own sources on purpose: a person
+     approved this one by one, from outside the building, and the model
+     should credit it that way rather than treating it as company fact. */
+  const outsideMaterial = findings
+    ? [
+        "",
+        "",
+        "MATERIAL FROM OUTSIDE THE COMPANY, WHICH THEY APPROVED ONE BY ONE",
+        "This was found by searching, shown to them with its sources, and accepted.",
+        "It is as usable as a company source now. It is not a company source, so say",
+        "where it came from wherever it carries weight in the work.",
+        "",
+        findings,
+      ].join("\n")
+    : "";
+
   const stageInstruction =
-    (STAGE_PROMPT[stage] ?? STAGE_PROMPT.orient) + pacing + approvedBrief;
+    (STAGE_PROMPT[stage] ?? STAGE_PROMPT.orient) + pacing + approvedBrief + outsideMaterial;
 
   /* ----------------------------------------------------------------------
      THE CONTENTS THEMSELVES
@@ -937,6 +1018,38 @@ Deno.serve(async (req: Request) => {
       }
     : {};
 
+  /* ----------------------------------------------------------------------
+     THE FIRST GATE, AND IT IS CODED RATHER THAN ASKED FOR
+
+     Anthony: "the rules are not just written just like writtens. They must
+     be coded for the model to always obey them."
+
+     So the search tool is not in the request unless this turn IS the
+     research turn, and the app only sends that stage after a person has
+     pressed approve on screen. Every other turn has no tool at all. There
+     is nothing to talk itself into, no instruction to reinterpret, and no
+     amount of clever wording gets a model to use a tool it was not given.
+
+     web_fetch rides along because search and fetch are a pair: search finds
+     the page, fetch reads it properly. Fetch will only open an address that
+     is already in the conversation, so it cannot wander on its own.
+
+     max_uses is a ceiling on one turn, not a leash on the searching itself.
+     Anthony: "once the human gives it the go-ahead, it is never limited."
+     Ten searches is a thorough look, not a peek, and it stops a loop from
+     running up somebody's bill.
+
+     NOT code_execution. These tool versions do their own filtering with it
+     underneath, and declaring a second execution environment confuses the
+     model about which one it is in.
+     ---------------------------------------------------------------------- */
+  const searchTools = stage === "research"
+    ? [
+        { type: "web_search_20260209", name: "web_search", max_uses: 10 },
+        { type: "web_fetch_20260209", name: "web_fetch", max_uses: 5 },
+      ] as unknown as Anthropic.ToolUnion[]
+    : undefined;
+
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({
@@ -991,17 +1104,105 @@ Deno.serve(async (req: Request) => {
         if (sourceContents) stable.push({ type: "text", text: sourceContents });
         stable[stable.length - 1].cache_control = CACHE_MARK;
 
-        const run = anthropic.messages.stream({
-          model: MODEL_ID[tier],
-          max_tokens: MAX_OUTPUT[stage] ?? MAX_OUTPUT.generate,
-          system: [...stable, { type: "text", text: stageInstruction }],
-          messages,
-          ...thinkingExtras,
-        });
+        let final: Anthropic.Message;
 
-        run.on("text", (chunk: string) => send("text", { text: chunk }));
+        if (stage === "research") {
+          /* ------------------------------------------------------------
+             THE RESEARCH TURN
 
-        const final = await run.finalMessage();
+             NOT STREAMED, and that is deliberate. A search turn is the
+             model going away, running searches, reading pages, and coming
+             back. Streamed, the person watches a cursor sit still for
+             twenty seconds and assumes it has hung. Whole, they get a
+             spinner and then the findings, which is honest about what is
+             happening.
+
+             PAUSE_TURN IS NOT AN ERROR. A long server tool run comes back
+             with stop_reason "pause_turn" and the work half done. The
+             answer is to hand the response back and ask it to carry on.
+             Left unhandled it looks exactly like a model that stopped
+             mid sentence. Three continuations is enough for a real search
+             and stops a loop from running forever.
+             ------------------------------------------------------------ */
+          const convo = [...messages];
+          let fresh = 0, cWrite = 0, cRead = 0, out = 0;
+          let text = "";
+          const sources: { url: string; title: string }[] = [];
+
+          for (let round = 0; round < 4; round += 1) {
+            const reply = await anthropic.messages.create({
+              model: MODEL_ID[tier],
+              max_tokens: MAX_OUTPUT.research,
+              system: [...stable, { type: "text", text: stageInstruction }],
+              messages: convo,
+              tools: searchTools,
+              ...thinkingExtras,
+            });
+
+            fresh += reply.usage?.input_tokens ?? 0;
+            cWrite += reply.usage?.cache_creation_input_tokens ?? 0;
+            cRead += reply.usage?.cache_read_input_tokens ?? 0;
+            out += reply.usage?.output_tokens ?? 0;
+
+            for (const block of reply.content as unknown as Record<string, unknown>[]) {
+              if (block.type === "text") text += String(block.text ?? "");
+
+              /* THE SOURCES COME FROM THE TOOL, NOT FROM THE MODEL. A model
+                 asked to list where it looked can write a plausible address
+                 that never existed. These are the addresses it actually
+                 opened, read off the result blocks, so they cannot be
+                 invented.
+
+                 A FAILED SEARCH DOES NOT THROW. It comes back as a normal
+                 success with an error object where the list should be. On
+                 success this content is an array; on failure it is an
+                 object. Indexing without checking would make a search that
+                 failed read exactly like a search that found nothing, and
+                 the model would fill the gap itself. */
+              if (block.type === "web_search_tool_result" && Array.isArray(block.content)) {
+                for (const r of block.content as Record<string, unknown>[]) {
+                  const url = String(r.url ?? "").trim();
+                  if (url && !sources.some((x) => x.url === url)) {
+                    sources.push({ url, title: String(r.title ?? url).slice(0, 160) });
+                  }
+                }
+              }
+            }
+
+            if (reply.stop_reason !== "pause_turn") { final = reply; break; }
+            convo.push({ role: "assistant", content: reply.content });
+            final = reply;
+          }
+
+          if (sources.length) {
+            text += "\n\nWhere this came from\n" +
+              sources.slice(0, 12).map((x) => `- ${x.title}\n  ${x.url}`).join("\n");
+          }
+
+          send("text", { text: text.trim() || "I searched and found nothing usable for this." });
+
+          final = {
+            ...(final! ?? {}),
+            usage: {
+              input_tokens: fresh,
+              cache_creation_input_tokens: cWrite,
+              cache_read_input_tokens: cRead,
+              output_tokens: out,
+            },
+          } as unknown as Anthropic.Message;
+        } else {
+          const run = anthropic.messages.stream({
+            model: MODEL_ID[tier],
+            max_tokens: MAX_OUTPUT[stage] ?? MAX_OUTPUT.generate,
+            system: [...stable, { type: "text", text: stageInstruction }],
+            messages,
+            ...thinkingExtras,
+          });
+
+          run.on("text", (chunk: string) => send("text", { text: chunk }));
+
+          final = await run.finalMessage();
+        }
 
         /* ------------------------------------------------------------
            METER IT
