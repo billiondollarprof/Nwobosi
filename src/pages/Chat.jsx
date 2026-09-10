@@ -1858,34 +1858,41 @@ export default function Chat() {
           {/* ----------------------------------------------------------
               THE MESSAGE BOX
 
-              SQUARE, NOT A PILL. Anthony, 2026-09-10: "make this box
-              rectangular with the sharp edge so it looks more mature and
-              stop looking like it's wombling."
+              A SHARP RECTANGLE HOLDING ROUND CONTROLS, and both halves of
+              that were decided by looking rather than by reasoning.
 
-              The whole control is squared together, not just the outer
-              edge. A sharp box with round buttons sitting inside it reads
-              as an accident. One shape, used consistently, reads as a
-              decision. That includes the glow behind the microphone, which
-              was a circle and would have poked out of a square button at
-              the corners.
+              Anthony asked for the box itself: "make this box rectangular
+              with the sharp edge so it looks more mature and stop looking
+              like it's wombling." So the frame is square, 0px, no radius
+              at all.
 
-              overflow-hidden is load bearing, not tidying. A pill contained
-              the microphone's glow by its own curve. A square does not, and
-              the first screenshot after this change had the glow leaking
-              past the right edge as a coloured smudge. The box now clips it,
-              so the glow stops exactly where the border does.
+              THE CONTROLS INSIDE STAYED ROUND, and the first attempt got
+              this wrong. Squaring them looked like the consistent choice on
+              paper. Rendered, it is not: the microphone's glow is a radial
+              gradient that slowly rotates, so in a square it becomes a
+              diamond turning behind the button. That is the exact wobble
+              Anthony was asking to be rid of, made worse. Round controls
+              against a hard frame also give the eye something to land on.
 
-              The focus ring is unaffected. Tailwind draws a ring as a box
-              shadow on this element, and an element's own overflow never
-              clips its own shadow.
+              Both versions were built and screenshotted before this one was
+              kept. If anybody squares these again, render it and look at
+              the empty state in the light theme first.
+
+              VERTICALLY CENTRED, not bottom aligned. Anthony: "they should
+              be at the vertical midpoint of the entire entry field." The
+              box grows with the text, and at four lines the controls now
+              sit in the middle of it rather than sinking to the floor.
+
+              overflow-hidden stays, cheap insurance so nothing inside can
+              ever spill past a corner the frame no longer rounds off.
               ---------------------------------------------------------- */}
           <div
-            className="flex items-end gap-1.5 rounded-none border px-3 py-2 overflow-hidden backdrop-blur-2xl shadow-xl transition-shadow focus-within:ring-2 focus-within:ring-[rgba(20,32,160,0.35)]"
+            className="flex items-center gap-1.5 rounded-none border px-3 py-2 overflow-hidden backdrop-blur-2xl shadow-xl transition-shadow focus-within:ring-2 focus-within:ring-[rgba(20,32,160,0.35)]"
             style={{ backgroundColor: "var(--surface-solid)", borderColor: "var(--border-2)" }}
           >
             <button
               onClick={() => setPlusMenuOpen((o) => !o)}
-              className="w-9 h-9 rounded-none flex items-center justify-center shrink-0 border transition-colors hover:opacity-80"
+              className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 border transition-colors hover:opacity-80"
               style={{ borderColor: "var(--border-2)" }}
               aria-label="Attach and workflow tools"
             >
@@ -1929,28 +1936,36 @@ export default function Chat() {
                     actually has speech recognition to offer. Nothing is
                     worse than a control that looks live and cannot work.
 
-                    IT NO LONGER SPINS OR PULSES. Anthony, 2026-09-10, asking
-                    for the box to be squared: "so it looks more mature and
-                    stop looking like it's wombling." The wobble was here: a
-                    gradient halo spinning behind the microphone every four
-                    seconds, and the button itself breathing on a 2.4 second
-                    loop. Both were decoration on a control that is already
-                    the only round thing a person needs to find.
-
-                    The red glow while listening stays, because that one is
-                    not decoration. It is the only thing on screen that says
-                    the microphone is live. */}
+THE GLOW AND THE PULSE STAY. They were
+                    taken out once, on a guess that they were the "wombling"
+                    Anthony wanted gone. They were not, and he said so. The
+                    smudge that removing them appeared to fix had a different
+                    cause: the glow had been squared along with the button,
+                    and a rotating radial gradient in a square is a spinning
+                    diamond. Round again, it reads as it always did. */}
                 {micSupported && (
                   <div className="relative w-9 h-9 shrink-0">
                     {listening ? (
                       <span
-                        className="absolute -inset-[4px] rounded-none pointer-events-none"
+                        className="absolute -inset-[4px] rounded-full pointer-events-none"
                         style={{
                           background: `radial-gradient(circle, ${BRAND.red}55 0%, transparent 70%)`,
                           animation: "sx-mic-listening 1s ease-in-out infinite",
                         }}
                       />
-                    ) : null}
+                    ) : (
+                      !(input.trim() || pendingAttachments.length > 0) && (
+                        <span
+                          className="absolute -inset-[4px] rounded-full pointer-events-none"
+                          style={{
+                            background: GRADIENTS.micRing,
+                            filter: "blur(3px)",
+                            opacity: 0.95,
+                            animation: "sx-mic-spin 4s linear infinite",
+                          }}
+                        />
+                      )
+                    )}
                     <button
                       onClick={toggleListening}
                       /* Bordered, like the plus on the other side, so the
@@ -1961,7 +1976,7 @@ export default function Chat() {
                          and starts looking like a decorative icon. While
                          listening the red fill says enough on its own, so
                          the border gets out of the way. */
-                      className="relative w-9 h-9 rounded-none border flex items-center justify-center shrink-0 transition-all hover:scale-105 active:scale-95"
+                      className="relative w-9 h-9 rounded-full border flex items-center justify-center shrink-0 transition-all hover:scale-105 active:scale-95"
                       style={
                         listening
                           ? { backgroundColor: BRAND.red, color: "#fff", borderColor: BRAND.red }
@@ -1971,6 +1986,7 @@ export default function Chat() {
                               backgroundColor: "var(--surface-solid)",
                               color: "var(--text-1)",
                               borderColor: "var(--border-2)",
+                              animation: "sx-mic-pulse 2.4s ease-in-out infinite",
                             }
                       }
                       aria-label={listening ? "Stop listening" : "Voice input"}
@@ -1984,7 +2000,7 @@ export default function Chat() {
                 {(input.trim() || pendingAttachments.length > 0) && (
                   <button
                     onClick={handleSend}
-                    className="w-9 h-9 rounded-none flex items-center justify-center shrink-0 transition-all hover:scale-105 active:scale-95"
+                    className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all hover:scale-105 active:scale-95"
                     style={{
                       background: GRADIENTS.action,
                       color: "#fff",
