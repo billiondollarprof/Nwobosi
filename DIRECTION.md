@@ -315,6 +315,78 @@ support-ask is 40,000 characters. One 60,000 character landing page already
 loses a third of itself to it, silently. That number is the binding
 constraint long before 200,000 tokens is.
 
+## Which model runs which part
+
+Decided 2026-09-10. Not built, and deliberately so.
+
+**Today one model does everything, and that is correct.** Sonnet runs the
+offer, the interview, the read back, the prompt and the writing. Anthony:
+
+> "Sonnet is capable of sorting data, writing, doing all interview, and
+> everything."
+
+There used to be routing here: a cheap model for the conversation, a capable
+one for the work. It was removed because a model chosen for you is a way for
+the product to be quietly worse on a turn you cannot see the reason for. That
+still holds. Nothing about the section below reopens it.
+
+### The one place a bigger model gets handed the work
+
+For a deployment whose work genuinely needs more than Sonnet, there is exactly
+one handover point, and it is not where you would first guess.
+
+1. The read back happens, on Sonnet.
+2. The person says go ahead.
+3. **The switch happens here.** Sonnet to Opus, or higher.
+4. The bigger model writes the prompt.
+5. **Generation starts on its own the moment the prompt is finished.** Nobody
+   presses anything a second time.
+
+### Why the bigger model writes the prompt rather than only the document
+
+This is the part that looks like a detail and is not. Two reasons, and the
+second is the real one.
+
+**It is more creative**, and the prompt is where creative decisions about the
+shape of the work actually get made.
+
+**Writing the prompt is when something genuinely missing shows up.** Anthony:
+
+> "The fact that the read back has happened and yes means that if it wants to
+> write the prompt, it can still ask another question if it discovered that
+> something is missing. Something that genuinely needed."
+
+So the model that writes the prompt has to be able to ask. Handing a bigger
+model a finished prompt and telling it to type would waste the one thing it is
+better at.
+
+### The prompt is the last part, not the place the work gets done
+
+> "Prompt is usually the last part of it. Everything should be gotten from the
+> read back."
+
+**The read back is where the back and forth lives.** It is not one message
+somebody approves. It is a conversation: the model says what it understood,
+the person adds something, removes something, corrects a number, research
+happens if research is allowed, and it goes round again until the thing is
+right. Anthony: "just more like an interview kind of back and forth until the
+system gets what it needs to produce what it needs to produce."
+
+A question after the prompt is written is allowed, and it should be rare. If
+it happens often, the read back is not doing its job and that is the thing to
+fix, not the prompt stage.
+
+### What this means for the build, now, before any routing exists
+
+The prompt has to be **its own stage**, with its own boundary, even while one
+model runs both sides of that boundary. Get that wrong and adding routing
+later is a rewrite instead of a line.
+
+The machinery is already there and unused: the `LADDER`, the `PRICE` table,
+`MODEL_ID`, and the `model_ceiling` column on both `staff` and `companies`.
+Only the automatic selection was taken out. So when a deployment needs this,
+it is a small change at one boundary, not a rebuild.
+
 ## Browsing, when it comes
 
 The assistant cannot browse today, and that is stated plainly in

@@ -134,23 +134,34 @@ add. Then they choose.
 The hard ceiling stays at 5. A promise a model can talk itself out of is not
 a promise.
 
-### 4.3 Read back, correct, confirm again, then the prompt
+### 4.3 The read back is the whole conversation, then the prompt, then it goes
 
-Anthony: "correction after read back is one more confirmation with a question
-before the prompt is written and it's free to still ask questions."
+Corrected 2026-09-10 after Anthony's second brief. The earlier version of this
+section had the brief as "the confirmed read back, frozen". That was too thin.
 
-So a correction is not a silent edit. It goes:
+**The read back is not one message somebody approves.** It is where the back
+and forth lives. Anthony: "just more like an interview kind of back and forth
+until the system gets what it needs to produce what it needs to produce."
 
-1. It reads back what it understood.
-2. They correct it. "Do not use that number."
-3. **It confirms the correction back**, and it is free to ask something else
-   at this point if the correction opened a question.
-4. They say go.
-5. **Only then is the prompt written.**
+1. It says what it understood.
+2. They correct it, add to it, remove something.
+3. **It confirms the correction back, and may ask something else** if the
+   correction opened a question.
+4. Round again if it needs to. This is the place for that, not later.
+5. They say go.
+6. **The prompt is written immediately.** No second button.
+7. **Generation starts on its own the moment the prompt is finished.** Anthony:
+   "It doesn't need anybody to tell it anything."
 
-The read back is the brief, in plain words. On go it is frozen and handed to
-the writing stage as the thing it may not exceed. That is the second
-guardrail from `DIRECTION.md`, made real.
+**A question after the prompt is written is allowed and should be rare.**
+Anthony: "prompt is usually the last part of it. Everything should be gotten
+from the read back." If it happens often, the read back is what needs fixing.
+
+**The prompt is its own stage, with its own boundary.** That matters now, while
+one model still runs both sides of it, because the model handover for larger
+deployments lands exactly on that boundary. See "Which model runs which part"
+in `DIRECTION.md`. Get the boundary wrong here and routing later is a rewrite
+instead of a line.
 
 Anthony: "the most important thing is that it doesn't do anything until it
 writes that prompt."
