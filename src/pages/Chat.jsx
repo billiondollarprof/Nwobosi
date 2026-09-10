@@ -28,6 +28,7 @@ import {
   LogOut,
   ChevronRight,
   Menu,
+  MessagesSquare,
   PenSquare,
   Mic,
   ThumbsUp,
@@ -105,6 +106,7 @@ import {
    -------------------------------------------------------------------------- */
 
 const MARKER = {
+  offerInterview: "OFFER_INTERVIEW",
   interviewDone: "INTERVIEW_COMPLETE",
   needInput: "NEED_INPUT",
   readbackDone: "READBACK_COMPLETE",
@@ -407,16 +409,25 @@ export default function Chat() {
   const [generating, setGenerating] = useState(false);
 
   /* Where the conversation is in the flow. This is the stage the next turn
-     runs at, which is also what decides the model, so it is the difference
-     between a cheap question and an expensive one.
+     runs at.
 
-       interview  the cheap model, asking a few short questions
-       analyse    the stronger model, reading the company sources, either
-                  coming back for something missing or reading the brief back
+       orient     reads the request and the whole company knowledge base,
+                  says what it already has, and offers the interview
+       offered    not a stage the server knows about. It means the offer is
+                  on screen and we are waiting for an answer.
+       interview  asking a few short questions
+       analyse    reading back what it understood, or coming back for
+                  something that is genuinely missing
 
-     It moves up by itself the moment the interview model says it is done.
-     Nobody presses anything to make that happen. */
-  const [flowStage, setFlowStage] = useState("interview");
+     THE ENTRY POINT USED TO BE THE INTERVIEW AND IT WAS BLIND. It could see
+     the names of the company's files and nothing inside them, so it asked
+     people for things their own company had already written down. Now the
+     first turn reads everything, and the interview is offered rather than
+     imposed.
+
+     It moves up by itself. Nobody presses anything except at the offer and
+     at the read back, which are the two moments that are genuinely theirs. */
+  const [flowStage, setFlowStage] = useState("orient");
 
   /* Who is actually signed in, and which company this workspace belongs
      to. Until this arrives the page falls back to the config defaults, so
@@ -675,6 +686,12 @@ export default function Chat() {
 
     abortTurnRef.current = sendTurn({
       stage,
+
+      /* The server cannot count this from the messages: the orient turn and
+         every turn of an earlier interview are in there too. This is the
+         app's own counter, which resets whenever the work moves up. */
+      askedSoFar: interviewTurnsRef.current,
+
       messages: history,
 
       onMeta: ({ tier }) => setActiveTier(tier),
@@ -704,6 +721,28 @@ export default function Chat() {
           prev.map((m) => (m.id === replyId ? { ...m, content: clean } : m))
         );
         persist(next, stage);
+
+        /* THE OFFER. The first turn has read the request and the whole of
+           the company's material, and has said what it already has. Now it
+           asks whether they want to be interviewed.
+
+           Two buttons rather than a sentence to answer, because a question
+           with no visible answers is a question people ignore. Typing works
+           too, and handleSend below sends that into the interview.
+
+           No marker means it was not a piece of work, just conversation.
+           The stage stays where it is and it reads again next time. */
+        if (stage === "orient") {
+          if (raw.includes(MARKER.offerInterview)) {
+            setFlowStage("offered");
+            const withOffer = updateMessages((prev) => [
+              ...prev,
+              { id: nextId(), role: "assistant", type: "offer" },
+            ]);
+            persist(withOffer, "offered");
+          }
+          return;
+        }
 
         if (stage === "interview") interviewTurnsRef.current += 1;
 
@@ -819,8 +858,14 @@ export default function Chat() {
        a conversation, so it drops back to the cheap model. Working it out
        here rather than reading it back off state matters: setting state
        does not change it in time for the line below. */
-    updateMessages((prev) => prev.filter((m) => m.type !== "build"));
+    updateMessages((prev) => prev.filter((m) => m.type !== "build" && m.type !== "offer"));
     let stage = flowStage === "analyse" ? "interview" : flowStage;
+
+    /* They typed instead of tapping either button. Typing is a conversation
+       and the interview is the conversation stage, so it goes there. That
+       is safe for both answers: the interview reads "no, just get on with
+       it" and hands off on the spot, which it is already told to do. */
+    if (stage === "offered") stage = "interview";
 
     /* The interview has had its questions. Whatever the model thinks, the
        work moves up now. Three to five questions is the promise, and a
@@ -955,6 +1000,39 @@ export default function Chat() {
     updateMessages(before);
     runTurn(flowStage, toApiMessages(before));
   }
+
+  /* ------------------------------------------------------------------------
+     ANSWERING THE OFFER
+
+     The first turn read everything and asked whether they want to be
+     interviewed. These are the two answers.
+
+     Both put a line in the conversation as though the person typed it, so
+     the transcript reads honestly and the model can see what was chosen.
+     Neither is a setting and neither is remembered: the same question can
+     be asked again in the next conversation, because the answer depends on
+     the job, not on the person.
+     ------------------------------------------------------------------------ */
+
+  function answerOffer(line, stage) {
+    if (typing || generating) return;
+    const kept = messages.filter((m) => m.type !== "offer");
+    updateMessages(kept);
+    addMessage({ role: "user", type: "text", content: line });
+    interviewTurnsRef.current = 0;
+    setFlowStage(stage);
+    runTurn(stage, toApiMessages([...kept, { role: "user", content: line }]));
+  }
+
+  /* Yes. Straight into the questions. */
+  const handleWantInterview = () => answerOffer("Yes, ask me your questions.", "interview");
+
+  /* No. Straight to the read back, which is where it says what it
+     understood and what it is going to use. They still see that before
+     anything is written, so saying no skips the questions and never skips
+     the checkpoint. */
+  const handleSkipInterview = () =>
+    answerOffer("No, get on with it with what you have.", "analyse");
 
   /* "Something needs changing" is not a stage of its own. It just takes the
      card away, puts them back in conversation, and hands them the cursor.
@@ -1548,6 +1626,8 @@ export default function Chat() {
                 brief={brief}
                 onGenerate={handleGenerate}
                 onAdjust={handleAdjust}
+                onWantInterview={handleWantInterview}
+                onSkipInterview={handleSkipInterview}
                 onReset={handleNewChat}
                 onRetry={() => handleRetry(m.id)}
                 feedback={feedback[m.id]}
@@ -1926,7 +2006,7 @@ export default function Chat() {
    avatar, staff messages sit in a neutral capsule on the right.
    ========================================================================== */
 
-function ChatBubble({ message, brief, onGenerate, onAdjust, onReset, onRetry, feedback, onFeedback, onCopy, onDownload }) {
+function ChatBubble({ message, brief, onGenerate, onAdjust, onWantInterview, onSkipInterview, onReset, onRetry, feedback, onFeedback, onCopy, onDownload }) {
   const isUser = message.role === "user";
   const riseStyle = { animation: "sx-rise 0.35s ease" };
 
@@ -1971,6 +2051,47 @@ function ChatBubble({ message, brief, onGenerate, onAdjust, onReset, onRetry, fe
      Only ever rendered after a read back the person has just seen, so it
      is the one moment where pressing a button spends real money on their
      behalf and they know exactly what for. */
+  /* --- The offer to interview ---
+
+     Shown once, after the first turn has read the company's material. The
+     two buttons are the two answers, in the words a person would use, so
+     nobody has to work out what either one does.
+
+     Yes is the quiet option and No is the plain one, deliberately. Neither
+     is a mistake and neither is risky, so this is not a warning dialog and
+     must not look like one. */
+  if (message.type === "offer") {
+    return (
+      <div style={riseStyle}>
+        <div
+          className="rounded-[18px] border p-5 backdrop-blur-xl"
+          style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
+        >
+          <p className="text-[15.5px] font-semibold mb-1" style={{ color: "var(--text-1)" }}>
+            Want me to ask you a few questions?
+          </p>
+          <p className="text-[13.5px] mb-4 leading-relaxed" style={{ color: "var(--text-3)" }}>
+            A few short ones make the work a lot better. Or I can start now with what I have.
+          </p>
+          <PrimaryButton
+            onClick={onWantInterview}
+            className="w-full flex items-center justify-center gap-2"
+          >
+            <MessagesSquare size={15} />
+            Ask me a few questions
+          </PrimaryButton>
+          <button
+            onClick={onSkipInterview}
+            className="w-full mt-2.5 rounded-[12px] border py-2.5 text-[13.5px] transition-opacity hover:opacity-80"
+            style={{ borderColor: "var(--border-2)", color: "var(--text-2)" }}
+          >
+            Just get on with it
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (message.type === "build") {
     return (
       <div style={riseStyle}>

@@ -169,6 +169,20 @@ function buildBasePrompt(
     "different one, and never suggest they start again somewhere else. From where they",
     "sit you are simply the assistant, and how that is run is not their concern.",
     "",
+    "USE YOUR JUDGEMENT, IT IS WHY YOU ARE HERE",
+    "You are not a form that collects answers. The one thing you care about is that",
+    "they walk away with better work than they would have produced alone, and you are",
+    "expected to think about how to get there.",
+    "",
+    "So: suggest. Advise. Propose a better shape than the one they asked for, and say",
+    "why. Tell them when an idea will not land with the people who will read it. Point",
+    "out the thing they have not thought of. Notice when what they are asking for is",
+    "not what they actually need, and say so once, plainly, then do what they decide.",
+    "",
+    "Two things are fenced and nothing else is. You do not invent facts, and you do not",
+    "go outside this conversation without being let out. Inside those two fences your",
+    "judgement is the product. Use all of it.",
+    "",
     "YOUR SOURCES OF TRUTH",
     "There are exactly four ways a fact about the world reaches your draft, and this",
     "person opens every one of them. Nothing arrives any other way.",
@@ -176,6 +190,18 @@ function buildBasePrompt(
     "  2. What they type to you, or a file they hand over in this conversation.",
     "  3. Material they went and checked themselves, then pasted back to you.",
     "  4. Nothing. If none of the above covers it, it does not go in.",
+    "",
+    "WHEN TWO OF THEM DISAGREE",
+    "It happens, and the order is fixed so you never have to weigh it up.",
+    "  1. A file they attached in THIS conversation wins. It is the newest and most",
+    "     specific thing anybody has said, handed to you by somebody looking at it.",
+    "  2. Then the company sources, and where two of those disagree, the newer one.",
+    "  3. Then what they typed.",
+    "This is about content: a number, a price, a date, a name, a policy. It is not about",
+    "voice. Brand, colours, house style, templates and standing company facts still come",
+    "from the company material even when an attachment is in front of you.",
+    "When you use an attachment over a company source, say so in one short line, so",
+    "nobody wonders later why this document used a different figure.",
     "",
     "YOU CANNOT GO AND LOOK",
     "You have no search, no browsing, no way to open a link, and no access to their",
@@ -256,6 +282,7 @@ function buildBasePrompt(
    Same idea as having no search. Not a rule it may talk itself out of,
    a ceiling it cannot cross. */
 const MAX_OUTPUT: Record<string, number> = {
+  orient: 600,
   interview: 700,
   analyse: 4000,
   generate: 8000,
@@ -269,17 +296,57 @@ const MAX_INTERVIEW_TURNS = 5;
 /* What this particular turn is for. Appended after the cached base so the
    prefix above stays byte identical across stages. */
 const STAGE_PROMPT: Record<string, string> = {
+  /* THE ENTRY POINT. Anthony, 2026-09-10: "The model can even ask the person
+     after they have checked the knowledge base and see what the person needs.
+     Would you like me to interview you? To make your output even better."
+
+     Before this stage existed the first thing that happened was a blind
+     interview: it could see file names and nothing inside them, so it asked
+     for things the company had already answered. Now it reads first and the
+     interview is something it offers rather than something it imposes. */
+  orient: [
+    "",
+    "RIGHT NOW: READ FIRST, THEN OFFER",
+    "This is the first thing that happens. You have their request, and you have the",
+    "company's entire approved material above. Read both properly before you answer.",
+    "",
+    "IF THIS IS NOT A PIECE OF WORK",
+    "A greeting, a question about what you can do, ordinary conversation. Answer it the",
+    "way a colleague would, in a line or two. Use no marker. Nothing below applies.",
+    "",
+    "IF THERE IS REAL WORK ON THE TABLE, three short parts and nothing else.",
+    "",
+    "1. WHAT YOU UNDERSTOOD. One or two lines, in their words, not yours.",
+    "",
+    "2. WHAT YOU ALREADY HAVE. Name the company sources that cover part of this, by",
+    "   name, and say in a few words what each one gives you. This is the moment they",
+    "   discover the company already answered half of it, so it is worth getting right.",
+    "   If nothing in the material touches this, say so plainly and move on.",
+    "",
+    "3. THE OFFER. Say briefly what you would still want to know. Then offer them the",
+    "   choice, in your own words: you can ask a few questions and the work will be",
+    "   better for it, or you can get on with it now with what you have. Make it an",
+    "   easy yes. Do not list the questions themselves, that is the interview.",
+    "",
+    "Then OFFER_INTERVIEW on its own final line. Do not explain the marker and do not",
+    "mention it.",
+    "",
+    "DO NOT WRITE THE WORK HERE. Not a draft, not an outline, not a first section.",
+    "",
+    "Keep the whole thing short. This is the first thing they read, and a wall of text",
+    "loses them before the work has started.",
+  ].join("\n"),
+
   interview: [
     "",
     "RIGHT NOW: INTERVIEW",
     "Work out what they actually need. One question at a time, like a colleague would.",
     "",
     "YOU DO NOT WRITE THE WORK IN THIS STAGE. NOT A DRAFT, NOT AN OUTLINE, NOT A",
-    "FIRST SECTION, NOT EVEN IF THEY ASK YOU TO RIGHT NOW. Writing it is a separate",
-    "stage that runs on a stronger model, after a check you cannot do and a read back",
-    "they have to confirm. If you write it here they never see the read back, they",
-    "never get a file to download, and the work never reaches the model that can read",
-    "the company sources. Handing off IS how you build it for them.",
+    "FIRST SECTION, NOT EVEN IF THEY ASK YOU TO RIGHT NOW. Writing it comes after a",
+    "read back they confirm, and the app only turns the writing stage into a file they",
+    "can download. If you write it here they never see the read back and they never get",
+    "the file. Handing off IS how you build it for them.",
     "",
     "Keep it to three to five questions in total, and fewer if their first message",
     "already answered some of them. This is a short conversation, not an interrogation.",
@@ -292,33 +359,30 @@ const STAGE_PROMPT: Record<string, string> = {
     "once, plainly. If they skip them a second time, that is their answer: let it go",
     "and hand off.",
     "",
-    "Do not try to close every gap here. A stronger model reads the company material",
-    "after you and comes back for anything genuinely missing, so stopping early costs",
-    "nothing and asking too much costs their patience.",
+    "Do not try to close every gap here. The read back after this comes back for",
+    "anything genuinely missing, so stopping early costs nothing and asking too much",
+    "costs their patience.",
     "",
-    "TWO DIFFERENT KINDS OF MATERIAL, AND YOU MUST NOT CONFUSE THEM",
+    "THEY ONLY EVER POINT AT THEIR OWN MATERIAL",
     "",
-    "The company sources listed above belong to the company, and this person should",
-    "never have to know a single file name in there. If they point you at them in any",
-    "words at all, the knowledge base, the admin files, our documents, our brand guide,",
-    "the stuff you already have, that is not a request you refuse and it is not a file",
-    "name to ask for. You cannot read those contents yourself. The stronger model can,",
-    "and it chooses which ones matter. So that is a handoff, immediately.",
+    "You can read the company sources above, all of them, right now. So this person",
+    "never has to name one, never has to know one exists, and must never be asked which",
+    "file to use. Working out which of the company material matters is your job and it",
+    "is one of the reasons they are better off with you than without you.",
     "",
-    "Their own material is the other kind: something on their laptop, something only",
-    "they have, something they went and checked. That, and only that, is when you ask",
-    "them to attach it or paste what matters.",
+    "Their own material is the only kind you ask for: something on their laptop,",
+    "something only they have, something they went and checked themselves. That, and",
+    "only that, is when you ask them to attach it or paste what matters.",
     "",
     "HOW THIS STAGE ENDS",
-    "Three ways, and all three end exactly the same. Say one short line, then",
+    "Two ways, and both end exactly the same. Say one short line, then",
     "INTERVIEW_COMPLETE on its own final line, and nothing else.",
     "",
-    "  1. You have enough to hand over.",
+    "  1. You have enough to work with.",
     "  2. They tell you to get on with it. Just build it, do not worry, go ahead, you",
     "     decide, whatever wording they use. Their instruction beats your question",
     "     list. Do not argue, do not ask one more, and above all do not start writing.",
     "     Say you will work with what you have, and hand off.",
-    "  3. They point you at the company sources, as described above.",
     "",
     "YOU MAY HAVE BEEN HANDED SOMETHING SPECIFIC",
     "Read back up the conversation first. If a message above already says what is",
@@ -386,6 +450,15 @@ const STAGE_PROMPT: Record<string, string> = {
     "Every fact in this document comes from the four routes above and nowhere else. If",
     "outside material was brought back and a referencing style was agreed, include the",
     "references in that style. If no style was agreed, do not invent citations.",
+    "",
+    "ONE EXCEPTION TO OUTPUTTING NOTHING BUT THE DOCUMENT",
+    "If you asked for something and it was never supplied, and you went ahead anyway",
+    "because that is what they wanted, then after the document add one short closing",
+    "section headed What would make this better. Under it, name each thing that was",
+    "missing, say in one line what it would have improved, and stop. No apology, no",
+    "hedging, no re-listing what you did well, and never a note when nothing was",
+    "missing. They asked you to work with what you had, so this is a record for their",
+    "next pass, not a complaint about this one.",
   ].join("\n"),
 };
 
@@ -409,18 +482,24 @@ const MAX_REQUEST_BYTES = 5 * 1024 * 1024;
    actually has that much, and then it is visible in their budget, which is
    the right place to notice it.
 
-   It rides on the analysis and the writing only, never the interview, so a
-   conversation pays for it twice rather than on every question.
+   IT RIDES ON EVERY TURN, INCLUDING THE INTERVIEW, since 2026-09-10. It used
+   to be held back from the interview to save money, and what that actually
+   bought was an interview that could not see and asked people for things
+   their own company had already written down.
 
    THE STAFF SIDE IS NOT THE SAME MONEY AS SUPPORT. This runs on Sonnet,
    twice the price of support's Haiku, so if a company ever did fill this:
 
-     first turn of a session      about 12 to 13 cents
-     every turn after, cached     about 1 cent
+     first turn of a session      about 20 cents, the one hour cache write
+     every turn after             about 1 cent, the cache read
 
-   Worth it for somebody doing real work with the company's own material in
-   front of them. Different shape from support, so watch it rather than
-   assume it. */
+   A whole session, questions and analysis and writing together, lands near
+   26 cents. Before the cache mark was fixed the same session cost about 24
+   and the model could not see during the interview. Different shape from
+   support, so watch it rather than assume it.
+
+   PER DEPLOYMENT. companies.max_source_chars overrides this where it is set.
+   This constant is the default and the fallback. */
 const MAX_SOURCE_CHARS = 200000;
 
 const CORS = {
@@ -561,42 +640,89 @@ Deno.serve(async (req: Request) => {
      a prefix match, so anything that varies has to come after it. */
   const base = buildBasePrompt(company, staff.name ?? "a staff member", readySources);
 
-  /* On the last question the interview is allowed, tell it so. The app
-     moves the work up whether it agrees or not, and a model that knows the
-     turn is its last closes cleanly rather than being cut off partway
-     through asking something nobody will get to answer. */
-  const assistantTurns = messages.filter((m: unknown) =>
-    typeof m === "object" && m !== null && (m as { role?: string }).role === "assistant"
-  ).length;
+  /* HOW MANY QUESTIONS THIS INTERVIEW HAS ALREADY ASKED
 
-  const lastQuestion =
-    stage === "interview" && assistantTurns >= MAX_INTERVIEW_TURNS - 1
-      ? [
-          "",
-          "",
-          "THIS IS YOUR LAST TURN IN THIS STAGE",
-          "You have used the questions this interview gets. Do not ask another one.",
-          "Say in one line what you will be working with, then hand off.",
-        ].join("\n")
-      : "";
+     Sent by the app rather than counted here, and that is deliberate. This
+     function only sees a list of messages, so counting assistant turns in it
+     counts the wrong things: the orient turn before the interview started,
+     and every turn of an earlier interview when somebody corrects a read back
+     and drops back into a fresh one. Both make it believe the interview is
+     nearly spent when it has not asked anything yet.
 
-  const stageInstruction = (STAGE_PROMPT[stage] ?? STAGE_PROMPT.interview) + lastQuestion;
+     The app knows, because it resets its own counter every time the work
+     moves up a stage. So the app is asked.
+
+     THIS IS NOT A SECURITY CONTROL AND IT DOES NOT NEED TO BE. It only
+     changes the wording of a nudge. The real ceiling is enforced twice
+     where a browser cannot reach: the app moves the work up regardless at
+     MAX_INTERVIEW_TURNS, and the interview stage is given 700 output tokens,
+     which is a question and not a document. A browser that lies here gets a
+     differently worded question and nothing else. Clamped anyway, because a
+     number off the wire goes into a comparison. */
+  const askedSoFar = Math.min(Math.max(Number(body?.askedSoFar ?? 0) || 0, 0), 50);
+
+  /* Anthony, 2026-09-10: "to make the questions not to be too long or boring
+     ... between three to four times asking questions and getting. Can always
+     attach, if you would want me to continue like this, I can."
+
+     So at three it stops asking and starts offering, and the offer is an
+     informed one: this is what the work looks like now, this is what another
+     round would add. At the ceiling it closes. */
+  const ENOUGH_FOR_THE_BASICS = 3;
+
+  let pacing = "";
+  if (stage === "interview" && askedSoFar >= MAX_INTERVIEW_TURNS - 1) {
+    pacing = [
+      "",
+      "",
+      "THIS IS YOUR LAST TURN IN THIS STAGE",
+      "You have used the questions this interview gets. Do not ask another one.",
+      "Say in one line what you will be working with, then hand off.",
+    ].join("\n");
+  } else if (stage === "interview" && askedSoFar >= ENOUGH_FOR_THE_BASICS) {
+    pacing = [
+      "",
+      "",
+      "YOU HAVE THE FUNDAMENTALS. DO NOT SIMPLY ASK ANOTHER QUESTION.",
+      "You have asked enough to cover the basics. Anything further is a bonus, and a",
+      "long interview is the thing people give up on. So this turn you offer instead:",
+      "  - one or two lines on what the work will look like with what you have now",
+      "  - one line on what another round or two would add, concretely, not vaguely",
+      "  - then ask whether they want to keep going or want you to get on with it",
+      "If they have already waved you on, do not offer at all. Hand off.",
+    ].join("\n");
+  }
+
+  const stageInstruction = (STAGE_PROMPT[stage] ?? STAGE_PROMPT.orient) + pacing;
 
   /* ----------------------------------------------------------------------
      THE CONTENTS THEMSELVES
-     The interview never sees these. It is a conversation about what the
-     person wants, and carrying a company's entire brand guide through
-     every question would cost real money to answer "who is this for".
 
-     From the analysis onward it does see them, because that is the whole
-     promise: the output already knows the company's templates and numbers
-     without the staff member supplying any of it. A name and a
-     description cannot deliver that. Only the words can.
+     EVERY STAGE SEES THESE, INCLUDING THE FIRST. Until 2026-09-10 the line
+     below read `stage !== "interview"`, which meant the interview saw file
+     names and one line descriptions and never a word inside them. It then
+     asked people for things their own company had already written down, and
+     that single line was the reason the whole flow felt blind.
+
+     It looks like it should cost more and it does not, because of the cache
+     mark further down. The material is identical on every turn of a
+     conversation, so it is written once and read back at about a tenth of
+     the price after that. Sending it to the interview as well costs roughly
+     one cent a turn and buys the thing the product is actually for.
+
+     It is capped by the company's own ceiling, and that is a ceiling rather
+     than a target: 30,000 characters of material sends 30,000 and pays for
+     30,000.
      ---------------------------------------------------------------------- */
+
+  /* Per deployment, because it changes per deployment. Anthony, 2026-09-10:
+     "if we are deploying in somebody's VPC, it can change." Falls back to the
+     constant, so this keeps working before the column exists. */
+  const sourceCeiling = Number(company.max_source_chars ?? MAX_SOURCE_CHARS) || MAX_SOURCE_CHARS;
 
   let sourceContents = "";
 
-  if (stage !== "interview" && readySources.length) {
+  if (readySources.length) {
     const { data: chunks } = await asUser
       .from("knowledge_chunks")
       .select("source_id, content")
@@ -606,7 +732,7 @@ Deno.serve(async (req: Request) => {
     if (chunks?.length) {
       const byName = new Map(readySources.map((s) => [s.id, s.name]));
       const parts: string[] = [];
-      let budget = MAX_SOURCE_CHARS;
+      let budget = sourceCeiling;
 
       for (const chunk of chunks) {
         if (budget <= 0) break;
@@ -670,25 +796,50 @@ Deno.serve(async (req: Request) => {
       send("meta", { tier, stage });
 
       try {
-        /* The system prompt is byte for byte identical on every turn for a
-           given company, which makes it the one thing worth caching. Marked
-           cacheable, it is charged at roughly a tenth on every turn after
-           the first, and an interview is many turns over the same prompt.
+        /* ------------------------------------------------------------
+           THE CACHE MARK, AND WHY IT SITS WHERE IT SITS
 
-           Caching is a prefix match, so this only holds while nothing above
-           it changes. Nothing is above it here, and the prompt itself is
-           built from company data that changes rarely, which is exactly the
-           shape caching rewards. A short prompt silently will not cache,
-           there is a minimum length, so a company with no sources yet gets
-           no benefit and no harm either. */
+           Caching is a prefix match. Everything from the top of the
+           prompt down to the mark is cached. Everything after it is
+           charged at full price, every single turn.
+
+           Until 2026-09-10 the mark was on `base` alone, with the
+           company's material sitting after it. So the material, which is
+           by far the largest thing here, was billed in full on every
+           analysis and every writing turn. The comment above it claimed
+           "about 1 cent". It was about 10.
+
+           So the mark goes on the LAST block that does not change. Both
+           `base` and the material are identical on every turn for a given
+           company, and only the stage instruction below varies.
+
+           A company with no sources yet has one stable block, so the mark
+           lands on `base` and behaves as before.
+
+           AN HOUR, NOT FIVE MINUTES. The life refreshes every time the
+           cache is used, and the refresh is free, so this is a sliding
+           window from the last message rather than a countdown from the
+           first. Five minutes still expires in the middle of a real
+           interview, because a person reading a question and thinking
+           about the answer routinely takes longer than that, and every
+           expiry pays the full write again. Research on document drafting
+           puts a real session at 25 to 45 minutes. An hour covers it.
+
+           The cast is the SDK typings being behind the API, the same
+           reason `thinking` is cast above. 0.68.0 knows cache_control
+           without a ttl. Cast on its own rather than over the whole call.
+           ------------------------------------------------------------ */
+        const CACHE_MARK = { type: "ephemeral", ttl: "1h" } as unknown as
+          Anthropic.CacheControlEphemeral;
+
+        const stable: Anthropic.TextBlockParam[] = [{ type: "text", text: base }];
+        if (sourceContents) stable.push({ type: "text", text: sourceContents });
+        stable[stable.length - 1].cache_control = CACHE_MARK;
+
         const run = anthropic.messages.stream({
           model: MODEL_ID[tier],
           max_tokens: MAX_OUTPUT[stage] ?? MAX_OUTPUT.generate,
-          system: [
-            { type: "text", text: base, cache_control: { type: "ephemeral" } },
-            ...(sourceContents ? [{ type: "text" as const, text: sourceContents }] : []),
-            { type: "text", text: stageInstruction },
-          ],
+          system: [...stable, { type: "text", text: stageInstruction }],
           messages,
           ...thinkingExtras,
         });
@@ -713,7 +864,12 @@ Deno.serve(async (req: Request) => {
         const freshInput = final.usage?.input_tokens ?? 0;
         const outputTokens = final.usage?.output_tokens ?? 0;
 
-        const inputTokens = freshInput + cacheWrite * 1.25 + cacheRead * 0.1;
+        /* A one hour cache write costs twice the base input rate. A five
+           minute one costs 1.25. We ask for an hour above, so this is 2.
+           Getting it wrong is not a rounding error: at 1.25 the company is
+           undercharged by a third of every write, which is our money, and
+           their budget outlives what they actually spent. */
+        const inputTokens = freshInput + cacheWrite * 2 + cacheRead * 0.1;
         const cents = centsFor(tier, inputTokens, outputTokens);
 
         /* If this stays at zero over a conversation, the cache is not

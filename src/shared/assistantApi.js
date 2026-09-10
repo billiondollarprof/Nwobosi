@@ -42,7 +42,7 @@ const PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
    the background.
    -------------------------------------------------------------------------- */
 
-export function sendTurn({ stage = "interview", messages, onMeta, onText, onDone, onError }) {
+export function sendTurn({ stage = "orient", askedSoFar = 0, messages, onMeta, onText, onDone, onError }) {
   const controller = new AbortController();
 
   (async () => {
@@ -67,7 +67,7 @@ export function sendTurn({ stage = "interview", messages, onMeta, onText, onDone
           Authorization: `Bearer ${session.access_token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ stage, messages }),
+        body: JSON.stringify({ stage, askedSoFar, messages }),
         signal: controller.signal,
       });
     } catch (err) {
@@ -82,7 +82,7 @@ export function sendTurn({ stage = "interview", messages, onMeta, onText, onDone
          answer anyway, and if it does not, its error says what is really
          wrong instead of blaming their wifi. */
       const { data, error } = await supabase.functions.invoke(FUNCTIONS.assistant, {
-        body: { stage, messages },
+        body: { stage, askedSoFar, messages },
       });
 
       if (error) {

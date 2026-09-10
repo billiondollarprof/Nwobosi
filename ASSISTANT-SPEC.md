@@ -1,7 +1,10 @@
 # The assistant, specified
 
-Written 2026-09-10, out of Anthony's brief. Nothing here is built yet.
-Read `DIRECTION.md` first, this is that direction turned into work.
+Written 2026-09-10, out of Anthony's brief, revised the same day after his
+second brief. Read `DIRECTION.md` first, this is that direction turned into
+work.
+
+Phase 1 is approved and is being built. Phases 2 to 4 are not.
 
 ---
 
@@ -33,299 +36,306 @@ Line 688:
     ],
 
 Caching is a prefix match. The mark sits on `base`, so only `base` is cached.
-Everything after it is charged at full price, every single turn.
-
-`sourceContents` is after it. So the company's whole knowledge base is billed
-at full input price on every analysis turn and every writing turn.
+Everything after it is charged at full price, every turn. `sourceContents` is
+after it.
 
 The comment in the file says "every turn after, cached, about 1 cent". That is
-what was intended. It is not what the code does. At 200,000 characters on
-Sonnet that is about 10 cents a turn, not 1.
+what was intended. It is not what the code does.
 
 ### There is no written prompt
 
-`DIRECTION.md` step 5 says: on approval it writes one detailed prompt, and
-that prompt is the second guardrail. There is no such thing in the code. The
-stages go interview, analyse, generate. The read back is shown and then thrown
-away. Nothing carries the approved brief into the writing stage as a
-constraint.
-
-Your words: "when it's writing the prompt and it's asked not to use a certain
-number, maybe it can correct." Today there is nowhere for that correction to
-live.
+`DIRECTION.md` step 5 says the written prompt is the second guardrail. It does
+not exist. The read back is shown and then thrown away, so a correction after
+it has nowhere to live.
 
 ---
 
-## 2. What you asked for
+## 2. How long a session lasts, and what the cache does about it
 
-Set down in your own words, so the build can be checked against it.
+Checked 2026-09-10, because Anthony asked.
 
-- "The person doesn't need to point at admin's own document. They only point
-  at their own documents."
-- "The reason we left the admin's own knowledge that the model can read
-  everything is because it can decide to check, to know if there's anything
-  company data, colours, stuff like that."
-- "Based on content, the model basically uses what the staff uploads as
-  preference."
-- "If it has gotten all the information that it needs, it can also ask
-  questions of style. How do you want it?"
-- "When files cannot be uploaded, it can suggest, okay, so and so link, so and
-  so platform. It can search online, pull out a number, and then put the
-  source, and then ask the person to verify."
-- "If they are giving a go-ahead, it can add the information and use it.
-  Otherwise, if there is no go-ahead, it should not add it."
-- "Let it be as intelligent as it can be."
-- "I want the model to just remain as intelligent as it is, but with those
-  form of constraints to avoid hallucination."
+**A real session is 25 to 45 minutes.** Research on document drafting, which
+is exactly our case: a writing task that took 80 minutes takes about 25 with
+AI. Technical writing goes from 90 minutes to 30 to 45 including editing.
 
-The shape of that: take the fences off the intelligence, keep the fences on
-the facts.
+**The cache life slides.** It refreshes every time it is used, and the refresh
+is free. So the hour runs from the last message, not from the first. A person
+answering a question every ten minutes never loses it. That is true of the
+5 minute life too, the difference is only the size of gap it survives.
+
+**An hour therefore covers a whole session with room.** 5 minutes does not,
+because a person reading a question and thinking about the answer routinely
+takes longer than that.
+
+**Coming back the next day loses the cache, and that is fine.** It costs one
+more write. What must survive is the conversation, and that is section 3.
 
 ---
 
-## 3. Phase 1: the flow
+## 3. The resume log
 
-This is the whole of the first build. It is edge function work plus a small
-amount of chat work. No new tables except one.
+Anthony: "is there something like a progressive log to always remember where
+things left off and also know that the knowledge base was previously read and
+the task is not yet completed since the last read?"
 
-### 1.1 The interview can see everything
+**What already works.** Messages and stage are saved on every turn and
+restored when the conversation is opened. The model does see the whole
+conversation when somebody comes back. It does not start cold.
 
-Delete the stage test on line 599. The company material rides on every turn,
-interview included.
+**What is missing.** There is no short record of what was settled. The model
+re-derives it from twenty messages every turn, which is slow and drifts. And
+nothing records which sources it already chose, or what the person declined to
+give it.
 
-Why this is right and not just expensive: the person should never have to know
-what is in the knowledge base. That is your rule. An interview that cannot see
-it has to ask them about things the company already answered, which is exactly
-the prompt engineering the product exists to remove.
+So a working note is kept on the conversation, and read back to the model at
+the top of every turn. Small, a few hundred tokens, never a copy of the chat:
 
-### 1.2 Move the cache mark, and hold it for an hour
+- what is being made, in one line
+- the brief so far
+- which company sources it picked, by name
+- what is still missing
+- what the person was asked for and declined
 
-The mark moves to the last block that does not change:
+It sits after the cached block, because it changes every turn. It is cheap
+enough that this does not matter.
+
+---
+
+## 4. Phase 1: the flow
+
+### 4.1 The model reads first, then offers
+
+The biggest change in the brief, and it flips the order of the whole thing.
+
+Anthony: "The model can even ask the person after they have checked the
+knowledge base and see what the person needs. Would you like me to interview
+you? To make your output even better."
+
+Today the entry point is a blind interview. It becomes:
+
+1. **Orient.** A new stage, and the entry point. The model reads the request
+   and the whole knowledge base. It says what it understood and what it
+   already has. Then it offers: I can interview you and the work will be
+   better, or I can get on with it.
+2. **They say no.** It says plainly what it still needs, and gets on with it.
+   No nagging.
+3. **They say yes.** It interviews.
+
+### 4.2 The interview asks, then offers to stop
+
+Anthony: "to make the questions not to be too long or boring... between three
+to four times asking questions and getting. Can always attach, if you would
+want me to continue like this, I can."
+
+After 3 rounds it must offer, not continue. And the offer is informed: it says
+what the work looks like with what it has now, and what another round would
+add. Then they choose.
+
+The hard ceiling stays at 5. A promise a model can talk itself out of is not
+a promise.
+
+### 4.3 Read back, correct, confirm again, then the prompt
+
+Anthony: "correction after read back is one more confirmation with a question
+before the prompt is written and it's free to still ask questions."
+
+So a correction is not a silent edit. It goes:
+
+1. It reads back what it understood.
+2. They correct it. "Do not use that number."
+3. **It confirms the correction back**, and it is free to ask something else
+   at this point if the correction opened a question.
+4. They say go.
+5. **Only then is the prompt written.**
+
+The read back is the brief, in plain words. On go it is frozen and handed to
+the writing stage as the thing it may not exceed. That is the second
+guardrail from `DIRECTION.md`, made real.
+
+Anthony: "the most important thing is that it doesn't do anything until it
+writes that prompt."
+
+### 4.4 When the staff will not give it something
+
+Anthony: "if the model still feels like they still need something, they can
+flag it and just go ahead to work with what they have, because the staff said
+so. But after they work with what they have, they will still note it down and
+let the staff see."
+
+So: flag it, do the work anyway, then under the finished document say what was
+missing, what it would have improved, and what to hand over if they want
+another pass. Not a refusal, and not silence either.
+
+### 4.5 Agency
+
+Anthony: "the model should have a sense of agency. All the model should care
+about the most should be to give them the better output while obeying the
+rules."
+
+The base prompt gains a block that says so. It may suggest, advise, disagree,
+propose a better shape, and say what it would do differently. It may tell
+somebody their idea will not land and why.
+
+The constraints are on two things only: inventing facts, and going outside.
+Everything else is its judgement, and it should use it.
+
+### 4.6 The rules are coded, not written
+
+Anthony's sharpest point: "the rules are not just written just like writtens.
+They must be coded for the model to always obey them."
+
+He is right, and this is the difference between a prompt and a guarantee. So
+each rule gets a mechanism, not a sentence:
+
+| Rule | How it is coded |
+|---|---|
+| It cannot search without permission | The search tool is not in the request at all until the app sends approval for that specific search. The model cannot talk itself into it, because the ability is not there. |
+| Found data cannot enter the work | Results land in a list the model does not control. Only a click moves an item into the brief. |
+| Nothing is written before the brief | The writing stage refuses to run without a frozen brief. |
+| The interview cannot write the document | The writing ceiling for that stage is 700 tokens. A document does not fit. Already built. |
+| The interview cannot run forever | The app counts the turns and moves the work up regardless. Already built. |
+
+### 4.7 The material rides on every turn, and it is cached
+
+Delete the stage test on line 599.
+
+Move the cache mark to the last block that does not change, and give it an
+hour:
 
     { type: "text", text: base },
     { type: "text", text: sourceContents, cache_control: { type: "ephemeral", ttl: "1h" } },
+    { type: "text", text: resumeLog },
     { type: "text", text: stageInstruction },
-
-Two changes in one line.
-
-**The mark moves down**, so the company material is inside the cached prefix
-instead of after it.
-
-**The life goes from 5 minutes to 1 hour.** A cache entry (a stored copy of
-the prompt the model keeps, so it does not have to read it again) normally
-dies after 5 minutes. A person reading a question and thinking about their
-answer takes longer than that, so today's 5 minute life would expire in the
-middle of nearly every real interview and charge the full write again. An hour
-covers a whole session.
 
 The money, for a company that fills the whole 200,000 character ceiling:
 
 | | today | after |
 |---|---|---|
 | first turn | about 0.8 cents | about 20 cents |
-| every turn after | about 0.8 cents on interview, 10 cents on analyse and generate | about 1 cent |
-| a session of 5 questions, an analysis and a write | about 24 cents | about 26 cents |
+| every turn after | 0.8 cents interviewing, 10 cents analysing and writing | about 1 cent |
+| a full session | about 24 cents | about 26 cents |
 
-Almost the same money, and the interview stops being blind. For a company the
-size of Amara, about 20,000 tokens, divide all of it by ten.
+Nearly the same money, and the model can see. Amara is about a tenth of that.
 
-The ceiling is still a ceiling. A company with 30,000 characters sends 30,000
-and pays for 30,000.
+The ceiling is still a ceiling. 30,000 characters sends 30,000 and pays for
+30,000.
 
-### 1.3 The precedence rule, written into the prompt
+### 4.8 Precedence
 
 Three sources of company fact, and they rank:
 
 1. **A file the staff member attached in this conversation.** Highest. It is
    the newest and most specific thing anybody has said, handed over by
-   somebody who is looking at it.
+   somebody looking at it.
 2. **The company knowledge base**, newest first where two files disagree.
 3. **What the person typed.**
 
-The base prompt gains a short block saying this in plain terms. Attachments
-already carry their contents into the turn, so nothing new is plumbed, the
-model is simply told which one wins.
-
 The knowledge base is still read for everything else: brand, colours, voice,
-house style, templates, standing numbers. That does not change. It is only on
-a direct contradiction of content that the attachment wins.
+house style, templates, standing numbers. It is only on a direct contradiction
+of content that the attachment wins. When it happens it is logged in
+`knowledge_contradictions`, same as support.
 
-When it happens, it gets logged the same way a support contradiction does, in
-`knowledge_contradictions`, so nobody wonders later why one draft used a
-different number.
+### 4.9 Nobody points at an admin document
 
-### 1.4 Nobody points at an admin document
+Anthony: "the person doesn't need to point at admin's own document. They only
+point at their own documents."
 
-The interview prompt today tells the model to hand off the moment somebody
-mentions the knowledge base, because it cannot read it. Once it can read it,
-that whole passage comes out.
+The passage telling the interview to hand off whenever somebody mentions the
+knowledge base comes out. It can read it now.
 
-The rule that replaces it is one line: the person only ever points at their own
-material. Anything the company holds is the assistant's job to find, not
-theirs to name.
+### 4.10 Style is asked for, but never as an extra round
 
-### 1.5 Style is asked for, but never as an extra round
+- House style visible in the material: use it, say so in the read back, do not
+  ask.
+- No house style: the interview spends a question on it.
+- Never a separate round after the read back.
 
-Your ask: when nothing is missing, ask how they want it.
+### 4.11 Caps move onto the company
 
-The rule:
+`MAX_SOURCE_CHARS` and `MAX_FILES_PER_MESSAGE` are constants today. Anthony:
+"if we are deploying in somebody's VPC, it can change." A VPC is a private
+slice of a cloud that the company controls, so their limits are theirs.
 
-- If the company material shows a house style, use it and say so in the read
-  back. Do not ask.
-- If it does not, the interview spends its last question on style. Length,
-  tone, format, who signs it.
-- Never a separate round after the read back. That is a round the person did
-  not agree to.
-
-### 1.6 The written prompt becomes real
-
-A new stage between the read back and the writing, and it is not a stage the
-person waits through.
-
-1. The analysis reads the material and reads back what it understood. This
-   already happens.
-2. The person confirms, or corrects.
-3. **A correction rewrites the brief.** Not the conversation, the brief. "Do
-   not use that number" lands in the brief as a line, and the brief is what
-   the writing stage is handed.
-4. On confirmation the brief is frozen and sent to the writing stage as an
-   approved brief that it may not exceed.
-
-The brief is stored on the conversation row. One new column, `brief text`.
-Nothing else.
-
-This is the second guardrail from `DIRECTION.md`, and it is the difference
-between a read back that is theatre and one that binds.
-
-### 1.7 Caps move off the constants and onto the company
-
-Two numbers are hard coded today and both change per deployment:
-
-- `MAX_SOURCE_CHARS` in the function, 200,000.
-- `MAX_FILES_PER_MESSAGE` in the chat.
-
-Your point: "if we are deploying in somebody's VPC, it can change." A VPC is a
-private slice of a cloud that the company controls, so their limits are theirs,
-not ours.
-
-Both move to columns on `companies`, with today's numbers as the default. No
-admin screen. It is set at deployment and never seen.
-
-SQL is written and shown before it runs, as always.
+Both become columns on `companies`, defaulting to today's numbers. No admin
+screen. Set at deployment, never seen.
 
 ---
 
-## 4. Phase 2: the files it cannot read today
+## 5. Phase 2: the files it cannot read today
 
-Three separate problems that all look like "it did not read my file".
+### 5.1 Images
 
-### 2.1 Images
-
-`readFile.js` already knows what an image is. `fileKind` returns `"image"`.
-`canBecomeText` then excludes it:
+`fileKind` already returns `"image"`. `canBecomeText` then excludes it:
 
     return ["text", "pdf", "docx"].includes(fileKind(name));
 
-Sonnet can see images. It has always been able to. The exclusion is ours.
+Sonnet can see images. It always could. The exclusion is ours.
 
-**In the chat**, an attached image is sent as an image, not turned into text.
-The model looks at it.
+In the chat, an attached image is sent as an image. In the knowledge base, it
+is read once at upload and what it holds is stored as the text of that source,
+because everything downstream expects text. The image is kept too.
 
-**In the knowledge base**, an image is read once at upload and what it holds is
-stored as the text of that source. Everything downstream expects text and this
-keeps that true. The image itself is kept too, so a later phase can hand the
-real picture to the writing stage when it matters.
+### 5.2 Shrink and convert, in the browser
 
-### 2.2 Shrink and convert, in the browser
+Longest edge capped at 1568 pixels, converted to WebP at 0.8 quality, HEIC
+converted on the way. About 4MB down to about 200KB. All on their device.
 
-Your ask, and it is right. A phone photograph is 4 megabytes and most of that
-is resolution the model cannot use.
+### 5.3 PDFs that are pictures of pages
 
-At the moment of choosing the file, before anything is sent:
-
-- longest edge capped at 1568 pixels, which is the size above which the model
-  gains nothing
-- converted to WebP (a smaller image format that keeps the quality), quality
-  0.8
-- HEIC (the format iPhones use) converted on the way
-
-A typical photo goes from about 4 megabytes to about 200 kilobytes. All of it
-happens on their device. Nothing extra leaves it.
-
-### 2.3 PDFs that are pictures of pages
-
-A scanned PDF has no text in it to find, so pdf.js returns almost nothing and
-the source stores as empty.
-
-The fix: when a PDF yields under a threshold of text, render its pages to
-images and read those instead. Same path as 2.1 once the pages are pictures.
-
-Capped at 20 pages, because 100 pages of images is real money and a person
-should be told rather than billed.
+When a PDF yields almost no text, render its pages to images and read those.
+Capped at 20 pages, because 100 pages of images is real money.
 
 ---
 
-## 5. Phase 3: search, with permission at both ends
+## 6. Phase 3: search, with permission at both ends
 
-Only after phases 1 and 2. It is the biggest piece and it is the one that can
-put an unapproved fact in somebody's document.
-
-The sequence is already decided in `DIRECTION.md` and your brief matches it:
+Anthony: "before it does anything outside the environment, it should ask for
+permission... and even when it brings the data in, it should show the data and
+even write it with a different colour."
 
 1. It says what it wants to look at, and why.
-2. **It asks before it looks.** Two buttons. Look it up. Do not.
+2. **An approval appears on screen.** They click approve. Until that click the
+   tool does not exist in the request.
 3. It looks, and finds the specific thing.
-4. **It shows what it found, with the source, and asks again.** Add this. Do
-   not add this.
-5. Only what was added enters the brief.
+4. **It shows what it found, with its source, in a distinct colour**, so the
+   person can see at a glance that this came from outside.
+5. They add it or they do not. Only what was added enters the brief.
 
-Nothing skips step 2 and nothing skips step 4. A person opening their finished
-document and finding a number they never approved is the failure this whole
-product exists to prevent.
+The base prompt says flatly "you cannot go and look" today. That becomes
+conditional on the company having search on, and stays exactly as it is for
+those that do not.
 
-The base prompt today says flatly "you cannot go and look". That passage
-becomes conditional on the company having search turned on, and stays exactly
-as it is for those that do not.
+Where search is off, it still helps: it names the platform worth checking, the
+search terms, and what a good answer looks like. That is already built.
 
 ---
 
-## 6. Phase 4: memory
+## 7. Phase 4: memory
 
 Per person, from `DIRECTION.md`. What was asked, what was decided, which
-sources were used. It is a security boundary, not a convenience: one person's
-memory must never reach another, for the same reason one company's documents
-must never reach another.
-
-Not specified further here. It needs its own spec when the flow above is
-working.
+sources were used. A security boundary, not a convenience. Its own spec when
+the flow above is working.
 
 ---
 
-## 7. Canva, parked
+## 8. Canva
 
-What you want: your own account, free plan, connected once, and anybody using
-the platform designs with it and downloads immediately.
+Anthony's own account, connected at the back end, used by him for testing and
+demos. That is fine and it is what that connection is for.
 
-One honest blocker, and it needs checking before any work starts. Canva's API
-authorises a person, not an app. One shared account used by many people is not
-what that authorisation is for, and the free plan has no seats to share.
+The licensing question only applies to many customers designing through one
+account, which is not intended. It returns the day a customer wants Canva in
+their own deployment, and then they connect their own account.
 
-So this is a question for Canva's terms before it is a question for the code.
-It is not a small integration with a licensing footnote, the licensing decides
-whether it can be built at all.
-
-Your other note is worth keeping: "using Canva doesn't reduce the cost, it just
-makes the work better." So it is a quality feature, not a saving, and it can
-wait behind the flow.
+His note worth keeping: "using Canva doesn't reduce the cost, it just makes
+the work better." A quality feature, not a saving.
 
 ---
 
-## 8. What is not in this spec on purpose
+## 9. Left out on purpose
 
 - Retrieval. Under 200,000 tokens the whole knowledge base in the prompt beats
-  chopping it up, and it cannot miss the file that held the answer. When a
-  company arrives with thousands of documents that changes, and the plumbing
-  is half there already.
-- A settings screen. The staff side has no settings and the caps in 1.7 are
-  set at deployment.
-- Any model picker. One model, everywhere, still.
+  chopping it up, and it cannot miss the file that held the answer. That
+  changes when a company arrives with thousands of documents.
+- A settings screen. The staff side has no settings.
+- A model picker. One model, everywhere.
