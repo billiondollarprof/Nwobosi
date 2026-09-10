@@ -523,7 +523,7 @@ const STAGE_PROMPT: Record<string, string> = {
     "If the search turned up nothing usable, say exactly that. An empty search is a",
     "useful answer. Filling the gap from memory is the failure this whole product",
     "exists to prevent, and it would arrive wearing the clothes of a real source.",
-  ].join("\\n"),
+  ].join("\n"),
 
   /* THE PROMPT. Anthony, 2026-09-10, and this is the part he says the whole
      product turns on: "it's the prompt and the build that are together."
