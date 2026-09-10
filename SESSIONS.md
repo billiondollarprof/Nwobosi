@@ -4,6 +4,57 @@ Log of each work session. Newest at the top. Keep entries short.
 
 ---
 
+## Session 10: 2026-09-10
+
+**The assistant flow, end to end, so the videos can be recorded**
+
+Anthony's brief was blunt: "Do it now, especially the discovery and research.
+why are you staging them, I need all to make my videos once and for all." So
+nothing was staged. The whole flow went in.
+
+**Six stages, deployed as `assistant` v11**, sha `80723d2a31b1ec38`. orient,
+interview, analyse, research, brief, generate. The read back sits in the
+conversation after the analysis, where he said it belongs. The prompt and the
+build are the pair at the end, and nothing is built until the prompt exists.
+
+**The 400 that had been breaking everything for days.** The interview to
+analyse handoff sent a conversation ending on an assistant turn, and Sonnet 5
+rejects that outright: prefill was removed on 4.6 and later. It sits exactly
+between talking and building, which is why the flow felt broken rather than
+slow. Fixed at the boundary in `sendTurn` and again server side. No fake user
+turn was invented to paper over it, the trailing assistant turn is dropped.
+
+**The internet, gated in code.** The search tools are only attached when
+`stage === "research"`. Every other turn does not carry them at all, so there
+is nothing to talk the model into. Findings come back with sources, and
+nothing is used until he approves it. `pause_turn` is handled, so a long
+search is continued rather than cut off.
+
+**Caching, proven on real traffic.** The mark has to sit on the last stable
+block, because caching is a prefix match. 13.7054 cents on the write, then
+1.34188, then 0.97168.
+
+**No model name on any screen.** His catch, and his reason: the same product
+may be installed on a different provider tomorrow. The admin now sees four
+capability levels with info icons instead of vendor names. The browser bundle
+was grepped to confirm the vendor is gone from `dist/`.
+
+**The composer, squared off.** Rectangular with sharp edges. The plus and the
+mic sit at the vertical midpoint. The mic keeps its round edge and its glow,
+because a rotating radial gradient inside a square reads as a spinning
+diamond. Both variants were built and looked at before choosing.
+
+**The repo was brought back in line with the deployment.** v11 had drifted
+from git in three places, all made at deploy time. Per the rule, the
+deployment wins, so the deployed source is now the repo source. Verified byte
+for byte.
+
+Left for next time: merge `testing` into `main` (about 40 commits waiting,
+and that needs asking), the escalation notice, the `conversations.state`
+resume log, and the LinkedIn post.
+
+---
+
 ## Session 9: 2026-09-09 (evening)
 
 **The publishing guard, and one outage that was mine**

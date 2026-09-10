@@ -205,6 +205,54 @@ a real browser.
   `access_codes` has RLS on and zero policies, so only the service role
   reaches it. Verified against the live database.
 
+## The assistant's six stages, and what is actually live
+
+Added 2026-09-10. This is the flow Anthony asked for so he could record the
+demo videos. It is deployed as `assistant` **v11**, sha `80723d2a31b1ec38`.
+The repo copy was brought back in line with that deployment on the same day.
+
+The six stages, in the order a person walks through them:
+
+1. **orient** - it reads the company's material and works out what they are
+   asking for. It ends by offering an interview, marked `OFFER_INTERVIEW`.
+2. **interview** - three or four questions, no more, and only when they said
+   yes. It stops itself with `INTERVIEW_DONE`.
+3. **analyse** - it works out what it still does not have. Two routes out:
+   `NEED_INPUT` for anything only they can know, `NEED_LOOKUP` for anything
+   public and findable. The read back happens here, in the conversation,
+   before any prompt is written.
+4. **research** - the only stage that can reach the internet, and only after
+   they tap the button. Everything found comes back with its source, and
+   nothing is used until they approve it.
+5. **brief** - the prompt. This is written before anything is built, it
+   carries the approved outside findings with their sources, and it carries
+   the corrections they made on purpose.
+6. **generate** - the document, written from the brief.
+
+**The search tools are attached in code, not in a prompt.** `searchTools` is
+built only when `stage === "research"`. On every other turn the tools are not
+in the request at all, so no amount of persuading can reach them. The base
+prompt says so in the section titled "YOU CANNOT GO AND LOOK, UNLESS THEY LET
+YOU OUT".
+
+Three things that were broken and are now fixed:
+
+- **The 400 that stopped the whole flow for days.** The interview to analyse
+  handoff sent a conversation ending on an assistant turn, and the model
+  rejects that. Guarded twice now, once in `sendTurn` and once server side.
+  No fake user turn is invented; the trailing assistant turn is dropped.
+- **The cache mark sat on the wrong block.** Prompt caching is a prefix
+  match, so the mark has to sit on the last stable block. Proven on real
+  traffic: 13.7054 cents on the write, then 1.34188 cents, then 0.97168.
+- **Findings never reached the brief.** `handleGenerate` bypasses `runTurn`,
+  so it was passing an empty string. Both `sendTurn` calls now carry
+  `findingsRef.current`.
+
+**No model name reaches any screen, admin included.** The reason is
+portability, not house style: the same product may be installed on a
+different provider tomorrow. The admin sees four capability levels
+(conversational, standard, deeper, deepest), each with an info icon.
+
 ## Publishing a file to customers, and the guard on it
 
 Added 2026-09-09. The one action in the admin that can send a company's own
