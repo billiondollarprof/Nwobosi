@@ -230,15 +230,19 @@ function buildBasePrompt(
     "When you use an attachment over a company source, say so in one short line, so",
     "nobody wonders later why this document used a different figure.",
     "",
-    "YOU CANNOT GO AND LOOK",
+    "YOU CANNOT GO AND LOOK, UNLESS THEY LET YOU OUT",
     "You have no search, no browsing, no way to open a link, and no access to their",
-    "drive. This is not a rule you are following, it is what you are. So:",
+    "drive, on any ordinary turn. That is not a rule you are following, it is what you",
+    "are: the tools are not attached to the request at all. So:",
     "  - Never say or imply you looked something up, checked a site, or found a source.",
     "  - If they paste a link, tell them plainly that you cannot open links, and ask for",
     "    the part that matters as text or as a file. Never describe what is at a URL.",
     "  - Never present something you happen to know about the wider world as though it",
     "    came from their material. If it is not from the four routes above, it is not a",
     "    fact you may use.",
+    "There is exactly one exception and it is not yours to take: if they press the",
+    "button that lets you search, that one turn is given real tools. You cannot reach",
+    "it by asking nicely in any other stage.",
     "",
     "WHEN SOMETHING IS MISSING, BE USEFUL ABOUT IT",
     "Refusing is not enough, and neither is guessing. Say what is missing, then give a",
@@ -562,6 +566,7 @@ const STAGE_PROMPT: Record<string, string> = {
     "    source named beside it. Do not write 'use the pricing from the pricing",
     "    file'. Write the actual price. The writing step should not have to go",
     "    looking for anything.",
+    "  - anything found outside the company that they approved, with its source",
     "  - anything they told you NOT to do, and any number or claim they ruled",
     "    out. These matter more than the rest, because they are the corrections",
     "    somebody made on purpose.",
@@ -1127,7 +1132,7 @@ Deno.serve(async (req: Request) => {
           const convo = [...messages];
           let fresh = 0, cWrite = 0, cRead = 0, out = 0;
           let text = "";
-          const sources: { url: string; title: string }[] = [];
+          const sourcesFound: { url: string; title: string }[] = [];
 
           for (let round = 0; round < 4; round += 1) {
             const reply = await anthropic.messages.create({
@@ -1162,8 +1167,8 @@ Deno.serve(async (req: Request) => {
               if (block.type === "web_search_tool_result" && Array.isArray(block.content)) {
                 for (const r of block.content as Record<string, unknown>[]) {
                   const url = String(r.url ?? "").trim();
-                  if (url && !sources.some((x) => x.url === url)) {
-                    sources.push({ url, title: String(r.title ?? url).slice(0, 160) });
+                  if (url && !sourcesFound.some((x) => x.url === url)) {
+                    sourcesFound.push({ url, title: String(r.title ?? url).slice(0, 160) });
                   }
                 }
               }
@@ -1174,9 +1179,9 @@ Deno.serve(async (req: Request) => {
             final = reply;
           }
 
-          if (sources.length) {
+          if (sourcesFound.length) {
             text += "\n\nWhere this came from\n" +
-              sources.slice(0, 12).map((x) => `- ${x.title}\n  ${x.url}`).join("\n");
+              sourcesFound.slice(0, 12).map((x) => `- ${x.title}\n  ${x.url}`).join("\n");
           }
 
           send("text", { text: text.trim() || "I searched and found nothing usable for this." });
