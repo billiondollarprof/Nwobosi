@@ -398,9 +398,9 @@ const STAGE_PROMPT: Record<string, string> = {
   analyse: [
     "",
     "RIGHT NOW: CHECK, THEN EITHER ASK OR READ BACK",
-    "You are the stronger model. Read the conversation, then read the company sources",
-    "listed above and work out which ones this piece of work actually needs. They may",
-    "not know those sources exist, so choosing is your job.",
+    "Read the conversation, then read the company sources above and work out which ones",
+    "this piece of work actually needs. They may not know those sources exist, so",
+    "choosing is your job.",
     "",
     "If you have already done this earlier in the same conversation, do not start over.",
     "The sources you picked then still stand. Fold in whatever is new and move on.",
@@ -569,7 +569,10 @@ Deno.serve(async (req: Request) => {
     return json({ ok: false, reason: "Something went wrong. Try again." }, 400);
   }
 
-  const stage = String(body?.stage ?? "interview");
+  /* Defaults to the entry stage, not the interview. A request with no stage
+     is either an old client or a bug, and either way the right answer is to
+     read first rather than to start asking blind. */
+  const stage = String(body?.stage ?? "orient");
   const messages = Array.isArray(body?.messages) ? body.messages : null;
   if (!messages?.length) return json({ ok: false, reason: "Nothing to send." }, 400);
 
@@ -621,9 +624,9 @@ Deno.serve(async (req: Request) => {
 
   const tier = STAFF_TIER;
 
-  /* The catalogue: names and one line descriptions. This is what the
-     interview sees, and it is enough to talk about what exists without
-     paying to carry any of it. */
+  /* The catalogue: names and one line descriptions. It goes in the cached
+     base prompt as a table of contents, so the model can talk about what
+     exists by name. The words themselves follow further down. */
   const { data: sources } = await asUser
     .from("knowledge_sources")
     .select("id, name, description, status")
@@ -635,9 +638,10 @@ Deno.serve(async (req: Request) => {
      things up. */
   const readySources = (sources ?? []).filter((s) => s.status === "ready");
 
-  /* Base first and unchanging, then contents, then the stage
-     instruction. That order is what lets the base be cached: the cache is
-     a prefix match, so anything that varies has to come after it. */
+  /* Base first, then the contents, then the stage instruction. That order
+     is what makes caching possible at all: the cache is a prefix match, so
+     the two things that never change go first and the one that varies goes
+     last. The mark itself is placed further down, on the last stable block. */
   const base = buildBasePrompt(company, staff.name ?? "a staff member", readySources);
 
   /* HOW MANY QUESTIONS THIS INTERVIEW HAS ALREADY ASKED

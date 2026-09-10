@@ -460,6 +460,14 @@ was deleted on 2026-09-08 and the code redeployed on the clean slug.
 
 ---
 
+## Small things noticed and deliberately left
+
+- **The workspace header truncates the company name at 320px.** It shows
+  "A.." where it should show "Amara". Spotted 2026-09-10 while screenshotting
+  the assistant's offer card. Not caused by that work, and not fixed with it,
+  because a header change touches every screen and that was not what was
+  being tested. Anthony: "note that and maybe fix it later."
+
 ## Next, in the order I would do it
 
 1. **The live run.** Everything above is untested against real
