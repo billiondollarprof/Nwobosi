@@ -30,6 +30,7 @@ import {
   X,
   Sparkles,
   LogOut,
+  Info,
 } from "lucide-react";
 
 import { LogoMark } from "../shared/icons.jsx";
@@ -77,11 +78,12 @@ import {
   MAX_SOURCE_CHARS,
   WORKFLOW_TOOLS,
   WORKFLOW_PLAN_NOTE,
-  MODEL_TIERS,
+  CAPABILITY_LEVELS,
   SKILL_LABELS,
-  MODEL_ORDER,
-  INVITABLE_CEILINGS,
-  DEFAULT_MODEL_CEILING,
+  LEVEL_ORDER,
+  OFFERED_LEVELS,
+  DEFAULT_LEVEL,
+  levelOf,
 } from "../shared/config.js";
 
 /* --------------------------------------------------------------------------
@@ -1491,7 +1493,7 @@ function AccessSection({ me }) {
           name: r.name ?? "Unnamed",
           email: "",
           role: r.role ?? "Not set",
-          ceiling: r.model_ceiling ?? DEFAULT_MODEL_CEILING,
+          ceiling: levelOf(r.model_ceiling),
           limit: r.daily_limit ?? 5,
           used: 0,
         }))
@@ -1504,7 +1506,7 @@ function AccessSection({ me }) {
   const [inviteName, setInviteName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("");
-  const [inviteCeiling, setInviteCeiling] = useState(DEFAULT_MODEL_CEILING);
+  const [inviteCeiling, setInviteCeiling] = useState(DEFAULT_LEVEL);
   const [inviteLimit, setInviteLimit] = useState(5);
   const [inviting, setInviting] = useState(false);
   const [inviteError, setInviteError] = useState("");
@@ -1524,7 +1526,7 @@ function AccessSection({ me }) {
         name: req.name,
         email: req.email,
         role: "Not set",
-        ceiling: DEFAULT_MODEL_CEILING,
+        ceiling: DEFAULT_LEVEL,
         limit: 5,
         used: 0,
       },
@@ -1569,7 +1571,7 @@ function AccessSection({ me }) {
           name: r.name ?? "Unnamed",
           email: "",
           role: r.role ?? "Not set",
-          ceiling: r.model_ceiling ?? DEFAULT_MODEL_CEILING,
+          ceiling: levelOf(r.model_ceiling),
           limit: r.daily_limit ?? 5,
           used: 0,
         }))
@@ -1580,7 +1582,7 @@ function AccessSection({ me }) {
     setInviteName("");
     setInviteEmail("");
     setInviteRole("");
-    setInviteCeiling(DEFAULT_MODEL_CEILING);
+    setInviteCeiling(DEFAULT_LEVEL);
     setInviteLimit(5);
   }
 
@@ -1687,17 +1689,17 @@ function AccessSection({ me }) {
             </SelectInput>
           </Field>
           <Field
-            label="Model ceiling"
-            hint="How far up the assistant may go for this person. Opus 5, Fable 5 and other providers such as Gemini, GPT or DeepSeek are held back in this demo to keep credit costs down. Your own deployment runs whichever models you choose."
+            label="How far they can go"
+            hint="The most this person's work is allowed to reach. Deeper and Deepest are held back in this demo to keep costs down. Your own deployment decides what to offer."
           >
             <SelectInput value={inviteCeiling} onChange={(e) => setInviteCeiling(e.target.value)}>
-              {/* Only what this deployment actually allows. Opus and Fable
-                  were listed and choosing one would have been accepted by a
-                  screen and refused by the server, which is a promise the
-                  product cannot keep. */}
-              {INVITABLE_CEILINGS.map((key) => (
+              {/* Only what this deployment actually allows. The two above
+                  were listed once, and choosing one would have been accepted
+                  by a screen and refused by the server, which is a promise
+                  the product cannot keep. */}
+              {OFFERED_LEVELS.map((key) => (
                 <option key={key} value={key}>
-                  {MODEL_TIERS[key].label}
+                  {CAPABILITY_LEVELS[key].label}
                 </option>
               ))}
             </SelectInput>
@@ -1763,11 +1765,11 @@ function AccessSection({ me }) {
                   value={person.ceiling}
                   onChange={(e) => setCeiling(person.id, e.target.value)}
                   className="py-1.5 text-[12.5px]"
-                  aria-label={`Model ceiling for ${person.name}`}
+                  aria-label={`How far ${person.name} can go`}
                 >
-                  {INVITABLE_CEILINGS.map((key) => (
+                  {OFFERED_LEVELS.map((key) => (
                     <option key={key} value={key}>
-                      {MODEL_TIERS[key].label}
+                      {CAPABILITY_LEVELS[key].label}
                     </option>
                   ))}
                 </SelectInput>
@@ -1822,7 +1824,7 @@ function UsageSection({ me }) {
   }, [me?.company?.id]);
 
   const [defaultLimit, setDefaultLimit] = useState(5);
-  const [defaultCeiling, setDefaultCeiling] = useState(DEFAULT_MODEL_CEILING);
+  const [defaultCeiling, setDefaultCeiling] = useState(DEFAULT_LEVEL);
 
   return (
     <div className="space-y-5" style={{ animation: "sx-rise 0.3s ease" }}>
@@ -1841,11 +1843,11 @@ function UsageSection({ me }) {
               onChange={(e) => setDefaultLimit(e.target.value)}
             />
           </Field>
-          <Field label="Default model ceiling" hint="How far the assistant may go without a role based grant.">
+          <Field label="How far anyone can go by default" hint="Applies to a person with no setting of their own.">
             <SelectInput value={defaultCeiling} onChange={(e) => setDefaultCeiling(e.target.value)}>
-              {MODEL_ORDER.map((key) => (
+              {LEVEL_ORDER.map((key) => (
                 <option key={key} value={key}>
-                  {MODEL_TIERS[key].label}
+                  {CAPABILITY_LEVELS[key].label}
                 </option>
               ))}
             </SelectInput>
@@ -1853,36 +1855,35 @@ function UsageSection({ me }) {
         </div>
       </GlassPanel>
 
-      {/* Model ladder */}
+      {/* ------------------------------------------------------------------
+          THE LADDER
+
+          These are levels, not products. What actually runs behind each one
+          is decided on the server and is deliberately not on this screen,
+          because a deployment may be moved to another provider and a screen
+          naming one would have to be redesigned to do it.
+
+          The old version of this panel listed four vendor model names with
+          their price per million tokens beside each. Both are gone: the
+          names for the reason above, the prices because a rate card in
+          tokens is exactly the plumbing an admin should never have to read.
+
+          Tap to open rather than hover to reveal. Half the people who open
+          this are on a phone, and a phone has no hover.
+          ------------------------------------------------------------------ */}
       <GlassPanel className="p-6">
-        <SectionHeading hint="The assistant moves up only as far as a task needs. A simple chat never spends top tier cost.">
-          Model tiers
+        <SectionHeading hint="Work only ever reaches as far as it needs to. A quick question never costs what a full report costs.">
+          What the assistant can be allowed to do
         </SectionHeading>
 
         <div className="space-y-2">
-          {MODEL_ORDER.map((key) => {
-            const tier = MODEL_TIERS[key];
-            return (
-              <div
-                key={key}
-                className="flex flex-wrap items-center gap-3 rounded-[12px] px-3.5 py-3 border"
-                style={{ backgroundColor: "var(--surface-2)", borderColor: "var(--border)" }}
-              >
-                <div className="flex-1 min-w-[160px]">
-                  <p className="text-[14px] font-medium" style={{ color: "var(--text-1)" }}>
-                    {tier.label}
-                  </p>
-                  <p className="text-[12.5px]" style={{ color: "var(--text-3)" }}>
-                    {tier.use}
-                  </p>
-                </div>
-                <span className="text-[12.5px] shrink-0" style={{ color: "var(--text-3)" }}>
-                  ${tier.inputPer1M} in, ${tier.outputPer1M} out per million
-                </span>
-                {key === defaultCeiling && <StatusPill tone="accent">Default ceiling</StatusPill>}
-              </div>
-            );
-          })}
+          {LEVEL_ORDER.map((key) => (
+            <LevelRow
+              key={key}
+              level={CAPABILITY_LEVELS[key]}
+              isDefault={key === defaultCeiling}
+            />
+          ))}
         </div>
       </GlassPanel>
 
@@ -1989,6 +1990,76 @@ function StatTile({ label, value, tone = "neutral", hint }) {
         </p>
       )}
     </GlassPanel>
+  );
+}
+
+/* --------------------------------------------------------------------------
+   ONE RUNG OF THE LADDER
+
+   Name, one line saying what it is for, and an information button that
+   opens the fuller explanation underneath.
+
+   WHY TAP AND NOT HOVER
+   A hover tooltip does not exist on a phone. It either never appears or it
+   appears on the first tap and swallows the second, which reads as a broken
+   control. So this is a plain disclosure: press it, the text appears below,
+   press it again and it goes. It works the same with a mouse, a finger, or
+   a keyboard.
+
+   The button carries aria-expanded and points at the text it opens, so a
+   screen reader announces the state rather than reading a lone icon.
+   -------------------------------------------------------------------------- */
+
+function LevelRow({ level, isDefault }) {
+  const [open, setOpen] = useState(false);
+  const detailId = `level-detail-${level.label.toLowerCase()}`;
+
+  return (
+    <div
+      className="rounded-[12px] px-3.5 py-3 border"
+      style={{ backgroundColor: "var(--surface-2)", borderColor: "var(--border)" }}
+    >
+      {/* items-start, not items-center. Centring looked right until 320px,
+          where "Almost all office work" wraps to two lines and a vertically
+          centred pill lands in the middle of them. Aligned to the top, the
+          pill and the button sit beside the name where they belong. */}
+      <div className="flex items-start gap-3">
+        <div className="flex-1 min-w-0">
+          <p className="text-[14px] font-medium" style={{ color: "var(--text-1)" }}>
+            {level.label}
+          </p>
+          <p className="text-[12.5px]" style={{ color: "var(--text-3)" }}>
+            {level.use}
+          </p>
+        </div>
+
+        {isDefault && (
+          <span className="shrink-0">
+            <StatusPill tone="accent">Default</StatusPill>
+          </span>
+        )}
+
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          aria-controls={detailId}
+          aria-label={`What ${level.label} is for`}
+          className="shrink-0 p-1.5 rounded-[8px] transition-opacity hover:opacity-70"
+        >
+          <Info size={15} style={{ color: open ? "var(--text-1)" : "var(--text-3)" }} />
+        </button>
+      </div>
+
+      <p
+        id={detailId}
+        hidden={!open}
+        className="text-[12.5px] leading-relaxed mt-2.5 pt-2.5 border-t"
+        style={{ color: "var(--text-2)", borderColor: "var(--border)" }}
+      >
+        {level.detail}
+      </p>
+    </div>
   );
 }
 

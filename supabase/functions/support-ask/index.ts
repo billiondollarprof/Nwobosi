@@ -46,11 +46,33 @@ import Anthropic from "npm:@anthropic-ai/sdk@0.68.0";
    SECTION: Constants
    -------------------------------------------------------------------------- */
 
-const MODEL = "claude-haiku-4-5";
+/* SUPPORT RUNS AT THE CONVERSATIONAL LEVEL, AND NEVER LEAVES IT.
 
-/* Dollars per million tokens, for turning real usage into cents off the
-   company's budget. Same table as assistant/index.ts and src/shared/config.js.
-   Only the one rung, because support never leaves it. */
+   "Conversational" is the level. The model string below is what currently
+   sits behind that level, and it is the only place this function names a
+   real model. Anthony, 2026-09-10: "instead of calling it Haiku at the back
+   end, you call it Conversational."
+
+   The reason is that the brain is meant to be swappable. A deployment on
+   another provider changes this one line and this function's own name for
+   what it is doing does not move. See DIRECTION.md, "Which model runs which
+   part", and the matching table in assistant/index.ts.
+
+   Support stays at this level on purpose. It answers a customer's question
+   from material an admin approved. It does not reason its way anywhere, so
+   paying for a model that can is paying for nothing. */
+const LEVEL = "conversational";
+const MODEL_FOR_LEVEL: Record<string, string> = {
+  conversational: "claude-haiku-4-5",
+};
+const MODEL = MODEL_FOR_LEVEL[LEVEL];
+
+/* Dollars per million tokens for that level, for turning real usage into
+   cents off the company's budget. Matches the conversational row of the
+   table in assistant/index.ts. It is no longer mirrored in the browser
+   bundle: src/shared/config.js used to carry a copy so an admin screen
+   could print a rate card, and both the vendor names and the token prices
+   have been taken off that screen. */
 const PRICE = { input: 1, output: 5 };
 
 /* A conversation's worth of history, not a lifetime's. Long enough that
@@ -838,7 +860,7 @@ Deno.serve(async (req) => {
       }
     }
   } catch (err) {
-    console.error("haiku call failed", err);
+    console.error("support model call failed", err);
     return json({ ok: false, reason: "could not answer" }, 502);
   }
 

@@ -42,31 +42,56 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk@0.68.0";
 
 /* --------------------------------------------------------------------------
-   MODEL ROUTING
-   The interview is conversation, so it runs cheap. Anything that reads
-   company material or produces real work runs on a capable model. The
-   ladder exists so a ceiling can be compared as a number rather than a
-   pile of string comparisons.
+   CAPABILITY LEVELS, AND THE ONE PLACE A MODEL IS NAMED
+
+   THE LADDER IS LEVELS, NOT PRODUCTS, since 2026-09-10. Anthony:
+
+     "The name should not be shown because tomorrow we might be installing
+      the same thing for a company using OpenAI. So I want to keep the same
+      architecture, the same design, but just changing the model brain."
+
+   It used to be ["haiku-4-5", "sonnet-5", "opus-5", "fable-5"], and those
+   same strings were the database enum, the admin's dropdown, and a table
+   in src/shared/config.js that ships inside the browser bundle. So the
+   vendor was in the client, and moving a deployment to another provider
+   meant editing the product rather than editing a config.
+
+   Now there are four levels named for what they are FOR, and MODEL_ID
+   below is the only place in the entire codebase that names a real model.
+   Moving to another provider is that one table. Nothing else moves, and
+   no screen changes at all.
+
+   A level is not a promise that the model exists here. Which levels a
+   deployment actually offers is a separate decision, and asking for one
+   that is not enabled lands back on the default rather than failing.
    -------------------------------------------------------------------------- */
 
-const LADDER = ["haiku-4-5", "sonnet-5", "opus-5", "fable-5"] as const;
+const LADDER = ["conversational", "standard", "deeper", "deepest"] as const;
 type Tier = (typeof LADDER)[number];
 
+/* THE MAPPING. The only vendor names in the product, and they are on the
+   server, in a function, behind an API key. Swapping provider is this
+   table and the PRICE table below it. */
 const MODEL_ID: Record<Tier, string> = {
-  "haiku-4-5": "claude-haiku-4-5",
-  "sonnet-5": "claude-sonnet-5",
-  "opus-5": "claude-opus-5",
-  "fable-5": "claude-fable-5",
+  conversational: "claude-haiku-4-5",
+  standard: "claude-sonnet-5",
+  deeper: "claude-opus-5",
+  deepest: "claude-fable-5",
 };
 
-/* Dollars per million tokens. Used to turn real usage into a real number
-   of cents to take off the company's budget. Keep in step with
-   src/shared/config.js, these two are the same table twice. */
+/* Dollars per million tokens, per level. Used to turn real usage into a
+   real number of cents to take off the company's budget.
+
+   THIS TABLE IS NO LONGER MIRRORED IN THE BROWSER. It used to be duplicated
+   in src/shared/config.js so an admin screen could print a rate card in
+   dollars per million tokens. That is a vendor's pricing and a token count,
+   which is exactly the plumbing an admin should never have to read, so the
+   screen shows outputs remaining and this table stays here. */
 const PRICE: Record<Tier, { input: number; output: number }> = {
-  "haiku-4-5": { input: 1, output: 5 },
-  "sonnet-5": { input: 2, output: 10 },
-  "opus-5": { input: 5, output: 25 },
-  "fable-5": { input: 10, output: 50 },
+  conversational: { input: 1, output: 5 },
+  standard: { input: 2, output: 10 },
+  deeper: { input: 5, output: 25 },
+  deepest: { input: 10, output: 50 },
 };
 
 /* ONE MODEL FOR THE STAFF SIDE, AND IT IS SONNET
@@ -81,17 +106,19 @@ const PRICE: Record<Tier, { input: number; output: number }> = {
    The ladder, the price table and the metering all stay. It is only the
    automatic selection that stops. The ceiling column stays on the row too,
    unread for now, because the enterprise version of this is routing that
-   asks: the assistant says a step needs more than Sonnet, and the person
-   allows it or does not. See SUPPORT.md. */
-const STAFF_TIER: Tier = "sonnet-5";
+   asks: the prompt stage says a step needs more than standard, and the
+   person allows it or does not. See DIRECTION.md, "Which model runs which
+   part". */
+const STAFF_TIER: Tier = "standard";
 
-/* Which tiers take adaptive thinking. Haiku 4.5 predates it and rejects it,
-   everything above it expects it. */
+/* Which levels take adaptive thinking. The small fast model behind
+   conversational predates it and rejects it with a 400; everything above
+   expects it. A property of the model, so it belongs beside the mapping. */
 const ADAPTIVE_THINKING: Record<Tier, boolean> = {
-  "haiku-4-5": false,
-  "sonnet-5": true,
-  "opus-5": true,
-  "fable-5": true,
+  conversational: false,
+  standard: true,
+  deeper: true,
+  deepest: true,
 };
 
 /* NO ROUNDING UP. Anthony, 2026-09-10: "why do you suppose to be rounding up
@@ -769,8 +796,9 @@ Deno.serve(async (req: Request) => {
 
   const anthropic = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY")! });
 
-  /* Haiku 4.5 predates adaptive thinking and effort, and rejects both with a
-     400. Sonnet 5 and above want them. A lookup rather than a comparison,
+  /* The model behind conversational predates adaptive thinking and effort,
+     and rejects both with a 400. Everything above wants them. A lookup
+     rather than a comparison,
      because only one tier is in use today and a comparison against it reads
      as dead code to the type checker while still being the right shape for
      the day routing comes back.
