@@ -157,11 +157,18 @@ until the system gets what it needs to produce what it needs to produce."
 Anthony: "prompt is usually the last part of it. Everything should be gotten
 from the read back." If it happens often, the read back is what needs fixing.
 
-**The prompt is its own stage, with its own boundary.** That matters now, while
-one model still runs both sides of it, because the model handover for larger
-deployments lands exactly on that boundary. See "Which model runs which part"
-in `DIRECTION.md`. Get the boundary wrong here and routing later is a rewrite
-instead of a line.
+**The prompt is its own stage, with its own boundary**, and that stage always
+behaves as though it is reaching for a bigger model even when there is none.
+It judges the job, reaches if the job needs it, and lands on Sonnet either way:
+silently where nothing higher is enabled, and after asking where something is.
+See "Which model runs which part" in `DIRECTION.md` for the ladder and for the
+one open question about naming a model on screen.
+
+That matters now, while one model still runs both sides of the boundary. Get it
+wrong here and routing later is a rewrite instead of a line.
+
+**The prompt stage can also stop and go and research**, and then rewrite
+itself with what it found. Section 6.
 
 Anthony: "the most important thing is that it doesn't do anything until it
 writes that prompt."
@@ -298,28 +305,122 @@ Capped at 20 pages, because 100 pages of images is real money.
 
 ---
 
-## 6. Phase 3: search, with permission at both ends
+## 6. Research: what it is for, when it happens, and the tools it gets
 
-Anthony: "before it does anything outside the environment, it should ask for
-permission... and even when it brings the data in, it should show the data and
-even write it with a different colour."
+### 6.1 It can happen twice, and the second time is the point
 
-1. It says what it wants to look at, and why.
-2. **An approval appears on screen.** They click approve. Until that click the
-   tool does not exist in the request.
-3. It looks, and finds the specific thing.
-4. **It shows what it found, with its source, in a distinct colour**, so the
-   person can see at a glance that this came from outside.
-5. They add it or they do not. Only what was added enters the brief.
+Research is not one step near the beginning. It can fire at two moments.
 
-The base prompt says flatly "you cannot go and look" today. That becomes
-conditional on the company having search on, and stays exactly as it is for
-those that do not.
+**During the read back**, where most of it belongs. The read back is a back and
+forth, so a gap found there gets filled there.
 
-Where search is off, it still helps: it names the platform worth checking, the
-search terms, and what a good answer looks like. That is already built.
+**While the prompt is being written**, and this is the one that looks odd until
+you see why. Anthony: "the model, it's at that point trying to achieve the best
+results. So it can decide, oh, by writing the prompt, something is missing."
 
----
+Writing the prompt is the moment the shape of the finished work becomes
+concrete, and that is when a hole shows up that nobody saw while talking about
+it. So the prompt writer must be able to stop and go and get the thing.
+
+**And then it writes the prompt again.** Anthony: "after they have gotten the
+information again, they write a prompt again." The prompt is never patched. It
+is rewritten with what is now known.
+
+### 6.2 Nothing is ever built without a prompt
+
+Anthony: "Nothing must be built until that prompt is written. So the prompt
+must always go together with the building. You cannot build anything until you
+write a prompt, because the prompt acts as a guardrail."
+
+**Coded, not written.** The writing stage refuses to run without a frozen
+prompt for the current state of the conversation. Research invalidates the
+prompt, so the sequence is always: prompt, then build. Never build, then
+justify.
+
+### 6.3 The prompt is not only words
+
+Anthony: "the prompt can be making references on images, can be making
+references on design angles." So the prompt carries references, not just
+instructions. What it points at is part of what it is.
+
+### 6.4 The two gates
+
+Both are on screen, and both are coded rather than asked for politely.
+
+**Gate one, before it looks.** It says what it wants to find and why. Approve
+or do not. Until that approval the search tool is not in the request at all, so
+there is nothing for the model to talk itself into.
+
+**Gate two, before anything is used.** It shows everything it found, with the
+source, in plain direct language: here is what I found, here is how I mean to
+use it. Then the person answers in their own words. Anthony gave four:
+
+- go ahead
+- do not use that, use this instead
+- go ahead, but do it a different way
+- go ahead with what you have
+
+Only what survives gate two reaches the prompt.
+
+### 6.5 The tools, and they are real ones
+
+Anthony: "make sure that the environment has enough tools to research the
+internet, like enough tools... and that has to be part of the code."
+
+Checked against the current API on 2026-09-10 rather than written from memory.
+
+**`web_search_20260209`**, named `web_search`. Server side, so nothing runs in
+our function. Takes `max_uses`, `allowed_domains` or `blocked_domains`, and
+`user_location`.
+
+**`web_fetch_20260209`**, named `web_fetch`. Takes `max_uses`, domain lists,
+`citations`, and `max_content_tokens`. **It only opens a URL already in the
+conversation**, so search finds the page and fetch reads it properly. They are
+a pair, not alternatives.
+
+Both need Sonnet 5 or above, which is what we run. Both do their own filtering
+with code execution underneath, so `code_execution` must NOT also be declared
+or the model ends up with two execution environments and gets confused.
+
+**A failed search does not throw.** It comes back as a normal 200 with an error
+object where the results should be. On success `content` is a list; on failure
+it is an object. Branch on that before indexing, or a search that failed will
+read exactly like a search that found nothing, and the model will fill the gap
+itself. That is the whole failure this product exists to prevent.
+
+### 6.6 How it is told to search
+
+These are the standing instructions once the gate is open.
+
+**Not limited.** Anthony: "once the human gives it the go-ahead to research the
+internet for more info, it is never limited." It goes where it needs to go.
+
+**Newest wins.** Most recent data, most recent publication. Always.
+
+**By region, where region matters.** A Nigerian company's work searches
+Nigerian publications. A US company's searches US ones. Something genuinely
+universal goes to the most credible sources regardless of where they are. The
+`user_location` parameter is what carries this, so it is set from the company
+rather than guessed by the model.
+
+**Exact, not approximate.** It reports the figure that is actually on the page
+it opened. Not a remembered one, not a rounded one, not one from somewhere
+else.
+
+**Open sources over walls.** Where the real data sits behind a paywall it
+cannot read, it works from open material and says so, rather than reporting
+what it guesses is behind the wall.
+
+### 6.7 What this is actually automating
+
+Anthony: "It's more or less like the way I actually work that I'm trying to
+automate. So every other person that is using AI will be able to come out with
+a very good output without having to sweat it out."
+
+Worth keeping at the top of any decision about this flow. The gates, the
+rewritten prompt, the exact figures, none of it is ceremony. It is one person's
+working method, written down so somebody who does not have that method gets the
+same result.
 
 ## 7. Phase 4: memory
 

@@ -376,6 +376,37 @@ A question after the prompt is written is allowed, and it should be rare. If
 it happens often, the read back is not doing its job and that is the thing to
 fix, not the prompt stage.
 
+### It always reaches, and Sonnet is the floor it lands on
+
+Anthony, 2026-09-10. The prompt stage always **behaves** as though it is
+escalating, whether or not anything higher exists in that deployment.
+
+1. **It judges the job first.** Exactly the way a model is picked by hand:
+   this one Sonnet can do, that one needs more. If Sonnet is enough it goes
+   straight on and nothing is said.
+2. **If it wants more, it reaches.** Opus, or Fable for something bigger.
+3. **If that tier is not enabled here, it lands on Sonnet.** Anthony: "Opus is
+   not enabled in this environment, then it falls back to Sonnet." Sonnet is
+   the ground. It always gets there.
+4. **If the higher tier IS enabled, it asks.** An on screen notice saying it
+   wants to go higher and why. The person can accept, or carry on as they are.
+   Anthony: "they are also okay with working with Sonnet if the person would
+   probably love to continue with Sonnet."
+
+So the reach never fails and never silently costs more. Where nothing higher
+exists it is invisible. Where something higher exists it is a choice.
+
+**One thing this collides with, and it needs Anthony's word.** The product
+principle says no model ID in anything a user reads, and the assistant is told
+never to discuss which model it is. An escalation notice breaks both if it
+names Opus or Fable.
+
+The reading taken here, until Anthony says otherwise: **the person never sees a
+model name.** They see the effect in plain words. "This one is worth putting
+more behind. It will cost more and take a little longer." Two buttons. And the
+fallback, when nothing higher is enabled, is never shown at all, because it
+names a model and describes a limit the person cannot act on.
+
 ### What this means for the build, now, before any routing exists
 
 The prompt has to be **its own stage**, with its own boundary, even while one
