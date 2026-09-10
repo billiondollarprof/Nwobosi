@@ -94,7 +94,7 @@ const PRICE: Record<Tier, { input: number; output: number }> = {
   deepest: { input: 10, output: 50 },
 };
 
-/* ONE MODEL FOR THE STAFF SIDE, AND IT IS SONNET
+/* ONE LEVEL FOR THE STAFF SIDE, AND IT IS STANDARD
    There used to be a picker here: cheap for the interview, capable for the
    work, capped by the ceiling the admin set for each person.
 
@@ -514,8 +514,9 @@ const MAX_REQUEST_BYTES = 5 * 1024 * 1024;
    bought was an interview that could not see and asked people for things
    their own company had already written down.
 
-   THE STAFF SIDE IS NOT THE SAME MONEY AS SUPPORT. This runs on Sonnet,
-   twice the price of support's Haiku, so if a company ever did fill this:
+   THE STAFF SIDE IS NOT THE SAME MONEY AS SUPPORT. This runs at standard,
+   twice the price of support's conversational, so if a company ever did
+   fill this:
 
      first turn of a session      about 20 cents, the one hour cache write
      every turn after             about 1 cent, the cache read
@@ -798,15 +799,15 @@ Deno.serve(async (req: Request) => {
 
   /* The model behind conversational predates adaptive thinking and effort,
      and rejects both with a 400. Everything above wants them. A lookup
-     rather than a comparison,
-     because only one tier is in use today and a comparison against it reads
-     as dead code to the type checker while still being the right shape for
-     the day routing comes back.
+     rather than a comparison, because only one level is in use today and a
+     comparison against it reads as dead code to the type checker while
+     still being the right shape for the day routing comes back.
 
      The cast is the SDK's typings being behind the API. 0.68.0 knows
      thinking as enabled or disabled and not as adaptive, which is the shape
-     Sonnet 5 actually takes. Nothing else in the request needs loosening,
-     so this is cast on its own rather than over the whole call. */
+     the model behind standard actually takes. Nothing else in the request
+     needs loosening, so this is cast on its own rather than over the whole
+     call. */
   const thinkingExtras = ADAPTIVE_THINKING[tier]
     ? {
         thinking: { type: "adaptive" } as unknown as Anthropic.ThinkingConfigParam,
