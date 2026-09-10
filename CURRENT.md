@@ -253,6 +253,48 @@ portability, not house style: the same product may be installed on a
 different provider tomorrow. The admin sees four capability levels
 (conversational, standard, deeper, deepest), each with an info icon.
 
+## Coming back the next day
+
+Added 2026-09-10. Anthony asked for "a progressive log to always remember
+where things left off". This is it.
+
+**The visible half already worked and the invisible half did not.** Messages
+and stage were saved, so returning brought the conversation back on screen.
+Three things behind it were not saved, and those three decide what the
+finished document says:
+
+1. The outside findings the person had approved. They lived only in a
+   variable in the browser. Come back tomorrow, press Build, and the figure
+   they approved yesterday was silently missing.
+2. How many interview questions had been asked. Reset to zero, so a
+   returning person could be asked four more about a settled thing.
+3. The confirmed read back. It was written to `conversations.brief` and
+   never read back out.
+
+All three are now saved to `conversations.state` and restored. The shape
+lives in `src/shared/resumeLog.js` and nowhere else.
+
+**A refused finding is still never stored.** Only a count is kept, so a
+returning person can be told plainly that nothing was carried over. Anthony:
+"if there is no go-ahead, it should not add it."
+
+**One quiet line says what came back**, and only when something invisible
+did. "Picked back up. Still holding 2 things you approved from outside." It
+is `role: "system"`, which keeps it out of the saved row and out of the
+model's message list, where a third role would be a 400 on the next turn.
+
+**Two bugs found while wiring it, both in New chat.** It never cleared the
+approved findings, so a figure approved in the morning was still sitting in
+the browser in the afternoon and would have gone into a completely unrelated
+document. And it set the stage to "interview", left over from before
+"orient" existed, so every new chat skipped reading the knowledge base.
+
+**What is not done: the model does not read the note yet.** The column is
+written and read by the browser. Handing the note to the model at the top of
+each turn needs a change to the `assistant` function, which is a redeploy,
+and it has not been made. Until it is, the model still works everything out
+again from the messages on every turn. Correct, just slower and dearer.
+
 ## Publishing a file to customers, and the guard on it
 
 Added 2026-09-09. The one action in the admin that can send a company's own
@@ -518,7 +560,10 @@ was deleted on 2026-09-08 and the code redeployed on the clean slug.
 
 ## Next, in the order I would do it
 
-1. **The live run.** Everything above is untested against real
+1. **Hand the resume log to the model.** The column is written and read
+   by the browser already. This is the `assistant` redeploy that lets it
+   read its own working note instead of reading twenty messages again.
+2. **The live run.** Everything above is untested against real
    infrastructure.
 2. **Staff invites**, so a presentation can show more than one account.
    Needs an INSERT policy on `access_requests` or a direct invite path.

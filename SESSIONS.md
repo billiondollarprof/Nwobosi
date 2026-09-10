@@ -49,9 +49,24 @@ from git in three places, all made at deploy time. Per the rule, the
 deployment wins, so the deployed source is now the repo source. Verified byte
 for byte.
 
-Left for next time: merge `testing` into `main` (about 40 commits waiting,
-and that needs asking), the escalation notice, the `conversations.state`
-resume log, and the LinkedIn post.
+**The resume log, later the same day.** `conversations.state` had a column
+and nothing writing to it. Now `src/shared/resumeLog.js` owns its shape, and
+the approved findings, the spent question allowance and the frozen brief all
+survive a closed tab. They did not before, and all three were invisible,
+which is why it had gone unnoticed: the messages came back looking complete
+while the things that decide what the document says were quietly gone.
+
+Two bugs fell out of it, both in New chat. It never cleared the approved
+findings, so a figure approved in the morning was still in the browser in the
+afternoon. And it set the stage to "interview", a leftover from before
+"orient" existed, so every new chat skipped reading the knowledge base.
+
+The LinkedIn post went out.
+
+Left for next time: handing the resume log to the model, which is an
+`assistant` redeploy and was deliberately not done while Anthony was testing.
+Then merging `testing` into `main` (about 40 commits waiting, and that needs
+asking) and the escalation notice.
 
 ---
 
