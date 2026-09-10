@@ -57,9 +57,30 @@ const PRICE = { input: 1, output: 5 };
    somebody can say "the second one" and be understood. */
 const HISTORY_LIMIT = 20;
 
-/* Published material is usually a handful of documents. This is the ceiling
-   that stops one enormous upload from making every reply slow and expensive. */
-const MAX_SOURCE_CHARS = 40000;
+/* How much of the company's published material is sent to the model.
+
+   RAISED FROM 40,000 TO 200,000 ON 2026-09-10, and the old number was not
+   worked out by anybody. It was a round guess to stop one enormous upload
+   making every reply slow. It cost more than it saved: Amara's landing page
+   alone is 59,837 characters, so a third of it was thrown away on every
+   message, taking their whole partner programme with it, and nothing on any
+   screen said so.
+
+   WHAT IT COSTS TO SEND MORE, MEASURED RATHER THAN GUESSED. Every message
+   sends the whole thing. There is no memory between messages: the cache is a
+   discount, not a store. But the discount is large, so size mostly costs on
+   the first message of a burst.
+
+     40,000 chars   first message 1.35c   every one after 0.20c
+     200,000 chars  first message 6.35c   every one after 0.60c
+
+   The five minute cache means a real conversation pays the first number once
+   and the second number for the rest of it.
+
+   200,000 characters is about 50,000 tokens, which is well inside the range
+   where sending everything beats searching for the relevant part. See
+   DIRECTION.md. */
+const MAX_SOURCE_CHARS = 200000;
 
 /* What the customer is told when their question goes to a person. Fixed
    here rather than written by the model, because it is a promise about how
@@ -969,9 +990,26 @@ Deno.serve(async (req) => {
       const out = usage.output_tokens ?? 0;
 
       const inputTokens = fresh + cacheWrite * 1.25 + cacheRead * 0.1;
-      const cents = Math.ceil(
-        ((inputTokens / 1_000_000) * PRICE.input + (out / 1_000_000) * PRICE.output) * 100,
-      );
+
+      /* NO ROUNDING UP. Anthony, 2026-09-10: "why do you suppose to be
+         rounding up numbers? That's real money."
+
+         He was right and it was worse than untidy. Math.ceil turned a message
+         that truly cost 0.26 of a cent into a whole cent charged against the
+         company. Nearly four times over, on every message, and always in our
+         favour, never theirs.
+
+         The cause was the column, not the arithmetic: budget_cents_remaining
+         was an integer, so a fraction of a cent had nowhere to go. It is
+         numeric now, so the real number is sent.
+
+         Six decimal places, because that is what the column holds. Rounded
+         there rather than sent raw, so a float's fifteenth digit does not
+         travel across the wire pretending to be money. */
+      const cents =
+        Math.round(
+          ((inputTokens / 1_000_000) * PRICE.input + (out / 1_000_000) * PRICE.output) * 100 * 1e6,
+        ) / 1e6;
 
       console.log(
         `support usage fresh=${fresh} cacheWrite=${cacheWrite} cacheRead=${cacheRead} out=${out} cents=${cents}`,

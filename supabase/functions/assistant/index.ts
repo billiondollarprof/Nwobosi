@@ -94,10 +94,19 @@ const ADAPTIVE_THINKING: Record<Tier, boolean> = {
   "fable-5": true,
 };
 
+/* NO ROUNDING UP. Anthony, 2026-09-10: "why do you suppose to be rounding up
+   numbers? That's real money."
+
+   Math.ceil charged a whole cent for a message that truly cost a fraction of
+   one, every time, always in our favour. The cause was the column rather than
+   this line: budget_cents_remaining was an integer, so a fraction had nowhere
+   to go. It is numeric now.
+
+   Six decimal places, because that is what the column holds. */
 function centsFor(tier: Tier, inputTokens: number, outputTokens: number) {
   const { input, output } = PRICE[tier];
   const dollars = (inputTokens / 1_000_000) * input + (outputTokens / 1_000_000) * output;
-  return Math.ceil(dollars * 100);
+  return Math.round(dollars * 100 * 1e6) / 1e6;
 }
 
 /* --------------------------------------------------------------------------
@@ -394,7 +403,18 @@ const MAX_REQUEST_BYTES = 5 * 1024 * 1024;
    and a company profile at once. It rides on the analysis and the writing
    only, never the interview, so a conversation pays for it twice rather
    than on every question. */
-const MAX_SOURCE_CHARS = 60000;
+/* RAISED FROM 60,000 TO 200,000 ON 2026-09-10, in step with support-ask.
+
+   The staff side runs on Sonnet, which costs twice what support's Haiku does,
+   so the same ceiling is not the same money here:
+
+     first message of a session   about 12 to 13 cents
+     every message after, warm    about 1 cent
+
+   That is worth it for somebody doing real work with the company's own
+   material in front of them, but it is a different shape from support and
+   should be watched rather than assumed. */
+const MAX_SOURCE_CHARS = 200000;
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
