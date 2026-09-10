@@ -396,16 +396,75 @@ escalating, whether or not anything higher exists in that deployment.
 So the reach never fails and never silently costs more. Where nothing higher
 exists it is invisible. Where something higher exists it is a choice.
 
-**One thing this collides with, and it needs Anthony's word.** The product
-principle says no model ID in anything a user reads, and the assistant is told
-never to discuss which model it is. An escalation notice breaks both if it
-names Opus or Fable.
+### No model name reaches a screen, and the reason is not house style
 
-The reading taken here, until Anthony says otherwise: **the person never sees a
-model name.** They see the effect in plain words. "This one is worth putting
-more behind. It will cost more and take a little longer." Two buttons. And the
-fallback, when nothing higher is enabled, is never shown at all, because it
-names a model and describes a limit the person cannot act on.
+Settled 2026-09-10. Anthony:
+
+> "The name should not be shown because tomorrow we might be installing the
+> same thing for a company using OpenAI. So I want to keep the same
+> architecture, the same design, but just changing the model brain."
+
+That is a stronger reason than the plain words rule, and it changes what has to
+be built rather than only what gets written. **The brain is swappable. Nothing
+above it may assume which brain it is.**
+
+**The person doing the work sees a capability, never a name.** A higher setting
+is available for this job. They approve or they deny. On deny it drops to the
+default and says so, plainly, without sulking about it.
+
+**The admin is the only one who sees capability at all**, and they see it as
+levels rather than as products. Anthony: "the admin decides, okay, this person
+needs better outputs, they can have access to this." That is the
+`model_ceiling` column, which already exists and is currently unread.
+
+**Even the admin does not see a vendor's name.** Same reason. A screen that
+says Opus is a screen that has to be redesigned the day a customer runs on
+something else.
+
+### The copy
+
+Fixed frame, one line written by the model.
+
+    Want me to put more into this one?
+
+    [the model writes one line here saying why this job is heavier
+     than usual, in its own words]
+
+    It takes a little longer and uses up more outputs.
+
+    [ Yes, put more in ]
+    [ No, carry on ]
+
+On deny, one line in the conversation and nothing more:
+
+    Carrying on as normal.
+
+No numbers, no product name, no vendor, no apology. Denying is not a downgrade
+and must not read like one.
+
+### What this costs in code, and it is not nothing
+
+**The ladder is model IDs today, and that is the leak.** In the function
+`LADDER` is `["haiku-4-5", "sonnet-5", "opus-5", "fable-5"]`. Worse,
+`src/shared/config.js` carries the same names plus `claude-sonnet-5` and
+friends and display labels like "Opus 5", **and that file ships in the browser
+bundle**. So the vendor is currently baked into the client, not only the
+server.
+
+Swapping the brain, as it stands, means editing every one of those places and
+every screen that reads them. That is a rewrite, which is precisely what
+Anthony said he wants to avoid.
+
+**The fix, when this is built: the ladder becomes levels, not products.**
+Something like `standard`, `deeper`, `deepest`. Levels are what the code, the
+database column, and any screen ever speak. The map from a level to a real
+model ID lives in deployment config on the server and appears nowhere else. A
+new customer on a different provider is then a config file, not a change to the
+product.
+
+Nothing about this is urgent while one model runs everything. It stops being a
+config file and starts being a rewrite the moment a second tier is wired, so it
+goes in at the same time as the escalation, not after it.
 
 ### What this means for the build, now, before any routing exists
 

@@ -161,8 +161,9 @@ from the read back." If it happens often, the read back is what needs fixing.
 behaves as though it is reaching for a bigger model even when there is none.
 It judges the job, reaches if the job needs it, and lands on Sonnet either way:
 silently where nothing higher is enabled, and after asking where something is.
-See "Which model runs which part" in `DIRECTION.md` for the ladder and for the
-one open question about naming a model on screen.
+See "Which model runs which part" in `DIRECTION.md` for the ladder, the copy,
+and the rule that no model name reaches any screen, admin included, because the
+brain has to be swappable without the product changing.
 
 That matters now, while one model still runs both sides of the boundary. Get it
 wrong here and routing later is a rewrite instead of a line.
