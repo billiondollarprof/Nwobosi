@@ -387,7 +387,7 @@ export async function loadConversation(id) {
 /* Insert on the first save, update after that, so one conversation stays
    one row however many turns it runs to. Returns the id so the caller can
    hold on to it. */
-export async function saveConversation({ id, companyId, staffId, title, stage, messages }) {
+export async function saveConversation({ id, companyId, staffId, title, stage, messages, brief }) {
   const row = {
     company_id: companyId,
     staff_id: staffId,
@@ -396,6 +396,12 @@ export async function saveConversation({ id, companyId, staffId, title, stage, m
     messages,
     updated_at: new Date().toISOString(),
   };
+
+  /* Only written when there is one, so an ordinary turn does not wipe the
+     brief a build already wrote. Undefined means "leave it alone", which is
+     different from null, and that difference is the whole reason for the
+     check rather than always setting the column. */
+  if (brief !== undefined) row.brief = brief;
 
   if (id) {
     const { error } = await supabase.from("conversations").update(row).eq("id", id);

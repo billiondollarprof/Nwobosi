@@ -81,7 +81,7 @@ function endingOnTheirTurn(list) {
   return out.length ? out : list;
 }
 
-export function sendTurn({ stage = "orient", askedSoFar = 0, messages, onMeta, onText, onDone, onError }) {
+export function sendTurn({ stage = "orient", askedSoFar = 0, brief = "", messages, onMeta, onText, onDone, onError }) {
   const controller = new AbortController();
   messages = endingOnTheirTurn(messages);
 
@@ -107,7 +107,7 @@ export function sendTurn({ stage = "orient", askedSoFar = 0, messages, onMeta, o
           Authorization: `Bearer ${session.access_token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ stage, askedSoFar, messages }),
+        body: JSON.stringify({ stage, askedSoFar, brief, messages }),
         signal: controller.signal,
       });
     } catch (err) {
@@ -122,7 +122,7 @@ export function sendTurn({ stage = "orient", askedSoFar = 0, messages, onMeta, o
          answer anyway, and if it does not, its error says what is really
          wrong instead of blaming their wifi. */
       const { data, error } = await supabase.functions.invoke(FUNCTIONS.assistant, {
-        body: { stage, askedSoFar, messages },
+        body: { stage, askedSoFar, brief, messages },
       });
 
       if (error) {

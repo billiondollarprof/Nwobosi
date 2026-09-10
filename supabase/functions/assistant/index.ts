@@ -312,6 +312,7 @@ const MAX_OUTPUT: Record<string, number> = {
   orient: 600,
   interview: 700,
   analyse: 4000,
+  brief: 2000,
   generate: 8000,
 };
 
@@ -463,6 +464,55 @@ const STAGE_PROMPT: Record<string, string> = {
     "   No preamble, no replaying the conversation, no filler, and no questions. Do not",
     "   invent a gap to look thorough. Then end your message with READBACK_COMPLETE on",
     "   its own final line. Do not explain the marker and do not mention it.",
+  ].join("\n"),
+
+  /* THE PROMPT. Anthony, 2026-09-10, and this is the part he says the whole
+     product turns on: "it's the prompt and the build that are together."
+
+     WHERE IT SITS. The read back is conversation. It happens in the chat,
+     the person corrects it, and the conversation carries on until they are
+     happy. The moment they say go, this runs and the writing follows it
+     with nobody pressing anything else. Prompt and build are one action.
+
+     WHY A SEPARATE STAGE AT ALL, when one model runs both halves today.
+     Two reasons. It is the second guardrail: the writing stage is handed
+     this and may not go outside it, so nothing reaches the document that
+     was not agreed in the conversation. And it is the boundary a bigger
+     model is handed the work at, for a deployment that needs one. See
+     DIRECTION.md, "Which model runs which part".
+
+     THE PERSON NEVER READS THIS. The product principle keeps two things
+     visible, the read back and the sources, and hides everything else.
+     This is machinery. It is stored so it can be looked at later, and it
+     does not go on screen. */
+  brief: [
+    "",
+    "RIGHT NOW: WRITE THE BRIEF THAT THE DOCUMENT WILL BE BUILT FROM",
+    "They have confirmed your read back. Turn everything agreed in this",
+    "conversation into one complete instruction for producing the work.",
+    "",
+    "Nobody reads this except the step that writes the document, so write it for",
+    "that. No greeting, no commentary, no explaining what you are about to do.",
+    "",
+    "COVER EVERY ONE OF THESE, and nothing else:",
+    "  - what is being made, in one line",
+    "  - who reads it, and what they should think or do afterwards",
+    "  - the shape: length, sections, and the order they come in",
+    "  - the voice, and where that voice came from",
+    "  - every company fact the document must use, written out in full, with the",
+    "    source named beside it. Do not write 'use the pricing from the pricing",
+    "    file'. Write the actual price. The writing step should not have to go",
+    "    looking for anything.",
+    "  - anything they told you NOT to do, and any number or claim they ruled",
+    "    out. These matter more than the rest, because they are the corrections",
+    "    somebody made on purpose.",
+    "  - what is missing, if anything, and what the document does about it",
+    "",
+    "DO NOT ADD ANYTHING THAT WAS NOT AGREED. This is the fence the writing step",
+    "runs inside. A fact that appears here for the first time is a fact nobody",
+    "approved, and it will end up in their document with your name on it.",
+    "",
+    "Output the brief and nothing else.",
   ].join("\n"),
 
   generate: [
@@ -720,6 +770,12 @@ Deno.serve(async (req: Request) => {
      number off the wire goes into a comparison. */
   const askedSoFar = Math.min(Math.max(Number(body?.askedSoFar ?? 0) || 0, 0), 50);
 
+  /* The approved brief, written by the stage above and handed straight back
+     for the writing stage to work inside. It rides in the body rather than in
+     the conversation, because it is machinery: putting it in the messages
+     would show it on screen and would read as something somebody said. */
+  const brief = String(body?.brief ?? "").slice(0, 20000).trim();
+
   /* Anthony, 2026-09-10: "to make the questions not to be too long or boring
      ... between three to four times asking questions and getting. Can always
      attach, if you would want me to continue like this, I can."
@@ -752,7 +808,46 @@ Deno.serve(async (req: Request) => {
     ].join("\n");
   }
 
-  const stageInstruction = (STAGE_PROMPT[stage] ?? STAGE_PROMPT.orient) + pacing;
+  /* THE FENCE, AND IT IS THE POINT OF THE WHOLE STAGE.
+
+     Anthony: "You cannot build anything until you write a prompt, because
+     the prompt acts as a guardrail."
+
+     So the writing stage is not asked politely to stay inside the brief. It
+     is handed the brief as the last thing it reads, after everything else,
+     and told plainly that anything outside it was never approved. */
+  const approvedBrief =
+    stage === "generate" && brief
+      ? [
+          "",
+          "",
+          "THE APPROVED BRIEF",
+          "This was written from the conversation and confirmed before you were",
+          "asked to write anything. It is the whole of what was agreed.",
+          "",
+          "Work inside it. Every fact you need is already in here, written out, so",
+          "you do not need to go looking. Anything not in here was not approved by",
+          "anybody, and a fact that appears for the first time in the finished",
+          "document is exactly the failure this product exists to prevent.",
+          "",
+          "Craft is still yours. How it is structured, how it reads, how it lands.",
+          "The fence is on the facts, not on the writing.",
+          "",
+          brief,
+        ].join("\n")
+      : "";
+
+  /* A generate that arrives with no brief is an older client, which today
+     means the build on main. It still works, exactly as it did before this
+     stage existed. Once main carries the new app this becomes a refusal
+     rather than a log line, and then the rule is enforced rather than
+     merely followed. */
+  if (stage === "generate" && !brief) {
+    console.warn("generate ran with no approved brief, company", staff.company_id);
+  }
+
+  const stageInstruction =
+    (STAGE_PROMPT[stage] ?? STAGE_PROMPT.orient) + pacing + approvedBrief;
 
   /* ----------------------------------------------------------------------
      THE CONTENTS THEMSELVES

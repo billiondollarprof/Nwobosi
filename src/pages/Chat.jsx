@@ -806,7 +806,7 @@ export default function Chat() {
   /* Everything worth resuming, and nothing else. Attachment contents ride
      along in apiContent so a file handed over on turn one is still there
      after a reload, but ids and feedback are page state and are dropped. */
-  async function persist(list, stage) {
+  async function persist(list, stage, brief) {
     if (!me?.company?.id || !me?.user?.id) return;
 
     const keepable = list.filter((m) => m.role === "user" || m.role === "assistant");
@@ -818,6 +818,9 @@ export default function Chat() {
       staffId: me.user.id,
       title: docTitle(list),
       stage,
+      /* Left alone on an ordinary turn, so a normal message cannot wipe the
+         brief a build already wrote. */
+      brief,
       messages: keepable.map((m) => ({
         role: m.role,
         type: m.type,
@@ -900,31 +903,81 @@ export default function Chat() {
      hidden in the system prompt, because everything agreed in the
      conversation above is the brief. Restating it would risk contradicting
      it. */
+  /* ------------------------------------------------------------------------
+     THE PROMPT AND THE BUILD, WHICH ARE ONE ACTION
+
+     Anthony, 2026-09-10: "it's the prompt and the build that are together.
+     The read back belongs with the conversation after the analysis."
+
+     So the read back is not a stage somebody waits at. It happens in the
+     chat, they correct it, the conversation carries on until they are happy.
+     The moment they say go, two things run back to back with nobody pressing
+     anything else:
+
+       1. The brief is written from everything agreed.
+       2. The document is written, fenced by that brief.
+
+     WHY THE BRIEF IS NOT SHOWN. The product principle keeps the read back and
+     the sources visible and hides the rest. The read back is what proves it
+     understood, and they have already seen it. The brief is machinery. It is
+     saved on the conversation so it can be looked at later, and it never goes
+     on screen.
+
+     WHY IT IS NOT JUST ONE LONGER PROMPT. Because the brief is the fence. The
+     writing step is handed it and told that anything outside it was never
+     approved, which is what stops a number nobody agreed appearing in a
+     finished document. It is also the exact point a bigger model takes over
+     for a deployment that needs one. See DIRECTION.md.
+     ------------------------------------------------------------------------ */
+
   function handleGenerate() {
     if (generating) return;
     setGenerating(true);
     updateMessages((prev) => prev.filter((m) => m.type !== "build"));
+    addMessage({ role: "assistant", type: "generating" });
 
+    let brief = "";
+
+    abortTurnRef.current = sendTurn({
+      stage: "brief",
+      messages: toApiMessages(messages),
+
+      onMeta: ({ tier }) => setActiveTier(tier),
+      onText: (chunk) => { brief += chunk; },
+
+      onError: ({ reason, message }) => {
+        setGenerating(false);
+        abortTurnRef.current = null;
+        updateMessages((prev) => [
+          ...prev.filter((m) => m.type !== "generating"),
+          {
+            id: nextId(),
+            role: "assistant",
+            type: reason === "out_of_budget" ? "text" : "error",
+            content: message,
+          },
+        ]);
+      },
+
+      /* Straight on. Nothing is built without a brief, so the only thing
+         between the two is this line. */
+      onDone: () => buildFromBrief(brief.trim()),
+    });
+  }
+
+  function buildFromBrief(brief) {
     const resultId = nextId();
     let started = false;
     let finished = "";
 
-    const history = toApiMessages([
-      ...messages,
-      {
-        role: "user",
-        content:
-          "Write the finished piece now, in full, based on everything agreed above. " +
-          "Output only the document itself, formatted with markdown headings and lists. " +
-          "No preamble, no explanation of what you are about to do, no closing commentary.",
-      },
-    ]);
-
-    addMessage({ role: "assistant", type: "generating" });
+    /* Saved before a word is written, so the fence the document was built
+       inside is on the row whether or not the writing finishes. */
+    persist(messages, "generate", brief);
 
     abortTurnRef.current = sendTurn({
       stage: "generate",
-      messages: history,
+      brief,
+      messages: toApiMessages(messages),
 
       onMeta: ({ tier }) => setActiveTier(tier),
 
