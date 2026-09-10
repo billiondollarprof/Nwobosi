@@ -915,7 +915,17 @@ function KnowledgeSection({ me, loading: loadingMe }) {
       />
 
       {/* Summary */}
-      <div className="grid gap-3 sm:grid-cols-3">
+      {/* THREE ACROSS AT EVERY WIDTH, INCLUDING A PHONE
+
+          They used to stack, so on a phone three small numbers took most of
+          the first screen and pushed the thing people came here to do, which
+          is add knowledge, below the fold. Anthony: "they are eating space...
+          they are pushing the part where you start uploading the knowledge
+          downwards."
+
+          A count is a glance, not a paragraph. Three glances belong side by
+          side. See StatTile for how it survives a 320px phone. */}
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
         <StatTile label="Ready to use" value={ready} tone="ok" />
         <StatTile label="Being read" value={pending} tone="pending" />
         <StatTile
@@ -1925,6 +1935,33 @@ function UsageSection({ me }) {
    Small parts used by more than one section above.
    ========================================================================== */
 
+/* ONE OF THREE COUNTS, SITTING IN A THIRD OF A PHONE
+
+   Three of these share the width at every size, so at 320px each one gets
+   about 90px and roughly 66px of that is usable after the padding. Every
+   choice below is that number.
+
+     THE NUMBER COMES FIRST. In a narrow column the count is the thing worth
+     seeing, and a label above it makes the eye read two lines before it
+     reaches the point. On the old stacked layout the label first read fine,
+     because it had the whole width.
+
+     THE LABEL IS ALLOWED TWO LINES. "Outside sources" cannot fit on one at
+     this width and shortening it to "Outside" would leave a word that means
+     nothing. The grid makes every tile as tall as the tallest, so a wrapped
+     label costs nothing but a little height.
+
+     TRACKING GOES ON LARGER SCREENS ONLY. Letter spacing is what makes a
+     small uppercase label look considered, and it is also what pushes it
+     onto a third line on a phone.
+
+     THE HINT IS HIDDEN ON A PHONE. "The assistant reads nothing else" is a
+     sentence, and a sentence does not belong in a 66px column. It comes
+     back at sm, where there is room for it.
+
+   min-w-0 is load bearing. A grid item defaults to a minimum width of its
+   own content, so without it a long label pushes its column wider and drags
+   the other two out of alignment. */
 function StatTile({ label, value, tone = "neutral", hint }) {
   const colors = {
     ok: BRAND.green,
@@ -1933,18 +1970,21 @@ function StatTile({ label, value, tone = "neutral", hint }) {
   };
 
   return (
-    <GlassPanel className="p-5">
+    <GlassPanel className="p-3 sm:p-5 min-w-0">
       <p
-        className="text-[11px] font-semibold uppercase tracking-wide mb-2"
+        className="text-[22px] sm:text-[28px] font-bold leading-none"
+        style={{ fontFamily: FONTS.display, color: colors[tone] }}
+      >
+        {value}
+      </p>
+      <p
+        className="text-[10px] sm:text-[11px] font-semibold uppercase sm:tracking-wide mt-1.5 sm:mt-2 leading-tight"
         style={{ color: "var(--text-3)" }}
       >
         {label}
       </p>
-      <p className="text-[28px] font-bold leading-none" style={{ fontFamily: FONTS.display, color: colors[tone] }}>
-        {value}
-      </p>
       {hint && (
-        <p className="text-[12px] mt-2" style={{ color: "var(--text-3)" }}>
+        <p className="hidden sm:block text-[12px] mt-2" style={{ color: "var(--text-3)" }}>
           {hint}
         </p>
       )}

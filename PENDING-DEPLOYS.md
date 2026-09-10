@@ -15,5 +15,17 @@ repo". Nothing here goes out any other way.
 
 ## Nothing pending
 
-The money fix and both ceilings went out on 2026-09-10.
-`support-ask` is at version 11, `assistant` at version 7.
+The money fix and both ceilings went out on 2026-09-10 and are confirmed
+working against live traffic:
+
+```
+support usage fresh=1157 cacheWrite=22739 cacheRead=0 out=163 cents=3.039575
+```
+
+`cents=3.039575` rather than a whole number, and `cacheWrite=22739` against
+the old `11009`, which is the raised ceiling reading all 82,178 characters
+Amara has published instead of stopping at 40,000.
+
+Amara's budget went from 76.000000 to 72.960425. Exact.
+
+`support-ask` version 11. `assistant` version 7.
