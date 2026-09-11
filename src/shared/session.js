@@ -13,6 +13,7 @@
    ========================================================================== */
 
 import { supabase } from "./supabase.js";
+import { clearAdminClock } from "./adminClock.js";
 
 /* --------------------------------------------------------------------------
    SECTION: Load the signed in person and their company
@@ -90,6 +91,39 @@ export function splitIntoChunks(text) {
   return chunks.filter((c) => c.trim());
 }
 
+/* --------------------------------------------------------------------------
+   SECTION: Leaving
+
+   ONE PLACE, ON PURPOSE. Until 2026-09-09 the Log out button in the chat
+   only called navigate("/auth"). It moved the person to the sign in screen
+   and left their session completely intact, so pressing the browser back
+   button put them straight back inside the workspace. On a shared machine
+   that is somebody clicking Log out, walking away, and the next person
+   being one back press from their company's files.
+
+   The admin screen had no way out at all. An admin waited twenty four hours
+   for the clock in adminClock.js to expire them.
+
+   Both now call this. It lives here so a third screen cannot invent its own
+   version that forgets a step.
+
+   THE ADMIN CLOCK IS CLEARED FIRST. It is a timestamp in localStorage, and
+   leaving it behind means the next person to sign in on this browser
+   inherits a countdown that started during somebody else's session.
+   -------------------------------------------------------------------------- */
+
+export async function signOutCompletely() {
+  clearAdminClock();
+
+  const { error } = await supabase.auth.signOut();
+
+  /* Reported and not thrown. A failure here is almost always the network,
+     and the local token is already gone either way, so the person is out on
+     this device. Leaving them stuck on a screen they asked to leave would be
+     worse than a quiet log line. */
+  if (error) console.error("sign out did not reach the server", error);
+}
+
 export async function listSources(companyId) {
   const { data, error } = await supabase
     .from("knowledge_sources")
@@ -109,7 +143,20 @@ export async function listSources(companyId) {
    chunks fail the source is marked failed rather than left sitting at
    ready with nothing behind it, which would be the worst of both: a
    knowledge base that lists something it cannot actually quote. */
-export async function addTextSource({ companyId, userId, name, description, text, kind = "file", location = null }) {
+/* `customerVisible` defaults to false and every call site has to pass true
+   on purpose, so a missed argument can only ever close a file, never open
+   one. The admin screen only passes true after the publish gate came back
+   with a yes. */
+export async function addTextSource({
+  companyId,
+  userId,
+  name,
+  description,
+  text,
+  kind = "file",
+  location = null,
+  customerVisible = false,
+}) {
   const { data: source, error: sourceError } = await supabase
     .from("knowledge_sources")
     .insert({
@@ -120,6 +167,7 @@ export async function addTextSource({ companyId, userId, name, description, text
       location,
       status: "pending",
       added_by: userId,
+      customer_visible: customerVisible === true,
     })
     .select()
     .single();
@@ -173,6 +221,47 @@ export async function setSourceVisibility(id, visible) {
     .eq("id", id);
 
   if (error) console.error("could not change who can see that source", error);
+  return !error;
+}
+
+/* --------------------------------------------------------------------------
+   SECTION: Where the company's own material disagrees with itself
+
+   Written by support-ask while it answers a customer, never from here. This
+   only reads them and marks one dealt with, which is the only thing an admin
+   is allowed to change about a log.
+
+   Open ones only. A resolved contradiction is kept for the record, not for
+   the screen, and a panel that lists everything ever fixed is a panel people
+   stop reading.
+   -------------------------------------------------------------------------- */
+
+export async function listContradictions(companyId) {
+  const { data, error } = await supabase
+    .from("knowledge_contradictions")
+    .select("id, topic, source_a, said_a, source_b, said_b, answered_with, times_seen, last_seen_at")
+    .eq("company_id", companyId)
+    .is("resolved_at", null)
+    .order("last_seen_at", { ascending: false })
+    .limit(20);
+
+  if (error) {
+    console.error("could not read the disagreements", error);
+    return [];
+  }
+  return data ?? [];
+}
+
+/* Marks it dealt with. It comes back on its own if support hits the same
+   disagreement again, because the log function clears resolved_at when it
+   sees one a second time. Nothing here has to remember that. */
+export async function resolveContradiction(id) {
+  const { error } = await supabase
+    .from("knowledge_contradictions")
+    .update({ resolved_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (error) console.error("could not mark that as sorted", error);
   return !error;
 }
 
@@ -284,7 +373,7 @@ export async function listConversations(staffId) {
 export async function loadConversation(id) {
   const { data, error } = await supabase
     .from("conversations")
-    .select("id, title, stage, messages")
+    .select("id, title, stage, messages, brief, state")
     .eq("id", id)
     .maybeSingle();
 
@@ -298,7 +387,7 @@ export async function loadConversation(id) {
 /* Insert on the first save, update after that, so one conversation stays
    one row however many turns it runs to. Returns the id so the caller can
    hold on to it. */
-export async function saveConversation({ id, companyId, staffId, title, stage, messages }) {
+export async function saveConversation({ id, companyId, staffId, title, stage, messages, brief, state }) {
   const row = {
     company_id: companyId,
     staff_id: staffId,
@@ -307,6 +396,18 @@ export async function saveConversation({ id, companyId, staffId, title, stage, m
     messages,
     updated_at: new Date().toISOString(),
   };
+
+  /* Only written when there is one, so an ordinary turn does not wipe the
+     brief a build already wrote. Undefined means "leave it alone", which is
+     different from null, and that difference is the whole reason for the
+     check rather than always setting the column. */
+  if (brief !== undefined) row.brief = brief;
+
+  /* The resume log, same rule as the brief. Undefined leaves the column
+     alone; an object replaces it whole. The column is `not null default
+     '{}'`, so it is never null and a caller does not have to think about
+     that. See src/shared/resumeLog.js for what goes in it and why. */
+  if (state !== undefined) row.state = state;
 
   if (id) {
     const { error } = await supabase.from("conversations").update(row).eq("id", id);

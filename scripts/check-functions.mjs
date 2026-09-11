@@ -1,0 +1,96 @@
+/* ==========================================================================
+   CHECK THE EDGE FUNCTIONS BEFORE ANYTHING GOES NEAR A DEPLOY
+
+   WHY THIS EXISTS
+   On 2026-09-09 a change to support-ask went live carrying a variable that
+   was used and never declared. It took support down for three messages.
+   Every reply was composed, saved to the database, and then the function
+   threw on the way out, so the customer got silence while the record showed
+   a perfect answer.
+
+   TWO THINGS FAILED, AND ONLY ONE OF THEM WAS THE CODE.
+
+   1. An edit script asserted on three anchors, the third missed, Python
+      raised, and the file was never written. The two edits that HAD matched
+      were lost. A later script then added the code that USED the variable
+      without the code that declared it.
+
+   2. The type checker was run, and it knew. But it was run as
+      `... | grep -E "TS1[0-9]{3}"`, which only shows syntax errors. A
+      missing name is TS2304. The check was told not to report the one thing
+      that was wrong.
+
+   So this script exists to make the second one impossible to repeat. It
+   does not filter down to a class of error somebody guessed at in advance.
+   It reports everything except the two things that are genuinely fine in
+   Deno and genuinely broken in tsc: the Deno global, and jsr: / npm: /
+   https: module specifiers.
+
+   RUN IT
+     node scripts/check-functions.mjs
+
+   Exits non zero if anything is wrong. Run it before every deploy.
+   ========================================================================== */
+
+import { execFileSync } from "node:child_process";
+import { readdirSync, existsSync } from "node:fs";
+import { join } from "node:path";
+
+const ROOT = "supabase/functions";
+
+/* The only excuses. Everything else is a real problem.
+     TS2304 Cannot find name 'Deno'   the Deno global, absent from tsc's libs
+     TS2307 / TS2882  jsr:, npm: and https: imports, which tsc cannot resolve
+     TS7006 implicit any on a callback parameter, which Deno does not enforce
+   Note that TS2304 is only excused for Deno itself. A missing name of any
+   other kind is exactly the bug this file was written for and must fail. */
+function isJustDenoNoise(line) {
+  if (/error TS2304: Cannot find name 'Deno'/.test(line)) return true;
+  if (/error TS(2307|2882).*(jsr:|npm:|https:)/.test(line)) return true;
+  if (/error TS7006/.test(line)) return true;
+  return false;
+}
+
+const functions = existsSync(ROOT)
+  ? readdirSync(ROOT, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => join(ROOT, entry.name, "index.ts"))
+      .filter((path) => existsSync(path))
+  : [];
+
+if (!functions.length) {
+  console.error(`No functions found under ${ROOT}`);
+  process.exit(1);
+}
+
+let bad = 0;
+
+for (const file of functions) {
+  let output = "";
+  try {
+    execFileSync(
+      "npx",
+      ["tsc", "--noEmit", "--target", "es2022", "--lib", "es2022,dom",
+       "--module", "esnext", "--moduleResolution", "bundler", "--skipLibCheck", file],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+    );
+  } catch (err) {
+    output = `${err.stdout ?? ""}${err.stderr ?? ""}`;
+  }
+
+  const real = output
+    .split("\n")
+    .filter((line) => line.includes("error TS"))
+    .filter((line) => !isJustDenoNoise(line));
+
+  if (real.length) {
+    bad += real.length;
+    console.log(`FAIL  ${file}`);
+    for (const line of real) console.log(`      ${line.trim()}`);
+  } else {
+    console.log(`ok    ${file}`);
+  }
+}
+
+console.log(bad ? `\n${bad} real problem${bad === 1 ? "" : "s"}. Do not deploy.` : "\nAll clean.");
+process.exit(bad ? 1 : 0);

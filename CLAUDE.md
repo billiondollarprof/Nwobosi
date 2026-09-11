@@ -24,6 +24,32 @@ This file tells Claude how to work on this project. The product is StellaXafe.
 - **Say what is already done before saying what is left.** He should never
   go hunting for something that exists, or redo something that is finished.
 
+### Write so it can be read once
+
+Anthony, 2026-09-10: "the English language you are using sometimes I don't
+used to follow... sometimes your words are not connecting properly."
+
+That is a failure of the writing, not of the reading. Fix it here.
+
+- **Short sentences.** One idea each. If a sentence has two commas in it,
+  it is probably two sentences.
+- **British English.** Colour, realise, behaviour, whilst never.
+- **Plain words over clever ones.** "Stops" not "obviates". "Read again"
+  not "re-derive". If a shorter word does the job, the longer one is showing
+  off.
+- **No sentence that needs reading twice.** Read it back. If the meaning
+  arrives on the second pass and not the first, rewrite it.
+- **Say the thing, then explain it.** Not the other way round. The answer
+  goes first, the reasoning goes after.
+- **Careful with subordinate clauses.** A sentence that starts with "while"
+  or "although" or "given that" makes somebody hold the first half in their
+  head. Split it.
+- **Numbers as numbers.** "0.3 cents", not "a third of a cent".
+
+The technical terms stay, with their plain meaning in brackets the first
+time. That rule has not changed. The problem is not the terms, it is the
+sentences they sit in.
+
 ## Taking direction
 
 Anthony is in charge. That is not a formality, it is the working rule.
@@ -67,6 +93,26 @@ Anthony is in charge. That is not a formality, it is the working rule.
   and passed every check that was being run. The script measures real
   element edges at four phone widths across every public route. Read the
   header in that file before trusting or changing it.
+
+### Nothing is finished until it has been walked through
+
+This is not the optional half of the job. A change that has not been used
+is a change that has not been tested, and every time that step got skipped
+something shipped broken: the clipped Insights page, the log out that did
+not log out, the six digit box against an eight digit code.
+
+So, every time, no exceptions:
+
+1. **Use the thing you just built, as the person who will use it.** Click
+   the button. Toggle the toggle. Cancel the dialog and confirm it did
+   nothing. Type the wrong thing and see what happens.
+2. **Look at it, do not read the markup.** Screenshot at a phone width and
+   a desktop width, in both themes.
+3. **Run `scripts/overflow-audit.cjs`** for anything that changes layout.
+4. **Judge the UI as somebody who was never told how it works.** If a
+   control needs explaining, the control is wrong, not the person. Anthony
+   should never have to teach an admin what a switch does.
+5. Only then say it is done, and say what you actually checked.
 
 ## Model choice
 
@@ -230,6 +276,61 @@ So, for any function that is already deployed and working:
 
 A brand new function has nothing to break, so it can come straight from the
 repo. Every other one follows the five steps.
+
+### You can read what is actually deployed. Do that instead of guessing.
+
+`mcp__Supabase__get_edge_function` returns the live source of any function.
+It was sitting there unused for two days while a paste ritual grew up around
+not knowing what was deployed.
+
+So the honest version of the rule is now:
+
+1. **Pull the deployed source first.** Compare it against the repo copy.
+2. **If they match, the repo is safe to edit and deploy.** No paste needed.
+3. **If they differ, the deployment wins.** Something was changed in the
+   console and never came back to git. Work from the deployed copy, and say
+   so plainly rather than quietly overwriting somebody's fix.
+
+The paste rule exists because the repo and the deployment drift. It was never
+about the pasting. It was about not knowing. Now it can be known, so know it.
+
+### An edit that was not written to disk is not an edit
+
+On 2026-09-09 support went down for three messages. Every reply was written,
+saved to the database, and then the function threw on the way out, so the
+customer sat there getting nothing while the record showed a perfect answer.
+
+The cause was not the code. It was two checks that both looked like they had
+passed.
+
+**One.** An edit script made three changes and asserted on each anchor. The
+third anchor missed, the script raised, and the file was never written. The
+two changes that HAD matched were lost with it. A later script then added the
+code that USED a variable without the code that DECLARED it.
+
+**Two.** The type checker was run, and it knew. It was run as
+`npx tsc ... | grep -E "TS1[0-9]{3}"`, which shows only syntax errors. A
+missing name is TS2304. The check had been told not to report the one thing
+that was wrong.
+
+So, before any edge function is handed over or deployed:
+
+1. **Look at the file, not at the script's output.** `grep` for the thing you
+   just added. A script that printed "ok" and a file that contains the change
+   are two different facts.
+2. **Run `node scripts/check-functions.mjs`.** It type checks every function
+   and excuses only the Deno global and jsr/npm/https imports. Never narrow a
+   check to a class of error you guessed at in advance, which is exactly how
+   this one got through.
+3. **Diff against the version before your change** and count the deletions.
+   Adding lines to a working function should delete nothing.
+
+### Bookkeeping never fails a reply
+
+The same outage taught this. The thing that threw was a log write, running
+after the customer's answer was already composed. Anything that happens after
+the real work is done gets its own `try`, because a row nobody reads is never
+worth a person getting silence.
 
 ### Slug and display name stay identical
 

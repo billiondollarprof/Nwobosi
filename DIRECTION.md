@@ -238,6 +238,245 @@ that no model is involved.
 
 ---
 
+## When two things the company gave it disagree
+
+Added 2026-09-09, out of a real wrong answer on Amara's WhatsApp. Anthony's
+rule, and the whole value of it is that it is short.
+
+**Newest wins. Do not overcomplicate it.**
+
+Not "weigh the sources". Not "ask the model to reason about which is more
+authoritative". Newest. The person who uploaded the newer file did it on
+purpose and more recently, and any cleverness beyond that is a guess dressed
+up as a policy.
+
+It holds in both directions, whether the two files are near identical or
+whether they merely disagree about a number:
+
+> "When the contents are slightly different and numbers are slightly
+> different, but they are saying the same thing, newest wins. There's no need
+> trying to overcomplicate this thing."
+
+**One exception, and it is a different axis, not a special case.** A file a
+staff member attaches inside a conversation beats the admin's knowledge base
+for that conversation. Anthony:
+
+> "Between what assistant uploaded and what admin uploaded, the assistant's
+> file should override, because that's what the assistant gave it."
+
+That is right, and it is not really an exception to newest wins, it is newest
+wins at a finer grain. An attachment is the most recent and most specific
+thing anybody has said, handed over for this task, by somebody who is looking
+at it. The knowledge base is standing instruction. The attachment is the
+instruction for right now.
+
+It gets logged the same way an admin contradiction does, so nobody has to
+wonder later why one draft used a different number from every other one.
+
+**And the load stays where it belongs.** "Much of the work still lies on the
+business to actually upload what is correct." No amount of resolution logic
+makes wrong material right. All we owe them is that the newest thing they
+told us is the thing that gets used, and that they can see when their own
+material fought itself.
+
+## How everyone else builds this, and why ours is not behind
+
+Checked 2026-09-09, because Anthony asked whether uploading files and links
+is what people actually do or whether there is a better way.
+
+There are two methods in the industry and the split is about size.
+
+**Retrieval, usually called RAG.** Chop documents into pieces, turn each into
+numbers, store them in a vector database, and at question time fetch only the
+handful that look relevant. This is the default for large corpora. Fifty
+thousand documents and a hundred thousand questions a day cannot go in a
+prompt.
+
+**Long context with caching.** Put the whole knowledge base in the prompt
+every time and let the cache pay for it. The current data says this wins on
+quality when the corpus is under roughly 200,000 tokens, reasonably stable,
+and the question needs the whole picture rather than one fact.
+
+**Support does the second one, and that is the correct call at this size.**
+Amara's entire published knowledge base is about 20,000 tokens, a tenth of
+where the method stops paying.
+
+It also happens to serve the thing this product is actually for. Retrieval
+can miss the file that held the answer, and a model handed nothing fills the
+gap itself. Sending everything cannot miss. So the method that is cheaper to
+build here is also the one that fails less often in the way we care about.
+
+**Where it stops.** A company with thousands of documents needs retrieval,
+and the plumbing is half there: `knowledge_chunks` already carries an
+`embedding` column and `match_knowledge` exists for the staff side.
+
+**The real ceiling today is ours, not the model's.** `MAX_SOURCE_CHARS` in
+support-ask is 40,000 characters. One 60,000 character landing page already
+loses a third of itself to it, silently. That number is the binding
+constraint long before 200,000 tokens is.
+
+## Which model runs which part
+
+Decided 2026-09-10. Not built, and deliberately so.
+
+**Today one model does everything, and that is correct.** Sonnet runs the
+offer, the interview, the read back, the prompt and the writing. Anthony:
+
+> "Sonnet is capable of sorting data, writing, doing all interview, and
+> everything."
+
+There used to be routing here: a cheap model for the conversation, a capable
+one for the work. It was removed because a model chosen for you is a way for
+the product to be quietly worse on a turn you cannot see the reason for. That
+still holds. Nothing about the section below reopens it.
+
+### The one place a bigger model gets handed the work
+
+For a deployment whose work genuinely needs more than Sonnet, there is exactly
+one handover point, and it is not where you would first guess.
+
+1. The read back happens, on Sonnet.
+2. The person says go ahead.
+3. **The switch happens here.** Sonnet to Opus, or higher.
+4. The bigger model writes the prompt.
+5. **Generation starts on its own the moment the prompt is finished.** Nobody
+   presses anything a second time.
+
+### Why the bigger model writes the prompt rather than only the document
+
+This is the part that looks like a detail and is not. Two reasons, and the
+second is the real one.
+
+**It is more creative**, and the prompt is where creative decisions about the
+shape of the work actually get made.
+
+**Writing the prompt is when something genuinely missing shows up.** Anthony:
+
+> "The fact that the read back has happened and yes means that if it wants to
+> write the prompt, it can still ask another question if it discovered that
+> something is missing. Something that genuinely needed."
+
+So the model that writes the prompt has to be able to ask. Handing a bigger
+model a finished prompt and telling it to type would waste the one thing it is
+better at.
+
+### The prompt is the last part, not the place the work gets done
+
+> "Prompt is usually the last part of it. Everything should be gotten from the
+> read back."
+
+**The read back is where the back and forth lives.** It is not one message
+somebody approves. It is a conversation: the model says what it understood,
+the person adds something, removes something, corrects a number, research
+happens if research is allowed, and it goes round again until the thing is
+right. Anthony: "just more like an interview kind of back and forth until the
+system gets what it needs to produce what it needs to produce."
+
+A question after the prompt is written is allowed, and it should be rare. If
+it happens often, the read back is not doing its job and that is the thing to
+fix, not the prompt stage.
+
+### It always reaches, and Sonnet is the floor it lands on
+
+Anthony, 2026-09-10. The prompt stage always **behaves** as though it is
+escalating, whether or not anything higher exists in that deployment.
+
+1. **It judges the job first.** Exactly the way a model is picked by hand:
+   this one Sonnet can do, that one needs more. If Sonnet is enough it goes
+   straight on and nothing is said.
+2. **If it wants more, it reaches.** Opus, or Fable for something bigger.
+3. **If that tier is not enabled here, it lands on Sonnet.** Anthony: "Opus is
+   not enabled in this environment, then it falls back to Sonnet." Sonnet is
+   the ground. It always gets there.
+4. **If the higher tier IS enabled, it asks.** An on screen notice saying it
+   wants to go higher and why. The person can accept, or carry on as they are.
+   Anthony: "they are also okay with working with Sonnet if the person would
+   probably love to continue with Sonnet."
+
+So the reach never fails and never silently costs more. Where nothing higher
+exists it is invisible. Where something higher exists it is a choice.
+
+### No model name reaches a screen, and the reason is not house style
+
+Settled 2026-09-10. Anthony:
+
+> "The name should not be shown because tomorrow we might be installing the
+> same thing for a company using OpenAI. So I want to keep the same
+> architecture, the same design, but just changing the model brain."
+
+That is a stronger reason than the plain words rule, and it changes what has to
+be built rather than only what gets written. **The brain is swappable. Nothing
+above it may assume which brain it is.**
+
+**The person doing the work sees a capability, never a name.** A higher setting
+is available for this job. They approve or they deny. On deny it drops to the
+default and says so, plainly, without sulking about it.
+
+**The admin is the only one who sees capability at all**, and they see it as
+levels rather than as products. Anthony: "the admin decides, okay, this person
+needs better outputs, they can have access to this." That is the
+`model_ceiling` column, which already exists and is currently unread.
+
+**Even the admin does not see a vendor's name.** Same reason. A screen that
+says Opus is a screen that has to be redesigned the day a customer runs on
+something else.
+
+### The copy
+
+Fixed frame, one line written by the model.
+
+    Want me to put more into this one?
+
+    [the model writes one line here saying why this job is heavier
+     than usual, in its own words]
+
+    It takes a little longer and uses up more outputs.
+
+    [ Yes, put more in ]
+    [ No, carry on ]
+
+On deny, one line in the conversation and nothing more:
+
+    Carrying on as normal.
+
+No numbers, no product name, no vendor, no apology. Denying is not a downgrade
+and must not read like one.
+
+### What this costs in code, and it is not nothing
+
+**The ladder is model IDs today, and that is the leak.** In the function
+`LADDER` is `["haiku-4-5", "sonnet-5", "opus-5", "fable-5"]`. Worse,
+`src/shared/config.js` carries the same names plus `claude-sonnet-5` and
+friends and display labels like "Opus 5", **and that file ships in the browser
+bundle**. So the vendor is currently baked into the client, not only the
+server.
+
+Swapping the brain, as it stands, means editing every one of those places and
+every screen that reads them. That is a rewrite, which is precisely what
+Anthony said he wants to avoid.
+
+**The fix, when this is built: the ladder becomes levels, not products.**
+Something like `standard`, `deeper`, `deepest`. Levels are what the code, the
+database column, and any screen ever speak. The map from a level to a real
+model ID lives in deployment config on the server and appears nowhere else. A
+new customer on a different provider is then a config file, not a change to the
+product.
+
+Nothing about this is urgent while one model runs everything. It stops being a
+config file and starts being a rewrite the moment a second tier is wired, so it
+goes in at the same time as the escalation, not after it.
+
+### What this means for the build, now, before any routing exists
+
+The prompt has to be **its own stage**, with its own boundary, even while one
+model runs both sides of that boundary. Get that wrong and adding routing
+later is a rewrite instead of a line.
+
+The machinery is already there and unused: the `LADDER`, the `PRICE` table,
+`MODEL_ID`, and the `model_ceiling` column on both `staff` and `companies`.
+Only the automatic selection was taken out. So when a deployment needs this,
+it is a small change at one boundary, not a rebuild.
+
 ## Browsing, when it comes
 
 The assistant cannot browse today, and that is stated plainly in

@@ -336,6 +336,42 @@ credit has run out.
 
 ---
 
+## Support in a browser, not only WhatsApp
+
+Anthony, 2026-09-09. Not built. Recorded because it is the same product with
+a different door, and because it removes the one dependency that makes
+support hard to sell: a business having WhatsApp at all.
+
+**The shape.** After setup, the admin screen carries a Launch support
+button. Launching it produces a link. The business puts that link on their
+own site, or embeds it, and their customers talk to the same assistant that
+answers on WhatsApp. Same published material, same handover, same
+escalation. Only the door changes.
+
+**Why it is worth more than it looks.** WhatsApp costs a business a Meta
+approval, a number, and a wait. A link costs them a copy and paste. It is
+the difference between selling support to a business that already has
+infrastructure and selling it to any business at all.
+
+**What already exists for it.** More than expected. `support_channel`
+already carries `web`, so the column does not change. `support-ask` already
+takes `channel` in the body and already accepts `web` as valid. Threads are
+keyed on `customer_ref`, which is a phone today and could be a browser
+issued id tomorrow.
+
+**What does not exist.** The page itself, and the thing that has blocked
+every version of this: **StellaXafe still cannot send a person a message
+after the fact.** In a browser that matters less than on WhatsApp, because
+the page can hold the connection open and poll, so a first version could
+work without the delivery path that WhatsApp needs. That is the reason to
+build the browser one first.
+
+**If the business has an app rather than a site**, the same thing is reached
+directly rather than through a page, with the business holding a key. That
+is further out and should not shape the first version.
+
+---
+
 ## The flow, end to end
 
 ```

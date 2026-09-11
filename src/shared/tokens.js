@@ -70,6 +70,21 @@ export const THEME_VARS = {
        is unchanged, all of it is just further off the floor. */
     "--text-2": "#A6A6B2",
     "--text-3": "#8A8A95",
+    /* Caution and all clear, as text on their own tinted panels. Both are
+       theme aware because the brand amber and green were picked to sit on
+       a near black ground, and on a white card they turn into pale text
+       nobody can read at 13px. See PublishGate, where the amber carries a
+       button label. */
+    "--caution": "#E8980A",
+    "--all-clear": "#16B04A",
+    /* The filled half of the audience control when a file is open to
+       customers. It has to hold white text, so it is the lifted navy on
+       dark and the true brand navy on light. */
+    "--audience-open": "#2E42E0",
+    /* Destructive, as text and as a border on its own tinted panel. Theme
+       aware for the same reason as --caution: the brand red was picked for a
+       near black ground. */
+    "--danger": "#FF6B6B",
     /* The mark. Named here so it flips with the theme like everything
        else, rather than the component branching on which theme is on. */
     "--seal-outer": "rgba(255, 255, 255, 0.34)",
@@ -133,6 +148,10 @@ export const THEME_VARS = {
     "--text-1": "#0A0F2E",
     "--text-2": "#424668",
     "--text-3": "#7880A8",
+    "--caution": "#9A5B00",
+    "--all-clear": "#0C7A31",
+    "--audience-open": "#1420A0",
+    "--danger": "#C42B2B",
     "--seal-outer": "rgba(8, 17, 58, 0.30)",
     "--seal-outer-hi": "rgba(8, 17, 58, 0.72)",
     "--seal-in-a": "#2030C8",

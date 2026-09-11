@@ -46,20 +46,63 @@ import Anthropic from "npm:@anthropic-ai/sdk@0.68.0";
    SECTION: Constants
    -------------------------------------------------------------------------- */
 
-const MODEL = "claude-haiku-4-5";
+/* SUPPORT RUNS AT THE CONVERSATIONAL LEVEL, AND NEVER LEAVES IT.
 
-/* Dollars per million tokens, for turning real usage into cents off the
-   company's budget. Same table as assistant/index.ts and src/shared/config.js.
-   Only the one rung, because support never leaves it. */
+   "Conversational" is the level. The model string below is what currently
+   sits behind that level, and it is the only place this function names a
+   real model. Anthony, 2026-09-10: "instead of calling it Haiku at the back
+   end, you call it Conversational."
+
+   The reason is that the brain is meant to be swappable. A deployment on
+   another provider changes this one line and this function's own name for
+   what it is doing does not move. See DIRECTION.md, "Which model runs which
+   part", and the matching table in assistant/index.ts.
+
+   Support stays at this level on purpose. It answers a customer's question
+   from material an admin approved. It does not reason its way anywhere, so
+   paying for a model that can is paying for nothing. */
+const LEVEL = "conversational";
+const MODEL_FOR_LEVEL: Record<string, string> = {
+  conversational: "claude-haiku-4-5",
+};
+const MODEL = MODEL_FOR_LEVEL[LEVEL];
+
+/* Dollars per million tokens for that level, for turning real usage into
+   cents off the company's budget. Matches the conversational row of the
+   table in assistant/index.ts. It is no longer mirrored in the browser
+   bundle: src/shared/config.js used to carry a copy so an admin screen
+   could print a rate card, and both the vendor names and the token prices
+   have been taken off that screen. */
 const PRICE = { input: 1, output: 5 };
 
 /* A conversation's worth of history, not a lifetime's. Long enough that
    somebody can say "the second one" and be understood. */
 const HISTORY_LIMIT = 20;
 
-/* Published material is usually a handful of documents. This is the ceiling
-   that stops one enormous upload from making every reply slow and expensive. */
-const MAX_SOURCE_CHARS = 40000;
+/* How much of the company's published material is sent to the model.
+
+   RAISED FROM 40,000 TO 200,000 ON 2026-09-10, and the old number was not
+   worked out by anybody. It was a round guess to stop one enormous upload
+   making every reply slow. It cost more than it saved: Amara's landing page
+   alone is 59,837 characters, so a third of it was thrown away on every
+   message, taking their whole partner programme with it, and nothing on any
+   screen said so.
+
+   WHAT IT COSTS TO SEND MORE, MEASURED RATHER THAN GUESSED. Every message
+   sends the whole thing. There is no memory between messages: the cache is a
+   discount, not a store. But the discount is large, so size mostly costs on
+   the first message of a burst.
+
+     40,000 chars   first message 1.35c   every one after 0.20c
+     200,000 chars  first message 6.35c   every one after 0.60c
+
+   The five minute cache means a real conversation pays the first number once
+   and the second number for the rest of it.
+
+   200,000 characters is about 50,000 tokens, which is well inside the range
+   where sending everything beats searching for the relevant part. See
+   DIRECTION.md. */
+const MAX_SOURCE_CHARS = 200000;
 
 /* What the customer is told when their question goes to a person. Fixed
    here rather than written by the model, because it is a promise about how
@@ -193,9 +236,86 @@ function buildSystem(
     "\nEnd every reply by asking whether there is anything else you can help with.",
   );
 
+  /* ADDED 2026-09-09. HOW IT WRITES, WHICH IS NOT THE SAME AS WHAT IT KNOWS.
+
+     Anthony, looking at real replies on his own phone: "the way the model
+     types, it doesn't really write clean... because it's a WhatsApp message,
+     it should keep the message simple, straightforward, and short."
+
+     He is right and it was worse than untidy. A support desk that answers a
+     one line question with six paragraphs reads as a machine, which is the
+     one thing this is not supposed to feel like. Long replies also arrive on
+     a phone as a single grey wall nobody finishes.
+
+     Four rules, and each is here because something real went wrong:
+       length, because it wrote essays
+       blank lines, because it ran everything together
+       punctuation, because it leaned on dashes instead of full stops
+       stopping, because it explained itself before answering
+
+     None of this touches what it is allowed to say. It is about the shape of
+     the words only, which is why it sits here at the end of the instructions
+     rather than anywhere near the boundary rules above. */
+  lines.push(
+    "\nHOW TO WRITE. This is a WhatsApp message, not a document. Keep it short. " +
+      "Most questions are answered properly in two or three sentences, and almost " +
+      "nothing needs more than four short paragraphs.",
+  );
+  lines.push(
+    "Leave a blank line between paragraphs so it does not arrive as one block of " +
+      "text on a phone.",
+  );
+  lines.push(
+    "Use ordinary punctuation. Full stops and commas. No dashes standing in for a " +
+      "pause, no bullet symbols, no bold, no headings, no emoji.",
+  );
+  /* ADDED 2026-09-09, a day after the line above, because the line above did
+     not hold. The reply still read "completely free right now - no card
+     needed", with an en dash. "No dashes standing in for a pause" describes a
+     class of character and hopes the model shares the definition. Naming the
+     three characters is an instruction. */
+  lines.push(
+    "Never put a dash between words, of any kind. Not - and not \u2013 and not \u2014. " +
+      "Use a full stop, a comma, or start a new sentence instead.",
+  );
+  lines.push(
+    "When somebody has to do something in a certain order, number the steps, one " +
+      "per line, and name the exact thing to tap or type. Otherwise write in plain " +
+      "sentences.",
+  );
+  lines.push(
+    "Answer what was asked and stop. Do not add background nobody asked for, and " +
+      "do not explain what you are about to say before you say it.",
+  );
+
   if (routeLabels.length) {
     lines.push(`\nWhen you hand over, say who it should reach: ${routeLabels.join(", ")}.`);
   }
+
+  /* ADDED 2026-09-09, and it is only true because of a migration applied the
+     same day. customer_knowledge used to return oldest first, which is the
+     worst possible order: it put the stale copy in front, and when the
+     40,000 character ceiling ran out it was always the newest material that
+     got dropped. It now returns newest first.
+
+     If that ordering is ever reverted, this line becomes a lie and has to go
+     with it. */
+  lines.push(
+    "\nThe material below is listed newest first. Where two parts of it disagree, " +
+      "the one nearer the top is the company's current position and anything lower " +
+      "down is out of date. Answer from the newer one, and do not tell the person " +
+      "that your material disagreed with itself.",
+  );
+  /* ADDED 2026-09-09. The customer never hears about this. It goes to the
+     company, so that a wrong answer can be traced to two files that disagreed
+     rather than filed under "the AI made something up". */
+  lines.push(
+    "When you do find two parts of the material disagreeing about something you " +
+      "actually used in this answer, fill in the disagreement fields on the reply " +
+      "tool. Name both sources, say what each of them claims, and keep answering " +
+      "normally. Only for a real conflict of fact, never for two documents that " +
+      "simply cover different ground.",
+  );
 
   lines.push("\n----- PUBLISHED MATERIAL -----");
   if (!sources.length) {
@@ -255,6 +375,33 @@ const REPLY_TOOL: Anthropic.Tool = {
           "Set this only when the person has just given their own email address so we can " +
           "reach them there. Leave it out otherwise, including when they mention somebody " +
           "else's address or an address they are asking a question about.",
+      },
+      /* ADDED 2026-09-09. All five or none. The customer never sees any of
+         it; it goes to the company so a wrong answer can be traced to the
+         material rather than to the model. */
+      disagreement_topic: {
+        type: "string",
+        description:
+          "Only when two parts of the published material contradicted each other about " +
+          "something you used in this answer. What they disagreed about, in a few plain " +
+          "words, such as 'the price of the Essential plan'. Leave out entirely if there " +
+          "was no conflict.",
+      },
+      disagreement_source_a: {
+        type: "string",
+        description: "The name of the first source, exactly as it appears above the material.",
+      },
+      disagreement_said_a: {
+        type: "string",
+        description: "In one short line, what that first source claims.",
+      },
+      disagreement_source_b: {
+        type: "string",
+        description: "The name of the second source, exactly as it appears above the material.",
+      },
+      disagreement_said_b: {
+        type: "string",
+        description: "In one short line, what that second source claims.",
       },
     },
     required: ["text", "needs_person"],
@@ -654,6 +801,18 @@ Deno.serve(async (req) => {
   let question = text;
   let route: string | null = null;
   let usage: Anthropic.Usage | null = null;
+  /* Declared out here, alongside the others, because it is written inside
+     the try below and read a long way after it. An earlier version of this
+     change lost this line to a failed edit and left the reader in place,
+     which took support down: every reply was composed and saved and then the
+     function threw on the way out, so the customer got silence. */
+  let disagreement: {
+    topic: string;
+    sourceA: string;
+    saidA: string;
+    sourceB: string;
+    saidB: string;
+  } | null = null;
 
   try {
     const result = await anthropic.messages.create({
@@ -674,6 +833,17 @@ Deno.serve(async (req) => {
     question = String(input.question ?? "").trim() || text;
     route = String(input.route ?? "").trim() || null;
 
+    /* Collected here and written much later, after the reply is already
+       composed, because a bookkeeping row must never be the reason a
+       customer waits or gets nothing. */
+    disagreement = {
+      topic: String(input.disagreement_topic ?? "").trim(),
+      sourceA: String(input.disagreement_source_a ?? "").trim(),
+      saidA: String(input.disagreement_said_a ?? "").trim(),
+      sourceB: String(input.disagreement_source_b ?? "").trim(),
+      saidB: String(input.disagreement_said_b ?? "").trim(),
+    };
+
     /* Saved before anything below reads it, so an address given in this very
        message is already on file when the escalation is written. That is the
        whole point of asking early. The function returns null and stores
@@ -690,7 +860,7 @@ Deno.serve(async (req) => {
       }
     }
   } catch (err) {
-    console.error("haiku call failed", err);
+    console.error("support model call failed", err);
     return json({ ok: false, reason: "could not answer" }, 502);
   }
 
@@ -772,33 +942,111 @@ Deno.serve(async (req) => {
   });
 
   /* ------------------------------------------------------------------
+     ADDED 2026-09-09. The company's own material disagreeing with itself.
+
+     Anthony asked for this so that a wrong answer can be traced to two
+     files that disagreed rather than filed under "the AI made something
+     up". The customer is never told any of it.
+
+     All the fields or nothing. A half filled report names one source and is
+     worse than silence, because somebody would go looking for a second file
+     that was never identified.
+
+     It runs after the reply is already written and after the person has
+     been answered, and a failure only ever reaches the log. A bookkeeping
+     row is not worth a customer waiting for.
+
+     WRAPPED IN ITS OWN TRY. The first version of this took support down.
+     Nothing about recording a disagreement is worth a customer getting
+     silence, so from here to the end of the handler, anything that throws
+     is caught and the reply still goes back.
+     ------------------------------------------------------------------ */
+
+  try {
+    if (
+      disagreement &&
+      disagreement.topic &&
+      disagreement.sourceA &&
+      disagreement.sourceB &&
+      disagreement.sourceA.toLowerCase() !== disagreement.sourceB.toLowerCase()
+    ) {
+      const { error: logError } = await admin.rpc("knowledge_contradiction_log", {
+        p_company_id: company.id,
+        p_topic: disagreement.topic,
+        p_source_a: disagreement.sourceA,
+        p_said_a: disagreement.saidA,
+        p_source_b: disagreement.sourceB,
+        p_said_b: disagreement.saidB,
+        /* Newest wins and the material is ordered newest first, so the one it
+           answered from is the one listed higher up, which is A. Recorded
+           rather than left to be inferred, because that ordering has already
+           changed once. */
+        p_answered_with: disagreement.sourceA,
+      });
+      if (logError) {
+        console.error("could not record the disagreement", logError);
+      } else {
+        console.log(
+          `support: material disagreed company=${company.id} topic=${JSON.stringify(disagreement.topic)}`,
+        );
+      }
+    }
+  } catch (err) {
+    console.error("recording the disagreement threw, reply is unaffected", err);
+  }
+
+  /* ------------------------------------------------------------------
      Meter it. A cache read costs about a tenth and a cache write a little
      over full price, so counting either at face value would take the wrong
      amount off a real budget.
+
+     Also wrapped, for the same reason as above. Bookkeeping must never be
+     the reason somebody gets no answer.
      ------------------------------------------------------------------ */
 
-  if (!exempt && usage) {
-    const cacheRead = usage.cache_read_input_tokens ?? 0;
-    const cacheWrite = usage.cache_creation_input_tokens ?? 0;
-    const fresh = usage.input_tokens ?? 0;
-    const out = usage.output_tokens ?? 0;
+  try {
+    if (!exempt && usage) {
+      const cacheRead = usage.cache_read_input_tokens ?? 0;
+      const cacheWrite = usage.cache_creation_input_tokens ?? 0;
+      const fresh = usage.input_tokens ?? 0;
+      const out = usage.output_tokens ?? 0;
 
-    const inputTokens = fresh + cacheWrite * 1.25 + cacheRead * 0.1;
-    const cents = Math.ceil(
-      ((inputTokens / 1_000_000) * PRICE.input + (out / 1_000_000) * PRICE.output) * 100,
-    );
+      const inputTokens = fresh + cacheWrite * 1.25 + cacheRead * 0.1;
 
-    console.log(
-      `support usage fresh=${fresh} cacheWrite=${cacheWrite} cacheRead=${cacheRead} out=${out} cents=${cents}`,
-    );
+      /* NO ROUNDING UP. Anthony, 2026-09-10: "why do you suppose to be
+         rounding up numbers? That's real money."
 
-    if (cents > 0) {
-      const { error: spendError } = await admin.rpc("company_spend", {
-        p_company_id: company.id,
-        p_cents: cents,
-      });
-      if (spendError) console.error("could not record support spend", spendError);
+         He was right and it was worse than untidy. Math.ceil turned a message
+         that truly cost 0.26 of a cent into a whole cent charged against the
+         company. Nearly four times over, on every message, and always in our
+         favour, never theirs.
+
+         The cause was the column, not the arithmetic: budget_cents_remaining
+         was an integer, so a fraction of a cent had nowhere to go. It is
+         numeric now, so the real number is sent.
+
+         Six decimal places, because that is what the column holds. Rounded
+         there rather than sent raw, so a float's fifteenth digit does not
+         travel across the wire pretending to be money. */
+      const cents =
+        Math.round(
+          ((inputTokens / 1_000_000) * PRICE.input + (out / 1_000_000) * PRICE.output) * 100 * 1e6,
+        ) / 1e6;
+
+      console.log(
+        `support usage fresh=${fresh} cacheWrite=${cacheWrite} cacheRead=${cacheRead} out=${out} cents=${cents}`,
+      );
+
+      if (cents > 0) {
+        const { error: spendError } = await admin.rpc("company_spend", {
+          p_company_id: company.id,
+          p_cents: cents,
+        });
+        if (spendError) console.error("could not record support spend", spendError);
+      }
     }
+  } catch (err) {
+    console.error("metering threw, reply is unaffected", err);
   }
 
   return json({ ok: true, threadId, reply, escalated: needsPerson });

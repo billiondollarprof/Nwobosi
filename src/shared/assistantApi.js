@@ -42,8 +42,48 @@ const PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
    the background.
    -------------------------------------------------------------------------- */
 
-export function sendTurn({ stage = "interview", messages, onMeta, onText, onDone, onError }) {
+/* --------------------------------------------------------------------------
+   SECTION: A conversation has to end on their turn
+
+   THE BUG THIS EXISTS TO STOP, 2026-09-10, seen in production on the
+   preview build. The interview finished, said "Got it, that's everything I
+   need", and the app immediately ran the analysis with that line appended.
+   So the conversation sent to the model ended with the assistant speaking.
+   The reply was a 400:
+
+     "This model does not support assistant message prefill. The
+      conversation must end with a user message."
+
+   The person saw "The assistant could not finish that. Try again." at the
+   exact moment the work should have started. Every question they had just
+   answered was still there, and none of it went anywhere.
+
+   Putting somebody's own words in their mouth to fix it was tempting and
+   wrong. A made up "Go ahead." would read to the model as something they
+   said. So the trailing assistant turns are simply dropped. What they
+   actually said is still the last thing in the conversation, which is the
+   truth, and the stage instruction in the system prompt already says what
+   to do next.
+
+   THIS SITS AT THE BOUNDARY ON PURPOSE. It could have been fixed at the one
+   call site that caused it. Then the next handoff anybody writes brings it
+   straight back. Every turn goes through here, so this is the one place
+   that can make it impossible.
+   -------------------------------------------------------------------------- */
+
+function endingOnTheirTurn(list) {
+  const out = [...list];
+  while (out.length && out[out.length - 1].role === "assistant") out.pop();
+
+  /* Nothing left means there was never a user turn to begin with, which is
+     a different bug. Send the original and let the server say so, rather
+     than sending an empty list and turning a clear error into a silent one. */
+  return out.length ? out : list;
+}
+
+export function sendTurn({ stage = "orient", askedSoFar = 0, brief = "", findings = "", messages, onMeta, onText, onDone, onError }) {
   const controller = new AbortController();
+  messages = endingOnTheirTurn(messages);
 
   (async () => {
     /* The caller's own session. The edge function reads who they are from
@@ -67,7 +107,7 @@ export function sendTurn({ stage = "interview", messages, onMeta, onText, onDone
           Authorization: `Bearer ${session.access_token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ stage, messages }),
+        body: JSON.stringify({ stage, askedSoFar, brief, findings, messages }),
         signal: controller.signal,
       });
     } catch (err) {
@@ -82,7 +122,7 @@ export function sendTurn({ stage = "interview", messages, onMeta, onText, onDone
          answer anyway, and if it does not, its error says what is really
          wrong instead of blaming their wifi. */
       const { data, error } = await supabase.functions.invoke(FUNCTIONS.assistant, {
-        body: { stage, messages },
+        body: { stage, askedSoFar, brief, findings, messages },
       });
 
       if (error) {

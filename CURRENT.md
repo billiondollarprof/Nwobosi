@@ -205,6 +205,221 @@ a real browser.
   `access_codes` has RLS on and zero policies, so only the service role
   reaches it. Verified against the live database.
 
+## The assistant's six stages, and what is actually live
+
+Added 2026-09-10. This is the flow Anthony asked for so he could record the
+demo videos. It is deployed as `assistant` **v11**, sha `80723d2a31b1ec38`.
+The repo copy was brought back in line with that deployment on the same day.
+
+The six stages, in the order a person walks through them:
+
+1. **orient** - it reads the company's material and works out what they are
+   asking for. It ends by offering an interview, marked `OFFER_INTERVIEW`.
+2. **interview** - three or four questions, no more, and only when they said
+   yes. It stops itself with `INTERVIEW_DONE`.
+3. **analyse** - it works out what it still does not have. Two routes out:
+   `NEED_INPUT` for anything only they can know, `NEED_LOOKUP` for anything
+   public and findable. The read back happens here, in the conversation,
+   before any prompt is written.
+4. **research** - the only stage that can reach the internet, and only after
+   they tap the button. Everything found comes back with its source, and
+   nothing is used until they approve it.
+5. **brief** - the prompt. This is written before anything is built, it
+   carries the approved outside findings with their sources, and it carries
+   the corrections they made on purpose.
+6. **generate** - the document, written from the brief.
+
+**The search tools are attached in code, not in a prompt.** `searchTools` is
+built only when `stage === "research"`. On every other turn the tools are not
+in the request at all, so no amount of persuading can reach them. The base
+prompt says so in the section titled "YOU CANNOT GO AND LOOK, UNLESS THEY LET
+YOU OUT".
+
+Three things that were broken and are now fixed:
+
+- **The 400 that stopped the whole flow for days.** The interview to analyse
+  handoff sent a conversation ending on an assistant turn, and the model
+  rejects that. Guarded twice now, once in `sendTurn` and once server side.
+  No fake user turn is invented; the trailing assistant turn is dropped.
+- **The cache mark sat on the wrong block.** Prompt caching is a prefix
+  match, so the mark has to sit on the last stable block. Proven on real
+  traffic: 13.7054 cents on the write, then 1.34188 cents, then 0.97168.
+- **Findings never reached the brief.** `handleGenerate` bypasses `runTurn`,
+  so it was passing an empty string. Both `sendTurn` calls now carry
+  `findingsRef.current`.
+
+**No model name reaches any screen, admin included.** The reason is
+portability, not house style: the same product may be installed on a
+different provider tomorrow. The admin sees four capability levels
+(conversational, standard, deeper, deepest), each with an info icon.
+
+## Coming back the next day
+
+Added 2026-09-10. Anthony asked for "a progressive log to always remember
+where things left off". This is it.
+
+**The visible half already worked and the invisible half did not.** Messages
+and stage were saved, so returning brought the conversation back on screen.
+Three things behind it were not saved, and those three decide what the
+finished document says:
+
+1. The outside findings the person had approved. They lived only in a
+   variable in the browser. Come back tomorrow, press Build, and the figure
+   they approved yesterday was silently missing.
+2. How many interview questions had been asked. Reset to zero, so a
+   returning person could be asked four more about a settled thing.
+3. The confirmed read back. It was written to `conversations.brief` and
+   never read back out.
+
+All three are now saved to `conversations.state` and restored. The shape
+lives in `src/shared/resumeLog.js` and nowhere else.
+
+**A refused finding is still never stored.** Only a count is kept, so a
+returning person can be told plainly that nothing was carried over. Anthony:
+"if there is no go-ahead, it should not add it."
+
+**One quiet line says what came back**, and only when something invisible
+did. "Picked back up. Still holding 2 things you approved from outside." It
+is `role: "system"`, which keeps it out of the saved row and out of the
+model's message list, where a third role would be a 400 on the next turn.
+
+**Two bugs found while wiring it, both in New chat.** It never cleared the
+approved findings, so a figure approved in the morning was still sitting in
+the browser in the afternoon and would have gone into a completely unrelated
+document. And it set the stage to "interview", left over from before
+"orient" existed, so every new chat skipped reading the knowledge base.
+
+**What is not done: the model does not read the note yet.** The column is
+written and read by the browser. Handing the note to the model at the top of
+each turn needs a change to the `assistant` function, which is a redeploy,
+and it has not been made. Until it is, the model still works everything out
+again from the messages on every turn. Correct, just slower and dearer.
+
+## Publishing a file to customers, and the guard on it
+
+Added 2026-09-09. The one action in the admin that can send a company's own
+material to somebody outside the company is turning a knowledge file on for
+customers. Until this day it was a single tap with nothing in the way, and
+a real payment receipt got turned on during testing with nothing said.
+
+**What is live in the repo and on `testing`:**
+
+- **A pair of options, not a toggle.** `src/shared/AudienceControl.jsx`.
+  "Staff only" and "Customers too", both on screen at once, the one in
+  force filled in. The old control showed the state and nothing else: not
+  that there was a choice, not what the other choice was, not that it
+  mattered. A control that has to be taught is a broken control.
+- **A gate on the way out.** `src/shared/PublishGate.jsx`. Turning a file
+  ON always asks, every file, every time. Turning one OFF never asks,
+  because taking something back is always safe.
+- **Two levels.** Soft is the default: one line, plain button, no colour.
+  Firm only when the reader found something: amber, the finding is what
+  you read, Cancel becomes the loud button, and the other one says "Turn
+  it on anyway". A warning that shouts every time gets clicked through
+  every time.
+- **The reader.** `supabase/functions/read-before-publish`, deployed
+  2026-09-09, now **version 2**, `verify_jwt` false like every function here,
+  `ezbr_sha256` e3580d26deb00ba2bb8fa67cce4a11f9d0d654756e442b2a4e40d22bcbbe4db2.
+  Admin only, checked in the function. Sonnet. Returns clear, warn or
+  unknown plus one plain line. It leans internal on purpose and its reason
+  never quotes the private part. **Confirmed working on a real file**: it
+  identified a bank transfer receipt without printing the account number.
+
+  Version 2 fixed the first false positive, found within an hour of going
+  live. A file of pricing instructions came back as "internal", because
+  instruction was being read as secrecy. The prompt now says plainly that a
+  document written to steer the assistant is not private information.
+
+- **A quiet delete guard.** `src/shared/ConfirmDelete.jsx`. The bin removed a
+  file and its text on one tap with no undo.
+
+- **Duplicate detection.** `src/shared/duplicates.js`. No model, no tokens, a
+  string comparison against the list the browser already holds. A file name
+  already taken gets red text. A link already in the base is different: it is
+  a photograph of a page, so the same address again is a refresh, and
+  `src/shared/RefreshOrKeep.jsx` asks what to do with the old reading.
+
+- **Newest wins.** `customer_knowledge` now orders `k.created_at desc`.
+  Applied and verified 2026-09-09: security definer preserved, grants still
+  postgres and service_role only. It used to be oldest first, which put the
+  stale copy in front and made the 40,000 character ceiling drop the newest
+  material first.
+
+- **The contradiction log.** `knowledge_contradictions` plus
+  `knowledge_contradiction_log`. Written by support-ask when a company's own
+  published material disagrees with itself while answering. One row per
+  disagreement, not per message. No insert policy; the only way in is the
+  security definer function, granted to service_role. Verified with a self
+  test that wrote twice, confirmed one row with times_seen 2, confirmed a
+  resolved row reopens, then deleted itself.
+
+- **support-ask is at version 10**, `ezbr_sha256`
+  283e8b1e521503acee33e7b03e98a8abd3ea9acc8e913300543f104c2842e230. It
+  carries the writing rules, the dash line, the newest-first line, and the
+  contradiction reporting.
+
+### The outage on 2026-09-09, and what it changed
+
+Version 9 of support-ask went live with a variable used and never declared.
+Three 500s on Amara's real WhatsApp. Every reply was composed, appended to
+the thread and saved, then the function threw on the way out, so the database
+showed a perfect answer and the customer got silence.
+
+Two checks both looked like they passed. An edit script asserted on three
+anchors, the third missed, Python raised, and the file was never written,
+taking the two edits that HAD matched with it. Then the type checker was run
+as `| grep -E "TS1[0-9]{3}"`, which is syntax only, and a missing name is
+TS2304.
+
+**`scripts/check-functions.mjs` exists because of this.** It type checks every
+edge function and excuses only the Deno global and jsr/npm/https imports.
+Run it before any deploy. Never narrow a check to a class of error guessed at
+in advance.
+
+**The contradiction log and the metering now each have their own try**, and
+`CLAUDE.md` carries the rule: bookkeeping never fails a reply. Both run after
+the customer's answer already exists.
+
+### The 40,000 character ceiling, which nothing on any screen mentions
+
+`MAX_SOURCE_CHARS` in support-ask is 40,000. Amara's landing page alone is
+59,837, so a third of it never reaches the model, including the whole partner
+programme. Nothing warns anybody. This is the binding constraint on what
+support knows, and it binds long before the model's own limits do.
+
+Ask support about the partner programme today and it knows nothing, with no
+sign anything is missing.
+
+**The rule the whole thing turns on, and it is not negotiable:**
+
+> The reading can add a warning. It can never remove one, and it can never
+> encourage.
+
+The gate opens whatever the reader says or fails to say. A clean reading
+does not skip the question, it only leaves the dialog quiet. A reading that
+failed says "nobody has checked it" and is never dressed up as clean.
+
+The design that was tried and rejected was to let the reader decide whether
+to ask, and pop up an offer when it came back clean. That turns a model's
+mistake into the product actively inviting somebody to publish a payroll
+sheet with a green tick beside it. A model that can wave something through
+will eventually wave the wrong thing through.
+
+**Not built yet:** the override log, meaning a record of the times the
+reader warned and an admin turned the file on anyway. Nothing is logged for
+the soft path, deliberately.
+
+**A trap fixed on the way past, worth knowing about.** `PageShell` is a
+column flex container, so a flex line takes the width of its widest item
+and stretch only grows items up to it, never shrinks them. One long file
+name held on one line by `truncate` made the admin content wrapper 512px
+wide inside a 320px phone. `overflow-x-clip` then hid the result instead of
+scrolling it and `document.scrollWidth` still read clean, so the bin and
+the status pill on every row sat off the right edge with nothing reporting
+it. The fix is `w-full` on the page's own wrapper, which makes its width
+definite. `min-w-0` alone does not do it. Any new page inside `PageShell`
+needs the same.
+
 ## Support, the second environment
 
 Added 2026-09-07. The plan for all of it is `SUPPORT.md`, which is the
@@ -335,9 +550,20 @@ was deleted on 2026-09-08 and the code redeployed on the clean slug.
 
 ---
 
+## Small things noticed and deliberately left
+
+- **The workspace header truncates the company name at 320px.** It shows
+  "A.." where it should show "Amara". Spotted 2026-09-10 while screenshotting
+  the assistant's offer card. Not caused by that work, and not fixed with it,
+  because a header change touches every screen and that was not what was
+  being tested. Anthony: "note that and maybe fix it later."
+
 ## Next, in the order I would do it
 
-1. **The live run.** Everything above is untested against real
+1. **Hand the resume log to the model.** The column is written and read
+   by the browser already. This is the `assistant` redeploy that lets it
+   read its own working note instead of reading twenty messages again.
+2. **The live run.** Everything above is untested against real
    infrastructure.
 2. **Staff invites**, so a presentation can show more than one account.
    Needs an INSERT policy on `access_requests` or a direct invite path.

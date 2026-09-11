@@ -89,9 +89,9 @@ export default function Auth() {
        else's text until it has been looked at, and an open redirect on a
        sign in page is how people get walked to a copy of it. */
     const wanted = new URLSearchParams(window.location.search).get("next");
-    const safe = wanted === "/demo" || wanted?.startsWith("/demo?");
+    const safe = wanted === "/workspace" || wanted?.startsWith("/workspace?");
 
-    navigate(safe ? wanted : "/demo", { replace: true });
+    navigate(safe ? wanted : "/workspace", { replace: true });
   }
 
   /* ------------------------------------------------------------------------

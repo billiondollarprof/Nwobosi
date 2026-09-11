@@ -25,9 +25,11 @@ import {
   FileText,
   Download,
   Lock,
+  History,
   LogOut,
   ChevronRight,
   Menu,
+  MessagesSquare,
   PenSquare,
   Mic,
   ThumbsUp,
@@ -43,6 +45,7 @@ import {
   Cloud,
   ExternalLink,
   Search,
+  Globe,
   Shield,
   Info,
 } from "lucide-react";
@@ -57,6 +60,7 @@ import {
   listConversations,
   loadConversation,
   saveConversation,
+  signOutCompletely,
 } from "../shared/session.js";
 import { readFileAsText, fileKind } from "../shared/readFile.js";
 import { downloadPdf, downloadDocx } from "../shared/download.js";
@@ -89,6 +93,12 @@ import {
   SAMPLE_CONNECTOR_NOTE,
 } from "../shared/config.js";
 
+/* The resume log. One small note per conversation saying where the work had
+   got to, so somebody who walks away at lunch and comes back the next day
+   gets their approved findings and their spent question allowance back, not
+   just the messages. The shape lives in that file, never inline here. */
+import { buildResumeLog, readResumeLog, resumeLine } from "../shared/resumeLog.js";
+
 /* ==========================================================================
    1. INTERVIEW HELPERS
    Small pure functions the interview leans on. Kept at the top so the
@@ -104,6 +114,8 @@ import {
    -------------------------------------------------------------------------- */
 
 const MARKER = {
+  offerInterview: "OFFER_INTERVIEW",
+  needLookup: "NEED_LOOKUP",
   interviewDone: "INTERVIEW_COMPLETE",
   needInput: "NEED_INPUT",
   readbackDone: "READBACK_COMPLETE",
@@ -405,17 +417,55 @@ export default function Chat() {
   /* Stops a second Build press stacking a second paid generation. */
   const [generating, setGenerating] = useState(false);
 
+  /* WHAT WAS FOUND OUTSIDE AND ACCEPTED, one entry per thing they ticked.
+
+     Anthony, 2026-09-10: "if they are giving a go-ahead, it can add the
+     information and use it. Otherwise, if there is no go-ahead, it should
+     not add it."
+
+     So a rejected finding is never stored. It is not kept and greyed out,
+     it does not sit in a list somewhere waiting to be reconsidered. It is
+     dropped, and the only thing that ever leaves this browser is what
+     somebody said yes to. */
+  const [findings, setFindings] = useState([]);
+  const findingsRef = useRef([]);
+
+  /* THE THREE THINGS THE RESUME LOG NEEDS THAT NOTHING ELSE HELD.
+
+     All three used to live only in this component, so closing the tab lost
+     them silently while the messages came back looking complete.
+
+       briefRef     the read back they confirmed, frozen at the moment they
+                    pressed Build. The column was written and never read.
+       declinedRef  how many outside findings they turned down. A count and
+                    never the text, because a refused finding is not stored.
+       missingRef   the last thing it said it still needs from them, so a
+                    returning person is not asked to work out where they
+                    were. Cleared the moment the read back lands. */
+  const briefRef = useRef("");
+  const declinedRef = useRef(0);
+  const missingRef = useRef("");
+
   /* Where the conversation is in the flow. This is the stage the next turn
-     runs at, which is also what decides the model, so it is the difference
-     between a cheap question and an expensive one.
+     runs at.
 
-       interview  the cheap model, asking a few short questions
-       analyse    the stronger model, reading the company sources, either
-                  coming back for something missing or reading the brief back
+       orient     reads the request and the whole company knowledge base,
+                  says what it already has, and offers the interview
+       offered    not a stage the server knows about. It means the offer is
+                  on screen and we are waiting for an answer.
+       interview  asking a few short questions
+       analyse    reading back what it understood, or coming back for
+                  something that is genuinely missing
 
-     It moves up by itself the moment the interview model says it is done.
-     Nobody presses anything to make that happen. */
-  const [flowStage, setFlowStage] = useState("interview");
+     THE ENTRY POINT USED TO BE THE INTERVIEW AND IT WAS BLIND. It could see
+     the names of the company's files and nothing inside them, so it asked
+     people for things their own company had already written down. Now the
+     first turn reads everything, and the interview is offered rather than
+     imposed.
+
+     It moves up by itself. Nobody presses anything except at the offer and
+     at the read back, which are the two moments that are genuinely theirs. */
+  const [flowStage, setFlowStage] = useState("orient");
 
   /* Who is actually signed in, and which company this workspace belongs
      to. Until this arrives the page falls back to the config defaults, so
@@ -503,7 +553,6 @@ export default function Chat() {
       }
 
       setMe(who);
-      setGreetingText(buildGreetingText(who.staff?.name?.split(" ")[0]));
 
       const recent = await listConversations(who.user.id);
       if (!alive) return;
@@ -513,13 +562,32 @@ export default function Chat() {
          blank page with their work one menu away. A refresh, a dead
          battery or a second phone should all feel like picking the thread
          back up, which is the whole reason conversations are saved. */
+      let restored = false;
       const latest = recent[0];
       if (latest && !conversationIdRef.current) {
         const row = await loadConversation(latest.id);
-        if (!alive || !row) return;
-        conversationIdRef.current = row.id;
-        setFlowStage(row.stage ?? "interview");
-        updateMessages((row.messages ?? []).map((m) => ({ id: nextId(), ...m })));
+        if (!alive) return;
+        if (row) {
+          restoreFrom(row);
+          restored = true;
+        }
+      }
+
+      /* THE GREETING WAITS UNTIL WE KNOW THERE IS NOTHING TO GO BACK TO.
+
+         It used to be set the moment the person loaded, before their
+         history had even been fetched. So signing in typed out "Good
+         evening, Anthony" letter by letter, and then their last
+         conversation arrived and replaced it mid sentence. Two things
+         competing for the same space, and the one that lost was the one
+         that had already started.
+
+         A greeting belongs to a blank page. Somebody picking a thread back
+         up is not arriving, they are returning, and being greeted for it
+         reads as software that was not paying attention. handleNewChat
+         still greets, because that genuinely is a fresh start. */
+      if (!restored) {
+        setGreetingText(buildGreetingText(who.staff?.name?.split(" ")[0]));
       }
 
       if (who.company?.id) {
@@ -654,6 +722,18 @@ export default function Chat() {
 
     abortTurnRef.current = sendTurn({
       stage,
+
+      /* The server cannot count this from the messages: the orient turn and
+         every turn of an earlier interview are in there too. This is the
+         app's own counter, which resets whenever the work moves up. */
+      askedSoFar: interviewTurnsRef.current,
+
+      /* Read from the ref rather than from state, because a turn can be
+         fired in the same tick that a finding was accepted and state has
+         not caught up yet. The ref is written first, so it is the one that
+         is always right. */
+      findings: findingsRef.current.join("\n\n"),
+
       messages: history,
 
       onMeta: ({ tier }) => setActiveTier(tier),
@@ -684,6 +764,40 @@ export default function Chat() {
         );
         persist(next, stage);
 
+        /* THE OFFER. The first turn has read the request and the whole of
+           the company's material, and has said what it already has. Now it
+           asks whether they want to be interviewed.
+
+           Two buttons rather than a sentence to answer, because a question
+           with no visible answers is a question people ignore. Typing works
+           too, and handleSend below sends that into the interview.
+
+           No marker means it was not a piece of work, just conversation.
+           The stage stays where it is and it reads again next time. */
+        if (stage === "orient") {
+          if (raw.includes(MARKER.offerInterview)) {
+            setFlowStage("offered");
+            const withOffer = updateMessages((prev) => [
+              ...prev,
+              { id: nextId(), role: "assistant", type: "offer" },
+            ]);
+            persist(withOffer, "offered");
+          }
+          return;
+        }
+
+        /* It has been and looked. What came back is marked as outside
+           material so it renders differently from the conversation, and the
+           second gate goes underneath it. Nothing is stored yet. */
+        if (stage === "research") {
+          const withCard = updateMessages((prev) => [
+            ...prev.map((m) => (m.id === replyId ? { ...m, type: "finding" } : m)),
+            { id: nextId(), role: "assistant", type: "useFinding", content: clean },
+          ]);
+          persist(withCard, "analyse");
+          return;
+        }
+
         if (stage === "interview") interviewTurnsRef.current += 1;
 
         /* The conversation has what it came for. Move up a tier and go
@@ -703,10 +817,22 @@ export default function Chat() {
              for the back and forth rather than charging Sonnet rates to
              collect a file name. It comes back up the moment that
              conversation says it is done. */
+          /* GATE ONE. It has asked to search. Nothing happens until a
+             person presses the button, and the search tool is not even in
+             the request until they do. */
+          if (raw.includes(MARKER.needLookup)) {
+            updateMessages((prev) => [...prev, { id: nextId(), role: "assistant", type: "lookup" }]);
+            return;
+          }
+
           if (raw.includes(MARKER.needInput)) {
             /* A fresh, specific ask, so it gets its own allowance rather
                than inheriting one the first interview already spent. */
             interviewTurnsRef.current = 0;
+            /* Kept for the resume log, so somebody coming back tomorrow is
+               told what it was waiting on rather than reading back up the
+               thread to work it out. */
+            missingRef.current = clean;
             setFlowStage("interview");
             return;
           }
@@ -714,6 +840,9 @@ export default function Chat() {
           /* Nothing missing. This is the read back, and it is the only
              thing that earns the Build card. */
           if (raw.includes(MARKER.readbackDone)) {
+            /* Nothing is outstanding any more, so the note must not still
+               claim there is. A stale "waiting on you" is worse than none. */
+            missingRef.current = "";
             updateMessages((prev) => [...prev, { id: nextId(), role: "assistant", type: "build" }]);
           }
         }
@@ -746,11 +875,24 @@ export default function Chat() {
   /* Everything worth resuming, and nothing else. Attachment contents ride
      along in apiContent so a file handed over on turn one is still there
      after a reload, but ids and feedback are page state and are dropped. */
-  async function persist(list, stage) {
+  async function persist(list, stage, brief) {
     if (!me?.company?.id || !me?.user?.id) return;
 
     const keepable = list.filter((m) => m.role === "user" || m.role === "assistant");
     if (!keepable.length) return;
+
+    /* Written on every save, not only on the interesting ones. A note that
+       is only current some of the time is worse than no note, because the
+       returning person cannot tell which kind they got. Everything here is
+       read from refs, because persist is called from inside stream
+       callbacks where state is whatever it was when the turn started. */
+    const state = buildResumeLog({
+      making: autoSkill ? SKILL_LABELS[autoSkill] : "",
+      asked: interviewTurnsRef.current,
+      findings: findingsRef.current,
+      declined: declinedRef.current,
+      missing: missingRef.current,
+    });
 
     const id = await saveConversation({
       id: conversationIdRef.current,
@@ -758,6 +900,10 @@ export default function Chat() {
       staffId: me.user.id,
       title: docTitle(list),
       stage,
+      /* Left alone on an ordinary turn, so a normal message cannot wipe the
+         brief a build already wrote. */
+      brief,
+      state,
       messages: keepable.map((m) => ({
         role: m.role,
         type: m.type,
@@ -769,6 +915,53 @@ export default function Chat() {
 
     if (id && !conversationIdRef.current) conversationIdRef.current = id;
     if (id) setRecentChats(await listConversations(me.user.id));
+  }
+
+  /* --------------------------------------------------------------------------
+     PICKING A CONVERSATION BACK UP
+
+     ONE PLACE, ON PURPOSE. There are two ways back into a conversation: the
+     page loading straight into the most recent one, and tapping one in the
+     sidebar. Until the resume log existed they each did their own three
+     lines and both were the same three lines. The moment there were six
+     things to put back, two copies became two chances to forget one.
+
+     Puts back the invisible half. The messages and the stage were already
+     coming back; the findings, the spent question allowance and the frozen
+     brief were not, and those are the ones that change what the finished
+     document says.
+     -------------------------------------------------------------------------- */
+  function restoreFrom(row) {
+    const log = readResumeLog(row.state);
+
+    conversationIdRef.current = row.id;
+    setFlowStage(row.stage ?? "interview");
+
+    /* Ref first and state second, the same rule as everywhere else in this
+       file: a turn fired straight after this reads the ref. */
+    findingsRef.current = log.findings;
+    setFindings(log.findings);
+    interviewTurnsRef.current = log.asked;
+    declinedRef.current = log.declined;
+    missingRef.current = log.missing;
+    briefRef.current = row.brief ?? "";
+
+    const restored = (row.messages ?? []).map((m) => ({ id: nextId(), ...m }));
+
+    /* Said only when something came back that they cannot see on screen.
+       The conversation itself is right there, so announcing it would be
+       noise, and a line that shows every time is a line nobody reads.
+
+       role is "system", and that one word is doing two jobs. persist keeps
+       only user and assistant turns, so this is never written to the row:
+       it belongs to this visit, not to the record. toApiMessages filters on
+       the same two roles, so it never reaches the model either, which
+       matters because a third role in that array is a 400 and would break
+       the very next turn. Do not give it a different role. */
+    const line = resumeLine(log, { hasBrief: Boolean(row.brief) });
+    if (line) restored.push({ id: nextId(), role: "system", type: "resumed", content: line });
+
+    updateMessages(restored);
   }
 
   /* Pick a conversation back up exactly where it stopped, including which
@@ -783,9 +976,7 @@ export default function Chat() {
     setGenerating(false);
     setSidebarOpen(false);
 
-    conversationIdRef.current = row.id;
-    setFlowStage(row.stage ?? "interview");
-    updateMessages((row.messages ?? []).map((m) => ({ id: nextId(), ...m })));
+    restoreFrom(row);
   }
 
   function handleUserReply(text, apiContent = text) {
@@ -798,8 +989,14 @@ export default function Chat() {
        a conversation, so it drops back to the cheap model. Working it out
        here rather than reading it back off state matters: setting state
        does not change it in time for the line below. */
-    updateMessages((prev) => prev.filter((m) => m.type !== "build"));
+    updateMessages((prev) => prev.filter((m) => m.type !== "build" && m.type !== "offer" && m.type !== "lookup" && m.type !== "useFinding"));
     let stage = flowStage === "analyse" ? "interview" : flowStage;
+
+    /* They typed instead of tapping either button. Typing is a conversation
+       and the interview is the conversation stage, so it goes there. That
+       is safe for both answers: the interview reads "no, just get on with
+       it" and hands off on the spot, which it is already told to do. */
+    if (stage === "offered") stage = "interview";
 
     /* The interview has had its questions. Whatever the model thinks, the
        work moves up now. Three to five questions is the promise, and a
@@ -834,31 +1031,91 @@ export default function Chat() {
      hidden in the system prompt, because everything agreed in the
      conversation above is the brief. Restating it would risk contradicting
      it. */
+  /* ------------------------------------------------------------------------
+     THE PROMPT AND THE BUILD, WHICH ARE ONE ACTION
+
+     Anthony, 2026-09-10: "it's the prompt and the build that are together.
+     The read back belongs with the conversation after the analysis."
+
+     So the read back is not a stage somebody waits at. It happens in the
+     chat, they correct it, the conversation carries on until they are happy.
+     The moment they say go, two things run back to back with nobody pressing
+     anything else:
+
+       1. The brief is written from everything agreed.
+       2. The document is written, fenced by that brief.
+
+     WHY THE BRIEF IS NOT SHOWN. The product principle keeps the read back and
+     the sources visible and hides the rest. The read back is what proves it
+     understood, and they have already seen it. The brief is machinery. It is
+     saved on the conversation so it can be looked at later, and it never goes
+     on screen.
+
+     WHY IT IS NOT JUST ONE LONGER PROMPT. Because the brief is the fence. The
+     writing step is handed it and told that anything outside it was never
+     approved, which is what stops a number nobody agreed appearing in a
+     finished document. It is also the exact point a bigger model takes over
+     for a deployment that needs one. See DIRECTION.md.
+     ------------------------------------------------------------------------ */
+
   function handleGenerate() {
     if (generating) return;
     setGenerating(true);
     updateMessages((prev) => prev.filter((m) => m.type !== "build"));
+    addMessage({ role: "assistant", type: "generating" });
+
+    let brief = "";
+
+    abortTurnRef.current = sendTurn({
+      stage: "brief",
+      /* The build does not go through runTurn, so it has to carry the
+         accepted findings itself. Missing this once meant a person could
+         approve a figure, watch it appear on screen, and never see it in
+         the document. */
+      findings: findingsRef.current.join("\n\n"),
+      messages: toApiMessages(messages),
+
+      onMeta: ({ tier }) => setActiveTier(tier),
+      onText: (chunk) => { brief += chunk; },
+
+      onError: ({ reason, message }) => {
+        setGenerating(false);
+        abortTurnRef.current = null;
+        updateMessages((prev) => [
+          ...prev.filter((m) => m.type !== "generating"),
+          {
+            id: nextId(),
+            role: "assistant",
+            type: reason === "out_of_budget" ? "text" : "error",
+            content: message,
+          },
+        ]);
+      },
+
+      /* Straight on. Nothing is built without a brief, so the only thing
+         between the two is this line. */
+      onDone: () => buildFromBrief(brief.trim()),
+    });
+  }
+
+  function buildFromBrief(brief) {
+    /* Held here as well as written to the row, so the rest of this visit
+       knows a brief exists without going back to the database for it. */
+    briefRef.current = brief;
 
     const resultId = nextId();
     let started = false;
     let finished = "";
 
-    const history = toApiMessages([
-      ...messages,
-      {
-        role: "user",
-        content:
-          "Write the finished piece now, in full, based on everything agreed above. " +
-          "Output only the document itself, formatted with markdown headings and lists. " +
-          "No preamble, no explanation of what you are about to do, no closing commentary.",
-      },
-    ]);
-
-    addMessage({ role: "assistant", type: "generating" });
+    /* Saved before a word is written, so the fence the document was built
+       inside is on the row whether or not the writing finishes. */
+    persist(messages, "generate", brief);
 
     abortTurnRef.current = sendTurn({
       stage: "generate",
-      messages: history,
+      brief,
+      findings: findingsRef.current.join("\n\n"),
+      messages: toApiMessages(messages),
 
       onMeta: ({ tier }) => setActiveTier(tier),
 
@@ -935,6 +1192,108 @@ export default function Chat() {
     runTurn(flowStage, toApiMessages(before));
   }
 
+  /* ------------------------------------------------------------------------
+     ANSWERING THE OFFER
+
+     The first turn read everything and asked whether they want to be
+     interviewed. These are the two answers.
+
+     Both put a line in the conversation as though the person typed it, so
+     the transcript reads honestly and the model can see what was chosen.
+     Neither is a setting and neither is remembered: the same question can
+     be asked again in the next conversation, because the answer depends on
+     the job, not on the person.
+     ------------------------------------------------------------------------ */
+
+  function answerOffer(line, stage) {
+    if (typing || generating) return;
+    const kept = messages.filter((m) => m.type !== "offer");
+    updateMessages(kept);
+    addMessage({ role: "user", type: "text", content: line });
+    interviewTurnsRef.current = 0;
+    setFlowStage(stage);
+    runTurn(stage, toApiMessages([...kept, { role: "user", content: line }]));
+  }
+
+  /* Yes. Straight into the questions. */
+  const handleWantInterview = () => answerOffer("Yes, ask me your questions.", "interview");
+
+  /* No. Straight to the read back, which is where it says what it
+     understood and what it is going to use. They still see that before
+     anything is written, so saying no skips the questions and never skips
+     the checkpoint. */
+  const handleSkipInterview = () =>
+    answerOffer("No, get on with it with what you have.", "analyse");
+
+  /* ------------------------------------------------------------------------
+     GOING AND LOOKING, AND THE TWO GATES EITHER SIDE OF IT
+
+     Anthony, 2026-09-10: "for it to be allowed to research, it must be
+     guarded... Once it pulls out the data, it shows you everything, and it
+     shows it in a very simple and direct language, showing you what it has
+     discovered and how it intends to use this data."
+
+     GATE ONE is above, in the analysis. It says what it wants to find and
+     stops. The search tool is not attached to any request until the button
+     below is pressed, so before that there is nothing to talk itself into.
+
+     GATE TWO is here. What comes back is shown with its real sources, in a
+     panel that does not look like the rest of the conversation, because it
+     is not from the company and should never be mistaken for it. It goes
+     nowhere until they accept it.
+
+     A REJECTED FINDING IS DROPPED, not stored. "If there is no go-ahead, it
+     should not add it." So there is no list of things it found that nobody
+     wanted, waiting to be reconsidered on a later turn.
+     ------------------------------------------------------------------------ */
+
+  function allowLookup() {
+    if (typing || generating) return;
+    const kept = messages.filter((m) => m.type !== "lookup");
+    updateMessages(kept);
+    addMessage({ role: "user", type: "text", content: "Yes, go and look." });
+    setFlowStage("analyse");
+    runTurn("research", toApiMessages([...kept, { role: "user", content: "Yes, go and look." }]));
+  }
+
+  function refuseLookup() {
+    if (typing || generating) return;
+    declinedRef.current += 1;
+    const kept = messages.filter((m) => m.type !== "lookup");
+    updateMessages(kept);
+    addMessage({ role: "user", type: "text", content: "No, work with what you have." });
+    setFlowStage("analyse");
+    runTurn("analyse", toApiMessages([...kept, { role: "user", content: "No, work with what you have." }]));
+  }
+
+  /* GATE TWO, the yes. The finding is written to the ref first and the
+     state second, because the very next line fires a turn that reads the
+     ref, and state would not have caught up. */
+  function useFinding(text) {
+    if (typing || generating) return;
+    findingsRef.current = [...findingsRef.current, text];
+    setFindings(findingsRef.current);
+
+    const kept = messages.filter((m) => m.type !== "useFinding");
+    updateMessages(kept);
+    addMessage({ role: "user", type: "text", content: "Use that." });
+    setFlowStage("analyse");
+    runTurn("analyse", toApiMessages([...kept, { role: "user", content: "Use that." }]));
+  }
+
+  /* GATE TWO, the no. Nothing is kept. They are put back in the
+     conversation with the cursor, so the next thing they type is the
+     correction or the data they would rather it used. */
+  function dropFinding() {
+    if (typing || generating) return;
+    /* The count goes up and the text does not get written anywhere.
+       Anthony: "if there is no go-ahead, it should not add it." */
+    declinedRef.current += 1;
+    updateMessages((prev) => prev.filter((m) => m.type !== "useFinding"));
+    setFlowStage("interview");
+    textareaRef.current?.focus();
+  }
+
   /* "Something needs changing" is not a stage of its own. It just takes the
      card away, puts them back in conversation, and hands them the cursor.
      What they type next is the correction, and the loop carries it back up
@@ -954,7 +1313,25 @@ export default function Chat() {
     updateMessages([]);
     setGreetingText(buildGreetingText(me?.staff?.name?.split(" ")[0]));
     interviewTurnsRef.current = 0;
-    setFlowStage("interview");
+
+    /* EVERYTHING THE RESUME LOG CARRIES IS CLEARED HERE TOO, and it was not
+       before this was written. Approved findings lived in a ref that New
+       chat never touched, so a figure somebody approved in the morning was
+       still sitting in the browser in the afternoon and would have gone
+       into a completely unrelated document. Nothing carries between two
+       pieces of work. */
+    findingsRef.current = [];
+    setFindings([]);
+    declinedRef.current = 0;
+    missingRef.current = "";
+    briefRef.current = "";
+
+    /* "orient", not "interview". The first turn reads the request against
+       the whole knowledge base and then offers the interview. This line
+       said "interview" and was a leftover from before orient existed, so
+       every new chat skipped the reading and went straight to asking
+       people for things their own company had already written down. */
+    setFlowStage("orient");
     setStep(0);
     setBrief({});
     setAutoSkill(null);
@@ -1120,10 +1497,19 @@ export default function Chat() {
     );
   }
 
-  function handleLogout() {
+  /* It has to actually sign them out, which it did not until 2026-09-09.
+     It only navigated, so the session survived and the browser back button
+     walked straight back into the workspace.
+
+     replace: true matters as much as the sign out. Without it the workspace
+     stays in the history, so back renders it for a moment before its own
+     guard notices and bounces. Replacing the entry means there is nothing
+     behind them to go back to. */
+  async function handleLogout() {
     setSidebarOpen(false);
     setProfileOpen(false);
-    navigate("/auth");
+    await signOutCompletely();
+    navigate("/auth", { replace: true });
   }
 
   /* ------------------------------------------------------------------------
@@ -1518,6 +1904,12 @@ export default function Chat() {
                 brief={brief}
                 onGenerate={handleGenerate}
                 onAdjust={handleAdjust}
+                onWantInterview={handleWantInterview}
+                onSkipInterview={handleSkipInterview}
+                onAllowLookup={allowLookup}
+                onRefuseLookup={refuseLookup}
+                onUseFinding={useFinding}
+                onDropFinding={dropFinding}
                 onReset={handleNewChat}
                 onRetry={() => handleRetry(m.id)}
                 feedback={feedback[m.id]}
@@ -1745,9 +2137,39 @@ export default function Chat() {
             </>
           )}
 
-          {/* Message box */}
+          {/* ----------------------------------------------------------
+              THE MESSAGE BOX
+
+              A SHARP RECTANGLE HOLDING ROUND CONTROLS, and both halves of
+              that were decided by looking rather than by reasoning.
+
+              Anthony asked for the box itself: "make this box rectangular
+              with the sharp edge so it looks more mature and stop looking
+              like it's wombling." So the frame is square, 0px, no radius
+              at all.
+
+              THE CONTROLS INSIDE STAYED ROUND, and the first attempt got
+              this wrong. Squaring them looked like the consistent choice on
+              paper. Rendered, it is not: the microphone's glow is a radial
+              gradient that slowly rotates, so in a square it becomes a
+              diamond turning behind the button. That is the exact wobble
+              Anthony was asking to be rid of, made worse. Round controls
+              against a hard frame also give the eye something to land on.
+
+              Both versions were built and screenshotted before this one was
+              kept. If anybody squares these again, render it and look at
+              the empty state in the light theme first.
+
+              VERTICALLY CENTRED, not bottom aligned. Anthony: "they should
+              be at the vertical midpoint of the entire entry field." The
+              box grows with the text, and at four lines the controls now
+              sit in the middle of it rather than sinking to the floor.
+
+              overflow-hidden stays, cheap insurance so nothing inside can
+              ever spill past a corner the frame no longer rounds off.
+              ---------------------------------------------------------- */}
           <div
-            className="flex items-end gap-1.5 rounded-full border px-3 py-2 backdrop-blur-2xl shadow-xl transition-shadow focus-within:ring-2 focus-within:ring-[rgba(20,32,160,0.35)]"
+            className="flex items-center gap-1.5 rounded-none border px-3 py-2 overflow-hidden backdrop-blur-2xl shadow-xl transition-shadow focus-within:ring-2 focus-within:ring-[rgba(20,32,160,0.35)]"
             style={{ backgroundColor: "var(--surface-solid)", borderColor: "var(--border-2)" }}
           >
             <button
@@ -1794,7 +2216,15 @@ export default function Chat() {
               <div className="flex items-center gap-1.5 shrink-0">
                 {/* Mic stays on screen at all times, when the browser
                     actually has speech recognition to offer. Nothing is
-                    worse than a control that looks live and cannot work. */}
+                    worse than a control that looks live and cannot work.
+
+THE GLOW AND THE PULSE STAY. They were
+                    taken out once, on a guess that they were the "wombling"
+                    Anthony wanted gone. They were not, and he said so. The
+                    smudge that removing them appeared to fix had a different
+                    cause: the glow had been squared along with the button,
+                    and a rotating radial gradient in a square is a spinning
+                    diamond. Round again, it reads as it always did. */}
                 {micSupported && (
                   <div className="relative w-9 h-9 shrink-0">
                     {listening ? (
@@ -1820,15 +2250,24 @@ export default function Chat() {
                     )}
                     <button
                       onClick={toggleListening}
-                      className="relative w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all hover:scale-105 active:scale-95"
+                      /* Bordered, like the plus on the other side, so the
+                         two ends of the box read as a matched pair. The
+                         border earns its place in the light theme: the idle
+                         background is the same white as the box, so without
+                         an edge the microphone stops looking like a control
+                         and starts looking like a decorative icon. While
+                         listening the red fill says enough on its own, so
+                         the border gets out of the way. */
+                      className="relative w-9 h-9 rounded-full border flex items-center justify-center shrink-0 transition-all hover:scale-105 active:scale-95"
                       style={
                         listening
-                          ? { backgroundColor: BRAND.red, color: "#fff" }
+                          ? { backgroundColor: BRAND.red, color: "#fff", borderColor: BRAND.red }
                           : input.trim() || pendingAttachments.length > 0
-                          ? { backgroundColor: "var(--chip)", color: "var(--text-2)" }
+                          ? { backgroundColor: "var(--chip)", color: "var(--text-2)", borderColor: "var(--border-2)" }
                           : {
                               backgroundColor: "var(--surface-solid)",
                               color: "var(--text-1)",
+                              borderColor: "var(--border-2)",
                               animation: "sx-mic-pulse 2.4s ease-in-out infinite",
                             }
                       }
@@ -1896,9 +2335,35 @@ export default function Chat() {
    avatar, staff messages sit in a neutral capsule on the right.
    ========================================================================== */
 
-function ChatBubble({ message, brief, onGenerate, onAdjust, onReset, onRetry, feedback, onFeedback, onCopy, onDownload }) {
+export function ChatBubble({ message, brief, onGenerate, onAdjust, onWantInterview, onSkipInterview, onAllowLookup, onRefuseLookup, onUseFinding, onDropFinding, onReset, onRetry, feedback, onFeedback, onCopy, onDownload }) {
   const isUser = message.role === "user";
   const riseStyle = { animation: "sx-rise 0.35s ease" };
+
+  /* --- Picked back up, said once and only when something invisible came
+         back with it. Not a card and not a colour: it is a note about the
+         last visit, not a thing to act on, so it reads as quiet as it is.
+         role is "system", so persist never writes it to the row. --- */
+  if (message.type === "resumed") {
+    return (
+      <div style={riseStyle} className="flex justify-center px-2">
+        {/* NO BORDER AND NO BACKGROUND, and that is the point. As a pill it
+            wrapped to two lines on a phone and read as a card, which made a
+            note about the last visit look like something to act on. Plain
+            centred text wraps at any width without changing what it is.
+
+            items-start, not items-center: on two lines a centred icon
+            floats halfway down the block with nothing to sit against. This
+            pins it to the first line. */}
+        <p
+          className="flex items-start gap-2 text-[12.5px] text-center max-w-sm"
+          style={{ color: "var(--text-3)" }}
+        >
+          <History size={12} className="shrink-0 mt-[3px]" />
+          <span className="text-left">{message.content}</span>
+        </p>
+      </div>
+    );
+  }
 
   /* --- The brief, read back for confirmation --- */
   if (message.type === "summary") {
@@ -1941,6 +2406,157 @@ function ChatBubble({ message, brief, onGenerate, onAdjust, onReset, onRetry, fe
      Only ever rendered after a read back the person has just seen, so it
      is the one moment where pressing a button spends real money on their
      behalf and they know exactly what for. */
+  /* --- GATE ONE: may it go and look ---
+
+     Amber, not blue. This is the only moment in the whole flow where
+     something leaves the building, and it should not look like the
+     ordinary next step. The refusal is the plain button on purpose: saying
+     no is free, costs nothing, and must never feel like the awkward
+     choice. */
+  if (message.type === "lookup") {
+    return (
+      <div style={riseStyle}>
+        <div
+          className="rounded-[18px] border p-5 backdrop-blur-xl"
+          style={{ backgroundColor: "var(--surface)", borderColor: BRAND.amber + "66" }}
+        >
+          <div className="flex items-center gap-2 mb-1">
+            <Search size={15} style={{ color: BRAND.amber }} />
+            <p className="text-[15.5px] font-semibold" style={{ color: "var(--text-1)" }}>
+              May I look this up online?
+            </p>
+          </div>
+          <p className="text-[13.5px] mb-4 leading-relaxed" style={{ color: "var(--text-3)" }}>
+            It has said above what it wants to find. Nothing goes into your work until you
+            have seen it and said yes.
+          </p>
+          <PrimaryButton onClick={onAllowLookup} className="w-full flex items-center justify-center gap-2">
+            <Search size={15} />
+            Yes, go and look
+          </PrimaryButton>
+          <button
+            onClick={onRefuseLookup}
+            className="w-full mt-2.5 rounded-[12px] border py-2.5 text-[13.5px] transition-opacity hover:opacity-80"
+            style={{ borderColor: "var(--border-2)", color: "var(--text-2)" }}
+          >
+            No, work with what you have
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  /* --- What it found outside, in its own colour ---
+
+     Anthony: "even write it with a different colour. So the person sees it,
+     okay, this is important."
+
+     A tinted panel with an accent edge and a label, so it cannot be
+     mistaken at a glance for the company's own material or for something
+     the assistant simply knew. It came from outside, and it looks it. */
+  if (message.type === "finding") {
+    return (
+      <div style={riseStyle}>
+        <div
+          className="rounded-[14px] border-l-[3px] border-y border-r px-4 py-3.5"
+          style={{
+            backgroundColor: "var(--surface-2)",
+            borderColor: "var(--border)",
+            borderLeftColor: BRAND.cyan,
+          }}
+        >
+          <div className="flex items-center gap-1.5 mb-2">
+            <Globe size={13} style={{ color: BRAND.cyan }} />
+            <span
+              className="text-[11px] font-semibold uppercase"
+              style={{ color: BRAND.cyan, letterSpacing: "0.06em" }}
+            >
+              From outside your company
+            </span>
+          </div>
+          <div className="text-[14.5px] leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-1)" }}>
+            {message.content}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* --- GATE TWO: does any of it get used --- */
+  if (message.type === "useFinding") {
+    return (
+      <div style={riseStyle}>
+        <div
+          className="rounded-[18px] border p-5 backdrop-blur-xl"
+          style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
+        >
+          <p className="text-[15.5px] font-semibold mb-1" style={{ color: "var(--text-1)" }}>
+            Use this in the work?
+          </p>
+          <p className="text-[13.5px] mb-4 leading-relaxed" style={{ color: "var(--text-3)" }}>
+            Check the numbers and the sources first. If something is wrong, say no and tell
+            me what to use instead.
+          </p>
+          <PrimaryButton
+            onClick={() => onUseFinding(message.content)}
+            className="w-full flex items-center justify-center gap-2"
+          >
+            <Check size={15} />
+            Yes, use it
+          </PrimaryButton>
+          <button
+            onClick={onDropFinding}
+            className="w-full mt-2.5 rounded-[12px] border py-2.5 text-[13.5px] transition-opacity hover:opacity-80"
+            style={{ borderColor: "var(--border-2)", color: "var(--text-2)" }}
+          >
+            No, do not use it
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  /* --- The offer to interview ---
+
+     Shown once, after the first turn has read the company's material. The
+     two buttons are the two answers, in the words a person would use, so
+     nobody has to work out what either one does.
+
+     Yes is the quiet option and No is the plain one, deliberately. Neither
+     is a mistake and neither is risky, so this is not a warning dialog and
+     must not look like one. */
+  if (message.type === "offer") {
+    return (
+      <div style={riseStyle}>
+        <div
+          className="rounded-[18px] border p-5 backdrop-blur-xl"
+          style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
+        >
+          <p className="text-[15.5px] font-semibold mb-1" style={{ color: "var(--text-1)" }}>
+            Want me to ask you a few questions?
+          </p>
+          <p className="text-[13.5px] mb-4 leading-relaxed" style={{ color: "var(--text-3)" }}>
+            A few short ones make the work a lot better. Or I can start now with what I have.
+          </p>
+          <PrimaryButton
+            onClick={onWantInterview}
+            className="w-full flex items-center justify-center gap-2"
+          >
+            <MessagesSquare size={15} />
+            Ask me a few questions
+          </PrimaryButton>
+          <button
+            onClick={onSkipInterview}
+            className="w-full mt-2.5 rounded-[12px] border py-2.5 text-[13.5px] transition-opacity hover:opacity-80"
+            style={{ borderColor: "var(--border-2)", color: "var(--text-2)" }}
+          >
+            Just get on with it
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (message.type === "build") {
     return (
       <div style={riseStyle}>

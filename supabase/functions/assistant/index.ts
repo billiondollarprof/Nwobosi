@@ -42,34 +42,59 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk@0.68.0";
 
 /* --------------------------------------------------------------------------
-   MODEL ROUTING
-   The interview is conversation, so it runs cheap. Anything that reads
-   company material or produces real work runs on a capable model. The
-   ladder exists so a ceiling can be compared as a number rather than a
-   pile of string comparisons.
+   CAPABILITY LEVELS, AND THE ONE PLACE A MODEL IS NAMED
+
+   THE LADDER IS LEVELS, NOT PRODUCTS, since 2026-09-10. Anthony:
+
+     "The name should not be shown because tomorrow we might be installing
+      the same thing for a company using OpenAI. So I want to keep the same
+      architecture, the same design, but just changing the model brain."
+
+   It used to be ["haiku-4-5", "sonnet-5", "opus-5", "fable-5"], and those
+   same strings were the database enum, the admin's dropdown, and a table
+   in src/shared/config.js that ships inside the browser bundle. So the
+   vendor was in the client, and moving a deployment to another provider
+   meant editing the product rather than editing a config.
+
+   Now there are four levels named for what they are FOR, and MODEL_ID
+   below is the only place in the entire codebase that names a real model.
+   Moving to another provider is that one table. Nothing else moves, and
+   no screen changes at all.
+
+   A level is not a promise that the model exists here. Which levels a
+   deployment actually offers is a separate decision, and asking for one
+   that is not enabled lands back on the default rather than failing.
    -------------------------------------------------------------------------- */
 
-const LADDER = ["haiku-4-5", "sonnet-5", "opus-5", "fable-5"] as const;
+const LADDER = ["conversational", "standard", "deeper", "deepest"] as const;
 type Tier = (typeof LADDER)[number];
 
+/* THE MAPPING. The only vendor names in the product, and they are on the
+   server, in a function, behind an API key. Swapping provider is this
+   table and the PRICE table below it. */
 const MODEL_ID: Record<Tier, string> = {
-  "haiku-4-5": "claude-haiku-4-5",
-  "sonnet-5": "claude-sonnet-5",
-  "opus-5": "claude-opus-5",
-  "fable-5": "claude-fable-5",
+  conversational: "claude-haiku-4-5",
+  standard: "claude-sonnet-5",
+  deeper: "claude-opus-5",
+  deepest: "claude-fable-5",
 };
 
-/* Dollars per million tokens. Used to turn real usage into a real number
-   of cents to take off the company's budget. Keep in step with
-   src/shared/config.js, these two are the same table twice. */
+/* Dollars per million tokens, per level. Used to turn real usage into a
+   real number of cents to take off the company's budget.
+
+   THIS TABLE IS NO LONGER MIRRORED IN THE BROWSER. It used to be duplicated
+   in src/shared/config.js so an admin screen could print a rate card in
+   dollars per million tokens. That is a vendor's pricing and a token count,
+   which is exactly the plumbing an admin should never have to read, so the
+   screen shows outputs remaining and this table stays here. */
 const PRICE: Record<Tier, { input: number; output: number }> = {
-  "haiku-4-5": { input: 1, output: 5 },
-  "sonnet-5": { input: 2, output: 10 },
-  "opus-5": { input: 5, output: 25 },
-  "fable-5": { input: 10, output: 50 },
+  conversational: { input: 1, output: 5 },
+  standard: { input: 2, output: 10 },
+  deeper: { input: 5, output: 25 },
+  deepest: { input: 10, output: 50 },
 };
 
-/* ONE MODEL FOR THE STAFF SIDE, AND IT IS SONNET
+/* ONE LEVEL FOR THE STAFF SIDE, AND IT IS STANDARD
    There used to be a picker here: cheap for the interview, capable for the
    work, capped by the ceiling the admin set for each person.
 
@@ -81,23 +106,34 @@ const PRICE: Record<Tier, { input: number; output: number }> = {
    The ladder, the price table and the metering all stay. It is only the
    automatic selection that stops. The ceiling column stays on the row too,
    unread for now, because the enterprise version of this is routing that
-   asks: the assistant says a step needs more than Sonnet, and the person
-   allows it or does not. See SUPPORT.md. */
-const STAFF_TIER: Tier = "sonnet-5";
+   asks: the prompt stage says a step needs more than standard, and the
+   person allows it or does not. See DIRECTION.md, "Which model runs which
+   part". */
+const STAFF_TIER: Tier = "standard";
 
-/* Which tiers take adaptive thinking. Haiku 4.5 predates it and rejects it,
-   everything above it expects it. */
+/* Which levels take adaptive thinking. The small fast model behind
+   conversational predates it and rejects it with a 400; everything above
+   expects it. A property of the model, so it belongs beside the mapping. */
 const ADAPTIVE_THINKING: Record<Tier, boolean> = {
-  "haiku-4-5": false,
-  "sonnet-5": true,
-  "opus-5": true,
-  "fable-5": true,
+  conversational: false,
+  standard: true,
+  deeper: true,
+  deepest: true,
 };
 
+/* NO ROUNDING UP. Anthony, 2026-09-10: "why do you suppose to be rounding up
+   numbers? That's real money."
+
+   Math.ceil charged a whole cent for a message that truly cost a fraction of
+   one, every time, always in our favour. The cause was the column rather than
+   this line: budget_cents_remaining was an integer, so a fraction had nowhere
+   to go. It is numeric now.
+
+   Six decimal places, because that is what the column holds. */
 function centsFor(tier: Tier, inputTokens: number, outputTokens: number) {
   const { input, output } = PRICE[tier];
   const dollars = (inputTokens / 1_000_000) * input + (outputTokens / 1_000_000) * output;
-  return Math.ceil(dollars * 100);
+  return Math.round(dollars * 100 * 1e6) / 1e6;
 }
 
 /* --------------------------------------------------------------------------
@@ -160,6 +196,20 @@ function buildBasePrompt(
     "different one, and never suggest they start again somewhere else. From where they",
     "sit you are simply the assistant, and how that is run is not their concern.",
     "",
+    "USE YOUR JUDGEMENT, IT IS WHY YOU ARE HERE",
+    "You are not a form that collects answers. The one thing you care about is that",
+    "they walk away with better work than they would have produced alone, and you are",
+    "expected to think about how to get there.",
+    "",
+    "So: suggest. Advise. Propose a better shape than the one they asked for, and say",
+    "why. Tell them when an idea will not land with the people who will read it. Point",
+    "out the thing they have not thought of. Notice when what they are asking for is",
+    "not what they actually need, and say so once, plainly, then do what they decide.",
+    "",
+    "Two things are fenced and nothing else is. You do not invent facts, and you do not",
+    "go outside this conversation without being let out. Inside those two fences your",
+    "judgement is the product. Use all of it.",
+    "",
     "YOUR SOURCES OF TRUTH",
     "There are exactly four ways a fact about the world reaches your draft, and this",
     "person opens every one of them. Nothing arrives any other way.",
@@ -168,15 +218,31 @@ function buildBasePrompt(
     "  3. Material they went and checked themselves, then pasted back to you.",
     "  4. Nothing. If none of the above covers it, it does not go in.",
     "",
-    "YOU CANNOT GO AND LOOK",
+    "WHEN TWO OF THEM DISAGREE",
+    "It happens, and the order is fixed so you never have to weigh it up.",
+    "  1. A file they attached in THIS conversation wins. It is the newest and most",
+    "     specific thing anybody has said, handed to you by somebody looking at it.",
+    "  2. Then the company sources, and where two of those disagree, the newer one.",
+    "  3. Then what they typed.",
+    "This is about content: a number, a price, a date, a name, a policy. It is not about",
+    "voice. Brand, colours, house style, templates and standing company facts still come",
+    "from the company material even when an attachment is in front of you.",
+    "When you use an attachment over a company source, say so in one short line, so",
+    "nobody wonders later why this document used a different figure.",
+    "",
+    "YOU CANNOT GO AND LOOK, UNLESS THEY LET YOU OUT",
     "You have no search, no browsing, no way to open a link, and no access to their",
-    "drive. This is not a rule you are following, it is what you are. So:",
+    "drive, on any ordinary turn. That is not a rule you are following, it is what you",
+    "are: the tools are not attached to the request at all. So:",
     "  - Never say or imply you looked something up, checked a site, or found a source.",
     "  - If they paste a link, tell them plainly that you cannot open links, and ask for",
     "    the part that matters as text or as a file. Never describe what is at a URL.",
     "  - Never present something you happen to know about the wider world as though it",
     "    came from their material. If it is not from the four routes above, it is not a",
     "    fact you may use.",
+    "There is exactly one exception and it is not yours to take: if they press the",
+    "button that lets you search, that one turn is given real tools. You cannot reach",
+    "it by asking nicely in any other stage.",
     "",
     "WHEN SOMETHING IS MISSING, BE USEFUL ABOUT IT",
     "Refusing is not enough, and neither is guessing. Say what is missing, then give a",
@@ -247,8 +313,11 @@ function buildBasePrompt(
    Same idea as having no search. Not a rule it may talk itself out of,
    a ceiling it cannot cross. */
 const MAX_OUTPUT: Record<string, number> = {
+  orient: 600,
   interview: 700,
   analyse: 4000,
+  research: 3000,
+  brief: 2000,
   generate: 8000,
 };
 
@@ -260,17 +329,57 @@ const MAX_INTERVIEW_TURNS = 5;
 /* What this particular turn is for. Appended after the cached base so the
    prefix above stays byte identical across stages. */
 const STAGE_PROMPT: Record<string, string> = {
+  /* THE ENTRY POINT. Anthony, 2026-09-10: "The model can even ask the person
+     after they have checked the knowledge base and see what the person needs.
+     Would you like me to interview you? To make your output even better."
+
+     Before this stage existed the first thing that happened was a blind
+     interview: it could see file names and nothing inside them, so it asked
+     for things the company had already answered. Now it reads first and the
+     interview is something it offers rather than something it imposes. */
+  orient: [
+    "",
+    "RIGHT NOW: READ FIRST, THEN OFFER",
+    "This is the first thing that happens. You have their request, and you have the",
+    "company's entire approved material above. Read both properly before you answer.",
+    "",
+    "IF THIS IS NOT A PIECE OF WORK",
+    "A greeting, a question about what you can do, ordinary conversation. Answer it the",
+    "way a colleague would, in a line or two. Use no marker. Nothing below applies.",
+    "",
+    "IF THERE IS REAL WORK ON THE TABLE, three short parts and nothing else.",
+    "",
+    "1. WHAT YOU UNDERSTOOD. One or two lines, in their words, not yours.",
+    "",
+    "2. WHAT YOU ALREADY HAVE. Name the company sources that cover part of this, by",
+    "   name, and say in a few words what each one gives you. This is the moment they",
+    "   discover the company already answered half of it, so it is worth getting right.",
+    "   If nothing in the material touches this, say so plainly and move on.",
+    "",
+    "3. THE OFFER. Say briefly what you would still want to know. Then offer them the",
+    "   choice, in your own words: you can ask a few questions and the work will be",
+    "   better for it, or you can get on with it now with what you have. Make it an",
+    "   easy yes. Do not list the questions themselves, that is the interview.",
+    "",
+    "Then OFFER_INTERVIEW on its own final line. Do not explain the marker and do not",
+    "mention it.",
+    "",
+    "DO NOT WRITE THE WORK HERE. Not a draft, not an outline, not a first section.",
+    "",
+    "Keep the whole thing short. This is the first thing they read, and a wall of text",
+    "loses them before the work has started.",
+  ].join("\n"),
+
   interview: [
     "",
     "RIGHT NOW: INTERVIEW",
     "Work out what they actually need. One question at a time, like a colleague would.",
     "",
     "YOU DO NOT WRITE THE WORK IN THIS STAGE. NOT A DRAFT, NOT AN OUTLINE, NOT A",
-    "FIRST SECTION, NOT EVEN IF THEY ASK YOU TO RIGHT NOW. Writing it is a separate",
-    "stage that runs on a stronger model, after a check you cannot do and a read back",
-    "they have to confirm. If you write it here they never see the read back, they",
-    "never get a file to download, and the work never reaches the model that can read",
-    "the company sources. Handing off IS how you build it for them.",
+    "FIRST SECTION, NOT EVEN IF THEY ASK YOU TO RIGHT NOW. Writing it comes after a",
+    "read back they confirm, and the app only turns the writing stage into a file they",
+    "can download. If you write it here they never see the read back and they never get",
+    "the file. Handing off IS how you build it for them.",
     "",
     "Keep it to three to five questions in total, and fewer if their first message",
     "already answered some of them. This is a short conversation, not an interrogation.",
@@ -283,33 +392,30 @@ const STAGE_PROMPT: Record<string, string> = {
     "once, plainly. If they skip them a second time, that is their answer: let it go",
     "and hand off.",
     "",
-    "Do not try to close every gap here. A stronger model reads the company material",
-    "after you and comes back for anything genuinely missing, so stopping early costs",
-    "nothing and asking too much costs their patience.",
+    "Do not try to close every gap here. The read back after this comes back for",
+    "anything genuinely missing, so stopping early costs nothing and asking too much",
+    "costs their patience.",
     "",
-    "TWO DIFFERENT KINDS OF MATERIAL, AND YOU MUST NOT CONFUSE THEM",
+    "THEY ONLY EVER POINT AT THEIR OWN MATERIAL",
     "",
-    "The company sources listed above belong to the company, and this person should",
-    "never have to know a single file name in there. If they point you at them in any",
-    "words at all, the knowledge base, the admin files, our documents, our brand guide,",
-    "the stuff you already have, that is not a request you refuse and it is not a file",
-    "name to ask for. You cannot read those contents yourself. The stronger model can,",
-    "and it chooses which ones matter. So that is a handoff, immediately.",
+    "You can read the company sources above, all of them, right now. So this person",
+    "never has to name one, never has to know one exists, and must never be asked which",
+    "file to use. Working out which of the company material matters is your job and it",
+    "is one of the reasons they are better off with you than without you.",
     "",
-    "Their own material is the other kind: something on their laptop, something only",
-    "they have, something they went and checked. That, and only that, is when you ask",
-    "them to attach it or paste what matters.",
+    "Their own material is the only kind you ask for: something on their laptop,",
+    "something only they have, something they went and checked themselves. That, and",
+    "only that, is when you ask them to attach it or paste what matters.",
     "",
     "HOW THIS STAGE ENDS",
-    "Three ways, and all three end exactly the same. Say one short line, then",
+    "Two ways, and both end exactly the same. Say one short line, then",
     "INTERVIEW_COMPLETE on its own final line, and nothing else.",
     "",
-    "  1. You have enough to hand over.",
+    "  1. You have enough to work with.",
     "  2. They tell you to get on with it. Just build it, do not worry, go ahead, you",
     "     decide, whatever wording they use. Their instruction beats your question",
     "     list. Do not argue, do not ask one more, and above all do not start writing.",
     "     Say you will work with what you have, and hand off.",
-    "  3. They point you at the company sources, as described above.",
     "",
     "YOU MAY HAVE BEEN HANDED SOMETHING SPECIFIC",
     "Read back up the conversation first. If a message above already says what is",
@@ -325,9 +431,9 @@ const STAGE_PROMPT: Record<string, string> = {
   analyse: [
     "",
     "RIGHT NOW: CHECK, THEN EITHER ASK OR READ BACK",
-    "You are the stronger model. Read the conversation, then read the company sources",
-    "listed above and work out which ones this piece of work actually needs. They may",
-    "not know those sources exist, so choosing is your job.",
+    "Read the conversation, then read the company sources above and work out which ones",
+    "this piece of work actually needs. They may not know those sources exist, so",
+    "choosing is your job.",
     "",
     "If you have already done this earlier in the same conversation, do not start over.",
     "The sources you picked then still stand. Fold in whatever is new and move on.",
@@ -352,6 +458,16 @@ const STAGE_PROMPT: Record<string, string> = {
     "   Only for something that would change the work. A detail you can sensibly decide",
     "   yourself is not missing, it is yours to decide.",
     "",
+    "   IF THE MISSING THING IS PUBLIC, ASK TO GO AND LOOK INSTEAD OF ASKING THEM.",
+    "   A market figure, a published standard, a competitor's public pricing, a date,",
+    "   a regulation. Things that are findable and that this person would only end up",
+    "   searching for themselves. Say in one line what you want to find and why the",
+    "   work needs it, then end your message with NEED_LOOKUP on its own final line.",
+    "   You are asking permission, not announcing. You cannot search until they say",
+    "   yes, and the ability is not given to you until they do.",
+    "   Never for something only they can know: their deadline, who signs it, what",
+    "   they decided internally. That is NEED_INPUT and it stays that way.",
+    "",
     "2. YOU HAVE EVERYTHING",
     "   Say back what you understood, so they can catch a misunderstanding before it",
     "   costs them a draft. This is the moment that proves you understood, so it has to",
@@ -363,6 +479,104 @@ const STAGE_PROMPT: Record<string, string> = {
     "   No preamble, no replaying the conversation, no filler, and no questions. Do not",
     "   invent a gap to look thorough. Then end your message with READBACK_COMPLETE on",
     "   its own final line. Do not explain the marker and do not mention it.",
+  ].join("\n"),
+
+  /* GOING AND LOOKING, ONCE SOMEBODY HAS SAID YES.
+
+     Anthony, 2026-09-10: "before it does anything outside the environment,
+     it should ask for permission... and even when it brings the data in, it
+     should show the data and even write it with a different colour."
+
+     TWO GATES AND THIS IS BETWEEN THEM. The first gate has already been
+     passed to get here: the search tool is not attached to the request at
+     all until the person approves, so before that there is nothing for the
+     model to talk itself into. The second gate is after this: what comes
+     back is shown with its sources and goes nowhere until they accept it.
+
+     "Once the human gives it the go-ahead to research the internet for more
+     info, it is never limited." So inside the gates it is not hedged. It
+     searches properly and reports what it actually found. */
+  research: [
+    "",
+    "RIGHT NOW: GO AND FIND IT",
+    "They have said yes. Search for the thing you asked about and nothing else.",
+    "",
+    "HOW TO SEARCH",
+    "  - Newest wins. The most recent publication, the most recent figure. Say when",
+    "    something is dated and how old it is.",
+    "  - By region, where region matters. Work out from the company material above",
+    "    which country this business operates in, and search that country's own",
+    "    publications and bodies. A Nigerian company's market figure comes from",
+    "    Nigerian sources, not from an American article that mentions Nigeria. Where",
+    "    the question is genuinely universal, go to the most credible source there is.",
+    "  - Exact, never approximate. Report the figure that is actually on the page you",
+    "    opened. Not one you remember, not one you rounded, not one from elsewhere.",
+    "  - Open material over walls. Where the real number sits behind a paywall you",
+    "    cannot read, work from what is open and say that is what you did. Never",
+    "    report what you assume is behind it.",
+    "",
+    "WHAT TO COME BACK WITH, and write it for a person who is not technical:",
+    "  - what you found, in plain sentences, with the actual numbers",
+    "  - where each thing came from, named, and how recent it is",
+    "  - how you mean to use it in their work",
+    "  - anything you looked for and could not find, said plainly rather than filled in",
+    "",
+    "NOTHING YOU FOUND IS IN THE WORK YET. They see this and decide. So do not write",
+    "as though it is settled, and do not start drafting anything with it.",
+    "",
+    "If the search turned up nothing usable, say exactly that. An empty search is a",
+    "useful answer. Filling the gap from memory is the failure this whole product",
+    "exists to prevent, and it would arrive wearing the clothes of a real source.",
+  ].join("\n"),
+
+  /* THE PROMPT. Anthony, 2026-09-10, and this is the part he says the whole
+     product turns on: "it's the prompt and the build that are together."
+
+     WHERE IT SITS. The read back is conversation. It happens in the chat,
+     the person corrects it, and the conversation carries on until they are
+     happy. The moment they say go, this runs and the writing follows it
+     with nobody pressing anything else. Prompt and build are one action.
+
+     WHY A SEPARATE STAGE AT ALL, when one model runs both halves today.
+     Two reasons. It is the second guardrail: the writing stage is handed
+     this and may not go outside it, so nothing reaches the document that
+     was not agreed in the conversation. And it is the boundary a bigger
+     model is handed the work at, for a deployment that needs one. See
+     DIRECTION.md, "Which model runs which part".
+
+     THE PERSON NEVER READS THIS. The product principle keeps two things
+     visible, the read back and the sources, and hides everything else.
+     This is machinery. It is stored so it can be looked at later, and it
+     does not go on screen. */
+  brief: [
+    "",
+    "RIGHT NOW: WRITE THE BRIEF THAT THE DOCUMENT WILL BE BUILT FROM",
+    "They have confirmed your read back. Turn everything agreed in this",
+    "conversation into one complete instruction for producing the work.",
+    "",
+    "Nobody reads this except the step that writes the document, so write it for",
+    "that. No greeting, no commentary, no explaining what you are about to do.",
+    "",
+    "COVER EVERY ONE OF THESE, and nothing else:",
+    "  - what is being made, in one line",
+    "  - who reads it, and what they should think or do afterwards",
+    "  - the shape: length, sections, and the order they come in",
+    "  - the voice, and where that voice came from",
+    "  - every company fact the document must use, written out in full, with the",
+    "    source named beside it. Do not write 'use the pricing from the pricing",
+    "    file'. Write the actual price. The writing step should not have to go",
+    "    looking for anything.",
+    "  - anything found outside the company that they approved, with its source",
+    "  - anything they told you NOT to do, and any number or claim they ruled",
+    "    out. These matter more than the rest, because they are the corrections",
+    "    somebody made on purpose.",
+    "  - what is missing, if anything, and what the document does about it",
+    "",
+    "DO NOT ADD ANYTHING THAT WAS NOT AGREED. This is the fence the writing step",
+    "runs inside. A fact that appears here for the first time is a fact nobody",
+    "approved, and it will end up in their document with your name on it.",
+    "",
+    "Output the brief and nothing else.",
   ].join("\n"),
 
   generate: [
@@ -377,6 +591,15 @@ const STAGE_PROMPT: Record<string, string> = {
     "Every fact in this document comes from the four routes above and nowhere else. If",
     "outside material was brought back and a referencing style was agreed, include the",
     "references in that style. If no style was agreed, do not invent citations.",
+    "",
+    "ONE EXCEPTION TO OUTPUTTING NOTHING BUT THE DOCUMENT",
+    "If you asked for something and it was never supplied, and you went ahead anyway",
+    "because that is what they wanted, then after the document add one short closing",
+    "section headed What would make this better. Under it, name each thing that was",
+    "missing, say in one line what it would have improved, and stop. No apology, no",
+    "hedging, no re-listing what you did well, and never a note when nothing was",
+    "missing. They asked you to work with what you had, so this is a record for their",
+    "next pass, not a complaint about this one.",
   ].join("\n"),
 };
 
@@ -389,12 +612,37 @@ const STAGE_PROMPT: Record<string, string> = {
    something a server may trust. */
 const MAX_REQUEST_BYTES = 5 * 1024 * 1024;
 
-/* Sixty thousand characters of company material, about fifteen thousand
-   tokens, roughly thirty pages. Enough to carry a brand guide, a template
-   and a company profile at once. It rides on the analysis and the writing
-   only, never the interview, so a conversation pays for it twice rather
-   than on every question. */
-const MAX_SOURCE_CHARS = 60000;
+/* How much of the company's own material rides on a turn.
+
+   RAISED FROM 60,000 TO 200,000 ON 2026-09-10, in step with support-ask.
+   The old number cut a company's material in half without telling anybody,
+   which is a worse failure than a slow reply.
+
+   IT IS A CEILING, NOT A TARGET. A company with 30,000 characters sends
+   30,000 and pays for 30,000. Raising this costs nothing until somebody
+   actually has that much, and then it is visible in their budget, which is
+   the right place to notice it.
+
+   IT RIDES ON EVERY TURN, INCLUDING THE INTERVIEW, since 2026-09-10. It used
+   to be held back from the interview to save money, and what that actually
+   bought was an interview that could not see and asked people for things
+   their own company had already written down.
+
+   THE STAFF SIDE IS NOT THE SAME MONEY AS SUPPORT. This runs at standard,
+   twice the price of support's conversational, so if a company ever did
+   fill this:
+
+     first turn of a session      about 20 cents, the one hour cache write
+     every turn after             about 1 cent, the cache read
+
+   A whole session, questions and analysis and writing together, lands near
+   26 cents. Before the cache mark was fixed the same session cost about 24
+   and the model could not see during the interview. Different shape from
+   support, so watch it rather than assume it.
+
+   PER DEPLOYMENT. companies.max_source_chars overrides this where it is set.
+   This constant is the default and the fallback. */
+const MAX_SOURCE_CHARS = 200000;
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -463,9 +711,39 @@ Deno.serve(async (req: Request) => {
     return json({ ok: false, reason: "Something went wrong. Try again." }, 400);
   }
 
-  const stage = String(body?.stage ?? "interview");
-  const messages = Array.isArray(body?.messages) ? body.messages : null;
-  if (!messages?.length) return json({ ok: false, reason: "Nothing to send." }, 400);
+  /* Defaults to the entry stage, not the interview. A request with no stage
+     is either an old client or a bug, and either way the right answer is to
+     read first rather than to start asking blind. */
+  const stage = String(body?.stage ?? "orient");
+  const sent = Array.isArray(body?.messages) ? body.messages : null;
+  if (!sent?.length) return json({ ok: false, reason: "Nothing to send." }, 400);
+
+  /* A CONVERSATION HAS TO END ON THEIR TURN.
+
+     On 2026-09-10 an interview ended, the app handed off to the analysis
+     with the assistant's closing line appended, and the model refused the
+     whole request:
+
+       "This model does not support assistant message prefill. The
+        conversation must end with a user message."
+
+     The person saw an error at the moment the work should have started.
+
+     The browser drops trailing assistant turns before it sends, and this
+     does it again here. Not belt and braces for its own sake: the browser
+     is not something this function is allowed to trust, and any client that
+     gets this wrong would otherwise turn a fixable mistake into a 400 from
+     the model with the person watching. */
+  const messages = (() => {
+    const out = [...sent];
+    while (
+      out.length &&
+      typeof out[out.length - 1] === "object" &&
+      out[out.length - 1] !== null &&
+      (out[out.length - 1] as { role?: string }).role === "assistant"
+    ) out.pop();
+    return out.length ? out : sent;
+  })();
 
   /* Who they are and what they are allowed. Read from the database under
      their own identity, never from the request. */
@@ -515,9 +793,9 @@ Deno.serve(async (req: Request) => {
 
   const tier = STAFF_TIER;
 
-  /* The catalogue: names and one line descriptions. This is what the
-     interview sees, and it is enough to talk about what exists without
-     paying to carry any of it. */
+  /* The catalogue: names and one line descriptions. It goes in the cached
+     base prompt as a table of contents, so the model can talk about what
+     exists by name. The words themselves follow further down. */
   const { data: sources } = await asUser
     .from("knowledge_sources")
     .select("id, name, description, status")
@@ -529,47 +807,162 @@ Deno.serve(async (req: Request) => {
      things up. */
   const readySources = (sources ?? []).filter((s) => s.status === "ready");
 
-  /* Base first and unchanging, then contents, then the stage
-     instruction. That order is what lets the base be cached: the cache is
-     a prefix match, so anything that varies has to come after it. */
+  /* Base first, then the contents, then the stage instruction. That order
+     is what makes caching possible at all: the cache is a prefix match, so
+     the two things that never change go first and the one that varies goes
+     last. The mark itself is placed further down, on the last stable block. */
   const base = buildBasePrompt(company, staff.name ?? "a staff member", readySources);
 
-  /* On the last question the interview is allowed, tell it so. The app
-     moves the work up whether it agrees or not, and a model that knows the
-     turn is its last closes cleanly rather than being cut off partway
-     through asking something nobody will get to answer. */
-  const assistantTurns = messages.filter((m: unknown) =>
-    typeof m === "object" && m !== null && (m as { role?: string }).role === "assistant"
-  ).length;
+  /* HOW MANY QUESTIONS THIS INTERVIEW HAS ALREADY ASKED
 
-  const lastQuestion =
-    stage === "interview" && assistantTurns >= MAX_INTERVIEW_TURNS - 1
+     Sent by the app rather than counted here, and that is deliberate. This
+     function only sees a list of messages, so counting assistant turns in it
+     counts the wrong things: the orient turn before the interview started,
+     and every turn of an earlier interview when somebody corrects a read back
+     and drops back into a fresh one. Both make it believe the interview is
+     nearly spent when it has not asked anything yet.
+
+     The app knows, because it resets its own counter every time the work
+     moves up a stage. So the app is asked.
+
+     THIS IS NOT A SECURITY CONTROL AND IT DOES NOT NEED TO BE. It only
+     changes the wording of a nudge. The real ceiling is enforced twice
+     where a browser cannot reach: the app moves the work up regardless at
+     MAX_INTERVIEW_TURNS, and the interview stage is given 700 output tokens,
+     which is a question and not a document. A browser that lies here gets a
+     differently worded question and nothing else. Clamped anyway, because a
+     number off the wire goes into a comparison. */
+  const askedSoFar = Math.min(Math.max(Number(body?.askedSoFar ?? 0) || 0, 0), 50);
+
+  /* The approved brief, written by the stage above and handed straight back
+     for the writing stage to work inside. It rides in the body rather than in
+     the conversation, because it is machinery: putting it in the messages
+     would show it on screen and would read as something somebody said. */
+  const brief = String(body?.brief ?? "").slice(0, 20000).trim();
+
+  /* What was found outside and ACCEPTED. Only what somebody ticked reaches
+     this. The app holds the ones they turned down and never sends them, so
+     a rejected figure cannot leak back in through a later turn. */
+  const findings = String(body?.findings ?? "").slice(0, 20000).trim();
+
+  /* Anthony, 2026-09-10: "to make the questions not to be too long or boring
+     ... between three to four times asking questions and getting. Can always
+     attach, if you would want me to continue like this, I can."
+
+     So at three it stops asking and starts offering, and the offer is an
+     informed one: this is what the work looks like now, this is what another
+     round would add. At the ceiling it closes. */
+  const ENOUGH_FOR_THE_BASICS = 3;
+
+  let pacing = "";
+  if (stage === "interview" && askedSoFar >= MAX_INTERVIEW_TURNS - 1) {
+    pacing = [
+      "",
+      "",
+      "THIS IS YOUR LAST TURN IN THIS STAGE",
+      "You have used the questions this interview gets. Do not ask another one.",
+      "Say in one line what you will be working with, then hand off.",
+    ].join("\n");
+  } else if (stage === "interview" && askedSoFar >= ENOUGH_FOR_THE_BASICS) {
+    pacing = [
+      "",
+      "",
+      "YOU HAVE THE FUNDAMENTALS. DO NOT SIMPLY ASK ANOTHER QUESTION.",
+      "You have asked enough to cover the basics. Anything further is a bonus, and a",
+      "long interview is the thing people give up on. So this turn you offer instead:",
+      "  - one or two lines on what the work will look like with what you have now",
+      "  - one line on what another round or two would add, concretely, not vaguely",
+      "  - then ask whether they want to keep going or want you to get on with it",
+      "If they have already waved you on, do not offer at all. Hand off.",
+    ].join("\n");
+  }
+
+  /* THE FENCE, AND IT IS THE POINT OF THE WHOLE STAGE.
+
+     Anthony: "You cannot build anything until you write a prompt, because
+     the prompt acts as a guardrail."
+
+     So the writing stage is not asked politely to stay inside the brief. It
+     is handed the brief as the last thing it reads, after everything else,
+     and told plainly that anything outside it was never approved. */
+  const approvedBrief =
+    stage === "generate" && brief
       ? [
           "",
           "",
-          "THIS IS YOUR LAST TURN IN THIS STAGE",
-          "You have used the questions this interview gets. Do not ask another one.",
-          "Say in one line what you will be working with, then hand off.",
+          "THE APPROVED BRIEF",
+          "This was written from the conversation and confirmed before you were",
+          "asked to write anything. It is the whole of what was agreed.",
+          "",
+          "Work inside it. Every fact you need is already in here, written out, so",
+          "you do not need to go looking. Anything not in here was not approved by",
+          "anybody, and a fact that appears for the first time in the finished",
+          "document is exactly the failure this product exists to prevent.",
+          "",
+          "Craft is still yours. How it is structured, how it reads, how it lands.",
+          "The fence is on the facts, not on the writing.",
+          "",
+          brief,
         ].join("\n")
       : "";
 
-  const stageInstruction = (STAGE_PROMPT[stage] ?? STAGE_PROMPT.interview) + lastQuestion;
+  /* A generate that arrives with no brief is an older client, which today
+     means the build on main. It still works, exactly as it did before this
+     stage existed. Once main carries the new app this becomes a refusal
+     rather than a log line, and then the rule is enforced rather than
+     merely followed. */
+  if (stage === "generate" && !brief) {
+    console.warn("generate ran with no approved brief, company", staff.company_id);
+  }
+
+  /* Accepted outside material, handed to the stages that build with it. It
+     is kept separate from the company's own sources on purpose: a person
+     approved this one by one, from outside the building, and the model
+     should credit it that way rather than treating it as company fact. */
+  const outsideMaterial = findings
+    ? [
+        "",
+        "",
+        "MATERIAL FROM OUTSIDE THE COMPANY, WHICH THEY APPROVED ONE BY ONE",
+        "This was found by searching, shown to them with its sources, and accepted.",
+        "It is as usable as a company source now. It is not a company source, so say",
+        "where it came from wherever it carries weight in the work.",
+        "",
+        findings,
+      ].join("\n")
+    : "";
+
+  const stageInstruction =
+    (STAGE_PROMPT[stage] ?? STAGE_PROMPT.orient) + pacing + approvedBrief + outsideMaterial;
 
   /* ----------------------------------------------------------------------
      THE CONTENTS THEMSELVES
-     The interview never sees these. It is a conversation about what the
-     person wants, and carrying a company's entire brand guide through
-     every question would cost real money to answer "who is this for".
 
-     From the analysis onward it does see them, because that is the whole
-     promise: the output already knows the company's templates and numbers
-     without the staff member supplying any of it. A name and a
-     description cannot deliver that. Only the words can.
+     EVERY STAGE SEES THESE, INCLUDING THE FIRST. Until 2026-09-10 the line
+     below read `stage !== "interview"`, which meant the interview saw file
+     names and one line descriptions and never a word inside them. It then
+     asked people for things their own company had already written down, and
+     that single line was the reason the whole flow felt blind.
+
+     It looks like it should cost more and it does not, because of the cache
+     mark further down. The material is identical on every turn of a
+     conversation, so it is written once and read back at about a tenth of
+     the price after that. Sending it to the interview as well costs roughly
+     one cent a turn and buys the thing the product is actually for.
+
+     It is capped by the company's own ceiling, and that is a ceiling rather
+     than a target: 30,000 characters of material sends 30,000 and pays for
+     30,000.
      ---------------------------------------------------------------------- */
+
+  /* Per deployment, because it changes per deployment. Anthony, 2026-09-10:
+     "if we are deploying in somebody's VPC, it can change." Falls back to the
+     constant, so this keeps working before the column exists. */
+  const sourceCeiling = Number(company.max_source_chars ?? MAX_SOURCE_CHARS) || MAX_SOURCE_CHARS;
 
   let sourceContents = "";
 
-  if (stage !== "interview" && readySources.length) {
+  if (readySources.length) {
     const { data: chunks } = await asUser
       .from("knowledge_chunks")
       .select("source_id, content")
@@ -579,7 +972,7 @@ Deno.serve(async (req: Request) => {
     if (chunks?.length) {
       const byName = new Map(readySources.map((s) => [s.id, s.name]));
       const parts: string[] = [];
-      let budget = MAX_SOURCE_CHARS;
+      let budget = sourceCeiling;
 
       for (const chunk of chunks) {
         if (budget <= 0) break;
@@ -612,22 +1005,55 @@ Deno.serve(async (req: Request) => {
 
   const anthropic = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY")! });
 
-  /* Haiku 4.5 predates adaptive thinking and effort, and rejects both with a
-     400. Sonnet 5 and above want them. A lookup rather than a comparison,
-     because only one tier is in use today and a comparison against it reads
-     as dead code to the type checker while still being the right shape for
-     the day routing comes back.
+  /* The model behind conversational predates adaptive thinking and effort,
+     and rejects both with a 400. Everything above wants them. A lookup
+     rather than a comparison, because only one level is in use today and a
+     comparison against it reads as dead code to the type checker while
+     still being the right shape for the day routing comes back.
 
      The cast is the SDK's typings being behind the API. 0.68.0 knows
      thinking as enabled or disabled and not as adaptive, which is the shape
-     Sonnet 5 actually takes. Nothing else in the request needs loosening,
-     so this is cast on its own rather than over the whole call. */
+     the model behind standard actually takes. Nothing else in the request
+     needs loosening, so this is cast on its own rather than over the whole
+     call. */
   const thinkingExtras = ADAPTIVE_THINKING[tier]
     ? {
         thinking: { type: "adaptive" } as unknown as Anthropic.ThinkingConfigParam,
         output_config: { effort: "high" as const },
       }
     : {};
+
+  /* ----------------------------------------------------------------------
+     THE FIRST GATE, AND IT IS CODED RATHER THAN ASKED FOR
+
+     Anthony: "the rules are not just written just like writtens. They must
+     be coded for the model to always obey them."
+
+     So the search tool is not in the request unless this turn IS the
+     research turn, and the app only sends that stage after a person has
+     pressed approve on screen. Every other turn has no tool at all. There
+     is nothing to talk itself into, no instruction to reinterpret, and no
+     amount of clever wording gets a model to use a tool it was not given.
+
+     web_fetch rides along because search and fetch are a pair: search finds
+     the page, fetch reads it properly. Fetch will only open an address that
+     is already in the conversation, so it cannot wander on its own.
+
+     max_uses is a ceiling on one turn, not a leash on the searching itself.
+     Anthony: "once the human gives it the go-ahead, it is never limited."
+     Ten searches is a thorough look, not a peek, and it stops a loop from
+     running up somebody's bill.
+
+     NOT code_execution. These tool versions do their own filtering with it
+     underneath, and declaring a second execution environment confuses the
+     model about which one it is in.
+     ---------------------------------------------------------------------- */
+  const searchTools = stage === "research"
+    ? [
+        { type: "web_search_20260209", name: "web_search", max_uses: 10 },
+        { type: "web_fetch_20260209", name: "web_fetch", max_uses: 5 },
+      ] as unknown as Anthropic.ToolUnion[]
+    : undefined;
 
   const encoder = new TextEncoder();
 
@@ -643,32 +1069,145 @@ Deno.serve(async (req: Request) => {
       send("meta", { tier, stage });
 
       try {
-        /* The system prompt is byte for byte identical on every turn for a
-           given company, which makes it the one thing worth caching. Marked
-           cacheable, it is charged at roughly a tenth on every turn after
-           the first, and an interview is many turns over the same prompt.
+        /* ------------------------------------------------------------
+           THE CACHE MARK, AND WHY IT SITS WHERE IT SITS
 
-           Caching is a prefix match, so this only holds while nothing above
-           it changes. Nothing is above it here, and the prompt itself is
-           built from company data that changes rarely, which is exactly the
-           shape caching rewards. A short prompt silently will not cache,
-           there is a minimum length, so a company with no sources yet gets
-           no benefit and no harm either. */
-        const run = anthropic.messages.stream({
-          model: MODEL_ID[tier],
-          max_tokens: MAX_OUTPUT[stage] ?? MAX_OUTPUT.generate,
-          system: [
-            { type: "text", text: base, cache_control: { type: "ephemeral" } },
-            ...(sourceContents ? [{ type: "text" as const, text: sourceContents }] : []),
-            { type: "text", text: stageInstruction },
-          ],
-          messages,
-          ...thinkingExtras,
-        });
+           Caching is a prefix match. Everything from the top of the
+           prompt down to the mark is cached. Everything after it is
+           charged at full price, every single turn.
 
-        run.on("text", (chunk: string) => send("text", { text: chunk }));
+           Until 2026-09-10 the mark was on `base` alone, with the
+           company's material sitting after it. So the material, which is
+           by far the largest thing here, was billed in full on every
+           analysis and every writing turn. The comment above it claimed
+           "about 1 cent". It was about 10.
 
-        const final = await run.finalMessage();
+           So the mark goes on the LAST block that does not change. Both
+           `base` and the material are identical on every turn for a given
+           company, and only the stage instruction below varies.
+
+           A company with no sources yet has one stable block, so the mark
+           lands on `base` and behaves as before.
+
+           AN HOUR, NOT FIVE MINUTES. The life refreshes every time the
+           cache is used, and the refresh is free, so this is a sliding
+           window from the last message rather than a countdown from the
+           first. Five minutes still expires in the middle of a real
+           interview, because a person reading a question and thinking
+           about the answer routinely takes longer than that, and every
+           expiry pays the full write again. Research on document drafting
+           puts a real session at 25 to 45 minutes. An hour covers it.
+
+           The cast is the SDK typings being behind the API, the same
+           reason `thinking` is cast above. 0.68.0 knows cache_control
+           without a ttl. Cast on its own rather than over the whole call.
+           ------------------------------------------------------------ */
+        const CACHE_MARK = { type: "ephemeral", ttl: "1h" } as unknown as
+          Anthropic.CacheControlEphemeral;
+
+        const stable: Anthropic.TextBlockParam[] = [{ type: "text", text: base }];
+        if (sourceContents) stable.push({ type: "text", text: sourceContents });
+        stable[stable.length - 1].cache_control = CACHE_MARK;
+
+        let final: Anthropic.Message;
+
+        if (stage === "research") {
+          /* ------------------------------------------------------------
+             THE RESEARCH TURN
+
+             NOT STREAMED, and that is deliberate. A search turn is the
+             model going away, running searches, reading pages, and coming
+             back. Streamed, the person watches a cursor sit still for
+             twenty seconds and assumes it has hung. Whole, they get a
+             spinner and then the findings, which is honest about what is
+             happening.
+
+             PAUSE_TURN IS NOT AN ERROR. A long server tool run comes back
+             with stop_reason "pause_turn" and the work half done. The
+             answer is to hand the response back and ask it to carry on.
+             Left unhandled it looks exactly like a model that stopped
+             mid sentence. Three continuations is enough for a real search
+             and stops a loop from running forever.
+             ------------------------------------------------------------ */
+          const convo = [...messages];
+          let fresh = 0, cWrite = 0, cRead = 0, out = 0;
+          let text = "";
+          const sourcesFound: { url: string; title: string }[] = [];
+
+          for (let round = 0; round < 4; round += 1) {
+            const reply = await anthropic.messages.create({
+              model: MODEL_ID[tier],
+              max_tokens: MAX_OUTPUT.research,
+              system: [...stable, { type: "text", text: stageInstruction }],
+              messages: convo,
+              tools: searchTools,
+              ...thinkingExtras,
+            });
+
+            fresh += reply.usage?.input_tokens ?? 0;
+            cWrite += reply.usage?.cache_creation_input_tokens ?? 0;
+            cRead += reply.usage?.cache_read_input_tokens ?? 0;
+            out += reply.usage?.output_tokens ?? 0;
+
+            for (const block of reply.content as unknown as Record<string, unknown>[]) {
+              if (block.type === "text") text += String(block.text ?? "");
+
+              /* THE SOURCES COME FROM THE TOOL, NOT FROM THE MODEL. A model
+                 asked to list where it looked can write a plausible address
+                 that never existed. These are the addresses it actually
+                 opened, read off the result blocks, so they cannot be
+                 invented.
+
+                 A FAILED SEARCH DOES NOT THROW. It comes back as a normal
+                 success with an error object where the list should be. On
+                 success this content is an array; on failure it is an
+                 object. Indexing without checking would make a search that
+                 failed read exactly like a search that found nothing, and
+                 the model would fill the gap itself. */
+              if (block.type === "web_search_tool_result" && Array.isArray(block.content)) {
+                for (const r of block.content as Record<string, unknown>[]) {
+                  const url = String(r.url ?? "").trim();
+                  if (url && !sourcesFound.some((x) => x.url === url)) {
+                    sourcesFound.push({ url, title: String(r.title ?? url).slice(0, 160) });
+                  }
+                }
+              }
+            }
+
+            if (reply.stop_reason !== "pause_turn") { final = reply; break; }
+            convo.push({ role: "assistant", content: reply.content });
+            final = reply;
+          }
+
+          if (sourcesFound.length) {
+            text += "\n\nWhere this came from\n" +
+              sourcesFound.slice(0, 12).map((x) => `- ${x.title}\n  ${x.url}`).join("\n");
+          }
+
+          send("text", { text: text.trim() || "I searched and found nothing usable for this." });
+
+          final = {
+            ...(final! ?? {}),
+            usage: {
+              input_tokens: fresh,
+              cache_creation_input_tokens: cWrite,
+              cache_read_input_tokens: cRead,
+              output_tokens: out,
+            },
+          } as unknown as Anthropic.Message;
+        } else {
+          const run = anthropic.messages.stream({
+            model: MODEL_ID[tier],
+            max_tokens: MAX_OUTPUT[stage] ?? MAX_OUTPUT.generate,
+            system: [...stable, { type: "text", text: stageInstruction }],
+            messages,
+            ...thinkingExtras,
+          });
+
+          run.on("text", (chunk: string) => send("text", { text: chunk }));
+
+          final = await run.finalMessage();
+        }
 
         /* ------------------------------------------------------------
            METER IT
@@ -686,14 +1225,22 @@ Deno.serve(async (req: Request) => {
         const freshInput = final.usage?.input_tokens ?? 0;
         const outputTokens = final.usage?.output_tokens ?? 0;
 
-        const inputTokens = freshInput + cacheWrite * 1.25 + cacheRead * 0.1;
+        /* A one hour cache write costs twice the base input rate. A five
+           minute one costs 1.25. We ask for an hour above, so this is 2.
+           Getting it wrong is not a rounding error: at 1.25 the company is
+           undercharged by a third of every write, which is our money, and
+           their budget outlives what they actually spent. */
+        const inputTokens = freshInput + cacheWrite * 2 + cacheRead * 0.1;
         const cents = centsFor(tier, inputTokens, outputTokens);
 
-        /* If this stays at zero over a conversation, the cache is not
+        /* If cacheRead stays at zero over a conversation, the cache is not
            holding and something above the prompt is changing between
-           turns. Cheap to log, and the only way to notice. */
+           turns. The stage is logged too: working out which stage had
+           failed once took reading three screenshots against three output
+           token counts, because this line said tier and not stage. */
         console.log(
-          `usage tier=${tier} fresh=${freshInput} cacheWrite=${cacheWrite} cacheRead=${cacheRead} out=${outputTokens} cents=${cents}`,
+          `usage stage=${stage} tier=${tier} fresh=${freshInput} cacheWrite=${cacheWrite} ` +
+            `cacheRead=${cacheRead} out=${outputTokens} cents=${cents}`,
         );
 
         if (!exempt && cents > 0) {

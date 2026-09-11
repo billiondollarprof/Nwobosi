@@ -76,6 +76,20 @@ export function PageShell({ children, scroll = false, className = "" }) {
         fontFamily: FONTS.body,
       }}
     >
+      {/* A CHILD OF THIS MUST CARRY w-full
+
+         This is a column flex container, so every child is a flex item. A
+         flex line is as wide as its widest item and stretch only grows
+         items up to that line, so a child whose content will not wrap
+         makes the line wider than the phone and drags every sibling out
+         with it. overflow-x-clip then hides the result instead of
+         scrolling it, and document.scrollWidth still reads clean, so
+         nothing catches it.
+
+         That is how the admin knowledge list ended up 512px wide on a
+         320px phone with the Ready pill and the bin off screen. Give the
+         page's own wrapper w-full and its width becomes definite, which
+         stops it. min-w-0 on its own does not. */}
       <AmbientGlow />
       {children}
     </div>
@@ -123,7 +137,10 @@ export function SectionHeading({ children, hint }) {
    SECTION: Buttons
    -------------------------------------------------------------------------- */
 
-export function PrimaryButton({ children, className = "", style = {}, ...rest }) {
+export const PrimaryButton = forwardRef(function PrimaryButton(
+  { children, className = "", style = {}, ...rest },
+  ref
+) {
   /* Disabled drops the gradient rather than fading it. Half opacity on a
      navy gradient reads fine on the dark ground and reads as a muddy purple
      smear on a white card, which looks like a rendering fault rather than a
@@ -138,12 +155,13 @@ export function PrimaryButton({ children, className = "", style = {}, ...rest })
         color: off ? "var(--text-3)" : "#fff",
         ...style,
       }}
+      ref={ref}
       {...rest}
     >
       {children}
     </button>
   );
-}
+});
 
 /* The second action, where there is one. It has to be clearly secondary to
    the primary button and clearly still a button, which a bare text link is
@@ -185,17 +203,24 @@ export function GlassButton({ children, icon: Icon, className = "", style = {}, 
   );
 }
 
-export function GhostButton({ children, className = "", style = {}, ...rest }) {
+/* forwardRef, because a dialog has to be able to put the focus on Cancel
+   when it opens. Nothing else passes a ref to this, so it costs the other
+   call sites nothing. */
+export const GhostButton = forwardRef(function GhostButton(
+  { children, className = "", style = {}, ...rest },
+  ref
+) {
   return (
     <button
-      className={`px-4 py-2.5 rounded-[12px] border text-[13.5px] transition-colors hover:opacity-80 ${className}`}
+      ref={ref}
+      className={`px-4 py-2.5 rounded-[12px] border text-[13.5px] transition-colors hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50 ${className}`}
       style={{ borderColor: "var(--border-2)", color: "var(--text-2)", ...style }}
       {...rest}
     >
       {children}
     </button>
   );
-}
+});
 
 export function IconBtn({ children, onClick, active, activeColor = BRAND.navy, label }) {
   return (

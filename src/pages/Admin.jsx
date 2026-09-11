@@ -26,11 +26,18 @@ import {
   Users,
   Gauge,
   AlertCircle,
+  AlertTriangle,
   X,
   Sparkles,
+  LogOut,
+  Info,
 } from "lucide-react";
 
 import { LogoMark } from "../shared/icons.jsx";
+import PublishGate from "../shared/PublishGate.jsx";
+import ConfirmDelete from "../shared/ConfirmDelete.jsx";
+import RefreshOrKeep from "../shared/RefreshOrKeep.jsx";
+import AudienceControl from "../shared/AudienceControl.jsx";
 import { BRAND, GRADIENTS, FONTS } from "../shared/tokens";
 import {
   PageShell,
@@ -53,12 +60,17 @@ import {
   addTextSource,
   removeSource,
   setSourceVisibility,
+  listContradictions,
+  resolveContradiction,
   listStaff,
   listWork,
+  signOutCompletely,
 } from "../shared/session.js";
 import { adminSessionExpired } from "../shared/adminClock.js";
 import { readFileAsText, canBecomeText } from "../shared/readFile.js";
 import { fetchLinkSource } from "../shared/linkApi.js";
+import { readBeforePublish, loadSourceText } from "../shared/publishCheck.js";
+import { findByName, findByAddress, whenAdded } from "../shared/duplicates.js";
 import { inviteStaff, timeLeft } from "../shared/inviteApi.js";
 import {
   PRODUCT,
@@ -66,11 +78,12 @@ import {
   MAX_SOURCE_CHARS,
   WORKFLOW_TOOLS,
   WORKFLOW_PLAN_NOTE,
-  MODEL_TIERS,
+  CAPABILITY_LEVELS,
   SKILL_LABELS,
-  MODEL_ORDER,
-  INVITABLE_CEILINGS,
-  DEFAULT_MODEL_CEILING,
+  LEVEL_ORDER,
+  OFFERED_LEVELS,
+  DEFAULT_LEVEL,
+  levelOf,
 } from "../shared/config.js";
 
 /* --------------------------------------------------------------------------
@@ -125,7 +138,7 @@ export default function Admin() {
          let the panel open at all: hiding the link is a courtesy, this is
          the check. Send them to their own side. */
       if (who.staff?.access_level !== "admin") {
-        navigate("/demo?view=assistant", { replace: true });
+        navigate("/workspace?view=assistant", { replace: true });
         return;
       }
 
@@ -148,6 +161,14 @@ export default function Admin() {
 
   const companyName = me?.company?.name ?? "";
 
+  /* The same sign out the chat uses, from the same place, so the two cannot
+     drift. replace: true so the workspace is not left in the history for the
+     back button to walk into. */
+  async function handleLogout() {
+    await signOutCompletely();
+    navigate("/auth", { replace: true });
+  }
+
   return (
     <PageShell scroll>
       <FloatingNav maxWidth="max-w-5xl">
@@ -157,7 +178,7 @@ export default function Admin() {
               the door, and it says so rather than being an arrow you have
               to guess at. */}
           <button
-            onClick={() => navigate("/demo?view=assistant")}
+            onClick={() => navigate("/workspace?view=assistant")}
             className="h-9 rounded-[10px] flex items-center gap-1.5 px-2.5 border transition-colors hover:opacity-80 shrink-0"
             style={{ borderColor: "var(--border-2)", backgroundColor: "var(--surface)" }}
             aria-label="Open the assistant"
@@ -177,12 +198,41 @@ export default function Admin() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Added 2026-09-09. There was no way out of this screen at all.
+              An admin could reach the chat and use the one there, or wait
+              twenty four hours for adminClock to expire them, and neither
+              is a person finding a door. The icon stands alone under 640px
+              because the header is already tight there. */}
+          <button
+            onClick={handleLogout}
+            className="h-9 rounded-[10px] flex items-center gap-1.5 px-2.5 border transition-colors hover:opacity-80 shrink-0"
+            style={{ borderColor: "var(--border-2)", backgroundColor: "var(--surface)" }}
+            aria-label="Log out"
+          >
+            <LogOut size={15} style={{ color: "var(--text-2)" }} />
+            <span className="text-[13px] hidden sm:inline" style={{ color: "var(--text-2)" }}>
+              Log out
+            </span>
+          </button>
           <ThemeToggle />
         </div>
       </FloatingNav>
 
-      <div className="relative z-10 px-4 sm:px-6 pb-16">
-        <div className="max-w-5xl mx-auto">
+      {/* w-full is load bearing, it is not decoration.
+
+         PageShell is a column flex container, so this div is a flex item.
+         A flex line takes the width of its widest item and stretch only
+         grows items up to that line, it never shrinks them. So one long
+         file name in the knowledge list, held on one line by `truncate`,
+         made this div 512px wide inside a 320px phone. PageShell clips
+         rather than scrolls, so the page still measured clean while the
+         Ready pill and the bin on every row sat off the right edge,
+         invisible and unreachable.
+
+         width:100% makes the width definite, so nothing inside can push it
+         wider. min-w-0 alone does not fix it, that was tried. */}
+      <div className="relative z-10 w-full min-w-0 px-4 sm:px-6 pb-16">
+        <div className="max-w-5xl mx-auto min-w-0">
           {/* Tabs */}
           <div className="flex gap-1.5 overflow-x-auto pb-1 mb-6">
             {TABS.map((t) => {
@@ -215,7 +265,7 @@ export default function Admin() {
           {me?.company?.slug && (
             <div className="mb-5">
               <PrimaryButton
-                onClick={() => navigate("/demo?view=assistant")}
+                onClick={() => navigate("/workspace?view=assistant")}
                 className="w-full sm:w-auto flex items-center justify-center gap-2"
               >
                 <Sparkles size={15} />
@@ -241,44 +291,121 @@ export default function Admin() {
    only what a task needs instead of sweeping everything.
    ========================================================================== */
 
-/* ONE SWITCH, TWO AUDIENCES
-   Staff read everything in this list. Support, the side that answers people
-   outside the company, reads only what is switched on here, and nothing is
-   switched on until an admin does it.
+/* ALREADY THERE
 
-   Plain words, because this is a company's own screen: customers can see
-   this, or staff only. Not visibility, not scope, not published. An admin
-   should be able to get this right without being told what it means. */
-function CustomerSwitch({ on, label, onChange }) {
+   Red text under the box somebody is typing in, the moment what they typed
+   matches something they already have. No dialog, nothing to dismiss, and it
+   never stops the upload.
+
+   Anthony's design and the reasoning is his: a name comparison costs nothing
+   and answers instantly, so it has no business waiting on a model. "Instead
+   of burning tokens to start reading the file to know whether it is... the
+   only time the system should actually read file is first of all when you
+   are toggling to customer facing."
+
+   It warns and leaves the decision alone, because somebody adding a second
+   version on purpose is not doing anything wrong, and a product that argues
+   with a person about their own files is one they work around. */
+function AlreadyThere({ match, what, advice }) {
+  if (!match) return null;
+  const added = whenAdded(match);
+
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={on}
-      aria-label={`Customers can see ${label}`}
-      onClick={onChange}
-      className="inline-flex items-center gap-2.5 rounded-full pl-1 pr-3 py-1 border transition-colors"
-      style={{
-        borderColor: on ? BRAND.accentSoft : "var(--border)",
-        backgroundColor: on ? "rgba(88,112,248,0.08)" : "transparent",
-      }}
+    <p
+      className="text-[12.5px] leading-relaxed mt-1.5 flex items-start gap-1.5"
+      style={{ color: "var(--danger)" }}
+      role="status"
     >
-      <span
-        className="relative w-[30px] h-[17px] rounded-full transition-colors shrink-0"
-        style={{ backgroundColor: on ? BRAND.accentSoft : "var(--chip)" }}
-      >
-        <span
-          className="absolute top-[2.5px] w-3 h-3 rounded-full transition-all"
-          style={{ left: on ? 15 : 3, backgroundColor: on ? "#fff" : "var(--text-3)" }}
-        />
+      <AlertCircle size={13} className="shrink-0 mt-0.5" />
+      <span>
+        {what}
+        {added ? `, added ${added}` : ""}. {advice}
       </span>
-      <span
-        className="text-[12px] font-medium whitespace-nowrap"
-        style={{ color: on ? BRAND.accentSoft : "var(--text-3)" }}
-      >
-        {on ? "Customers can see this" : "Staff only"}
-      </span>
-    </button>
+    </p>
+  );
+}
+
+/* ==========================================================================
+   WHERE YOUR OWN MATERIAL DISAGREES WITH ITSELF
+
+   Written by support-ask while it answers a real customer, so everything in
+   here has already reached somebody outside the company. That is what makes
+   it worth a panel rather than a page nobody visits.
+
+   Anthony asked for it in these terms: "so they don't say that it's the AI
+   that is at fault. So if they uploaded this, the AI sees contradictory
+   files, it names them and it's logged."
+
+   The panel does not appear at all when there is nothing in it. A dashboard
+   that always shows a section headed "problems" with nothing under it trains
+   people to skip that part of the screen, and then the day it has something
+   in it, nobody looks.
+
+   Only open ones. A resolved row is kept for the record, not for the screen.
+   ========================================================================== */
+
+function Disagreements({ items, onResolve, busyId }) {
+  if (!items.length) return null;
+
+  return (
+    <GlassPanel className="p-6">
+      <SectionHeading hint="Your assistant found two of your own sources saying different things while answering a real customer. It went with the newer one. Fix the older one, or take it out.">
+        Your material disagrees with itself
+      </SectionHeading>
+
+      <div className="space-y-2">
+        {items.map((row) => (
+          <div
+            key={row.id}
+            className="rounded-[12px] px-3.5 py-3 border"
+            style={{ backgroundColor: "var(--surface-2)", borderColor: "var(--border)" }}
+          >
+            <div className="flex items-start gap-2.5">
+              <AlertTriangle size={15} className="shrink-0 mt-0.5" style={{ color: "var(--caution)" }} />
+              <p className="text-[14px] font-medium min-w-0" style={{ color: "var(--text-1)" }}>
+                {row.topic}
+              </p>
+            </div>
+
+            {/* Both sides, named, in the order the assistant saw them. The
+                one it answered from is marked, so nobody has to work out
+                which of the two reached the customer. */}
+            <div className="mt-2.5 space-y-1.5 sm:pl-[26px]">
+              {[
+                { source: row.source_a, said: row.said_a },
+                { source: row.source_b, said: row.said_b },
+              ].map((side, index) => {
+                const used = row.answered_with && row.answered_with === side.source;
+                return (
+                  <p key={index} className="text-[12.5px] leading-relaxed" style={{ color: "var(--text-3)" }}>
+                    <span style={{ color: used ? "var(--text-1)" : "var(--text-2)" }}>{side.source}</span>
+                    {used ? (
+                      <span style={{ color: "var(--all-clear)" }}> (used)</span>
+                    ) : null}
+                    {side.said ? `: ${side.said}` : ""}
+                  </p>
+                );
+              })}
+            </div>
+
+            <div className="mt-2.5 sm:pl-[26px] flex items-center gap-3 flex-wrap">
+              <GhostButton
+                onClick={() => onResolve(row.id)}
+                disabled={busyId === row.id}
+                className="text-[12.5px] py-1.5 px-3"
+              >
+                {busyId === row.id ? "Saving" : "Sorted it"}
+              </GhostButton>
+              {row.times_seen > 1 ? (
+                <span className="text-[12px]" style={{ color: "var(--text-3)" }}>
+                  Come up {row.times_seen} times
+                </span>
+              ) : null}
+            </div>
+          </div>
+        ))}
+      </div>
+    </GlassPanel>
   );
 }
 
@@ -315,6 +442,93 @@ function KnowledgeSection({ me, loading: loadingMe }) {
   /* Files chosen together and still waiting their turn. */
   const [queue, setQueue] = useState([]);
 
+  /* THE ONE THING THAT CAN SEND A FILE OUT OF THE BUILDING
+
+     Holds whatever an admin has asked to open up, until they answer the
+     question. Null means no question is on screen.
+
+       { target: "row", id, name }   a file already in the list
+       { target: "staged", name }    a file being uploaded right now
+       { target: "paste", name }     text being pasted in right now
+
+     A row writes to the database on yes, so it needs `gateBusy` to lock the
+     buttons while that write is in flight. The two forms only set a choice
+     that will be written when the form is saved, so they answer instantly.
+
+     See src/shared/PublishGate.jsx for why any of this exists. */
+  const [gate, setGate] = useState(null);
+  const [gateBusy, setGateBusy] = useState(false);
+
+  /* THE BIN USED TO FIRE ON ONE TAP
+
+     No question, no undo, and on a phone it sits a few millimetres from the
+     file name in a list people scroll with a thumb. Anthony found it by
+     looking: somebody can delete a file and never know they did.
+
+     Holds the row somebody asked to remove until they answer. */
+  const [doomed, setDoomed] = useState(null);
+  const [doomedBusy, setDoomedBusy] = useState(false);
+
+  /* The link being added when the same address is already in the list.
+     Holds the existing row so Replace knows what to take away afterwards. */
+  const [refresh, setRefresh] = useState(null);
+
+  /* Read once with the sources. It is a short list and it only changes when
+     a customer asks something, so there is nothing to poll for. */
+  const [clashes, setClashes] = useState([]);
+  const [clashBusy, setClashBusy] = useState(null);
+
+  /* WHAT THE READER FOUND, IF ANYTHING
+
+     A model opens the material and says what is actually in it, which is
+     worth more than any checklist written in advance. It is shown inside
+     the gate and nowhere else.
+
+     THE READING CAN ONLY EVER ADD A WARNING, NEVER REMOVE ONE
+     This is the rule the whole design turns on, so it is written here
+     rather than left to be inferred. The gate opens for every file, every
+     time, whatever the reader says or fails to say. A clean reading does
+     not skip the question, it just leaves the dialog quiet. Anything else
+     would let a model that got it wrong wave a payroll file through, and a
+     model that can wave something through will eventually wave the wrong
+     thing through at three in the morning with nobody watching.
+
+     So: it adds friction, it never removes it, and it never encourages.
+
+     `readingFor` is the gate the reading belongs to. A read that comes
+     back after somebody has cancelled and opened a different file must not
+     paint its answer onto that one. */
+  const [review, setReview] = useState(null);
+  const readingFor = useRef(0);
+
+  /* Started the moment a file is read into the browser, long before
+     anybody asks to publish it, so the answer is usually already sitting
+     there when the gate opens instead of making somebody wait. */
+  const stagedReading = useRef(null);
+
+  async function runReview(work) {
+    const token = readingFor.current + 1;
+    readingFor.current = token;
+    setReview({ state: "reading" });
+
+    const result = await work;
+    if (readingFor.current !== token) return;
+    setReview(result);
+  }
+
+  /* The audience chosen inside the upload forms, before anything is saved.
+
+     WHY THE FORMS HAVE THIS AT ALL
+     Anthony's point, and he is right: somebody uploading a page for
+     customers should be able to say so while they are uploading it, not
+     have to save it, find it in the list, and turn it on as a second job.
+     The list still works exactly as before, so forgetting here costs
+     nothing. Two ways in, neither of them redundant.
+
+     Both start false. Opening a file up is always a deliberate act. */
+  const [stagedVisible, setStagedVisible] = useState(false);
+  const [pasteVisible, setPasteVisible] = useState(false);
+
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -322,9 +536,13 @@ function KnowledgeSection({ me, loading: loadingMe }) {
     let alive = true;
     (async () => {
       if (me?.company?.id) {
-        const rows = await listSources(me.company.id);
+        const [rows, disagreements] = await Promise.all([
+          listSources(me.company.id),
+          listContradictions(me.company.id),
+        ]);
         if (!alive) return;
         setItems(rows);
+        setClashes(disagreements);
       }
       setLoading(false);
     })();
@@ -390,6 +608,11 @@ function KnowledgeSection({ me, loading: loadingMe }) {
       return;
     }
 
+    setStagedVisible(false);
+    /* The admin is about to spend half a minute writing a name and a line
+       about what it holds. That is time the reading can use. */
+    stagedReading.current = readBeforePublish({ text: result.text, name: file.name });
+
     setStaged({
       fileName: file.name,
       name: file.name.replace(/\.[^.]+$/, ""),
@@ -416,6 +639,7 @@ function KnowledgeSection({ me, loading: loadingMe }) {
       description: pasteNote.trim(),
       text: pasteText,
       kind: "file",
+      customerVisible: pasteVisible,
     });
     setSaving(false);
 
@@ -429,6 +653,7 @@ function KnowledgeSection({ me, loading: loadingMe }) {
     setPasteName("");
     setPasteNote("");
     setPasteText("");
+    setPasteVisible(false);
     setPasteOpen(false);
   }
 
@@ -447,6 +672,7 @@ function KnowledgeSection({ me, loading: loadingMe }) {
       description: staged.description.trim(),
       text: staged.text,
       kind: "file",
+      customerVisible: stagedVisible,
     });
     setSaving(false);
 
@@ -458,6 +684,11 @@ function KnowledgeSection({ me, loading: loadingMe }) {
     setItems((prev) => [result.source, ...prev]);
     setJustAdded(`${result.source.name}, ${result.chunks} ${result.chunks === 1 ? "piece" : "pieces"} of text`);
     setStaged(null);
+
+    /* The audience choice does NOT carry over to the next file in the
+       batch. Somebody who opened up a price list should not silently open
+       up the payroll file behind it because the control kept its answer. */
+    setStagedVisible(false);
 
     /* Straight on to the next one they chose, so a batch feels like a
        batch rather than something that quietly dropped everything after
@@ -477,41 +708,181 @@ function KnowledgeSection({ me, loading: loadingMe }) {
     e.preventDefault();
     if (!linkUrl.trim() || !me?.company?.id) return;
 
+    /* Already have this address? Then this is a refresh, not a duplicate, and
+       the only real question is what happens to the reading already stored.
+       Ask before spending a fetch on it. */
+    const existing = findByAddress(items, linkUrl);
+    if (existing) {
+      setRefresh(existing);
+      return;
+    }
+
+    await readLink({ replacing: null });
+  }
+
+  /* THE ONE PLACE A LINK IS ACTUALLY FETCHED
+
+     `replacing` is the row to remove once the new reading is safely in, or
+     null to just add.
+
+     THE ORDER IS LOAD BEARING. The new copy goes in first and the old one is
+     only removed once that has worked. Backwards, a page that fails to fetch
+     would take the working copy with it and leave the company with nothing
+     about that page at all. */
+  async function readLink({ replacing }) {
+    if (!me?.company?.id) return;
+
     setSaving(true);
     const result = await fetchLinkSource({ url: linkUrl.trim(), description: linkNote.trim() });
-    setSaving(false);
 
     if (!result.ok) {
+      setSaving(false);
+      setRefresh(null);
       show(result.message);
       return;
     }
 
+    if (replacing) {
+      const removed = await removeSource(replacing.id);
+      /* The new reading is already saved, so a failure here is untidy rather
+         than lost. Say so plainly instead of pretending it worked. */
+      if (!removed) {
+        show("Read the page, but could not remove the old copy. Remove it from the list yourself.");
+      }
+    }
+
+    setSaving(false);
     setItems(await listSources(me.company.id));
     setJustAdded(result.name);
     setLinkUrl("");
     setLinkNote("");
+    setRefresh(null);
   }
 
-  async function remove(id) {
-    const ok = await removeSource(id);
-    if (ok) setItems((prev) => prev.filter((i) => i.id !== id));
-    else show("Could not remove that. Try again.");
-  }
+  async function markSorted(id) {
+    setClashBusy(id);
+    const ok = await resolveContradiction(id);
+    setClashBusy(null);
 
-  /* Turning a source over to the support side, or taking it back.
-
-     Written to the row straight away and reflected in the list, because a
-     switch that waits for a round trip before it moves reads as broken and
-     gets clicked twice. If the write fails the switch goes back and the
-     admin is told, which is the only honest way to do it: this decides what
-     a stranger can be told. */
-  async function setVisible(id, visible) {
-    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, customer_visible: visible } : i)));
-    const ok = await setSourceVisibility(id, visible);
     if (!ok) {
-      setItems((prev) => prev.map((i) => (i.id === id ? { ...i, customer_visible: !visible } : i)));
+      show("Could not save that. Try again.");
+      return;
+    }
+    setClashes((prev) => prev.filter((row) => row.id !== id));
+  }
+
+  function askBeforeRemoving(item) {
+    setDoomed(item);
+  }
+
+  async function confirmRemoving() {
+    if (!doomed) return;
+    setDoomedBusy(true);
+    const ok = await removeSource(doomed.id);
+    setDoomedBusy(false);
+
+    if (!ok) {
+      setDoomed(null);
+      show("Could not remove that. Try again.");
+      return;
+    }
+
+    setItems((prev) => prev.filter((i) => i.id !== doomed.id));
+    setDoomed(null);
+  }
+
+  /* TURNING A SOURCE OVER TO THE SUPPORT SIDE, OR TAKING IT BACK
+
+     The two directions are not the same action and must never be treated
+     as one.
+
+     TAKING IT BACK is safe, so it happens on the spot. It is written to
+     the row straight away and reflected in the list, because a switch that
+     waits for a round trip before it moves reads as broken and gets
+     clicked twice. If the write fails the switch goes back and the admin
+     is told.
+
+     OPENING IT UP is the only action in this whole admin that can put a
+     company's own material in front of a stranger, so it never happens on
+     one tap. It opens the gate and waits for a deliberate answer. Every
+     file, every time, including the ones that look harmless. */
+  async function hide(id) {
+    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, customer_visible: false } : i)));
+    const ok = await setSourceVisibility(id, false);
+    if (!ok) {
+      setItems((prev) => prev.map((i) => (i.id === id ? { ...i, customer_visible: true } : i)));
       show("Could not change that. Try again.");
     }
+  }
+
+  function askBeforeShowing(item) {
+    setGate({ target: "row", id: item.id, name: item.name });
+    /* This one is already saved, so its text has to be read back out of
+       the knowledge base before anything can look at it. */
+    runReview(
+      loadSourceText(item.id).then((text) => readBeforePublish({ text, name: item.name })),
+    );
+  }
+
+  /* The gate wants something to call the file. A form is often answered
+     before the name box is, so fall back to the file itself rather than
+     asking "turn this on for customers?" about a blank. */
+  function askBeforeStaged() {
+    setGate({ target: "staged", name: staged?.name.trim() || staged?.fileName || "this file" });
+    /* Almost always finished by now, because it started when the file was
+       chosen. If it somehow is not, the gate shows it working. */
+    runReview(
+      stagedReading.current ??
+        readBeforePublish({ text: staged?.text ?? "", name: staged?.name ?? "" }),
+    );
+  }
+
+  function askBeforePaste() {
+    setGate({ target: "paste", name: pasteName.trim() || "this text" });
+    /* Pasted text has no earlier moment to start from, so this is it. */
+    runReview(readBeforePublish({ text: pasteText, name: pasteName.trim() }));
+  }
+
+  async function confirmShowing() {
+    if (!gate) return;
+
+    /* A form has saved nothing yet, so yes only sets the choice. The write
+       happens when they add it, through addTextSource. */
+    if (gate.target === "staged") {
+      setStagedVisible(true);
+      closeGate();
+      return;
+    }
+    if (gate.target === "paste") {
+      setPasteVisible(true);
+      closeGate();
+      return;
+    }
+
+    /* A row is live, so this writes now. The optimistic update used
+       everywhere else is deliberately not used here: on the way out of the
+       building the list must only ever show what the database actually
+       accepted. */
+    setGateBusy(true);
+    const ok = await setSourceVisibility(gate.id, true);
+    setGateBusy(false);
+
+    if (!ok) {
+      closeGate();
+      show("Could not change that. Try again.");
+      return;
+    }
+
+    setItems((prev) => prev.map((i) => (i.id === gate.id ? { ...i, customer_visible: true } : i)));
+    closeGate();
+  }
+
+  /* One place to close it, so the reading from the last file can never be
+     left on screen above the next one. */
+  function closeGate() {
+    readingFor.current += 1;
+    setReview(null);
+    setGate(null);
   }
 
   if (loading || loadingMe) {
@@ -546,7 +917,17 @@ function KnowledgeSection({ me, loading: loadingMe }) {
       />
 
       {/* Summary */}
-      <div className="grid gap-3 sm:grid-cols-3">
+      {/* THREE ACROSS AT EVERY WIDTH, INCLUDING A PHONE
+
+          They used to stack, so on a phone three small numbers took most of
+          the first screen and pushed the thing people came here to do, which
+          is add knowledge, below the fold. Anthony: "they are eating space...
+          they are pushing the part where you start uploading the knowledge
+          downwards."
+
+          A count is a glance, not a paragraph. Three glances belong side by
+          side. See StatTile for how it survives a 320px phone. */}
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
         <StatTile label="Ready to use" value={ready} tone="ok" />
         <StatTile label="Being read" value={pending} tone="pending" />
         <StatTile
@@ -607,6 +988,11 @@ function KnowledgeSection({ me, loading: loadingMe }) {
                     onChange={(e) => setPasteName(e.target.value)}
                     placeholder="Brand voice guide"
                   />
+                  <AlreadyThere
+                    match={findByName(items, pasteName)}
+                    what="You already have something called this"
+                    advice="Give this one a different name, or you will end up with two."
+                  />
                 </Field>
                 <Field label="What it holds" required>
                   <TextInput
@@ -615,6 +1001,21 @@ function KnowledgeSection({ me, loading: loadingMe }) {
                     placeholder="How we write, the words we use and avoid"
                   />
                 </Field>
+                {/* SET IT HERE, OR SET IT LATER, BOTH WORK
+                    It starts on Staff only and picking the other half goes
+                    through the same gate as the list does, so there is no
+                    quiet way into the customer side no matter which screen
+                    somebody uses. */}
+                <Field label="Who can read it">
+                  <div className="-mx-1 px-1 overflow-x-auto py-0.5">
+                    <AudienceControl
+                      on={pasteVisible}
+                      label={pasteName.trim() || "this text"}
+                      onPick={(open) => (open ? askBeforePaste() : setPasteVisible(false))}
+                    />
+                  </div>
+                </Field>
+
                 <Field label="The text" required>
                   <TextArea
                     value={pasteText}
@@ -681,6 +1082,11 @@ function KnowledgeSection({ me, loading: loadingMe }) {
                 onChange={(e) => setStaged({ ...staged, name: e.target.value })}
                 placeholder="Brand guidelines 2026"
               />
+              <AlreadyThere
+                match={findByName(items, staged.name)}
+                what="You already have something called this"
+                advice="Give this one a different name, or you will end up with two."
+              />
             </Field>
             <Field label="What it holds" required>
               <TextInput
@@ -689,6 +1095,21 @@ function KnowledgeSection({ me, loading: loadingMe }) {
                 placeholder="Colors, fonts, logo rules, and tone of voice"
               />
             </Field>
+            {/* SET IT HERE, OR SET IT LATER, BOTH WORK
+                It starts on Staff only and picking the other half goes
+                through the same gate as the list does, so there is no
+                quiet way into the customer side no matter which screen
+                somebody uses. */}
+            <Field label="Who can read it">
+              <div className="-mx-1 px-1 overflow-x-auto py-0.5">
+                <AudienceControl
+                  on={stagedVisible}
+                  label={staged.name.trim() || staged.fileName}
+                  onPick={(open) => (open ? askBeforeStaged() : setStagedVisible(false))}
+                />
+              </div>
+            </Field>
+
             <div className="flex gap-2">
               <PrimaryButton
                 onClick={saveStaged}
@@ -702,6 +1123,7 @@ function KnowledgeSection({ me, loading: loadingMe }) {
                 onClick={() => {
                   setStaged(null);
                   setQueue([]);
+                  stagedReading.current = null;
                 }}
               >
                 Cancel
@@ -757,7 +1179,14 @@ function KnowledgeSection({ me, loading: loadingMe }) {
 
       {/* Add a link */}
       <GlassPanel className="p-6">
-        <SectionHeading hint="Give the assistant a page to learn from. It is read once, now, and what it says is saved here. The assistant never opens a link itself.">
+        {/* No audience control on this one, and that is not an oversight.
+            A link is created by the add-link edge function, which is
+            deployed and working, and this build does not rewrite a working
+            function from the repo. A link therefore arrives staff only and
+            is opened up from the list below, which is one tap and now says
+            plainly what it does. The hint says so rather than leaving
+            somebody hunting for a control that is not there. */}
+        <SectionHeading hint="Give the assistant a page to learn from. It is read once, now, and what it says is saved here. The assistant never opens a link itself. A link starts as staff only, set who can read it in the list below.">
           Add a link
         </SectionHeading>
 
@@ -768,6 +1197,24 @@ function KnowledgeSection({ me, loading: loadingMe }) {
               onChange={(e) => setLinkUrl(e.target.value)}
               placeholder="company.com/about"
             />
+            {/* A QUIET NOTE, NOT A WARNING, AND THE DIFFERENCE IS THE WHOLE
+                POINT ON THIS ONE FORM
+
+                A link is a photograph of a page taken when it was added, and
+                nothing ever re-reads it. So adding the same address again is
+                almost never a mistake, it is somebody refreshing a page they
+                have edited since. The first build put red text here and told
+                them off for doing the right thing.
+
+                Pressing Add asks what should happen to the old reading.
+                See RefreshOrKeep.jsx. */}
+            {findByAddress(items, linkUrl) && (
+              <p className="text-[12.5px] leading-relaxed mt-1.5" style={{ color: "var(--text-3)" }}>
+                You already have this page from{" "}
+                {whenAdded(findByAddress(items, linkUrl)) ?? "before"}. Adding it reads the page
+                again, and we will ask what to do with the old copy.
+              </p>
+            )}
           </Field>
           {/* No longer required. The page is read when it is added, and a
               name and a line come back with it. Somebody who wants to say
@@ -798,6 +1245,8 @@ function KnowledgeSection({ me, loading: loadingMe }) {
           </p>
         )}
       </GlassPanel>
+
+      <Disagreements items={clashes} onResolve={markSorted} busyId={clashBusy} />
 
       {/* What is in the index */}
       <GlassPanel className="p-6">
@@ -830,8 +1279,25 @@ function KnowledgeSection({ me, loading: loadingMe }) {
                   )}
                 </span>
 
+                {/* The name wraps to two lines rather than truncating on
+                    the first. Somebody about to decide whether strangers
+                    can read a file has to be able to tell which file it
+                    is, and on a phone "Executive brief wit..." and
+                    "Executive brief for the board" cut to the same thing.
+                    The description below it still truncates, because that
+                    is a hint, not an identity. */}
                 <div className="min-w-0 flex-1">
-                  <p className="text-[14px] font-medium truncate" style={{ color: "var(--text-1)" }}>
+                  <p
+                    className="text-[14px] font-medium"
+                    style={{
+                      color: "var(--text-1)",
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
+                      wordBreak: "break-word",
+                    }}
+                  >
                     {item.name}
                   </p>
                   <p className="text-[12.5px] truncate" style={{ color: "var(--text-3)" }}>
@@ -839,16 +1305,8 @@ function KnowledgeSection({ me, loading: loadingMe }) {
                   </p>
                 </div>
 
-                {item.status === "ready" ? (
-                  <StatusPill tone="ok">Ready</StatusPill>
-                ) : item.status === "failed" ? (
-                  <StatusPill tone="error">Could not read</StatusPill>
-                ) : (
-                  <StatusPill tone="pending">Being read</StatusPill>
-                )}
-
                 <button
-                  onClick={() => remove(item.id)}
+                  onClick={() => askBeforeRemoving(item)}
                   className="shrink-0 p-1.5 rounded-[8px] transition-opacity hover:opacity-70"
                   aria-label={`Remove ${item.name}`}
                 >
@@ -856,21 +1314,83 @@ function KnowledgeSection({ me, loading: loadingMe }) {
                 </button>
               </div>
 
-              {/* Its own line rather than a fifth thing in the row above.
-                  On a phone that row is already at its limit, and this is
-                  a decision worth reading before making, not a control to
-                  brush past on the way to the bin. */}
-              <div className="mt-2.5 sm:pl-12">
-                <CustomerSwitch
-                  on={item.customer_visible === true}
-                  label={item.name}
-                  onChange={() => setVisible(item.id, !item.customer_visible)}
-                />
+              {/* SECOND LINE: the decision, and the state of the file
+
+                  Both moved off the row above so the file name gets that
+                  whole width. The name is the only thing that says which
+                  file this is, and it was being cut to eighteen characters
+                  to make room for a pill saying "Ready", which is the same
+                  on nearly every row.
+
+                  The audience control scrolls sideways on its own under
+                  about 380px, where the two options together are wider
+                  than the card. Clipping the second option would hide the
+                  very thing that makes this control readable without
+                  being taught, and the whole point of it is that nobody
+                  has to be taught. */}
+              <div className="mt-2.5 sm:pl-12 flex items-center gap-3 flex-wrap">
+                <div className="min-w-0 max-w-full overflow-x-auto -my-1 py-1">
+                  <AudienceControl
+                    on={item.customer_visible === true}
+                    label={item.name}
+                    onPick={(open) => (open ? askBeforeShowing(item) : hide(item.id))}
+                  />
+                </div>
+
+                {/* A pill only when something is wrong or still working.
+
+                   Every row used to carry a green "Ready", which is the
+                   normal state of nearly every file, so it said nothing
+                   and took the width the decision needed. A list where
+                   every line shouts the same word is a list people stop
+                   reading, and then the one row that says "Could not
+                   read" goes past unnoticed. How many are ready is
+                   already counted in the tile at the top of this tab. */}
+                {item.status === "failed" ? (
+                  <StatusPill tone="error">Could not read</StatusPill>
+                ) : item.status !== "ready" ? (
+                  <StatusPill tone="pending">Being read</StatusPill>
+                ) : null}
               </div>
             </div>
           ))}
         </div>
       </GlassPanel>
+
+      {refresh && (
+        <RefreshOrKeep
+          address={refresh.location ?? linkUrl}
+          addedWhen={whenAdded(refresh)}
+          busy={saving}
+          onCancel={() => setRefresh(null)}
+          onReplace={() => readLink({ replacing: refresh })}
+          onKeepBoth={() => readLink({ replacing: null })}
+        />
+      )}
+
+      {doomed && (
+        <ConfirmDelete
+          name={doomed.name}
+          note={
+            doomed.customer_visible
+              ? "Your customers can currently read this one."
+              : null
+          }
+          busy={doomedBusy}
+          onCancel={() => setDoomed(null)}
+          onConfirm={confirmRemoving}
+        />
+      )}
+
+      {gate && (
+        <PublishGate
+          name={gate.name}
+          review={review}
+          busy={gateBusy}
+          onCancel={closeGate}
+          onConfirm={confirmShowing}
+        />
+      )}
     </div>
   );
 }
@@ -973,7 +1493,7 @@ function AccessSection({ me }) {
           name: r.name ?? "Unnamed",
           email: "",
           role: r.role ?? "Not set",
-          ceiling: r.model_ceiling ?? DEFAULT_MODEL_CEILING,
+          ceiling: levelOf(r.model_ceiling),
           limit: r.daily_limit ?? 5,
           used: 0,
         }))
@@ -986,7 +1506,7 @@ function AccessSection({ me }) {
   const [inviteName, setInviteName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("");
-  const [inviteCeiling, setInviteCeiling] = useState(DEFAULT_MODEL_CEILING);
+  const [inviteCeiling, setInviteCeiling] = useState(DEFAULT_LEVEL);
   const [inviteLimit, setInviteLimit] = useState(5);
   const [inviting, setInviting] = useState(false);
   const [inviteError, setInviteError] = useState("");
@@ -1006,7 +1526,7 @@ function AccessSection({ me }) {
         name: req.name,
         email: req.email,
         role: "Not set",
-        ceiling: DEFAULT_MODEL_CEILING,
+        ceiling: DEFAULT_LEVEL,
         limit: 5,
         used: 0,
       },
@@ -1051,7 +1571,7 @@ function AccessSection({ me }) {
           name: r.name ?? "Unnamed",
           email: "",
           role: r.role ?? "Not set",
-          ceiling: r.model_ceiling ?? DEFAULT_MODEL_CEILING,
+          ceiling: levelOf(r.model_ceiling),
           limit: r.daily_limit ?? 5,
           used: 0,
         }))
@@ -1062,7 +1582,7 @@ function AccessSection({ me }) {
     setInviteName("");
     setInviteEmail("");
     setInviteRole("");
-    setInviteCeiling(DEFAULT_MODEL_CEILING);
+    setInviteCeiling(DEFAULT_LEVEL);
     setInviteLimit(5);
   }
 
@@ -1169,17 +1689,17 @@ function AccessSection({ me }) {
             </SelectInput>
           </Field>
           <Field
-            label="Model ceiling"
-            hint="How far up the assistant may go for this person. Opus 5, Fable 5 and other providers such as Gemini, GPT or DeepSeek are held back in this demo to keep credit costs down. Your own deployment runs whichever models you choose."
+            label="How far they can go"
+            hint="The most this person's work is allowed to reach. Deeper and Deepest are held back in this demo to keep costs down. Your own deployment decides what to offer."
           >
             <SelectInput value={inviteCeiling} onChange={(e) => setInviteCeiling(e.target.value)}>
-              {/* Only what this deployment actually allows. Opus and Fable
-                  were listed and choosing one would have been accepted by a
-                  screen and refused by the server, which is a promise the
-                  product cannot keep. */}
-              {INVITABLE_CEILINGS.map((key) => (
+              {/* Only what this deployment actually allows. The two above
+                  were listed once, and choosing one would have been accepted
+                  by a screen and refused by the server, which is a promise
+                  the product cannot keep. */}
+              {OFFERED_LEVELS.map((key) => (
                 <option key={key} value={key}>
-                  {MODEL_TIERS[key].label}
+                  {CAPABILITY_LEVELS[key].label}
                 </option>
               ))}
             </SelectInput>
@@ -1245,11 +1765,11 @@ function AccessSection({ me }) {
                   value={person.ceiling}
                   onChange={(e) => setCeiling(person.id, e.target.value)}
                   className="py-1.5 text-[12.5px]"
-                  aria-label={`Model ceiling for ${person.name}`}
+                  aria-label={`How far ${person.name} can go`}
                 >
-                  {INVITABLE_CEILINGS.map((key) => (
+                  {OFFERED_LEVELS.map((key) => (
                     <option key={key} value={key}>
-                      {MODEL_TIERS[key].label}
+                      {CAPABILITY_LEVELS[key].label}
                     </option>
                   ))}
                 </SelectInput>
@@ -1304,7 +1824,7 @@ function UsageSection({ me }) {
   }, [me?.company?.id]);
 
   const [defaultLimit, setDefaultLimit] = useState(5);
-  const [defaultCeiling, setDefaultCeiling] = useState(DEFAULT_MODEL_CEILING);
+  const [defaultCeiling, setDefaultCeiling] = useState(DEFAULT_LEVEL);
 
   return (
     <div className="space-y-5" style={{ animation: "sx-rise 0.3s ease" }}>
@@ -1323,11 +1843,11 @@ function UsageSection({ me }) {
               onChange={(e) => setDefaultLimit(e.target.value)}
             />
           </Field>
-          <Field label="Default model ceiling" hint="How far the assistant may go without a role based grant.">
+          <Field label="How far anyone can go by default" hint="Applies to a person with no setting of their own.">
             <SelectInput value={defaultCeiling} onChange={(e) => setDefaultCeiling(e.target.value)}>
-              {MODEL_ORDER.map((key) => (
+              {LEVEL_ORDER.map((key) => (
                 <option key={key} value={key}>
-                  {MODEL_TIERS[key].label}
+                  {CAPABILITY_LEVELS[key].label}
                 </option>
               ))}
             </SelectInput>
@@ -1335,36 +1855,35 @@ function UsageSection({ me }) {
         </div>
       </GlassPanel>
 
-      {/* Model ladder */}
+      {/* ------------------------------------------------------------------
+          THE LADDER
+
+          These are levels, not products. What actually runs behind each one
+          is decided on the server and is deliberately not on this screen,
+          because a deployment may be moved to another provider and a screen
+          naming one would have to be redesigned to do it.
+
+          The old version of this panel listed four vendor model names with
+          their price per million tokens beside each. Both are gone: the
+          names for the reason above, the prices because a rate card in
+          tokens is exactly the plumbing an admin should never have to read.
+
+          Tap to open rather than hover to reveal. Half the people who open
+          this are on a phone, and a phone has no hover.
+          ------------------------------------------------------------------ */}
       <GlassPanel className="p-6">
-        <SectionHeading hint="The assistant moves up only as far as a task needs. A simple chat never spends top tier cost.">
-          Model tiers
+        <SectionHeading hint="Work only ever reaches as far as it needs to. A quick question never costs what a full report costs.">
+          What the assistant can be allowed to do
         </SectionHeading>
 
         <div className="space-y-2">
-          {MODEL_ORDER.map((key) => {
-            const tier = MODEL_TIERS[key];
-            return (
-              <div
-                key={key}
-                className="flex flex-wrap items-center gap-3 rounded-[12px] px-3.5 py-3 border"
-                style={{ backgroundColor: "var(--surface-2)", borderColor: "var(--border)" }}
-              >
-                <div className="flex-1 min-w-[160px]">
-                  <p className="text-[14px] font-medium" style={{ color: "var(--text-1)" }}>
-                    {tier.label}
-                  </p>
-                  <p className="text-[12.5px]" style={{ color: "var(--text-3)" }}>
-                    {tier.use}
-                  </p>
-                </div>
-                <span className="text-[12.5px] shrink-0" style={{ color: "var(--text-3)" }}>
-                  ${tier.inputPer1M} in, ${tier.outputPer1M} out per million
-                </span>
-                {key === defaultCeiling && <StatusPill tone="accent">Default ceiling</StatusPill>}
-              </div>
-            );
-          })}
+          {LEVEL_ORDER.map((key) => (
+            <LevelRow
+              key={key}
+              level={CAPABILITY_LEVELS[key]}
+              isDefault={key === defaultCeiling}
+            />
+          ))}
         </div>
       </GlassPanel>
 
@@ -1417,6 +1936,33 @@ function UsageSection({ me }) {
    Small parts used by more than one section above.
    ========================================================================== */
 
+/* ONE OF THREE COUNTS, SITTING IN A THIRD OF A PHONE
+
+   Three of these share the width at every size, so at 320px each one gets
+   about 90px and roughly 66px of that is usable after the padding. Every
+   choice below is that number.
+
+     THE NUMBER COMES FIRST. In a narrow column the count is the thing worth
+     seeing, and a label above it makes the eye read two lines before it
+     reaches the point. On the old stacked layout the label first read fine,
+     because it had the whole width.
+
+     THE LABEL IS ALLOWED TWO LINES. "Outside sources" cannot fit on one at
+     this width and shortening it to "Outside" would leave a word that means
+     nothing. The grid makes every tile as tall as the tallest, so a wrapped
+     label costs nothing but a little height.
+
+     TRACKING GOES ON LARGER SCREENS ONLY. Letter spacing is what makes a
+     small uppercase label look considered, and it is also what pushes it
+     onto a third line on a phone.
+
+     THE HINT IS HIDDEN ON A PHONE. "The assistant reads nothing else" is a
+     sentence, and a sentence does not belong in a 66px column. It comes
+     back at sm, where there is room for it.
+
+   min-w-0 is load bearing. A grid item defaults to a minimum width of its
+   own content, so without it a long label pushes its column wider and drags
+   the other two out of alignment. */
 function StatTile({ label, value, tone = "neutral", hint }) {
   const colors = {
     ok: BRAND.green,
@@ -1425,22 +1971,95 @@ function StatTile({ label, value, tone = "neutral", hint }) {
   };
 
   return (
-    <GlassPanel className="p-5">
+    <GlassPanel className="p-3 sm:p-5 min-w-0">
       <p
-        className="text-[11px] font-semibold uppercase tracking-wide mb-2"
+        className="text-[22px] sm:text-[28px] font-bold leading-none"
+        style={{ fontFamily: FONTS.display, color: colors[tone] }}
+      >
+        {value}
+      </p>
+      <p
+        className="text-[10px] sm:text-[11px] font-semibold uppercase sm:tracking-wide mt-1.5 sm:mt-2 leading-tight"
         style={{ color: "var(--text-3)" }}
       >
         {label}
       </p>
-      <p className="text-[28px] font-bold leading-none" style={{ fontFamily: FONTS.display, color: colors[tone] }}>
-        {value}
-      </p>
       {hint && (
-        <p className="text-[12px] mt-2" style={{ color: "var(--text-3)" }}>
+        <p className="hidden sm:block text-[12px] mt-2" style={{ color: "var(--text-3)" }}>
           {hint}
         </p>
       )}
     </GlassPanel>
+  );
+}
+
+/* --------------------------------------------------------------------------
+   ONE RUNG OF THE LADDER
+
+   Name, one line saying what it is for, and an information button that
+   opens the fuller explanation underneath.
+
+   WHY TAP AND NOT HOVER
+   A hover tooltip does not exist on a phone. It either never appears or it
+   appears on the first tap and swallows the second, which reads as a broken
+   control. So this is a plain disclosure: press it, the text appears below,
+   press it again and it goes. It works the same with a mouse, a finger, or
+   a keyboard.
+
+   The button carries aria-expanded and points at the text it opens, so a
+   screen reader announces the state rather than reading a lone icon.
+   -------------------------------------------------------------------------- */
+
+function LevelRow({ level, isDefault }) {
+  const [open, setOpen] = useState(false);
+  const detailId = `level-detail-${level.label.toLowerCase()}`;
+
+  return (
+    <div
+      className="rounded-[12px] px-3.5 py-3 border"
+      style={{ backgroundColor: "var(--surface-2)", borderColor: "var(--border)" }}
+    >
+      {/* items-start, not items-center. Centring looked right until 320px,
+          where "Almost all office work" wraps to two lines and a vertically
+          centred pill lands in the middle of them. Aligned to the top, the
+          pill and the button sit beside the name where they belong. */}
+      <div className="flex items-start gap-3">
+        <div className="flex-1 min-w-0">
+          <p className="text-[14px] font-medium" style={{ color: "var(--text-1)" }}>
+            {level.label}
+          </p>
+          <p className="text-[12.5px]" style={{ color: "var(--text-3)" }}>
+            {level.use}
+          </p>
+        </div>
+
+        {isDefault && (
+          <span className="shrink-0">
+            <StatusPill tone="accent">Default</StatusPill>
+          </span>
+        )}
+
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          aria-controls={detailId}
+          aria-label={`What ${level.label} is for`}
+          className="shrink-0 p-1.5 rounded-[8px] transition-opacity hover:opacity-70"
+        >
+          <Info size={15} style={{ color: open ? "var(--text-1)" : "var(--text-3)" }} />
+        </button>
+      </div>
+
+      <p
+        id={detailId}
+        hidden={!open}
+        className="text-[12.5px] leading-relaxed mt-2.5 pt-2.5 border-t"
+        style={{ color: "var(--text-2)", borderColor: "var(--border)" }}
+      >
+        {level.detail}
+      </p>
+    </div>
   );
 }
 

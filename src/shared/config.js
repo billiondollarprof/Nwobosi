@@ -58,6 +58,7 @@ export const FUNCTIONS = {
   addLink: "add-link",
   inviteStaff: "invite-staff",
   sendContact: "send-contact",
+  readBeforePublish: "read-before-publish",
 };
 
 export const OAUTH_REDIRECT_URI =
@@ -120,52 +121,97 @@ export const MAX_SOURCE_CHARS = 120000;
 export const MAX_FILES_PER_MESSAGE = 4;
 
 /* --------------------------------------------------------------------------
-   SECTION: Model tiers
-   The assistant moves up only as far as a task needs. Ceiling is a
-   permission the admin sets per staff member.
+   SECTION: Capability levels
+
+   WHY THESE ARE LEVELS AND NOT MODEL NAMES
+   This table used to read "Haiku 4.5", "Sonnet 5", "Opus 5", "Fable 5",
+   with each one's price per million tokens beside it. Anthony, 2026-09-10:
+
+     "The name should not be shown because tomorrow we might be installing
+      the same thing for a company using OpenAI. So I want to keep the same
+      architecture, the same design, but just changing the model brain."
+
+   That is the reason, and it is architectural rather than cosmetic. This
+   file ships inside the browser bundle. Every vendor name in here was a
+   vendor name in the client, so swapping the brain meant editing the
+   product rather than editing a config.
+
+   So: four levels, named for what they are FOR. Which actual model sits
+   behind a level is decided on the server and appears on no screen and in
+   no bundle. Moving a deployment to another provider is then a mapping on
+   the server, and nothing here changes at all.
+
+   THE MAPPING TODAY, kept here as a comment and nowhere else, because a
+   comment cannot be rendered onto a screen by accident:
+     conversational  the small fast model
+     standard        the everyday working model
+     deeper          the heavier reasoning model
+     deepest         the most capable model available
+
+   NO PRICES EITHER. The old table printed dollars per million tokens to an
+   admin, which is both a token count and a vendor's rate card. Cost reaches
+   people as outputs remaining, the way it does everywhere else.
    -------------------------------------------------------------------------- */
 
-export const MODEL_TIERS = {
-  "haiku-4-5": {
-    id: "claude-haiku-4-5",
-    label: "Haiku 4.5",
-    use: "Interview and conversation",
-    inputPer1M: 1,
-    outputPer1M: 5,
+export const CAPABILITY_LEVELS = {
+  conversational: {
+    label: "Conversational",
+    use: "Answering customers",
+    detail:
+      "Short back and forth. Answering customers, taking details, quick questions. Fast, and the cheapest to run.",
   },
-  "sonnet-5": {
-    id: "claude-sonnet-5",
-    label: "Sonnet 5",
-    use: "Analysis, prompt writing, and output",
-    inputPer1M: 2,
-    outputPer1M: 10,
+  standard: {
+    label: "Standard",
+    use: "Almost all office work",
+    detail:
+      "Reports, proposals, emails, summaries, spreadsheets, decks. Around nine jobs in ten land here and it handles them well.",
   },
-  "opus-5": {
-    id: "claude-opus-5",
-    label: "Opus 5",
-    use: "Heavier reasoning, granted by role",
-    inputPer1M: 5,
-    outputPer1M: 25,
+  deeper: {
+    label: "Deeper",
+    use: "Work that needs thinking",
+    detail:
+      "Research, analysis, strategy, new ideas. For work where the answer is not already sitting in the company's material.",
   },
-  "fable-5": {
-    id: "claude-fable-5",
-    label: "Fable 5",
-    use: "Most demanding work, granted by role",
-    inputPer1M: 10,
-    outputPer1M: 50,
+  deepest: {
+    label: "Deepest",
+    use: "The hardest work",
+    detail:
+      "For work where being right matters more than what it costs. Rare. Most companies never need it.",
   },
 };
 
-/* Order matters. This is the ladder an admin raises a staff member up. */
-export const MODEL_ORDER = ["haiku-4-5", "sonnet-5", "opus-5", "fable-5"];
+/* Order matters. This is the ladder an admin raises somebody up. */
+export const LEVEL_ORDER = ["conversational", "standard", "deeper", "deepest"];
 
-export const DEFAULT_MODEL_CEILING = "sonnet-5";
+export const DEFAULT_LEVEL = "standard";
 
-/* What an admin may actually hand out. Opus and Fable exist in the ladder
-   and the server will run them, but this deployment does not offer them,
-   and a selector listing a choice the server refuses is a promise the
-   product cannot keep. */
-export const INVITABLE_CEILINGS = ["haiku-4-5", "sonnet-5"];
+/* What an admin may actually hand out here. The two above exist and the
+   server will run them, but this deployment does not offer them, and a
+   selector listing a choice the server refuses is a promise the product
+   cannot keep. */
+export const OFFERED_LEVELS = ["conversational", "standard"];
+
+/* READING A ROW WRITTEN BEFORE THE RENAME.
+
+   model_ceiling used to hold a vendor's model name. Those values are being
+   renamed in the database to the level names above. This maps an old value
+   to its level so a row, a cached session, or a deployment that has not run
+   the rename yet still reads correctly instead of showing an empty box.
+
+   Anything already a level passes straight through. Anything unrecognised
+   comes back as the default, because a ceiling nobody can read is not a
+   reason to show somebody a broken screen. */
+const RENAMED_FROM = {
+  "haiku-4-5": "conversational",
+  "sonnet-5": "standard",
+  "opus-5": "deeper",
+  "fable-5": "deepest",
+};
+
+export function levelOf(stored) {
+  if (stored && Object.hasOwn(CAPABILITY_LEVELS, stored)) return stored;
+  return RENAMED_FROM[stored] ?? DEFAULT_LEVEL;
+}
 
 /* --------------------------------------------------------------------------
    SECTION: Skills

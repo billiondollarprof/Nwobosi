@@ -26,7 +26,77 @@ const FUNCTIONS_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
    everybody looking at their wifi instead of at this line. */
 const PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
+/* --------------------------------------------------------------------------
+   SECTION: Tidying what somebody actually typed or pasted
+
+   WHY THIS EXISTS, WITH THE REAL CASE THAT CAUSED IT
+   On 2026-09-09 an admin pasted "amara.ng," into the address box, with a
+   comma on the end that had come along for the ride. The server builds a
+   URL out of it, and `new URL("https://amara.ng,")` does not throw. It
+   quietly accepts the comma as part of the hostname and hands back
+   "https://amara.ng,/". No such host exists, so the fetch failed and the
+   screen said "Could not open that page. Check the address and try again."
+
+   Which is true, and useless. The address was right. One character of
+   punctuation was wrong, and nothing on screen could tell them which.
+
+   So a stray character is cleaned here rather than costing a round trip,
+   and an address that is genuinely not an address is refused here with a
+   reason, before the server is asked at all.
+
+   WHAT IS SAFE TO STRIP FROM THE END, AND WHAT IS NOT
+   Commas, semicolons, quotes and angle brackets are never part of a real
+   web address, and they are exactly what a paste out of a sentence, a
+   chat message or a markdown link drags along. A full stop goes too, for
+   the same reason.
+
+   Brackets are deliberately left alone. Plenty of real addresses end in
+   one, Wikipedia's especially, and stripping it would break a working
+   link to fix a typo nobody made.
+   -------------------------------------------------------------------------- */
+
+const TRAILING_JUNK = /[\s,;:!?'"<>«»„“”‘’.]+$/;
+const LEADING_JUNK = /^[\s'"<>«»„“”‘’]+/;
+
+/* A hostname is letters, digits and hyphens in dot separated labels, with
+   at least one dot. Deliberately plain: this is here to catch punctuation
+   and obvious nonsense, not to be the final word on what resolves. The
+   server still decides, and it still refuses private addresses. */
+const HOSTNAME = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i;
+
+export function tidyAddress(raw) {
+  const cleaned = String(raw ?? "")
+    .replace(LEADING_JUNK, "")
+    .replace(TRAILING_JUNK, "")
+    .trim();
+
+  if (!cleaned) return { ok: false, message: "Put in a web address first." };
+
+  const withScheme = /^https?:\/\//i.test(cleaned) ? cleaned : `https://${cleaned}`;
+
+  let parsed;
+  try {
+    parsed = new URL(withScheme);
+  } catch {
+    return { ok: false, message: "That does not look like a web address." };
+  }
+
+  /* Punycode, so an address in another script is judged on what it really
+     is rather than on characters this pattern was never written for. */
+  if (!HOSTNAME.test(parsed.hostname)) {
+    return {
+      ok: false,
+      message: `"${parsed.hostname}" is not a web address. Check for a stray character.`,
+    };
+  }
+
+  return { ok: true, url: parsed.toString() };
+}
+
 export async function fetchLinkSource({ url, description }) {
+  const tidy = tidyAddress(url);
+  if (!tidy.ok) return { ok: false, message: tidy.message };
+
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) return { ok: false, message: "Sign in again to add a link." };
 
@@ -39,7 +109,7 @@ export async function fetchLinkSource({ url, description }) {
         Authorization: `Bearer ${session.access_token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ url, description }),
+      body: JSON.stringify({ url: tidy.url, description }),
     });
   } catch (err) {
     console.error("add-link failed", err);
