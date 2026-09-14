@@ -1,9 +1,24 @@
 /* ==========================================================================
-   CANVA CALLBACK, THE END OF THE HANDSHAKE
+   OAUTH CALLBACK, THE END OF ANY HANDSHAKE
 
-   Where Canva sends a person back once they have said yes. It takes the
-   one time code in the query string, trades it for a pair of tokens, keeps
-   them, and shows a plain page saying it worked.
+   Where an outside service sends a person back once they have said yes. It
+   takes the one time code in the query string, trades it for a pair of
+   tokens, keeps them, and shows a plain page saying it worked.
+
+   ONE CALLBACK, NOT ONE PER SERVICE
+   ---------------------------------
+   Canva is the only one today. It is named for the job rather than for the
+   service on purpose, because the next one, Drive most likely, needs the
+   identical thirty lines of state checking and PKCE, and a second copy of
+   those thirty lines is a second place for the security to be subtly
+   different.
+
+   The provider is read off the oauth_pending row rather than off the query
+   string, so a caller cannot pick which service they are completing. That
+   column was in the table from the day it was written, for this.
+
+   PROVIDERS below is the whole list. Adding one is a few lines in that
+   object and nothing else in this file moves.
 
    THIS IS THE ONLY FUNCTION IN THE PROJECT A STRANGER CAN REACH
    -------------------------------------------------------------
@@ -43,11 +58,23 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const TOKEN_URL = "https://api.canva.com/rest/v1/oauth/token";
+/* Must be character for character what the start of the handshake sent and
+   what the provider's portal has registered. They compare the string, and a
+   mismatch is refused with an error that does not say which part is wrong.
 
-/* Must be character for character what canva-connect sent and what the
-   Canva portal has registered. Canva compares the string. */
-const REDIRECT_URI = `${Deno.env.get("SUPABASE_URL")}/functions/v1/canva-callback`;
+   Built from one constant used by both halves, so the two cannot drift. */
+const REDIRECT_URI = `${Deno.env.get("SUPABASE_URL")}/functions/v1/oauth-callback`;
+
+/* Everything that differs between one service and the next. The rest of this
+   file is the same work whichever one it is. */
+const PROVIDERS: Record<string, { label: string; tokenUrl: string; idEnv: string; secretEnv: string }> = {
+  canva: {
+    label: "Canva",
+    tokenUrl: "https://api.canva.com/rest/v1/oauth/token",
+    idEnv: "CANVA_CLIENT_ID",
+    secretEnv: "CANVA_CLIENT_SECRET",
+  },
+};
 
 /* ==========================================================================
    1. THE PAGE IT SHOWS
@@ -105,11 +132,11 @@ function page(title: string, detail: string, good: boolean) {
    request log alongside the parameters.
    ========================================================================== */
 
-async function exchange(params: Record<string, string>) {
-  const id = Deno.env.get("CANVA_CLIENT_ID") ?? "";
-  const secret = Deno.env.get("CANVA_CLIENT_SECRET") ?? "";
+async function exchange(provider: typeof PROVIDERS[string], params: Record<string, string>) {
+  const id = Deno.env.get(provider.idEnv) ?? "";
+  const secret = Deno.env.get(provider.secretEnv) ?? "";
 
-  const response = await fetch(TOKEN_URL, {
+  const response = await fetch(provider.tokenUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
@@ -124,14 +151,14 @@ async function exchange(params: Record<string, string>) {
        and that is the difference between fixing this in a minute and
        guessing for an hour. It carries no secret of ours: the secret went
        in the header, and this is Canva's error, not our request. */
-    console.error("canva refused the exchange", response.status, text);
+    console.error(`${provider.label} refused the exchange`, response.status, text);
     return { ok: false as const, status: response.status };
   }
 
   try {
     return { ok: true as const, data: JSON.parse(text) as Record<string, unknown> };
   } catch {
-    console.error("canva returned something that was not json", text.slice(0, 300));
+    console.error(`${provider.label} returned something that was not json`, text.slice(0, 300));
     return { ok: false as const, status: 502 };
   }
 }
@@ -146,6 +173,9 @@ Deno.serve(async (req: Request) => {
   /* Canva sends the person back with an error in the query string when they
      press cancel. That is a normal thing for somebody to do and it is not a
      failure worth a red screen. */
+  /* Named generically, because the provider is not known yet: the row that
+     says which service this was has not been read, and reading it here
+     would delete it on a path that never needed it. */
   const refused = url.searchParams.get("error");
   if (refused) {
     return page(
@@ -177,8 +207,7 @@ Deno.serve(async (req: Request) => {
     .from("oauth_pending")
     .delete()
     .eq("state", state)
-    .eq("provider", "canva")
-    .select("code_verifier, created_at")
+    .select("provider, code_verifier, created_at")
     .maybeSingle();
 
   if (pendingError || !pending) {
@@ -196,9 +225,18 @@ Deno.serve(async (req: Request) => {
     return page("That took too long", "The link ran out. Start again from the admin screen.", false);
   }
 
+  /* WHICH SERVICE, read off the row and never off the query string. The row
+     was written by the function that started this, so it is the only party
+     that gets to say what is being completed. */
+  const provider = PROVIDERS[String(pending.provider)];
+  if (!provider) {
+    console.error("a handshake came back for a provider this function does not know", pending.provider);
+    return page("That did not match", "Start again from the admin screen.", false);
+  }
+
   /* --- Trade it -------------------------------------------------------- */
 
-  const traded = await exchange({
+  const traded = await exchange(provider, {
     grant_type: "authorization_code",
     code,
     code_verifier: pending.code_verifier as string,
@@ -206,7 +244,7 @@ Deno.serve(async (req: Request) => {
   });
 
   if (!traded.ok) {
-    return page("Canva would not finish that", "Nothing was connected. Start again from the admin screen.", false);
+    return page(`${provider.label} would not finish that`, "Nothing was connected. Start again from the admin screen.", false);
   }
 
   const accessToken = String(traded.data.access_token ?? "");
@@ -214,8 +252,10 @@ Deno.serve(async (req: Request) => {
   const expiresIn = Number(traded.data.expires_in ?? 0);
 
   if (!accessToken || !refreshToken) {
-    console.error("canva returned no usable token pair", Object.keys(traded.data));
-    return page("Canva would not finish that", "Nothing was connected. Start again from the admin screen.", false);
+    /* The KEYS, never the values. A token in a log is a token in every
+       backup of that log. */
+    console.error(`${provider.label} returned no usable token pair`, Object.keys(traded.data));
+    return page(`${provider.label} would not finish that`, "Nothing was connected. Start again from the admin screen.", false);
   }
 
   /* --- Keep it ---------------------------------------------------------
@@ -232,7 +272,7 @@ Deno.serve(async (req: Request) => {
   const { error: keepError } = await admin
     .from("integration_tokens")
     .upsert({
-      provider: "canva",
+      provider: String(pending.provider),
       access_token: accessToken,
       refresh_token: refreshToken,
       expires_at: expiresAt.toISOString(),
@@ -243,12 +283,12 @@ Deno.serve(async (req: Request) => {
   if (keepError) {
     /* The keys are logged, never the values. A refresh token in a log is a
        refresh token in every backup of that log. */
-    console.error("could not store the canva connection", keepError.message);
+    console.error(`could not store the ${provider.label} connection`, keepError.message);
     return page("Connected, but not saved", "Something went wrong storing it. Start again from the admin screen.", false);
   }
 
   return page(
-    "Canva is connected",
+    `${provider.label} is connected`,
     "You can close this tab. Nothing else to do.",
     true,
   );

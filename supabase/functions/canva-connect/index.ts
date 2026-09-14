@@ -72,7 +72,7 @@ function json(body: unknown, status = 200) {
    part is wrong, so this is built from one constant rather than assembled
    in two places that can drift. */
 const AUTHORIZE_URL = "https://www.canva.com/api/oauth/authorize";
-const REDIRECT_URI = `${Deno.env.get("SUPABASE_URL")}/functions/v1/canva-callback`;
+const REDIRECT_URI = `${Deno.env.get("SUPABASE_URL")}/functions/v1/oauth-callback`;
 
 /* What the connection is allowed to do, and nothing beyond it.
 
