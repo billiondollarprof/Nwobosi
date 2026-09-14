@@ -410,7 +410,7 @@ function Disagreements({ items, onResolve, busyId }) {
   );
 }
 
-function KnowledgeSection({ me, loading: loadingMe }) {
+export function KnowledgeSection({ me, loading: loadingMe }) {
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -939,6 +939,23 @@ function KnowledgeSection({ me, loading: loadingMe }) {
         />
       </div>
 
+      {/* THE TWO WAYS IN, SIDE BY SIDE ON A BIG SCREEN.
+
+          Until 2026-09-14 the whole admin had exactly one breakpoint, sm:
+          at 640px. So a tablet and a 1280px desktop got the identical phone
+          layout, stretched. Measured: 1817px of page on a tablet and 1797px
+          on a desktop, the same column, just wider panels. "Add a link" was
+          242px tall spanning 1024px, which is a strip of empty space where
+          a person expects density.
+
+          md: at 768, which is where a tablet starts. lg: was tried first
+          and left the tablet exactly as it was, 1817px of the same single
+          column, which is the width Anthony asked about by name. At 768 the
+          container is 720px, so each panel is about 350px. That is narrow
+          but it is a real column, and the form inside stacks at the same
+          breakpoint so nothing is squeezed. */}
+      <div className="grid gap-5 md:grid-cols-2 md:items-start">
+
       {/* Upload */}
       <GlassPanel className="p-6">
         <SectionHeading hint="Brand guidelines, templates, past work, anything the assistant should write from. Give each one a clear name and a line saying what it holds, because that is how it decides which to open.">
@@ -1132,8 +1149,12 @@ function KnowledgeSection({ me, loading: loadingMe }) {
             </div>
           </div>
         ) : (
+          /* p-8 everywhere made this a 230px tall dashed box spanning the
+             full width of a desktop, to say "or choose a file". The padding
+             now comes down as the screen grows, because the thing it is
+             asking for does not get bigger with the window. */
           <div
-            className="rounded-[14px] border border-dashed p-8 text-center transition-colors"
+            className="rounded-[14px] border border-dashed p-8 md:p-6 text-center transition-colors"
             style={{ borderColor: "var(--border-2)", backgroundColor: "var(--surface-2)" }}
           >
             <div className="flex justify-center mb-3">
@@ -1191,7 +1212,11 @@ function KnowledgeSection({ me, loading: loadingMe }) {
           Add a link
         </SectionHeading>
 
-        <form onSubmit={addLink} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+        {/* Three across on a phone turned tablet, stacked again once this
+            panel is sharing the row at 1024 and up. The widths are the
+            reason, not a preference: three columns inside 470px squeezes
+            the address field to nothing. */}
+        <form onSubmit={addLink} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end md:grid-cols-1 md:items-stretch">
           <Field label="Address" required>
             <TextInput
               value={linkUrl}
@@ -1231,7 +1256,12 @@ function KnowledgeSection({ me, loading: loadingMe }) {
             <PrimaryButton
               type="submit"
               disabled={saving || !linkUrl.trim()}
-              className="flex items-center gap-2 w-full sm:w-auto justify-center"
+              /* Full width on a phone, sized to its text when the form is
+                 three across, and full width again once the form stacks in
+                 the narrow column at 768 and up. Left to sm:w-auto it sat
+                 small and alone at the bottom of a 350px column with space
+                 all round it, which reads as an unfinished form. */
+              className="flex items-center gap-2 w-full sm:w-auto md:w-full justify-center"
             >
               {saving ? <Spinner size={14} color="#fff" /> : <Plus size={15} />}
               {saving ? "Reading it" : "Add"}
@@ -1246,6 +1276,8 @@ function KnowledgeSection({ me, loading: loadingMe }) {
           </p>
         )}
       </GlassPanel>
+
+      </div>
 
       <Disagreements items={clashes} onResolve={markSorted} busyId={clashBusy} />
 
