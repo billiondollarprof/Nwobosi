@@ -99,6 +99,12 @@ import {
    just the messages. The shape lives in that file, never inline here. */
 import { buildResumeLog, readResumeLog, resumeLine } from "../shared/resumeLog.js";
 
+/* Gate two, in its own file. It grew a list and local state of its own the
+   day it learned to keep some findings and not others, and a card with
+   state belongs somewhere it can be read top to bottom. */
+import FindingPicker from "../shared/FindingPicker.jsx";
+import { withoutMarks } from "../shared/findings.js";
+
 /* ==========================================================================
    1. INTERVIEW HELPERS
    Small pure functions the interview leans on. Kept at the top so the
@@ -1333,19 +1339,42 @@ export default function Chat() {
     runTurn("analyse", toApiMessages([...kept, { role: "user", content: "No, work with what you have." }]));
   }
 
-  /* GATE TWO, the yes. The finding is written to the ref first and the
-     state second, because the very next line fires a turn that reads the
-     ref, and state would not have caught up. */
-  function useFinding(text) {
+  /* GATE TWO, the yes. Takes a LIST, because the answer is no longer only
+     all or nothing: the picker hands back every finding still ticked, which
+     may be all of them, some of them, or one.
+
+     Written to the ref first and the state second, because the very next
+     line fires a turn that reads the ref, and state would not have caught
+     up.
+
+     What the person is recorded as saying changes with what they kept. "Use
+     that" after unticking two of three would be the conversation carrying a
+     claim the person did not make, and the model reads that line as theirs.
+     So it says how many, and when they dropped some it says that too. */
+  function useFinding(chosen, droppedCount = 0) {
     if (typing || generating) return;
-    findingsRef.current = [...findingsRef.current, text];
+
+    const list = (Array.isArray(chosen) ? chosen : [chosen])
+      .filter((t) => typeof t === "string" && t.trim());
+    if (!list.length) return dropFinding();
+
+    /* Counted, never stored. Somebody who unticked two of three findings has
+       turned two down, and the resume log wants to know that happened
+       without keeping a word of what they were. */
+    if (droppedCount > 0) declinedRef.current += droppedCount;
+
+    findingsRef.current = [...findingsRef.current, ...list];
     setFindings(findingsRef.current);
+
+    const said = list.length === 1
+      ? "Use that."
+      : `Use those ${list.length}.`;
 
     const kept = messages.filter((m) => m.type !== "useFinding");
     updateMessages(kept);
-    addMessage({ role: "user", type: "text", content: "Use that." });
+    addMessage({ role: "user", type: "text", content: said });
     setFlowStage("analyse");
-    runTurn("analyse", toApiMessages([...kept, { role: "user", content: "Use that." }]));
+    runTurn("analyse", toApiMessages([...kept, { role: "user", content: said }]));
   }
 
   /* GATE TWO, the no. Nothing is kept. They are put back in the
@@ -2543,45 +2572,30 @@ export function ChatBubble({ message, brief, buildStage = "brief", buildStalled 
               From outside your company
             </span>
           </div>
+          {/* withoutMarks, because the research stage puts [FINDING] before
+              each one so the picker below knows where to split. That is
+              plumbing and it must never reach a person's eyes. */}
           <div className="text-[14.5px] leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-1)" }}>
-            {message.content}
+            {withoutMarks(message.content)}
           </div>
         </div>
       </div>
     );
   }
 
-  /* --- GATE TWO: does any of it get used --- */
+  /* --- GATE TWO: does any of it get used, and which of it ---
+
+     The whole card lives in src/shared/FindingPicker.jsx, because it holds
+     state of its own now: which findings are still ticked. Hooks cannot be
+     called from inside a branch like this one, so it has to be a component
+     rather than a few more lines here. */
   if (message.type === "useFinding") {
     return (
-      <div style={riseStyle}>
-        <div
-          className="rounded-[18px] border p-5 backdrop-blur-xl"
-          style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
-        >
-          <p className="text-[15.5px] font-semibold mb-1" style={{ color: "var(--text-1)" }}>
-            Use this in the work?
-          </p>
-          <p className="text-[13.5px] mb-4 leading-relaxed" style={{ color: "var(--text-3)" }}>
-            Check the numbers and the sources first. If something is wrong, say no and tell
-            me what to use instead.
-          </p>
-          <PrimaryButton
-            onClick={() => onUseFinding(message.content)}
-            className="w-full flex items-center justify-center gap-2"
-          >
-            <Check size={15} />
-            Yes, use it
-          </PrimaryButton>
-          <button
-            onClick={onDropFinding}
-            className="w-full mt-2.5 rounded-[12px] border py-2.5 text-[13.5px] transition-opacity hover:opacity-80"
-            style={{ borderColor: "var(--border-2)", color: "var(--text-2)" }}
-          >
-            No, do not use it
-          </button>
-        </div>
-      </div>
+      <FindingPicker
+        content={message.content}
+        onUse={onUseFinding}
+        onDrop={onDropFinding}
+      />
     );
   }
 
