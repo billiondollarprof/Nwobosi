@@ -46,6 +46,7 @@
 import { useState } from "react";
 import { Check } from "lucide-react";
 import { PrimaryButton } from "./ui.jsx";
+import { BRAND } from "./tokens";
 import { splitFindings, chosenText } from "./findings.js";
 
 export default function FindingPicker({ content, onUse, onDrop }) {
@@ -119,11 +120,15 @@ export default function FindingPicker({ content, onUse, onDrop }) {
                   opacity: on ? 1 : 0.5,
                 }}
               >
+                {/* accentColor, so the tick is the brand rather than the
+                    browser's own blue. One line, and it works in both
+                    themes because the box behind it is the theme's. */}
                 <input
                   type="checkbox"
                   checked={on}
                   onChange={() => toggle(f.id)}
                   className="mt-[3px] shrink-0 w-4 h-4 cursor-pointer"
+                  style={{ accentColor: BRAND.accentSoft }}
                 />
                 {/* The whole finding, not a summary. Somebody approving a
                     figure has to be able to see the figure and its source. */}
