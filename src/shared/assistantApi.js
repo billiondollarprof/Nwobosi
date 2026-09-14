@@ -71,6 +71,68 @@ const PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
    that can make it impossible.
    -------------------------------------------------------------------------- */
 
+/* --------------------------------------------------------------------------
+   SECTION: A turn that never comes back
+
+   THE BUG THIS EXISTS TO STOP, 2026-09-10, seen on the preview build.
+   Anthony sent a message and nothing came back. Not an error, not a
+   spinner that gave up. Silence, for as long as he was willing to sit
+   there. It had happened before.
+
+   The reading loop below used to be:
+
+     while (true) {
+       const { value, done } = await reader.read();
+       if (done) break;
+       ...
+     }
+
+   Read that break again. The server closes the stream, the loop stops, the
+   function returns, and NOBODY IS TOLD. onDone only ever fired when the
+   server sent an explicit `done` event. So any ending that was not a
+   polite one, the edge worker being killed at its limit, the connection
+   dropping, the gateway hanging up, ended with the browser holding
+   `typing = true` forever. The screen said it was working. Nothing was.
+
+   Two things stop it now, and they are deliberately different in kind:
+
+     1. A TERMINAL EVENT IS COMPULSORY. `settled` below tracks whether the
+        caller was told anything at all. If the stream ends without a done
+        or an error, this file invents one. It cannot false alarm, because
+        it only ever speaks when the stream is already over and the caller
+        would otherwise hear nothing.
+
+     2. A WATCHDOG, for the other shape of the same failure: the stream
+        stays open and nothing ever arrives. This one CAN false alarm, so
+        it is deliberately slow, and it warns long before it gives up. A
+        turn killed at 30 seconds because it was thinking hard would be a
+        worse bug than the one being fixed.
+
+   The numbers are in STALL below and the reasoning is with them.
+   -------------------------------------------------------------------------- */
+
+/* Quiet for this long and the person is TOLD it is slow, and nothing else
+   happens. The turn is still running and still worth waiting for. */
+const STALL_WARN_MS = 25_000;
+
+/* Quiet for this long and it is given up on. Chosen against what the work
+   actually does, not by taste:
+
+     - `meta` is the first thing the function sends, before it calls the
+       model at all, so bytes arrive almost immediately on a healthy turn.
+       Silence this long means nothing is coming.
+     - The research stage is the exception and gets its own number. It runs
+       searches without streaming a word, and a long one with several
+       continuations genuinely says nothing for minutes. Killing that would
+       throw away work somebody approved and paid for. */
+const STALL_GIVE_UP_MS = 120_000;
+const STALL_GIVE_UP_RESEARCH_MS = 300_000;
+
+/* A private marker for "the timer won, not the stream". An object compared
+   by identity, because any string or number could in principle be a value
+   the stream produced, and mistaking a chunk for a timeout would drop it. */
+const TICK = Symbol("stall-tick");
+
 function endingOnTheirTurn(list) {
   const out = [...list];
   while (out.length && out[out.length - 1].role === "assistant") out.pop();
@@ -81,9 +143,19 @@ function endingOnTheirTurn(list) {
   return out.length ? out : list;
 }
 
-export function sendTurn({ stage = "orient", askedSoFar = 0, brief = "", findings = "", messages, onMeta, onText, onDone, onError }) {
+export function sendTurn({ stage = "orient", askedSoFar = 0, brief = "", findings = "", messages, onMeta, onText, onDone, onError, onStall }) {
   const controller = new AbortController();
   messages = endingOnTheirTurn(messages);
+
+  /* Has the caller been told anything final yet. Every path that ends a
+     turn sets this, and the read loop checks it on the way out so a stream
+     that simply stops can never leave the page waiting. */
+  let settled = false;
+  const finish = (fn, payload) => {
+    if (settled) return;
+    settled = true;
+    fn?.(payload);
+  };
 
   (async () => {
     /* The caller's own session. The edge function reads who they are from
@@ -91,7 +163,7 @@ export function sendTurn({ stage = "orient", askedSoFar = 0, brief = "", finding
     const { data: { session } } = await supabase.auth.getSession();
 
     if (!session) {
-      onError?.({
+      finish(onError, {
         reason: "signed_out",
         message: "Sign in to keep going.",
       });
@@ -127,7 +199,7 @@ export function sendTurn({ stage = "orient", askedSoFar = 0, brief = "", finding
 
       if (error) {
         console.error("assistant fallback failed", error);
-        onError?.({
+        finish(onError, {
           reason: "network",
           message: `The assistant did not answer. ${error.message ?? "No reason given."}`,
         });
@@ -148,7 +220,7 @@ export function sendTurn({ stage = "orient", askedSoFar = 0, brief = "", finding
 
       if (!whole.includes("event:")) {
         console.error("assistant fallback returned an unreadable body", data);
-        onError?.({ reason: "network", message: "The assistant did not answer. Check the function logs." });
+        finish(onError, { reason: "network", message: "The assistant did not answer. Check the function logs." });
         return;
       }
 
@@ -165,9 +237,13 @@ export function sendTurn({ stage = "orient", askedSoFar = 0, brief = "", finding
         const event = eventLine.slice(6).trim();
         if (event === "meta") onMeta?.(parsed);
         else if (event === "text") onText?.(parsed.text);
-        else if (event === "done") onDone?.(parsed);
-        else if (event === "error") onError?.({ reason: "failed", message: parsed.reason });
+        else if (event === "done") finish(onDone, parsed);
+        else if (event === "error") finish(onError, { reason: "failed", message: parsed.reason });
       }
+
+      /* Same rule as the streamed path: a body that carried text but never
+         a done or an error still has to end the turn on screen. */
+      finish(onDone, { stopReason: "end_without_done" });
       return;
     }
 
@@ -182,7 +258,7 @@ export function sendTurn({ stage = "orient", askedSoFar = 0, brief = "", finding
       } catch {
         /* not JSON, fall through to the generic message */
       }
-      onError?.({
+      finish(onError, {
         reason: payload?.reason ?? "failed",
         message:
           payload?.message ??
@@ -204,9 +280,78 @@ export function sendTurn({ stage = "orient", askedSoFar = 0, brief = "", finding
     const decoder = new TextDecoder();
     let buffer = "";
 
+    /* THE WATCHDOG. reader.read() returns a promise that a dead connection
+       never settles, so waiting on it alone is waiting for ever. Racing it
+       against a timer is the only way to get control back.
+
+       Two timers, not one. The warn fires once and only tells the person it
+       is slow. The give up aborts. Both are reset by any byte at all, so a
+       turn that is streaming steadily never sees either. */
+    let warned = false;
+    const giveUpAfter = stage === "research" ? STALL_GIVE_UP_RESEARCH_MS : STALL_GIVE_UP_MS;
+    let quietSince = Date.now();
+
+    async function readOrGiveUp() {
+      /* ONE read promise, created here and raced repeatedly.
+
+         Calling reader.read() again on each round would be the obvious
+         way to write this and it would silently lose data. Concurrent
+         reads are legal and they queue: five reads while waiting means
+         five chunks resolve, and a race that keeps only the first winner
+         throws the other four away. So the promise is made once, outside
+         the loop, and the loop only ever races the same one. */
+      const pending = reader.read();
+
+      while (true) {
+        const quietFor = Date.now() - quietSince;
+
+        if (quietFor >= giveUpAfter) return { gaveUp: true };
+
+        if (!warned && quietFor >= STALL_WARN_MS) {
+          warned = true;
+          onStall?.();
+        }
+
+        /* Wake up either when the chunk lands or when the next threshold is
+           due, whichever comes first, so the warning is not held back until
+           a chunk that may never arrive. */
+        const nextCheck = warned ? giveUpAfter - quietFor : STALL_WARN_MS - quietFor;
+
+        let timer;
+        const tick = new Promise((resolve) => {
+          timer = setTimeout(() => resolve(TICK), Math.max(250, nextCheck));
+        });
+
+        const winner = await Promise.race([pending, tick]);
+        clearTimeout(timer);
+
+        if (winner === TICK) continue;
+
+        quietSince = Date.now();
+        warned = false;
+        return winner;
+      }
+    }
+
     try {
       while (true) {
-        const { value, done } = await reader.read();
+        const result = await readOrGiveUp();
+
+        if (result.gaveUp) {
+          controller.abort();
+          finish(onError, {
+            reason: "stalled",
+            /* Says what happened and nothing more. An earlier draft of this
+               line said nothing had been charged, which this file has no way
+               of knowing: the turn may well have run and billed before it
+               went quiet. A comforting sentence that might be false is worse
+               than a plain one that is true. */
+            message: "That one stopped answering. Send it again.",
+          });
+          return;
+        }
+
+        const { value, done } = result;
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
@@ -229,14 +374,24 @@ export function sendTurn({ stage = "orient", askedSoFar = 0, brief = "", finding
 
           if (event === "meta") onMeta?.(data);
           else if (event === "text") onText?.(data.text);
-          else if (event === "done") onDone?.(data);
-          else if (event === "error") onError?.({ reason: "failed", message: data.reason });
+          else if (event === "done") finish(onDone, data);
+          else if (event === "error") finish(onError, { reason: "failed", message: data.reason });
         }
       }
+
+      /* THE LINE THE WHOLE SECTION HEADER IS ABOUT. The loop above breaks
+         when the stream ends, and until today that was the end of it: if the
+         server never sent a done, the caller was never told, and the page
+         sat there saying it was working.
+
+         finish() has already fired if a done or an error came through, and
+         it only speaks once, so this changes nothing about a healthy turn.
+         It only catches the ending nobody sent. */
+      finish(onDone, { stopReason: "end_without_done" });
     } catch (err) {
       if (err?.name === "AbortError") return;
       console.error("assistant stream broke", err);
-      onError?.({ reason: "stream", message: "The reply stopped partway. Try again." });
+      finish(onError, { reason: "stream", message: "The reply stopped partway. Try again." });
     }
   })();
 

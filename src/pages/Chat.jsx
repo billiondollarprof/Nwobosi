@@ -70,7 +70,7 @@ import {
   FloatingNav,
   ThemeToggle,
   TypewriterText,
-  TypingDots,
+  Thinking,
   IconBtn,
   PrimaryButton,
   GhostButton,
@@ -400,6 +400,24 @@ export default function Chat() {
   const [brief, setBrief] = useState({});
   const [typing, setTyping] = useState(false);
 
+  /* WHAT IT SAYS WHILE IT WORKS.
+
+     Anthony, 2026-09-10: "if it's still thinking or analyzing, there's no
+     way a person knows... so a person can know it's still working and wait
+     for it." Three grey dots cannot tell anybody whether it has been
+     reading for two seconds or has been dead for two minutes, and the only
+     safe reading of that is to press the button again.
+
+       turnStage  which stage is running right now. NOT flowStage: that is
+                  the stage the NEXT turn will run at, and the two differ
+                  exactly when it matters, because runTurn("research") is
+                  fired while flowStage says "analyse".
+       stalled    the request has gone quiet for a long time. Set from
+                  sendTurn's onStall, which knows how long quiet has been,
+                  and cleared the moment anything arrives. */
+  const [turnStage, setTurnStage] = useState("orient");
+  const [stalled, setStalled] = useState(false);
+
   /* Which model actually ran the last turn, reported by the server rather
      than assumed here. The ladder is a real feature, so it gets shown. */
   const [activeTier, setActiveTier] = useState(null);
@@ -712,6 +730,8 @@ export default function Chat() {
      against what this staff member is allowed. */
   function runTurn(stage, history) {
     setTyping(true);
+    setTurnStage(stage);
+    setStalled(false);
 
     /* The bubble the reply streams into. Created empty and filled as
        chunks arrive, so words appear rather than a spinner resolving into
@@ -738,8 +758,13 @@ export default function Chat() {
 
       onMeta: ({ tier }) => setActiveTier(tier),
 
+      /* Quiet for a long time. The turn is still running, so this only
+         changes what the line says. Nothing is cancelled here. */
+      onStall: () => setStalled(true),
+
       onText: (chunk) => {
         raw += chunk;
+        setStalled(false);
         if (!started) {
           started = true;
           setTyping(false);
@@ -751,6 +776,7 @@ export default function Chat() {
 
       onDone: () => {
         setTyping(false);
+        setStalled(false);
         abortTurnRef.current = null;
 
         const clean = visibleText(raw);
@@ -850,6 +876,7 @@ export default function Chat() {
 
       onError: ({ reason, message }) => {
         setTyping(false);
+        setStalled(false);
         abortTurnRef.current = null;
 
         /* Running out is not a failure, it is the end of a trial, and the
@@ -1066,6 +1093,9 @@ export default function Chat() {
 
     let brief = "";
 
+    setTurnStage("brief");
+    setStalled(false);
+
     abortTurnRef.current = sendTurn({
       stage: "brief",
       /* The build does not go through runTurn, so it has to carry the
@@ -1076,10 +1106,12 @@ export default function Chat() {
       messages: toApiMessages(messages),
 
       onMeta: ({ tier }) => setActiveTier(tier),
-      onText: (chunk) => { brief += chunk; },
+      onStall: () => setStalled(true),
+      onText: (chunk) => { brief += chunk; setStalled(false); },
 
       onError: ({ reason, message }) => {
         setGenerating(false);
+        setStalled(false);
         abortTurnRef.current = null;
         updateMessages((prev) => [
           ...prev.filter((m) => m.type !== "generating"),
@@ -1111,6 +1143,13 @@ export default function Chat() {
        inside is on the row whether or not the writing finishes. */
     persist(messages, "generate", brief);
 
+    /* The card on screen is still the build card, so moving this on is what
+       changes its line from "Writing the brief" to "Building your
+       document". Without it the card would still be talking about the
+       brief while the document was being written. */
+    setTurnStage("generate");
+    setStalled(false);
+
     abortTurnRef.current = sendTurn({
       stage: "generate",
       brief,
@@ -1118,9 +1157,11 @@ export default function Chat() {
       messages: toApiMessages(messages),
 
       onMeta: ({ tier }) => setActiveTier(tier),
+      onStall: () => setStalled(true),
 
       onText: (chunk) => {
         finished += chunk;
+        setStalled(false);
         if (!started) {
           started = true;
           updateMessages((prev) => [
@@ -1135,6 +1176,7 @@ export default function Chat() {
 
       onDone: () => {
         setGenerating(false);
+        setStalled(false);
         abortTurnRef.current = null;
         setDailyUsed((n) => Math.min(n + 1, DAILY_LIMIT));
 
@@ -1165,6 +1207,7 @@ export default function Chat() {
 
       onError: ({ reason, message }) => {
         setGenerating(false);
+        setStalled(false);
         abortTurnRef.current = null;
         updateMessages((prev) => [
           ...prev.filter((m) => m.type !== "generating"),
@@ -1902,6 +1945,8 @@ export default function Chat() {
                 key={m.id}
                 message={m}
                 brief={brief}
+                buildStage={turnStage}
+                buildStalled={stalled}
                 onGenerate={handleGenerate}
                 onAdjust={handleAdjust}
                 onWantInterview={handleWantInterview}
@@ -1918,7 +1963,7 @@ export default function Chat() {
                 onDownload={(format) => handleDownload(format, m.title || "Your document", m.content)}
               />
             ))}
-            {typing && <TypingDots />}
+            {typing && <Thinking stage={turnStage} stalled={stalled} />}
           </div>
         </div>
       )}
@@ -2335,7 +2380,7 @@ THE GLOW AND THE PULSE STAY. They were
    avatar, staff messages sit in a neutral capsule on the right.
    ========================================================================== */
 
-export function ChatBubble({ message, brief, onGenerate, onAdjust, onWantInterview, onSkipInterview, onAllowLookup, onRefuseLookup, onUseFinding, onDropFinding, onReset, onRetry, feedback, onFeedback, onCopy, onDownload }) {
+export function ChatBubble({ message, brief, buildStage = "brief", buildStalled = false, onGenerate, onAdjust, onWantInterview, onSkipInterview, onAllowLookup, onRefuseLookup, onUseFinding, onDropFinding, onReset, onRetry, feedback, onFeedback, onCopy, onDownload }) {
   const isUser = message.role === "user";
   const riseStyle = { animation: "sx-rise 0.35s ease" };
 
@@ -2589,38 +2634,37 @@ export function ChatBubble({ message, brief, onGenerate, onAdjust, onWantIntervi
     );
   }
 
-  /* --- Building it now --- */
-  if (message.type === "generating") {
-    const stepLabel =
-      brief.skill === "word"
-        ? "Compiling document"
-        : brief.skill === "excel"
-        ? "Structuring spreadsheet"
-        : "Checking for a connected Canva account";
+  /* --- Building it now ---
 
+     THE TICKS THAT WERE NOT TRUE, removed 2026-09-14. This card used to
+     show two green ticks reading "Applied brand kit and template" and
+     "Structured layout", both hard coded, neither connected to anything
+     the product does. There is no brand kit. Nothing applies a template.
+     They were on screen while the model was still writing the first line.
+
+     In a product whose entire argument is that it does not invent, a green
+     tick against work that did not happen is the worst thing on the
+     screen, and it was about to be in a demo video.
+
+     What it says now is what is actually happening: the stage it is on,
+     and whether it has gone quiet. Both are known for certain. */
+  if (message.type === "generating") {
     return (
       <div style={riseStyle}>
         <div
           className="rounded-[18px] border p-5 backdrop-blur-xl"
           style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
         >
-          <div className="flex items-center gap-2.5 mb-3">
+          <div className="flex items-center gap-2.5 mb-2">
             <Spinner size={16} />
             <span className="text-[14.5px] font-medium" style={{ color: "var(--text-1)" }}>
               Building it now
             </span>
           </div>
-          <ul className="space-y-1.5 text-[13px] pl-6" style={{ color: "var(--text-3)" }}>
-            <li className="flex items-center gap-2">
-              <Check size={12} style={{ color: BRAND.green }} /> Applied brand kit and template
-            </li>
-            <li className="flex items-center gap-2">
-              <Check size={12} style={{ color: BRAND.green }} /> Structured layout
-            </li>
-            <li className="flex items-center gap-2" style={{ color: "var(--text-1)" }}>
-              {stepLabel}
-            </li>
-          </ul>
+
+          <div className="pl-[26px]">
+            <Thinking stage={buildStage} stalled={buildStalled} />
+          </div>
         </div>
       </div>
     );
