@@ -1,0 +1,255 @@
+/* ==========================================================================
+   CANVA CALLBACK, THE END OF THE HANDSHAKE
+
+   Where Canva sends a person back once they have said yes. It takes the
+   one time code in the query string, trades it for a pair of tokens, keeps
+   them, and shows a plain page saying it worked.
+
+   THIS IS THE ONLY FUNCTION IN THE PROJECT A STRANGER CAN REACH
+   -------------------------------------------------------------
+   Every other one checks who is calling. This one cannot: Canva sends the
+   person's browser here with a GET, carrying no session of ours at all.
+   Anybody who knows the address can hit it.
+
+   So the proof is not "who are you", it is "did I start this":
+
+     1. `state` must match a row this deployment wrote minutes ago. Without
+        it, somebody could feed us a code they obtained elsewhere.
+     2. The row carries the PKCE verifier, and Canva will only accept the
+        code if the verifier matches the fingerprint sent at the start.
+     3. The row is DELETED the moment it is read, so the same state cannot
+        be replayed even seconds later.
+
+   All three are needed. Any one of them alone leaves a hole.
+
+   WHAT IT WRITES, AND WHY THAT ROW IS THE MOST DANGEROUS ONE HERE
+   ---------------------------------------------------------------
+   A refresh token is a long lived key to Anthony's Canva account. It lives
+   in integration_tokens, which has row level security on and no policies,
+   so only the service role reaches it. It is never returned to a browser,
+   never logged, and never put in the page below.
+
+   WHAT IT SENDS BACK IS HTML, NOT JSON
+   ------------------------------------
+   A person is looking at this, not a script. They have just come from
+   Canva's approval screen and they need to be told it worked and to close
+   the tab. JSON on screen would read as an error even when it says ok.
+
+   READ TOP TO BOTTOM
+     1. The page it shows
+     2. Trading the code for tokens
+     3. The request
+   ========================================================================== */
+
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const TOKEN_URL = "https://api.canva.com/rest/v1/oauth/token";
+
+/* Must be character for character what canva-connect sent and what the
+   Canva portal has registered. Canva compares the string. */
+const REDIRECT_URI = `${Deno.env.get("SUPABASE_URL")}/functions/v1/canva-callback`;
+
+/* ==========================================================================
+   1. THE PAGE IT SHOWS
+
+   Deliberately plain and self contained. No stylesheet to fetch, no script,
+   nothing that could fail and leave somebody staring at unstyled text after
+   a step that actually worked.
+
+   The message is escaped before it goes in. Nothing here is attacker
+   controlled today, but this is a page built by string concatenation and
+   that is exactly how the first hole gets made later.
+   ========================================================================== */
+
+function escapeHtml(text: string) {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function page(title: string, detail: string, good: boolean) {
+  const html = `<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${escapeHtml(title)}</title>
+<style>
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+       background:#05060D;color:#F4F4F6;
+       font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:24px}
+  .card{max-width:420px;text-align:center}
+  h1{font-size:20px;font-weight:500;margin:0 0 10px}
+  p{margin:0;color:#8A8A95;font-size:14.5px}
+  .dot{width:10px;height:10px;border-radius:50%;margin:0 auto 18px;
+       background:${good ? "#16B04A" : "#E8980A"}}
+</style>
+</head><body><div class="card">
+  <div class="dot"></div>
+  <h1>${escapeHtml(title)}</h1>
+  <p>${escapeHtml(detail)}</p>
+</div></body></html>`;
+
+  return new Response(html, {
+    status: good ? 200 : 400,
+    headers: { "Content-Type": "text/html; charset=utf-8" },
+  });
+}
+
+/* ==========================================================================
+   2. TRADING THE CODE FOR TOKENS
+
+   The client secret goes in a Basic auth header rather than the body. Both
+   are accepted; the header is the one that does not end up in a proxy's
+   request log alongside the parameters.
+   ========================================================================== */
+
+async function exchange(params: Record<string, string>) {
+  const id = Deno.env.get("CANVA_CLIENT_ID") ?? "";
+  const secret = Deno.env.get("CANVA_CLIENT_SECRET") ?? "";
+
+  const response = await fetch(TOKEN_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Authorization: `Basic ${btoa(`${id}:${secret}`)}`,
+    },
+    body: new URLSearchParams(params).toString(),
+  });
+
+  const text = await response.text();
+  if (!response.ok) {
+    /* The body is logged because it says WHICH parameter Canva disliked,
+       and that is the difference between fixing this in a minute and
+       guessing for an hour. It carries no secret of ours: the secret went
+       in the header, and this is Canva's error, not our request. */
+    console.error("canva refused the exchange", response.status, text);
+    return { ok: false as const, status: response.status };
+  }
+
+  try {
+    return { ok: true as const, data: JSON.parse(text) as Record<string, unknown> };
+  } catch {
+    console.error("canva returned something that was not json", text.slice(0, 300));
+    return { ok: false as const, status: 502 };
+  }
+}
+
+/* ==========================================================================
+   3. THE REQUEST
+   ========================================================================== */
+
+Deno.serve(async (req: Request) => {
+  const url = new URL(req.url);
+
+  /* Canva sends the person back with an error in the query string when they
+     press cancel. That is a normal thing for somebody to do and it is not a
+     failure worth a red screen. */
+  const refused = url.searchParams.get("error");
+  if (refused) {
+    return page(
+      "Not connected",
+      "You cancelled, so nothing changed. You can close this tab and try again whenever you want.",
+      false,
+    );
+  }
+
+  const code = url.searchParams.get("code") ?? "";
+  const state = url.searchParams.get("state") ?? "";
+
+  if (!code || !state) {
+    return page("Something is missing", "That link is incomplete. Start again from the admin screen.", false);
+  }
+
+  const admin = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  );
+
+  /* --- Did we start this? ---------------------------------------------
+
+     DELETE and return the row in one statement. Reading it and deleting it
+     afterwards leaves a window where two requests carrying the same state
+     both find the row and both proceed. One statement, and only one of them
+     gets a row back. */
+  const { data: pending, error: pendingError } = await admin
+    .from("oauth_pending")
+    .delete()
+    .eq("state", state)
+    .eq("provider", "canva")
+    .select("code_verifier, created_at")
+    .maybeSingle();
+
+  if (pendingError || !pending) {
+    return page(
+      "That did not match",
+      "This link has already been used, or it did not come from here. Start again from the admin screen.",
+      false,
+    );
+  }
+
+  /* Ten minutes. Long enough to read Canva's approval screen, short enough
+     that a link left open in a tab overnight is dead. */
+  const age = Date.now() - new Date(pending.created_at as string).getTime();
+  if (age > 10 * 60 * 1000) {
+    return page("That took too long", "The link ran out. Start again from the admin screen.", false);
+  }
+
+  /* --- Trade it -------------------------------------------------------- */
+
+  const traded = await exchange({
+    grant_type: "authorization_code",
+    code,
+    code_verifier: pending.code_verifier as string,
+    redirect_uri: REDIRECT_URI,
+  });
+
+  if (!traded.ok) {
+    return page("Canva would not finish that", "Nothing was connected. Start again from the admin screen.", false);
+  }
+
+  const accessToken = String(traded.data.access_token ?? "");
+  const refreshToken = String(traded.data.refresh_token ?? "");
+  const expiresIn = Number(traded.data.expires_in ?? 0);
+
+  if (!accessToken || !refreshToken) {
+    console.error("canva returned no usable token pair", Object.keys(traded.data));
+    return page("Canva would not finish that", "Nothing was connected. Start again from the admin screen.", false);
+  }
+
+  /* --- Keep it ---------------------------------------------------------
+
+     upsert on provider, so connecting a second time replaces the first
+     rather than leaving two rows and a coin toss about which gets used.
+
+     expires_at is worked out here rather than stored as a duration, because
+     a duration is only meaningful next to the moment it was issued, and the
+     next function to read this row will not have that moment. Four hours is
+     what Canva gives today; this uses what they actually said. */
+  const expiresAt = new Date(Date.now() + (expiresIn > 0 ? expiresIn : 4 * 60 * 60) * 1000);
+
+  const { error: keepError } = await admin
+    .from("integration_tokens")
+    .upsert({
+      provider: "canva",
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      expires_at: expiresAt.toISOString(),
+      scopes: typeof traded.data.scope === "string" ? traded.data.scope : null,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "provider" });
+
+  if (keepError) {
+    /* The keys are logged, never the values. A refresh token in a log is a
+       refresh token in every backup of that log. */
+    console.error("could not store the canva connection", keepError.message);
+    return page("Connected, but not saved", "Something went wrong storing it. Start again from the admin screen.", false);
+  }
+
+  return page(
+    "Canva is connected",
+    "You can close this tab. Nothing else to do.",
+    true,
+  );
+});
