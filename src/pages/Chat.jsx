@@ -64,6 +64,13 @@ import {
 } from "../shared/session.js";
 import { readFileAsText, fileKind } from "../shared/readFile.js";
 import { downloadPdf, downloadDocx } from "../shared/download.js";
+/* Each in its own file, and each loaded only when somebody actually asks
+   for that format. The deck and spreadsheet libraries are megabytes, and
+   a person who only ever makes reports should not download either one to
+   open the chat. */
+import { downloadPptx } from "../shared/downloadDeck.js";
+import { downloadXlsx } from "../shared/downloadSheet.js";
+import { toTables } from "../shared/structure.js";
 import { BRAND, GRADIENTS, FONTS } from "../shared/tokens";
 import {
   PageShell,
@@ -1568,13 +1575,33 @@ export default function Chat() {
 
   /* Writing a file can fail, and a download button that silently does
      nothing is the worst control on any screen. Say what happened. */
+  /* FOUR FORMATS, AND ONE OF THEM CAN LEGITIMATELY REFUSE.
+
+     A spreadsheet is the numbers. A document with no table in it has no
+     numbers to put in one, so downloadXlsx throws with code "no_tables"
+     rather than handing somebody an empty file. An empty spreadsheet looks
+     like a bug and sends people hunting for a failure that never happened,
+     so that case gets its own message and is not logged as an error. */
+  const MAKING = {
+    pdf: "Making the PDF",
+    docx: "Making the Word file",
+    pptx: "Making the slides",
+    xlsx: "Making the spreadsheet",
+  };
+
   async function handleDownload(format, title, content) {
-    setToast(format === "pdf" ? "Making the PDF" : "Making the Word file");
+    setToast(MAKING[format] ?? "Making the file");
     try {
       if (format === "pdf") await downloadPdf(title, content);
+      else if (format === "pptx") await downloadPptx(title, content);
+      else if (format === "xlsx") await downloadXlsx(title, content);
       else await downloadDocx(title, content);
       setToast("Saved to your downloads");
     } catch (err) {
+      if (err?.code === "no_tables") {
+        setToast("There is no table in this one, so there is nothing to put in a spreadsheet.");
+        return;
+      }
       console.error("could not build the file", err);
       setToast("Could not build that file. Copy the text instead.");
     }
@@ -2713,6 +2740,11 @@ export function ChatBubble({ message, brief, buildStage = "brief", buildStalled 
      preview: what is in this box is exactly what downloads. */
   if (message.type === "result") {
     const title = message.title || "Your document";
+    /* Read from the document itself rather than from what the person asked
+       for. Somebody can ask for a report and get one with a table in it,
+       and somebody can ask for "the numbers" and get prose. What is
+       actually there is the only thing that decides. */
+    const hasTable = toTables(message.content ?? "").length > 0;
 
     return (
       <div style={riseStyle}>
@@ -2739,15 +2771,37 @@ export function ChatBubble({ message, brief, buildStage = "brief", buildStalled 
             </pre>
           </div>
 
+          {/* TWO ROWS, BECAUSE THEY ARE TWO DIFFERENT QUESTIONS.
+
+              The top row is "what shall I take away". The bottom row is
+              "what shall I do now". Six buttons in one line reads as six
+              equal choices, and on a phone it wraps into a block nobody
+              can scan.
+
+              THE SPREADSHEET BUTTON IS NOT ALWAYS THERE. A spreadsheet is
+              the numbers, so a document with no table in it has nothing to
+              put in one. Showing the button anyway and refusing when it is
+              pressed is a control that exists to say no. It appears when
+              it can work and not before. */}
           <div className="flex flex-wrap gap-2.5">
             <PrimaryButton
               onClick={() => onDownload("pdf")}
               className="flex items-center gap-2 text-[13.5px] px-4"
             >
               <Download size={14} />
-              Download PDF
+              PDF
             </PrimaryButton>
             <GhostButton onClick={() => onDownload("docx")}>Word</GhostButton>
+            <GhostButton onClick={() => onDownload("pptx")}>Slides</GhostButton>
+            {hasTable && (
+              <GhostButton onClick={() => onDownload("xlsx")}>Spreadsheet</GhostButton>
+            )}
+          </div>
+
+          <div
+            className="flex flex-wrap gap-2.5 mt-2.5 pt-3 border-t"
+            style={{ borderColor: "var(--border)" }}
+          >
             <GhostButton onClick={onCopy}>Copy</GhostButton>
             <GhostButton onClick={onReset}>Start something new</GhostButton>
           </div>
