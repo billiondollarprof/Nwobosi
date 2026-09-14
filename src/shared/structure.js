@@ -206,21 +206,34 @@ export function toTables(markdown) {
   return tables;
 }
 
-function isTableLine(line) {
+/* Exported so download.js can find tables while it reads the document as a
+   flowing thing, without a second definition of what a table row looks
+   like. One definition, used by every reader. */
+export function isTableLine(line) {
   return line.includes("|") && line.replace(/[^|]/g, "").length >= 2;
 }
 
-function isDivider(raw) {
+export function isDivider(raw) {
   const line = String(raw ?? "").trim();
   return isTableLine(line) && /^[\s|:-]+$/.test(line) && line.includes("-");
 }
 
-function cells(line) {
+/* The cells, with their Markdown still on them.
+
+   Two readers want different things. The spreadsheet wants plain text, so
+   it uses cells() below. The document writers want the marks intact, so
+   splitBold can tell which run was bold, and they use this. Splitting the
+   row is the same job either way, so it is written once. */
+export function rawCells(line) {
   return line
     .replace(/^\s*\|/, "")
     .replace(/\|\s*$/, "")
     .split("|")
-    .map((c) => clean(c.trim()));
+    .map((c) => c.trim());
+}
+
+export function cells(line) {
+  return rawCells(line).map(clean);
 }
 
 /* --------------------------------------------------------------------------

@@ -103,18 +103,32 @@ rather than described.
 
 ---
 
-## 5. Whose style it is
+## 5. Whose style it is, and it is only ever theirs
 
-**Per person to start.** A row per staff member per skill.
+**Per person. Full stop. There is no company standard and there is never
+going to be one.**
 
-Not per company, and the reason is worth stating. A company wide style is
-set by whoever downloads most, which is not the same as whoever writes best.
-It would quietly make everybody write like the busiest person in the
-building, and nobody would ever see the decision being made.
+Anthony, 2026-09-14: "nobody should set a standard for anybody not even as
+who downloaded most. whatever it saves is for that particular staff. staff a
+doesn't get a suggestion based on what staff b is doing."
 
-**An admin can promote one to a company standard, later.** That is a
-deliberate act by somebody with the authority to make it, which is the only
-way a shared standard should ever come about. Not in the first version.
+So a row per staff member per skill, and **nothing reads across rows.** What
+Staff A kept never reaches Staff B, not as a suggestion, not as a default,
+not as a nudge, not averaged into anything.
+
+An earlier draft of this spec floated an admin being able to promote
+somebody's shape into a company standard. **That is removed and it is not
+coming back.** The reason it is wrong is worth writing down so nobody
+re-invents it: a shared style has to come from somewhere, and every way of
+choosing it is a way of telling people their own judgement counts less than
+somebody else's. A company that wants one house style already has a way to
+say so, which is to write it into the company material the assistant
+already reads.
+
+**This is enforceable rather than merely intended.** The read is scoped by
+`staff_id` and there is no query in the design that is not. A test should
+assert that two staff members with different shapes get different offers
+from the identical request.
 
 ---
 
@@ -190,6 +204,11 @@ One table. RLS on, scoped by company like everything else.
 **`unique (staff_id, skill)`** means the latest kept document replaces the
 last one. The freshest signal wins, and the table cannot grow without bound.
 
+**Every read is scoped by `staff_id`**, and `company_id` is there only so
+row level security can do its usual job of keeping one company out of
+another's rows. It is NOT a grouping key. Nothing in this feature ever reads
+a row belonging to somebody else, and no query aggregates across people.
+
 **`learned_from`** holds the title of the document it came from, so the line
 in the read back can name it ("like the Q2 partner report you kept") rather
 than saying "your usual style", which sounds like surveillance.
@@ -220,6 +239,10 @@ delete is a memory they are right not to trust.
 
 Stated here so it is checked rather than discovered.
 
+- **It reads across people.** The worst one, and the reason section 5 is
+  absolute. Mitigation: every read scoped by `staff_id`, and a test that two
+  staff members with different shapes get different offers from the same
+  request.
 - **It calcifies.** Somebody's style is remembered from six months ago and
   every document since has been a fight against it. Mitigation: the latest
   kept document always replaces the last, so it tracks rather than sticks.

@@ -71,6 +71,7 @@ import { downloadPdf, downloadDocx } from "../shared/download.js";
 import { downloadPptx } from "../shared/downloadDeck.js";
 import { downloadXlsx } from "../shared/downloadSheet.js";
 import { toTables } from "../shared/structure.js";
+import DocumentView from "../shared/DocumentView.jsx";
 import { BRAND, GRADIENTS, FONTS } from "../shared/tokens";
 import {
   PageShell,
@@ -2759,16 +2760,45 @@ export function ChatBubble({ message, brief, buildStage = "brief", buildStalled 
             </span>
           </div>
 
-          <div
-            className="rounded-[14px] border p-4 mb-4 max-h-[380px] overflow-y-auto"
-            style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-2)" }}
-          >
-            <pre
-              className="text-[13px] leading-relaxed whitespace-pre-wrap font-sans"
-              style={{ color: "var(--text-2)" }}
+          {/* TALLER, AND IT SHOWS THAT IT SCROLLS.
+
+              380px was chosen when this box held raw Markdown, where being
+              cut off looked like being cut off. Rendered, the same height
+              sliced the document exactly at a table header, so the numbers
+              were hidden and it read as broken.
+
+              60vh, with a floor and a ceiling. On a phone that is most of
+              the screen, which is right: this is the thing they came to
+              read. On a tall desktop the ceiling stops one report filling
+              the window and pushing the buttons out of reach.
+
+              The fade underneath is not decoration. A box that scrolls with
+              no sign that it scrolls is a box people think is the whole
+              document, and then they judge the work by half of it. */}
+          <div className="relative mb-4">
+            <div
+              className="rounded-[14px] border p-4 overflow-y-auto"
+              style={{
+                borderColor: "var(--border)",
+                backgroundColor: "var(--surface-2)",
+                maxHeight: "min(60vh, 560px)",
+                minHeight: "120px",
+              }}
             >
-              {message.content}
-            </pre>
+            {/* Rendered, not raw. This is the box somebody reads before
+                deciding to download, and the download is the signal the
+                whole style memory rests on. A decision made from a wall of
+                hashes and pipes is not a decision. */}
+              <DocumentView markdown={message.content} />
+            </div>
+
+            {/* aria-hidden and pointer-events-none: it is a hint for the
+                eye, not a thing to read or to tap through. */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute left-px right-px bottom-px h-10 rounded-b-[14px]"
+              style={{ background: "linear-gradient(to bottom, transparent, var(--surface-2))" }}
+            />
           </div>
 
           {/* TWO ROWS, BECAUSE THEY ARE TWO DIFFERENT QUESTIONS.
