@@ -56,13 +56,18 @@ async function askCanva(intent) {
        this an admin sees "Edge Function returned a non-2xx status code",
        which tells them nothing they can act on. */
     let reason = "Could not reach Canva just now. Try again.";
+    const status = error.context?.status ?? 0;
     try {
       const body = await error.context?.json?.();
       if (body?.reason) reason = body.reason;
     } catch {
       /* keep the plain message */
     }
-    return { ok: false, reason };
+    /* 403 is "you are not allowed", which is a completely different thing
+       from "it broke". The panel hides its buttons for the first and keeps
+       them for the second, so nobody is offered a control that cannot work
+       for them. */
+    return { ok: false, reason, denied: status === 403 };
   }
 
   return data ?? { ok: false, reason: "Nothing came back. Try again." };
@@ -87,7 +92,7 @@ export default function CanvaConnect() {
     setProblem("");
     const result = await askCanva("status");
     if (!result.ok) {
-      setStatus({ state: "unknown" });
+      setStatus({ state: result.denied ? "denied" : "unknown" });
       setProblem(result.reason);
       return;
     }
@@ -103,7 +108,7 @@ export default function CanvaConnect() {
       const result = await askCanva("status");
       if (!alive) return;
       if (!result.ok) {
-        setStatus({ state: "unknown" });
+        setStatus({ state: result.denied ? "denied" : "unknown" });
         setProblem(result.reason);
         return;
       }
@@ -124,6 +129,7 @@ export default function CanvaConnect() {
     setStarting(false);
 
     if (!result.ok || !result.url) {
+      if (result.denied) setStatus({ state: "denied" });
       setProblem(result.reason ?? "Could not start that. Try again.");
       return;
     }
@@ -157,6 +163,7 @@ export default function CanvaConnect() {
             {status.state === "connected" && <StatusPill tone="ok">Connected</StatusPill>}
             {status.state === "off" && <StatusPill tone="pending">Not connected</StatusPill>}
             {status.state === "unknown" && <StatusPill tone="neutral">Unknown</StatusPill>}
+            {status.state === "denied" && <StatusPill tone="neutral">Admin only</StatusPill>}
           </div>
 
           <p className="text-[12.5px] leading-relaxed" style={{ color: "var(--text-3)" }}>
@@ -173,17 +180,33 @@ export default function CanvaConnect() {
         </div>
       </div>
 
-      {status.state === "loading" ? (
+      {status.state === "denied" ? (
+        /* NO BUTTONS AT ALL. A person who cannot do this must not be shown
+           the control, greyed out or otherwise. An admin reads this panel to
+           find out whether Canva is connected; anybody else reads it to find
+           out who to ask. */
+        <p className="text-[13px] leading-relaxed" style={{ color: "var(--text-3)" }}>
+          Only an admin can connect Canva. Ask whoever set this workspace up.
+        </p>
+      ) : status.state === "loading" ? (
         <div className="flex items-center gap-2 text-[13px]" style={{ color: "var(--text-3)" }}>
           <Spinner size={14} />
           Checking
         </div>
       ) : (
+        /* flex-1 with a floor on both, so they share the row evenly on a
+           desktop and stack to the same width on a phone. Left to their own
+           content widths they came out ragged, which reads as two unrelated
+           controls rather than a choice between two.
+
+           A plain comment, not a JSX one. This sits inside a ternary branch,
+           where a braced JSX comment would be a second expression and the
+           build refuses it. That is what broke it the first time. */
         <div className="flex flex-wrap gap-2">
           <PrimaryButton
             onClick={connect}
             disabled={starting}
-            className="flex items-center justify-center gap-2"
+            className="flex-1 min-w-[150px] flex items-center justify-center gap-2"
           >
             {starting ? <Spinner size={14} /> : <ExternalLink size={14} />}
             {status.state === "connected" ? "Connect a different account" : "Connect Canva"}
@@ -191,7 +214,7 @@ export default function CanvaConnect() {
 
           <button
             onClick={refresh}
-            className="rounded-[12px] border px-4 py-2.5 text-[13.5px] flex items-center gap-2 transition-opacity hover:opacity-80"
+            className="flex-1 min-w-[130px] rounded-[12px] border px-4 py-2.5 text-[13.5px] flex items-center justify-center gap-2 transition-opacity hover:opacity-80"
             style={{ borderColor: "var(--border-2)", color: "var(--text-2)" }}
           >
             <RefreshCw size={13} />
@@ -200,15 +223,16 @@ export default function CanvaConnect() {
         </div>
       )}
 
-      {/* Said after they press, not before. A warning about a new tab, shown
-          to somebody who has not pressed anything, is noise. */}
-      {starting === false && status.state !== "loading" && (
+      {/* The new tab is worth saying, because leaving the page is a surprise
+          otherwise. Not shown while checking, and not shown to somebody who
+          has no button to press. */}
+      {starting === false && status.state !== "loading" && status.state !== "denied" && (
         <p className="text-[12px] mt-3 leading-relaxed" style={{ color: "var(--text-3)" }}>
           Approving opens in a new tab. Come back here and press Check again when you are done.
         </p>
       )}
 
-      {problem && (
+      {problem && status.state !== "denied" && (
         <p className="text-[12.5px] mt-3 leading-relaxed" style={{ color: "var(--caution)" }}>
           {problem}
         </p>
