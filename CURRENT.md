@@ -253,6 +253,54 @@ portability, not house style: the same product may be installed on a
 different provider tomorrow. The admin sees four capability levels
 (conversational, standard, deeper, deepest), each with an info icon.
 
+## The turn that never came back
+
+Added 2026-09-14. Anthony sent a message and got silence. Not an error, not
+a spinner that gave up. It had happened before.
+
+**The cause was one `break`.** The stream reader called `onDone` only when
+the server sent an explicit done event. Any other ending, the edge worker
+killed at its limit, the connection dropped, the gateway hanging up, ended
+with the browser still holding `typing = true`. The screen said it was
+working. Nothing was.
+
+Two fixes, and they are deliberately different in kind:
+
+1. **A terminal event is compulsory.** Every path that ends a turn goes
+   through `finish()`, which fires once. A stream that ends without a done
+   or an error gets one invented. This cannot false alarm, because it only
+   speaks when the stream is already over.
+2. **A watchdog**, for the other shape of the same failure, where the
+   stream stays open and nothing arrives. This one can false alarm, so it
+   is slow: 25 seconds to say it is slow, 120 to give up, 300 for research
+   because that stage genuinely says nothing for minutes while it searches.
+
+The watchdog holds one read promise and races it repeatedly. Calling
+`reader.read()` again each round is the obvious way to write it and it
+loses chunks, because concurrent reads queue and a race keeps only the
+first.
+
+## Saying what it is doing while it does it
+
+Added 2026-09-14. Anthony: "if it's still thinking or analyzing, there's no
+way a person knows... so a person can know it's still working and wait for
+it."
+
+Three grey dots cannot say whether it has been reading for two seconds or
+has been dead for two minutes, so the only safe reading of them is to press
+the button again. `src/shared/thinkingWords.js` holds the words: three per
+stage, advancing every 7 seconds, the last repeating.
+
+**It is a progress line, not a progress bar.** Nothing counts down and
+nothing claims to be nearly finished, because nothing here knows that. What
+is known is which stage is running and how long it has run.
+
+**The build card's green ticks are gone.** It used to show "Applied brand
+kit and template" and "Structured layout", both hard coded, neither
+connected to anything the product does. There is no brand kit. Nothing
+applies a template. They were on screen while the model was still writing
+the first line, and they were about to be in a demo video.
+
 ## Coming back the next day
 
 Added 2026-09-10. Anthony asked for "a progressive log to always remember
