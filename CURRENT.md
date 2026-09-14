@@ -253,6 +253,52 @@ portability, not house style: the same product may be installed on a
 different provider tomorrow. The admin sees four capability levels
 (conversational, standard, deeper, deepest), each with an info icon.
 
+## THE REPO IS AHEAD OF THE DEPLOYMENT, on purpose
+
+**As of 2026-09-14 `supabase/functions/assistant/index.ts` is NOT what is
+live.** The deployment is still v11, sha `80723d2a31b1ec38`. The repo has
+14 extra lines in the research prompt, asking it to put `[FINDING]` on its
+own line before each thing it found.
+
+**Why it was not deployed.** The only way to deploy from a session is the
+MCP tool, which takes the whole file inline. That means retyping 1,700
+lines of a live function by hand, and this file is full of the damage that
+kind of move has already done here. The gain is cosmetic: without the
+marker, the model's opening line shows up as one extra row in the pick
+list. Not worth the risk taken unasked.
+
+**What to do about it.** Either deploy it deliberately, with a diff against
+the deployed source straight after to prove it landed byte for byte, or
+drop the 14 lines. Do not leave it sitting here for long: a repo that is
+quietly ahead of the deployment is the thing that caused every edge
+function rule in this file.
+
+**The app copes with both.** `src/shared/findings.js` prefers the marker and
+falls back to splitting on blank lines. The fallback is not a stopgap: the
+model can miss an instruction on any turn, and a person must still get a
+list they can tick.
+
+## Picking which findings get used
+
+Added 2026-09-14. Anthony: "the permission to use the data is supposed to
+offer a third option should the person agrees with some of the search
+results but not all, so they get to say which."
+
+**The list opens with everything ticked and you untick what is wrong.** His
+call, and it is the right one: "most of the data might always be accurate,
+so the person has less things to type."
+
+**One screen, no middle step.** A first version put a "Let me choose" button
+in front of the list. He cut it: "it will list the search results as
+selected, then you unselect the wrong ones and click continue." A button
+whose only job is to reveal the thing the person came to look at buys
+nothing.
+
+Unticking everything is saying no, so the button says "Use none of it" and
+does that. One finding is not a list, so that case is plain yes and no.
+
+An unticked finding is still never stored. Only a count.
+
 ## The turn that never came back
 
 Added 2026-09-14. Anthony sent a message and got silence. Not an error, not
