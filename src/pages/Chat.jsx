@@ -1012,12 +1012,36 @@ export default function Chat() {
     const guessed = SKILL_BY_TYPE[guessProjectType(text)];
     if (guessed && !autoSkill) setAutoSkill(guessed);
 
-    /* Anything typed after a read back is a correction, and a correction is
-       a conversation, so it drops back to the cheap model. Working it out
-       here rather than reading it back off state matters: setting state
-       does not change it in time for the line below. */
+    /* THE LOOP THAT COULD NOT CLOSE, fixed 2026-09-14.
+
+       This line used to read:
+
+         let stage = flowStage === "analyse" ? "interview" : flowStage;
+
+       The reasoning was cost: a correction is a conversation, so drop to
+       the cheaper stage. The consequence was that the work could never get
+       back to a Build button.
+
+       Only the analyse stage emits READBACK_COMPLETE, and only that marker
+       puts the Build card on screen. The interview stage cannot produce
+       one. So typing anything after a read back threw the flow into a stage
+       with no way out, and it only climbed back after five more messages or
+       when the model happened to say it was done.
+
+       Anthony hit it exactly: the reply read "I'm ready to draft that
+       whenever you say go", with no button to press. He said go. It talked
+       again. There was nothing else it could do.
+
+       So a correction after a read back now goes back to ANALYSE, which is
+       the one stage that can close the loop. It re-reads, and it ends in
+       one of three places every time: it asks him for something
+       (NEED_INPUT, which drops to the interview by itself, so the cheap
+       path is still there when it is genuinely a conversation), it asks to
+       search (NEED_LOOKUP), or it reads back again with the Build card.
+
+       It costs more per correction. A loop that terminates is worth it. */
     updateMessages((prev) => prev.filter((m) => m.type !== "build" && m.type !== "offer" && m.type !== "lookup" && m.type !== "useFinding"));
-    let stage = flowStage === "analyse" ? "interview" : flowStage;
+    let stage = flowStage;
 
     /* They typed instead of tapping either button. Typing is a conversation
        and the interview is the conversation stage, so it goes there. That
