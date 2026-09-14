@@ -86,6 +86,9 @@ export default function CanvaConnect() {
   const [status, setStatus] = useState({ state: "loading" });
   const [starting, setStarting] = useState(false);
   const [problem, setProblem] = useState("");
+  /* Held when the browser refused to open the tab for us, so the person
+     gets something they can tap themselves. */
+  const [openThis, setOpenThis] = useState("");
 
   async function refresh() {
     setStatus({ state: "loading" });
@@ -124,22 +127,61 @@ export default function CanvaConnect() {
     if (starting) return;
     setStarting(true);
     setProblem("");
+    setOpenThis("");
+
+    /* THE TAB IS OPENED HERE, BEFORE THE AWAIT, AND THIS IS THE WHOLE BUG.
+
+       It used to be opened after the address came back:
+
+           const result = await askCanva("start");
+           window.open(result.url, "_blank");
+
+       A browser only allows a popup that is in the direct call stack of a
+       real click. The moment you await, the click is over, and Safari on an
+       iPad blocks it silently. Anthony pressed Connect four times and the
+       first three opened nothing. The logs show four handshakes started and
+       only one ever reaching Canva.
+
+       So a blank tab is opened inside the click, while the gesture is still
+       live, and it is pointed at Canva when the address arrives a moment
+       later. The person sees a tab open immediately, which is also the
+       honest thing: something did happen when they pressed. */
+    /* NO "noopener" IN THESE FEATURES, and that is deliberate rather than
+       an oversight. Passing noopener makes window.open return null by
+       design: the whole point of the flag is that you are handed no
+       reference. With no reference there is nothing to point at Canva.
+
+       The link it severs is put back below instead, by nulling opener on
+       the tab once it has been sent on its way. Same protection, and this
+       version can actually navigate. */
+    const tab = window.open("", "_blank");
 
     const result = await askCanva("start");
     setStarting(false);
 
     if (!result.ok || !result.url) {
+      /* The blank tab has to be closed. Leaving it sitting there empty is
+         worse than never opening it, because now they have a mystery tab
+         AND no connection. */
+      try { tab?.close(); } catch { /* already gone */ }
       if (result.denied) setStatus({ state: "denied" });
       setProblem(result.reason ?? "Could not start that. Try again.");
       return;
     }
 
-    /* A NEW TAB, not this one.
+    if (tab && !tab.closed) {
+      /* opener first, then the address. Doing it the other way round leaves
+         a moment where Canva's page is loaded and can still reach back
+         through window.opener to navigate this tab somewhere else. */
+      try { tab.opener = null; } catch { /* some browsers refuse, harmless */ }
+      tab.location.href = result.url;
+      return;
+    }
 
-       The admin may be halfway through something here. Sending them to
-       Canva in this tab and back again reloads the whole app and loses it.
-       They approve over there, close that tab, and press Check again. */
-    window.open(result.url, "_blank", "noopener,noreferrer");
+    /* The browser refused even the synchronous open, or the person closed
+       it. Rather than fail silently, hand them the link. A tap on a real
+       link is a gesture no popup blocker argues with. */
+    setOpenThis(result.url);
   }
 
   return (
@@ -230,6 +272,28 @@ export default function CanvaConnect() {
         <p className="text-[12px] mt-3 leading-relaxed" style={{ color: "var(--text-3)" }}>
           Approving opens in a new tab. Come back here and press Check again when you are done.
         </p>
+      )}
+
+      {openThis && (
+        <div
+          className="mt-3 rounded-[12px] border p-3"
+          style={{ borderColor: "var(--border-2)", backgroundColor: "var(--surface-2)" }}
+        >
+          <p className="text-[12.5px] mb-2 leading-relaxed" style={{ color: "var(--text-2)" }}>
+            Your browser blocked the new tab. Tap here instead.
+          </p>
+          <a
+            href={openThis}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => setOpenThis("")}
+            className="inline-flex items-center gap-1.5 text-[13px] underline underline-offset-2"
+            style={{ color: "var(--caution)" }}
+          >
+            Approve on Canva
+            <ExternalLink size={12} />
+          </a>
+        </div>
       )}
 
       {problem && status.state !== "denied" && (
