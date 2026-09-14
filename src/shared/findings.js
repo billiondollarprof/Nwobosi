@@ -46,6 +46,14 @@
    by hand when either changes. */
 export const FINDING_MARK = "[FINDING]";
 
+/* The line carrying the address a person taps to check a finding for
+   themselves. Anthony, 2026-09-14: "any result that is gotten, the link must
+   follow it so the person can easily go and read it and come and verify it."
+
+   Same rule as the mark above: this is the one definition and the edge
+   function's copy is checked against it by hand when either changes. */
+export const LINK_MARK = "[LINK]";
+
 /* The heading the edge function writes above the link list it appends. If
    that string ever changes there, it changes here, and the test in
    findings.test.mjs fails loudly rather than the block quietly becoming a
@@ -88,9 +96,71 @@ export function splitFindings(raw) {
   const floor = marked ? 1 : MIN_FALLBACK_CHARS;
 
   return parts
-    .map((text) => text.trim())
-    .filter((text) => text.length >= floor)
-    .map((text, id) => ({ id, text }));
+    .map((part) => pullLinkOut(part))
+    .filter((f) => f.text.length >= floor)
+    .map((f, id) => ({ id, ...f }));
+}
+
+/* --------------------------------------------------------------------------
+   SECTION 1b: The address, taken off the text and handed to the button
+
+   The link comes out of the body entirely. Leaving a raw address in the
+   sentence AND putting a Verify link under it says the same thing twice, and
+   a bare URL wrapping across three lines on a phone is the ugliest thing on
+   the screen.
+
+   ONLY http and https. A finding is rendered into a link somebody taps, and
+   javascript: in an href is a script running on this page. The model is not
+   an attacker, but what it writes here is shaped by web pages it just read,
+   and those are written by anybody. Whitelist the two schemes that make
+   sense and drop everything else on the floor.
+   -------------------------------------------------------------------------- */
+
+function pullLinkOut(part) {
+  const lines = part.split("\n");
+  const kept = [];
+  let link = "";
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith(LINK_MARK)) {
+      kept.push(line);
+      continue;
+    }
+    /* First one wins. A finding is one claim and it gets one address. */
+    if (!link) link = safeLink(trimmed.slice(LINK_MARK.length).trim());
+  }
+
+  return { text: kept.join("\n").trim(), link };
+}
+
+function safeLink(raw) {
+  const value = String(raw ?? "").trim();
+  if (!value) return "";
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:" ? url.href : "";
+  } catch {
+    /* Not a URL at all. A model that wrote "[LINK] see their website" gets
+       no Verify button, which is correct: there is nothing to open. */
+    return "";
+  }
+}
+
+/* --------------------------------------------------------------------------
+   SECTION 1c: Where a link came from, in words
+
+   The host, tidied. "ukhospitality.org.uk" under a Verify link tells a person
+   where they are about to go, which is the difference between a link they
+   trust enough to tap and one they do not.
+   -------------------------------------------------------------------------- */
+
+export function linkHost(link) {
+  try {
+    return new URL(link).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
 }
 
 function byMark(body) {
@@ -128,7 +198,15 @@ function withoutSourceList(text) {
 
 export function chosenText(findings, chosenIds) {
   const wanted = new Set(chosenIds);
-  return findings.filter((f) => wanted.has(f.id)).map((f) => f.text);
+  return findings
+    .filter((f) => wanted.has(f.id))
+    /* The address goes with it, on its own line and in plain form. The brief
+       is told to carry anything found outside the company WITH its source,
+       and the writing step cannot cite an address it was never given.
+
+       The [LINK] marker itself never travels. It is how the app found the
+       address, not something the model downstream should ever read. */
+    .map((f) => (f.link ? `${f.text}\n${f.link}` : f.text));
 }
 
 /* --------------------------------------------------------------------------
@@ -148,6 +226,9 @@ export function withoutMarks(text) {
     /* A line that is ONLY the mark goes entirely, so the gap between two
        findings stays one blank line rather than becoming two. */
     .filter((line) => line.trim() !== FINDING_MARK)
+    /* The link line goes too. It is turned into a Verify button elsewhere,
+       and showing the raw address as well says it twice. */
+    .filter((line) => !line.trim().startsWith(LINK_MARK))
     /* A mark with the finding on the same line keeps the line and loses the
        mark. The prompt asks for it on its own line; this is what happens on
        the turn the model puts it inline instead, and it must not leave the

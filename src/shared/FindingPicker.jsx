@@ -44,10 +44,24 @@
    ========================================================================== */
 
 import { useState } from "react";
-import { Check } from "lucide-react";
+import { Check, ExternalLink } from "lucide-react";
 import { PrimaryButton } from "./ui.jsx";
 import { BRAND } from "./tokens";
-import { splitFindings, chosenText } from "./findings.js";
+import { splitFindings, chosenText, linkHost } from "./findings.js";
+
+/* HOW MANY ROWS BEFORE IT FOLDS.
+
+   Anthony, 2026-09-14: "What if the results are many, does it collapse it
+   under more and possibly show 3 at a time?"
+
+   Three. A search that comes back with eight things should not be a wall
+   somebody has to scroll past to reach the button, and a card taller than
+   the phone reads as work rather than a question.
+
+   The hidden ones are still ticked and still going in. The button counts all
+   of them, not just the visible ones, so the number on it is always the
+   truth about what will be used. */
+const SHOW_AT_FIRST = 3;
 
 export default function FindingPicker({ content, onUse, onDrop }) {
   const findings = splitFindings(content);
@@ -56,6 +70,7 @@ export default function FindingPicker({ content, onUse, onDrop }) {
      comparing it would break the moment a stray space differed. Everything
      starts in. */
   const [kept, setKept] = useState(() => findings.map((f) => f.id));
+  const [expanded, setExpanded] = useState(false);
 
   /* ONE FINDING IS NOT A LIST. A tick box against a single item is a form
      where a question would do, so this falls back to plain yes and no. */
@@ -70,12 +85,28 @@ export default function FindingPicker({ content, onUse, onDrop }) {
      -------------------------------------------------------------------------- */
 
   if (!isList) {
+    /* The one finding still carries its address, so the Verify link belongs
+       here too. Forgetting it here would mean a search that came back with
+       one thing was the only case somebody could not check. */
+    const only = findings[0];
     return (
       <Card>
         <Heading>Use this in the work?</Heading>
         <Sub>Check the number and the source first. Nothing goes into your work until you say so.</Sub>
 
-        <PrimaryButton onClick={() => onUse([content], 0)} className="w-full flex items-center justify-center gap-2">
+        {only?.link && (
+          <div className="-ml-7 mb-4">
+            <VerifyLink href={only.link} />
+          </div>
+        )}
+
+        {/* chosenText, NOT the raw content. The raw content still carries the
+            [LINK] marker, and that is plumbing: it must never reach the brief
+            and from there the finished document. */}
+        <PrimaryButton
+          onClick={() => onUse(chosenText(findings, [only?.id ?? 0]), 0)}
+          className="w-full flex items-center justify-center gap-2"
+        >
           <Check size={15} />
           Yes, use it
         </PrimaryButton>
@@ -99,27 +130,33 @@ export default function FindingPicker({ content, onUse, onDrop }) {
      -------------------------------------------------------------------------- */
 
   const keptCount = kept.length;
+  const shown = expanded ? findings : findings.slice(0, SHOW_AT_FIRST);
+  const hidden = findings.length - shown.length;
 
   return (
     <Card>
       <Heading>Use this in the work?</Heading>
       <Sub>Untick anything that is wrong. Everything still ticked is what I use.</Sub>
 
-      <ul className="space-y-2 mb-4">
-        {findings.map((f) => {
+      <ul className="space-y-2 mb-3">
+        {shown.map((f) => {
           const on = kept.includes(f.id);
           return (
-            <li key={f.id}>
-              {/* A label wrapping the input, so the whole row is the hit
-                  target. A 16px tick box on a phone is not one. */}
-              <label
-                className="flex gap-3 items-start rounded-[12px] border p-3 cursor-pointer"
-                style={{
-                  backgroundColor: on ? "var(--surface-2)" : "transparent",
-                  borderColor: on ? "var(--border-2)" : "var(--border)",
-                  opacity: on ? 1 : 0.5,
-                }}
-              >
+            <li
+              key={f.id}
+              className="rounded-[12px] border p-3"
+              style={{
+                backgroundColor: on ? "var(--surface-2)" : "transparent",
+                borderColor: on ? "var(--border-2)" : "var(--border)",
+                opacity: on ? 1 : 0.5,
+              }}
+            >
+              {/* A label wrapping the input and the text, so the whole of
+                  both is the hit target. A 16px tick box on a phone is not
+                  one. The Verify link is deliberately OUTSIDE this label:
+                  inside it, tapping the link would follow it and toggle the
+                  tick box on the way past. */}
+              <label className="flex gap-3 items-start cursor-pointer">
                 {/* accentColor, so the tick is the brand rather than the
                     browser's own blue. One line, and it works in both
                     themes because the box behind it is the theme's. */}
@@ -142,10 +179,34 @@ export default function FindingPicker({ content, onUse, onDrop }) {
                   {f.text}
                 </span>
               </label>
+
+              {f.link && <VerifyLink href={f.link} />}
             </li>
           );
         })}
       </ul>
+
+      {/* Anthony: "does it collapse it under more and possibly show 3 at a
+          time?" The count is on the button so nobody has to open it to find
+          out how much is under there. */}
+      {hidden > 0 && (
+        <button
+          onClick={() => setExpanded(true)}
+          className="w-full mb-4 rounded-[12px] border py-2 text-[13px] transition-opacity hover:opacity-80"
+          style={{ borderColor: "var(--border)", color: "var(--text-2)" }}
+        >
+          Show the other {hidden}
+        </button>
+      )}
+      {expanded && findings.length > SHOW_AT_FIRST && (
+        <button
+          onClick={() => setExpanded(false)}
+          className="w-full mb-4 rounded-[12px] border py-2 text-[13px] transition-opacity hover:opacity-80"
+          style={{ borderColor: "var(--border)", color: "var(--text-2)" }}
+        >
+          Show fewer
+        </button>
+      )}
 
       {/* Unticking everything IS saying no, so the button says so and does
           so. A disabled button at the bottom of a list somebody has just
@@ -179,6 +240,53 @@ export default function FindingPicker({ content, onUse, onDrop }) {
    screen puts it on the page, and so changing the card does not reach into
    anything else.
    -------------------------------------------------------------------------- */
+
+/* --------------------------------------------------------------------------
+   GO AND CHECK IT YOURSELF
+
+   Anthony, 2026-09-14: "each of the results will have a verify link... a text
+   link... so you click on it, it opens a new tab and take you direct to that
+   page where the result was gotten from... so we know that it's accurate."
+
+   Three decisions in here and all three are his:
+
+     - It LOOKS like a link. Underlined, in the caution amber, with the
+       arrow that means "leaves this page". A link somebody cannot tell is a
+       link is a link nobody taps.
+     - It opens a NEW TAB. Taking somebody out of a half finished document to
+       read a statistics page is how the half finished document gets lost.
+     - The host is shown next to it. Knowing you are about to land on
+       ukhospitality.org.uk rather than somewhere unnamed is the difference
+       between a link you trust enough to tap and one you do not.
+
+   rel="noopener noreferrer" is not decoration. Without noopener the page
+   that opens can reach back through window.opener and navigate this tab
+   somewhere else, and these addresses come from pages the model just read,
+   written by anybody. The scheme is already checked in findings.js.
+   -------------------------------------------------------------------------- */
+
+function VerifyLink({ href }) {
+  const host = linkHost(href);
+  return (
+    <div className="pl-7 mt-2">
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-1.5 text-[12.5px] underline underline-offset-2 hover:opacity-80"
+        style={{ color: "var(--caution)" }}
+      >
+        Verify
+        <ExternalLink size={11} />
+      </a>
+      {host && (
+        <span className="text-[12px] ml-2" style={{ color: "var(--text-3)" }}>
+          {host}
+        </span>
+      )}
+    </div>
+  );
+}
 
 function Heading({ children }) {
   return (
