@@ -35,6 +35,7 @@ import {
 
 import { LogoMark } from "../shared/icons.jsx";
 import PublishGate from "../shared/PublishGate.jsx";
+import CanvaConnect from "../shared/CanvaConnect.jsx";
 import ConfirmDelete from "../shared/ConfirmDelete.jsx";
 import RefreshOrKeep from "../shared/RefreshOrKeep.jsx";
 import AudienceControl from "../shared/AudienceControl.jsx";
@@ -1404,7 +1405,10 @@ function ConnectorsSection() {
         </SectionHeading>
 
         <div className="space-y-2">
-          {WORKFLOW_TOOLS.map((tool) => (
+          {/* Canva is filtered out here because it has its own panel below,
+              with a real button. Listing it twice, once as "Set up" and once
+              as connected, is two answers to the same question. */}
+          {WORKFLOW_TOOLS.filter((tool) => tool.id !== "canva").map((tool) => (
             <div
               key={tool.id}
               className="flex items-center gap-3 rounded-[12px] px-3.5 py-3 border"
@@ -1443,24 +1447,21 @@ function ConnectorsSection() {
         </div>
       </GlassPanel>
 
+      {/* WHAT WAS HERE WAS NOT TRUE, replaced 2026-09-14.
+
+          It read "Canva is connected per person" and said the assistant
+          would ask each staff member to connect at the moment they needed
+          it. That was written before any of it existed, and it is not what
+          was built: one account backs the whole deployment and an admin
+          connects it once.
+
+          A screen describing a product nobody built is worse than a blank
+          one, because the admin plans around it. */}
       <GlassPanel className="p-6">
-        <div className="flex gap-3">
-          <div
-            className="w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0"
-            style={{ backgroundColor: "rgba(20,32,160,0.12)" }}
-          >
-            <Sparkles size={17} style={{ color: BRAND.accentSoft }} />
-          </div>
-          <div>
-            <p className="text-[14px] font-medium mb-1" style={{ color: "var(--text-1)" }}>
-              Canva is connected per person
-            </p>
-            <p className="text-[13px] leading-relaxed" style={{ color: "var(--text-3)" }}>
-              There is nothing to manage centrally. The assistant asks a staff member to connect Canva at
-              the exact moment a design task needs it, and a free account works.
-            </p>
-          </div>
-        </div>
+        <SectionHeading hint="One account serves everybody here, so nobody else has to sign in or hold a licence.">
+          Design
+        </SectionHeading>
+        <CanvaConnect />
       </GlassPanel>
     </div>
   );

@@ -47,7 +47,7 @@ import { useState } from "react";
 import { Check, ExternalLink } from "lucide-react";
 import { PrimaryButton } from "./ui.jsx";
 import { BRAND } from "./tokens";
-import { splitFindings, chosenText, linkHost } from "./findings.js";
+import { splitFindings, chosenText, linkHost, withoutMarks } from "./findings.js";
 
 /* HOW MANY ROWS BEFORE IT FOLDS.
 
@@ -64,7 +64,25 @@ import { splitFindings, chosenText, linkHost } from "./findings.js";
 const SHOW_AT_FIRST = 3;
 
 export default function FindingPicker({ content, onUse, onDrop }) {
-  const findings = splitFindings(content);
+  /* THE YES BUTTON THAT DID THE OPPOSITE, fixed 2026-09-14.
+
+     splitFindings can legitimately come back with nothing. A search that
+     found only a source list, a reply too short to be a claim, a turn where
+     the model wrote something the splitter cannot cut up. That is not an
+     error, it just means there is nothing to make a list out of.
+
+     What happened then was worse than nothing. findings[0] was undefined,
+     so the yes button sent an empty list, and Chat.jsx treats an empty list
+     as a refusal and DROPPED it. The button said "Yes, use it" and threw it
+     away.
+
+     So when nothing parses, the whole reply is treated as one finding. The
+     marks come off, because those are plumbing. The person sees the same
+     text they were already reading above, and yes means yes. */
+  const parsed = splitFindings(content);
+  const findings = parsed.length
+    ? parsed
+    : [{ id: 0, text: withoutMarks(content), link: "" }];
 
   /* Which findings are still in. Ids, not text, because the text is long and
      comparing it would break the moment a stray space differed. Everything

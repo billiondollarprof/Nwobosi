@@ -35,6 +35,23 @@
    The dashboard's verify_jwt toggle stays OFF, as on every function in this
    project. See CURRENT.md.
 
+   TWO JOBS, AND THE SAFE ONE IS THE DEFAULT
+   -----------------------------------------
+   The admin screen needs two things from here: "is Canva connected" and
+   "start connecting it". They are one function because the second is
+   meaningless without the first, and because a second function is a second
+   deploy and a second place to keep the admin check in step.
+
+   `intent` picks. Anything that is not exactly "start" is treated as a
+   status request, so a malformed body, a typo, or an old browser reads the
+   state rather than quietly creating a half finished handshake nobody asked
+   for. The dangerous one has to be asked for by name.
+
+   STATUS NEVER RETURNS A TOKEN. Not the access token, not the refresh
+   token, not a prefix of either. It returns whether a row exists, when it
+   was made, and what it is allowed to do. That is everything a person needs
+   to decide whether to reconnect.
+
    READ TOP TO BOTTOM
      1. Plumbing: CORS and JSON
      2. The two secrets
@@ -129,9 +146,18 @@ Deno.serve(async (req: Request) => {
   }
   if (req.method !== "POST") return json({ ok: false, reason: "Use POST." }, 405);
 
-  const clientId = Deno.env.get("CANVA_CLIENT_ID");
-  if (!clientId) {
-    return json({ ok: false, reason: "Canva is not set up on this deployment yet." }, 500);
+  /* --- What is being asked for ---------------------------------------
+
+     Read before the admin check so a malformed body cannot be mistaken for
+     a request to start. Default is status, which changes nothing. */
+  let intent = "status";
+  try {
+    const body = await req.json();
+    if (body && typeof body === "object" && (body as Record<string, unknown>).intent === "start") {
+      intent = "start";
+    }
+  } catch {
+    /* No body at all is a status request. */
   }
 
   /* --- Who is asking ------------------------------------------------- */
@@ -159,18 +185,54 @@ Deno.serve(async (req: Request) => {
     return json({ ok: false, reason: "Only an admin can connect Canva." }, 403);
   }
 
+  /* The service role, because both tables have row level security on and no
+     policies at all. Nobody reaches them except this. */
+  const admin = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  );
+
+  /* --- JOB ONE: say whether it is connected ---------------------------
+
+     The columns picked here are deliberate. access_token and refresh_token
+     are NOT among them, so there is no path from this response to a secret
+     even if somebody later widens what the screen shows. */
+  if (intent !== "start") {
+    const { data: row, error: readError } = await admin
+      .from("integration_tokens")
+      .select("provider, scopes, connected_at, expires_at")
+      .eq("provider", "canva")
+      .maybeSingle();
+
+    if (readError) {
+      console.error("could not read the canva connection", readError.message);
+      return json({ ok: false, reason: "Could not check that. Try again." }, 500);
+    }
+
+    return json({
+      ok: true,
+      connected: Boolean(row),
+      connectedAt: row?.connected_at ?? null,
+      /* Whether the four hour access token has gone stale. Not a problem and
+         not shown as one: the refresh token fixes it on the next use. It is
+         here so a screen can say "reconnect" if refreshing ever fails. */
+      accessStale: row ? new Date(row.expires_at as string).getTime() < Date.now() : false,
+      scopes: row?.scopes ?? null,
+    });
+  }
+
+  /* --- JOB TWO: start connecting -------------------------------------- */
+
+  const clientId = Deno.env.get("CANVA_CLIENT_ID");
+  if (!clientId) {
+    return json({ ok: false, reason: "Canva is not set up on this deployment yet." }, 500);
+  }
+
   /* --- Invent, keep, and hand back ------------------------------------ */
 
   const state = randomToken();
   const verifier = randomToken(48);
   const challenge = await challengeFor(verifier);
-
-  /* The service role, because oauth_pending has row level security on and
-     no policies at all. Nobody reaches it except this. */
-  const admin = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-  );
 
   const { error: keepError } = await admin
     .from("oauth_pending")

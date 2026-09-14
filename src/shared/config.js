@@ -59,6 +59,7 @@ export const FUNCTIONS = {
   inviteStaff: "invite-staff",
   sendContact: "send-contact",
   readBeforePublish: "read-before-publish",
+  canvaConnect: "canva-connect",
 };
 
 export const OAUTH_REDIRECT_URI =
@@ -327,10 +328,17 @@ export const WORKFLOW_TOOLS = [
     icon: CanvaIconGlyph,
     hint: "Design and brand assets",
     state: "registered",
+    /* The admin's Connectors tab does not show this one from here any more:
+       Canva has its own panel with a real Connect button, and listing it
+       twice is two answers to the same question. This entry stays for the
+       chat's connector menu, and the note says where it has actually got to.
+
+       Updated 2026-09-14. The sign in works now. What is still missing is
+       the part that sends a design through it. */
     note:
-      "The Canva app is registered and its keys are in place, so the door is built. What is not " +
-      "built yet is the part that sends a design through it, so nothing here produces a Canva " +
-      "file today. That is the next piece of work, not a maybe.",
+      "An admin connects one Canva account and it serves everybody here. Signing in works. " +
+      "What is not built yet is the part that sends a design through it, so nothing here " +
+      "produces a Canva file today. That is the next piece of work, not a maybe.",
   },
   {
     id: "drive",
