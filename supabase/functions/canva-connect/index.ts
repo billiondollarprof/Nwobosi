@@ -59,6 +59,7 @@
    ========================================================================== */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { safeReturnTo } from "../_shared/returnTo.ts";
 
 /* ==========================================================================
    1. PLUMBING
@@ -151,10 +152,16 @@ Deno.serve(async (req: Request) => {
      Read before the admin check so a malformed body cannot be mistaken for
      a request to start. Default is status, which changes nothing. */
   let intent = "status";
+  let returnTo: string | null = null;
   try {
-    const body = await req.json();
-    if (body && typeof body === "object" && (body as Record<string, unknown>).intent === "start") {
-      intent = "start";
+    const body = await req.json() as Record<string, unknown>;
+    if (body && typeof body === "object") {
+      if (body.intent === "start") intent = "start";
+      /* Checked against the list of addresses this product is served from,
+         never trusted. A rejected address is simply null, and the callback
+         falls back to a page it controls. See _shared/returnTo.ts for why
+         this is a list rather than a tidy up. */
+      returnTo = safeReturnTo(body.returnTo);
     }
   } catch {
     /* No body at all is a status request. */
@@ -236,7 +243,7 @@ Deno.serve(async (req: Request) => {
 
   const { error: keepError } = await admin
     .from("oauth_pending")
-    .insert({ state, provider: "canva", code_verifier: verifier });
+    .insert({ state, provider: "canva", code_verifier: verifier, return_to: returnTo });
 
   if (keepError) {
     console.error("could not start the canva handshake", keepError);

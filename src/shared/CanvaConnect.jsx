@@ -36,6 +36,7 @@ import { supabase } from "./supabase.js";
 import { FUNCTIONS } from "./config.js";
 import { CanvaIconGlyph } from "./icons.jsx";
 import { PrimaryButton, Spinner, StatusPill } from "./ui.jsx";
+import { BRAND } from "./tokens";
 
 /* --------------------------------------------------------------------------
    SECTION 1: Talking to the function
@@ -47,7 +48,22 @@ import { PrimaryButton, Spinner, StatusPill } from "./ui.jsx";
 
 async function askCanva(intent) {
   const { data, error } = await supabase.functions.invoke(FUNCTIONS.canvaConnect, {
-    body: { intent },
+    body: {
+      intent,
+      /* WHERE TO COME BACK TO.
+
+         Sent on the way out so the callback can bring the person straight
+         back to the screen they left, rather than to a page that says
+         "you can close this tab now".
+
+         The server does not trust it. It is checked against a list of
+         addresses this product is actually served from, and anything else
+         is ignored. An address that comes from a browser and is then
+         redirected to without checking is an open redirect, which is how
+         a convincing phishing link gets built out of somebody's own
+         domain. */
+      returnTo: intent === "start" ? window.location.href : undefined,
+    },
   });
 
   if (error) {
@@ -86,9 +102,6 @@ export default function CanvaConnect() {
   const [status, setStatus] = useState({ state: "loading" });
   const [starting, setStarting] = useState(false);
   const [problem, setProblem] = useState("");
-  /* Held when the browser refused to open the tab for us, so the person
-     gets something they can tap themselves. */
-  const [openThis, setOpenThis] = useState("");
 
   async function refresh() {
     setStatus({ state: "loading" });
@@ -104,6 +117,28 @@ export default function CanvaConnect() {
       connectedAt: result.connectedAt,
     });
   }
+
+  /* COMING BACK FROM CANVA.
+
+     The callback redirects here with ?connected=canva on a success, or
+     ?connected=failed. Read once, said once, then taken out of the address
+     bar so a refresh or a shared link does not replay a message about
+     something that happened a while ago.
+
+     replaceState rather than pushState, so Back goes where it went before
+     rather than to a copy of this page carrying the marker. */
+  const [justBack] = useState(() => {
+    if (typeof window === "undefined") return "";
+    const marker = new URLSearchParams(window.location.search).get("connected");
+    return marker === "canva" || marker === "failed" ? marker : "";
+  });
+
+  useEffect(() => {
+    if (!justBack || typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete("connected");
+    window.history.replaceState({}, "", url.toString());
+  }, [justBack]);
 
   useEffect(() => {
     let alive = true;
@@ -123,65 +158,53 @@ export default function CanvaConnect() {
     return () => { alive = false; };
   }, []);
 
+  /* --------------------------------------------------------------------------
+     CONNECTING, IN THIS TAB, AND BACK AGAIN
+
+     THIS USED TO OPEN A NEW TAB AND IT WAS WRONG TWICE OVER.
+
+     Wrong the first time because window.open sat after an await, so the
+     click was over and Safari on an iPad blocked it without a word. Anthony
+     pressed Connect four times; the logs show four handshakes started and
+     one reaching Canva.
+
+     Wrong the second time in a way no popup trick fixes. Anthony,
+     2026-09-14: "It opened a different browser, but did not automatically
+     lead me to that browser... the best thing could have even been that it
+     doesn't open a different tab, but rather preserves the page. When the
+     person clicks to connect, as it connects, it returns back, like a
+     callback. It returns back to where the person was, exactly."
+
+     He is right, and it is the shape the whole handshake was designed for.
+     A new tab is correct for a source somebody wants to read alongside
+     their work, because they go back and forth. Connecting is not that. It
+     is one errand: leave, approve, come back. Sending them somewhere and
+     leaving them to find their own way home is the software making its
+     plumbing their problem.
+
+     So this navigates THIS page. Nothing to block, nothing to close, no
+     orphan tab. The address they were on travels with the request, and the
+     callback redirects them back to it.
+     -------------------------------------------------------------------------- */
+
   async function connect() {
     if (starting) return;
     setStarting(true);
     setProblem("");
-    setOpenThis("");
-
-    /* THE TAB IS OPENED HERE, BEFORE THE AWAIT, AND THIS IS THE WHOLE BUG.
-
-       It used to be opened after the address came back:
-
-           const result = await askCanva("start");
-           window.open(result.url, "_blank");
-
-       A browser only allows a popup that is in the direct call stack of a
-       real click. The moment you await, the click is over, and Safari on an
-       iPad blocks it silently. Anthony pressed Connect four times and the
-       first three opened nothing. The logs show four handshakes started and
-       only one ever reaching Canva.
-
-       So a blank tab is opened inside the click, while the gesture is still
-       live, and it is pointed at Canva when the address arrives a moment
-       later. The person sees a tab open immediately, which is also the
-       honest thing: something did happen when they pressed. */
-    /* NO "noopener" IN THESE FEATURES, and that is deliberate rather than
-       an oversight. Passing noopener makes window.open return null by
-       design: the whole point of the flag is that you are handed no
-       reference. With no reference there is nothing to point at Canva.
-
-       The link it severs is put back below instead, by nulling opener on
-       the tab once it has been sent on its way. Same protection, and this
-       version can actually navigate. */
-    const tab = window.open("", "_blank");
 
     const result = await askCanva("start");
-    setStarting(false);
 
     if (!result.ok || !result.url) {
-      /* The blank tab has to be closed. Leaving it sitting there empty is
-         worse than never opening it, because now they have a mystery tab
-         AND no connection. */
-      try { tab?.close(); } catch { /* already gone */ }
+      setStarting(false);
       if (result.denied) setStatus({ state: "denied" });
       setProblem(result.reason ?? "Could not start that. Try again.");
       return;
     }
 
-    if (tab && !tab.closed) {
-      /* opener first, then the address. Doing it the other way round leaves
-         a moment where Canva's page is loaded and can still reach back
-         through window.opener to navigate this tab somewhere else. */
-      try { tab.opener = null; } catch { /* some browsers refuse, harmless */ }
-      tab.location.href = result.url;
-      return;
-    }
-
-    /* The browser refused even the synchronous open, or the person closed
-       it. Rather than fail silently, hand them the link. A tap on a real
-       link is a gesture no popup blocker argues with. */
-    setOpenThis(result.url);
+    /* starting stays true on purpose. The page is about to be replaced, and
+       putting the button back to normal for the half second in between
+       reads as nothing having happened. */
+    window.location.assign(result.url);
   }
 
   return (
@@ -251,7 +274,11 @@ export default function CanvaConnect() {
             className="flex-1 min-w-[150px] flex items-center justify-center gap-2"
           >
             {starting ? <Spinner size={14} /> : <ExternalLink size={14} />}
-            {status.state === "connected" ? "Connect a different account" : "Connect Canva"}
+            {starting
+              ? "Taking you to Canva"
+              : status.state === "connected"
+              ? "Connect a different account"
+              : "Connect Canva"}
           </PrimaryButton>
 
           <button
@@ -265,35 +292,31 @@ export default function CanvaConnect() {
         </div>
       )}
 
-      {/* The new tab is worth saying, because leaving the page is a surprise
-          otherwise. Not shown while checking, and not shown to somebody who
-          has no button to press. */}
+      {/* Says what actually happens now, which is that they leave and are
+          brought back. The old line told them to come back themselves and
+          press Check again, which was the software handing them its own
+          job. */}
       {starting === false && status.state !== "loading" && status.state !== "denied" && (
         <p className="text-[12px] mt-3 leading-relaxed" style={{ color: "var(--text-3)" }}>
-          Approving opens in a new tab. Come back here and press Check again when you are done.
+          {status.state === "connected"
+            ? "Connecting again replaces the account that is connected now."
+            : "You will approve on Canva and land back on this screen."}
         </p>
       )}
 
-      {openThis && (
-        <div
-          className="mt-3 rounded-[12px] border p-3"
-          style={{ borderColor: "var(--border-2)", backgroundColor: "var(--surface-2)" }}
-        >
-          <p className="text-[12.5px] mb-2 leading-relaxed" style={{ color: "var(--text-2)" }}>
-            Your browser blocked the new tab. Tap here instead.
-          </p>
-          <a
-            href={openThis}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => setOpenThis("")}
-            className="inline-flex items-center gap-1.5 text-[13px] underline underline-offset-2"
-            style={{ color: "var(--caution)" }}
-          >
-            Approve on Canva
-            <ExternalLink size={12} />
-          </a>
-        </div>
+      {/* Said after coming back, and only until they do something else.
+          Without it the page looks identical to the one they left, and the
+          only way to tell whether approving worked is to read the pill and
+          guess. */}
+      {justBack === "canva" && status.state === "connected" && (
+        <p className="text-[12.5px] mt-3 leading-relaxed" style={{ color: BRAND.green }}>
+          Canva is connected. Nothing else to do.
+        </p>
+      )}
+      {justBack === "failed" && (
+        <p className="text-[12.5px] mt-3 leading-relaxed" style={{ color: "var(--caution)" }}>
+          Canva did not finish that, so nothing was connected. Try again.
+        </p>
       )}
 
       {problem && status.state !== "denied" && (

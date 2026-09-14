@@ -44,11 +44,22 @@
    so only the service role reaches it. It is never returned to a browser,
    never logged, and never put in the page below.
 
-   WHAT IT SENDS BACK IS HTML, NOT JSON
-   ------------------------------------
-   A person is looking at this, not a script. They have just come from
-   Canva's approval screen and they need to be told it worked and to close
-   the tab. JSON on screen would read as an error even when it says ok.
+   IT SENDS THEM BACK, IT DOES NOT PARK THEM
+   -----------------------------------------
+   Anthony, 2026-09-14: "it doesn't open a different tab, but rather
+   preserves the page. When the person clicks to connect, as it connects, it
+   returns back, like a callback. It returns back to where the person was,
+   exactly."
+
+   So the happy path is a redirect to the screen they left, carrying a
+   marker so it can say what happened. The address was written down when
+   the handshake started, and it was checked against a list of places this
+   product is served from before it was stored. It is checked AGAIN here,
+   because a row in a database is not a promise about what is in it.
+
+   The HTML page below is now only the fallback: something went wrong, or
+   there is no address to go back to. A person looking at a failure needs
+   words, not a redirect to a screen that looks like nothing happened.
 
    READ TOP TO BOTTOM
      1. The page it shows
@@ -57,6 +68,7 @@
    ========================================================================== */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { safeReturnTo, withOutcome } from "../_shared/returnTo.ts";
 
 /* Must be character for character what the start of the handshake sent and
    what the provider's portal has registered. They compare the string, and a
@@ -207,7 +219,7 @@ Deno.serve(async (req: Request) => {
     .from("oauth_pending")
     .delete()
     .eq("state", state)
-    .select("provider, code_verifier, created_at")
+    .select("provider, code_verifier, created_at, return_to")
     .maybeSingle();
 
   if (pendingError || !pending) {
@@ -224,6 +236,28 @@ Deno.serve(async (req: Request) => {
   if (age > 10 * 60 * 1000) {
     return page("That took too long", "The link ran out. Start again from the admin screen.", false);
   }
+
+  /* CHECKED AGAIN, on the way out of the database.
+
+     It was checked before it was stored, so this looks like belt and
+     braces. It is not. Between those two moments the value sat in a row,
+     and a check that only happens on the way in trusts every path that
+     could ever write to that row: a migration, a fixture, a future function
+     nobody has written yet, somebody with console access. The redirect is
+     the dangerous act, so the check belongs next to it. */
+  const returnTo = safeReturnTo(pending.return_to);
+
+  /* One place that decides how this ends, so the happy path and every
+     failure agree about it. */
+  const finish = (outcome: string, title: string, detail: string, good: boolean) => {
+    if (returnTo) {
+      return new Response(null, {
+        status: 303,
+        headers: { Location: withOutcome(returnTo, outcome) },
+      });
+    }
+    return page(title, detail, good);
+  };
 
   /* WHICH SERVICE, read off the row and never off the query string. The row
      was written by the function that started this, so it is the only party
@@ -244,7 +278,7 @@ Deno.serve(async (req: Request) => {
   });
 
   if (!traded.ok) {
-    return page(`${provider.label} would not finish that`, "Nothing was connected. Start again from the admin screen.", false);
+    return finish("failed", `${provider.label} would not finish that`, "Nothing was connected. Start again from the admin screen.", false);
   }
 
   const accessToken = String(traded.data.access_token ?? "");
@@ -255,7 +289,7 @@ Deno.serve(async (req: Request) => {
     /* The KEYS, never the values. A token in a log is a token in every
        backup of that log. */
     console.error(`${provider.label} returned no usable token pair`, Object.keys(traded.data));
-    return page(`${provider.label} would not finish that`, "Nothing was connected. Start again from the admin screen.", false);
+    return finish("failed", `${provider.label} would not finish that`, "Nothing was connected. Start again from the admin screen.", false);
   }
 
   /* --- Keep it ---------------------------------------------------------
@@ -284,10 +318,11 @@ Deno.serve(async (req: Request) => {
     /* The keys are logged, never the values. A refresh token in a log is a
        refresh token in every backup of that log. */
     console.error(`could not store the ${provider.label} connection`, keepError.message);
-    return page("Connected, but not saved", "Something went wrong storing it. Start again from the admin screen.", false);
+    return finish("failed", "Connected, but not saved", "Something went wrong storing it. Start again from the admin screen.", false);
   }
 
-  return page(
+  return finish(
+    "canva",
     `${provider.label} is connected`,
     "You can close this tab. Nothing else to do.",
     true,

@@ -70,8 +70,14 @@ for (const file of functions) {
   try {
     execFileSync(
       "npx",
+      /* allowImportingTsExtensions, added 2026-09-14 when the first shared
+         module between two functions appeared. Deno REQUIRES the .ts on a
+         relative import; tsc refuses it by default with TS5097. Without
+         this flag the checker fails correct code, which is the fastest way
+         to teach somebody to stop running the checker. */
       ["tsc", "--noEmit", "--target", "es2022", "--lib", "es2022,dom",
-       "--module", "esnext", "--moduleResolution", "bundler", "--skipLibCheck", file],
+       "--module", "esnext", "--moduleResolution", "bundler", "--skipLibCheck",
+       "--allowImportingTsExtensions", file],
       { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
     );
   } catch (err) {
