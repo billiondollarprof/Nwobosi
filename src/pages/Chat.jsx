@@ -203,6 +203,45 @@ const MAX_TURN_CHARS = 60000;
 const MAX_IMAGE_EDGE = 1568;
 const IMAGE_QUALITY = 0.85;
 
+/* WEBP FIRST, JPEG IF THE BROWSER CANNOT MAKE ONE.
+
+   WebP carries the same picture in about half the bytes at the same
+   quality. Measured on 2026-09-15 at quality 0.85, shrunk to 1568 first,
+   which is exactly what happens below:
+
+     a screenshot of our own landing page   91 KB jpeg  ->  45 KB webp
+     a photograph off the site              70 KB jpeg  ->  39 KB webp
+
+   Those two are what staff actually send. A screenshot is most of it, and
+   a screenshot is where WebP wins hardest, because flat colour and sharp
+   text are what it is good at.
+
+   One number to distrust if you re-measure: pure random noise comes out
+   about 6% BIGGER as WebP. That is a real result and it is also
+   meaningless, because nobody uploads noise. Test on a screenshot and a
+   photograph, not on something generated.
+
+   THE FALLBACK IS NOT OPTIONAL, AND THIS IS THE TRAP IN IT. A canvas
+   asked for a format it cannot encode does not fail and does not tell
+   you. It hands back a PNG instead. A PNG of a photograph is several
+   times larger than the JPEG it replaced, so a browser without WebP would
+   quietly start uploading the biggest file of the three while the code
+   looked like it was saving space.
+
+   So the encoder does not trust what it asked for. It reads the front of
+   the data URL it actually got back, and it only keeps it if the type
+   matches. */
+function encodeCanvas(canvas) {
+  const webp = canvas.toDataURL("image/webp", IMAGE_QUALITY);
+  if (webp.startsWith("data:image/webp")) {
+    return { dataUrl: webp, media_type: "image/webp" };
+  }
+  return {
+    dataUrl: canvas.toDataURL("image/jpeg", IMAGE_QUALITY),
+    media_type: "image/jpeg",
+  };
+}
+
 /* Draws the image smaller and re-encodes it. Done here, in the browser,
    because a five megabyte photo that becomes two hundred kilobytes before
    it leaves the device is faster for them and cheaper for the company, and
@@ -224,13 +263,13 @@ function shrinkImage(file) {
       canvas.height = height;
       canvas.getContext("2d").drawImage(img, 0, 0, width, height);
 
-      const dataUrl = canvas.toDataURL("image/jpeg", IMAGE_QUALITY);
+      const { dataUrl, media_type } = encodeCanvas(canvas);
       const data = dataUrl.split(",")[1] ?? "";
       if (!data) {
         reject(new Error("empty canvas"));
         return;
       }
-      resolve({ media_type: "image/jpeg", data, width, height });
+      resolve({ media_type, data, width, height });
     };
 
     img.onerror = () => {

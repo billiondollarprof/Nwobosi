@@ -21,11 +21,23 @@
         elsewhere. Generated here so the callback can recognise its own
         work.
 
-   ONE CONNECTION FOR THE WHOLE DEPLOYMENT
-   ---------------------------------------
-   Anthony is on a free personal Canva account and the plan is that his one
-   account backs everybody. So this is not per person and not per company.
-   It writes one row, keyed by provider, and connecting again replaces it.
+   ONE CONNECTION PER COMPANY
+   --------------------------
+   Not per person. Every staff member at a company shares the one account
+   their admin connected, so nobody signs in to Canva themselves.
+
+   IT USED TO BE ONE CONNECTION FOR THE WHOLE DEPLOYMENT, AND THAT WAS A
+   BUG WAITING TO FIRE. integration_tokens was keyed on provider alone, so
+   it could only hold one Canva row at a time. The second company to
+   connect would have overwritten the first company's row, and the first
+   company would have lost their connection without being told. Two
+   companies already exist on this deployment, so this was live rather
+   than theoretical. Fixed by the canva_tokens_per_company migration,
+   which made the key (company_id, provider).
+
+   The company is read off the caller's staff row, never off the request.
+   A browser can say anything; a staff row is the database's own answer to
+   which company somebody belongs to.
 
    ONLY AN ADMIN
    -------------
@@ -200,7 +212,7 @@ Deno.serve(async (req: Request) => {
 
   const { data: staff, error: staffError } = await asUser
     .from("staff")
-    .select("id, access_level")
+    .select("id, access_level, company_id")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -227,6 +239,7 @@ Deno.serve(async (req: Request) => {
     const { data: row, error: readError } = await admin
       .from("integration_tokens")
       .select("provider, scopes, connected_at, expires_at")
+      .eq("company_id", staff.company_id)
       .eq("provider", "canva")
       .maybeSingle();
 
@@ -253,6 +266,9 @@ Deno.serve(async (req: Request) => {
      admin check above has already run, so by here we know an admin asked
      for it by name.
 
+     Scoped to their own company, so an admin can only ever throw away
+     their own connection. Without that eq this would empty the table.
+
      It succeeds when there was nothing to delete. An admin pressing this
      wants to end up disconnected, and they are disconnected either way, so
      reporting "there was no row" as a failure would be the function
@@ -261,6 +277,7 @@ Deno.serve(async (req: Request) => {
     const { error: dropError } = await admin
       .from("integration_tokens")
       .delete()
+      .eq("company_id", staff.company_id)
       .eq("provider", "canva");
 
     if (dropError) {
@@ -277,7 +294,11 @@ Deno.serve(async (req: Request) => {
        worked by this point, and tidying must never turn a success into an
        error message. */
     try {
-      await admin.from("oauth_pending").delete().eq("provider", "canva");
+      await admin
+        .from("oauth_pending")
+        .delete()
+        .eq("company_id", staff.company_id)
+        .eq("provider", "canva");
     } catch (err) {
       console.error("could not clear pending canva handshakes", err);
     }
@@ -300,7 +321,20 @@ Deno.serve(async (req: Request) => {
 
   const { error: keepError } = await admin
     .from("oauth_pending")
-    .insert({ state, provider: "canva", code_verifier: verifier, return_to: returnTo });
+    .insert({
+      state,
+      provider: "canva",
+      code_verifier: verifier,
+      return_to: returnTo,
+      /* WHO THIS HANDSHAKE IS FOR, written down at the start.
+
+         The callback cannot work it out on its own: Canva sends the person
+         back with a GET carrying no session of ours, so there is no staff
+         row to read at that end. It reads the company off this row, the
+         same way it already reads the provider off it, which means the
+         browser never gets to choose which company a token lands in. */
+      company_id: staff.company_id,
+    });
 
   if (keepError) {
     console.error("could not start the canva handshake", keepError);
