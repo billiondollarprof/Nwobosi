@@ -27,7 +27,7 @@
      13. Footer
    ========================================================================== */
 
-import { Fragment, useEffect } from "react";
+import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   ArrowRight,
@@ -512,17 +512,25 @@ export default function Landing() {
                 capability and the containment becomes the thing that makes
                 the capability allowable.
 
-                THE ACCENT SITS ON A PHRASE, not on a line, and the phrase
-                is the half that no competitor can say. "Private AI" is a
-                category and every vendor in it is selling one. "Already
-                knows your company" is the product. So the setup stays flat
-                and the light falls on the part that is actually the claim.
+                THE ACCENT IS ON THE CLOSING LINE, and it took a wrong
+                turn to get there.
 
-                The first sentence wraps on purpose. textWrap balance splits
-                it evenly and never leaves one word stranded on a line of
-                its own, so it needs no guard against wrapping. */}
-            <span>Private AI that </span>
-            <span style={HEADLINE_ACCENT}>already knows your company.</span>
+                It sat on "already knows your company" for a day, on my
+                reasoning that the capability is the thing no competitor
+                can claim. Anthony moved it, 2026-09-15: "the part that
+                carries the different color should be the zero data
+                leakage... that's like the anchor of the line."
+
+                He is right and the reason is worth keeping. The eye lands
+                on colour first and leaves from it last, so whatever is lit
+                is what a reader carries away. Light the setup and they
+                leave holding the setup. The anchor is the last line, so
+                the anchor is what gets the light.
+
+                This sentence wraps on purpose. textWrap balance splits it
+                evenly and never leaves one word stranded on a line of its
+                own, so it needs no guard against wrapping. */}
+            <span className="block">Private AI that already knows your company.</span>
             {/* THE CONTAINMENT LINE, back on 2026-09-15 and said flat.
 
                 It went through three versions. "Nothing ever leaves" was
@@ -544,7 +552,7 @@ export default function Landing() {
                 It is a block of its own so balance treats it as its own
                 sentence, and it is short enough that it will not wrap on
                 any phone. */}
-            <span className="block">Zero data leakage.</span>
+            <span className="block" style={HEADLINE_ACCENT}>Zero data leakage.</span>
           </h1>
 
           {/* ANTHONY WROTE THIS SENTENCE AND IT IS USED AS HE WROTE IT,
@@ -615,7 +623,20 @@ export default function Landing() {
           {/* items-stretch, so the two buttons are the same height because they
               are in the same row rather than because two paddings were tuned
               to agree. Change either one and they still match. */}
-          <div className="flex flex-col sm:flex-row items-stretch justify-center lg:justify-start gap-3 mb-5 sm:mb-7">
+          {/* mb-3.5 on a phone, not mb-5. Anthony read the hero on a phone
+              on 2026-09-15: "it's as if there's no space between the last
+              line and the bottom of the hero."
+
+              The three trust points stack on a phone now, which made them
+              three lines tall instead of one, and nothing under them
+              absorbed that. So the last one finished flush against the
+              bottom edge. Tightening the gap ABOVE them is the right half
+              to change: it groups them with the buttons they belong to,
+              which is what he asked for, and it hands the space back to
+              the bottom of the section where the breathing room was
+              missing. From sm up they are one row again and the old gap
+              stands. */}
+          <div className="flex flex-col sm:flex-row items-stretch justify-center lg:justify-start gap-3 mb-3.5 sm:mb-7">
             <PrimaryButton
               onClick={() => navigate("/contact")}
               className="flex items-center justify-center gap-2 px-6 py-3.5 text-[15px]"
@@ -632,33 +653,48 @@ export default function Landing() {
             </GlassButton>
           </div>
 
-          {/* A column on a phone, a row from tablet up.
+          {/* IT WRAPS NOW, it does not stack and it does not get cut down.
 
-              The row is the same as it always was: one line, dividers as
-              their own children rather than tucked inside each item, and
-              nothing wrapping, so a divider can never be left stranded at
-              the start of a second row.
+              Three states this has been through, and the third is the one
+              that holds:
 
-              The column is what replaced the cut down phrases. Three full
-              sentences will not fit across a phone, and the old answer was
-              to shorten them until they did, which broke them. Stacking
-              them keeps every word. It also means there is no divider to
-              stand between them, which is why the divider below is drawn
-              only at sm and up: a vertical bar between two stacked lines
-              would be pointing the wrong way. */}
+                1. One row with the phrases shortened to fit. That broke
+                   them. "Nothing leaves" is a sentence with its object
+                   removed.
+                2. Full phrases stacked one per line on a phone. Nothing
+                   was broken, but three lines is 66px, and that was most
+                   of what pushed the whole row under the fold on a 375px
+                   phone.
+                3. Full phrases, wrapping. Two fit on the first line of a
+                   390px phone and the third takes the second line, so it
+                   costs one line instead of three and every word survives.
+
+              THE DIVIDERS ONLY EXIST WHERE NOTHING WRAPS, which is from
+              sm up. Above 640px all three phrases fit on one row with room
+              to spare, so a divider there can never be stranded and it
+              does the job dividers do.
+
+              Below sm they are gone, and the gap separates the phrases
+              instead. I tried keeping them, tied to the phrase in front so
+              they could not land at the start of a wrapped line. That
+              worked, and it still looked wrong: the last phrase on line
+              one trailed a divider pointing into empty space at the right
+              edge, above a centred line two. A divider is there to sit
+              between two things. When there is nothing after it on that
+              line, the honest answer is not to draw it. */}
           <div
-            className="flex flex-col sm:flex-row items-center lg:items-start sm:items-center justify-center lg:justify-start gap-1.5 sm:gap-3 text-[12px] sm:text-[12.5px]"
+            className="flex flex-wrap items-center justify-center lg:justify-start gap-x-2.5 gap-y-1 text-[12px] sm:text-[12.5px]"
             style={{ color: "var(--text-3)" }}
           >
             {TRUST_POINTS.map((point, i) => (
-              <Fragment key={point}>
-                {i > 0 && (
-                  <span className="hidden sm:inline" aria-hidden="true" style={{ opacity: 0.35 }}>
+              <span key={point} className="whitespace-nowrap">
+                {point}
+                {i < TRUST_POINTS.length - 1 && (
+                  <span aria-hidden="true" className="hidden sm:inline ml-2.5" style={{ opacity: 0.35 }}>
                     |
                   </span>
                 )}
-                <span className="whitespace-nowrap">{point}</span>
-              </Fragment>
+              </span>
             ))}
           </div>
             </div>
