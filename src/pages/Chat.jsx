@@ -63,6 +63,7 @@ import {
   signOutCompletely,
 } from "../shared/session.js";
 import { readFileAsText, fileKind } from "../shared/readFile.js";
+import { shrinkImage } from "../shared/shrinkImage.js";
 import { downloadPdf, downloadDocx } from "../shared/download.js";
 /* Each in its own file, and each loaded only when somebody actually asks
    for that format. The deck and spreadsheet libraries are megabytes, and
@@ -201,85 +202,16 @@ const MAX_TURN_CHARS = 60000;
    of tokens, resent on every single turn. Shrunk, a screenshot is about
    fifteen hundred. */
 const MAX_IMAGE_EDGE = 1568;
-const IMAGE_QUALITY = 0.85;
 
-/* WEBP FIRST, JPEG IF THE BROWSER CANNOT MAKE ONE.
+/* The encoder itself lives in src/shared/shrinkImage.js now, because the
+   admin knowledge base needs the identical one for brand assets, and two
+   copies of an encoder is two copies that drift. The quality it uses, the
+   WebP fallback and the reason for both are in that file's header.
 
-   WebP carries the same picture in about half the bytes at the same
-   quality. Measured on 2026-09-15 at quality 0.85, shrunk to 1568 first,
-   which is exactly what happens below:
-
-     a screenshot of our own landing page   91 KB jpeg  ->  45 KB webp
-     a photograph off the site              70 KB jpeg  ->  39 KB webp
-
-   Those two are what staff actually send. A screenshot is most of it, and
-   a screenshot is where WebP wins hardest, because flat colour and sharp
-   text are what it is good at.
-
-   One number to distrust if you re-measure: pure random noise comes out
-   about 6% BIGGER as WebP. That is a real result and it is also
-   meaningless, because nobody uploads noise. Test on a screenshot and a
-   photograph, not on something generated.
-
-   THE FALLBACK IS NOT OPTIONAL, AND THIS IS THE TRAP IN IT. A canvas
-   asked for a format it cannot encode does not fail and does not tell
-   you. It hands back a PNG instead. A PNG of a photograph is several
-   times larger than the JPEG it replaced, so a browser without WebP would
-   quietly start uploading the biggest file of the three while the code
-   looked like it was saving space.
-
-   So the encoder does not trust what it asked for. It reads the front of
-   the data URL it actually got back, and it only keeps it if the type
-   matches. */
-function encodeCanvas(canvas) {
-  const webp = canvas.toDataURL("image/webp", IMAGE_QUALITY);
-  if (webp.startsWith("data:image/webp")) {
-    return { dataUrl: webp, media_type: "image/webp" };
-  }
-  return {
-    dataUrl: canvas.toDataURL("image/jpeg", IMAGE_QUALITY),
-    media_type: "image/jpeg",
-  };
-}
-
-/* Draws the image smaller and re-encodes it. Done here, in the browser,
-   because a five megabyte photo that becomes two hundred kilobytes before
-   it leaves the device is faster for them and cheaper for the company, and
-   the model sees no difference. */
-function shrinkImage(file) {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const longest = Math.max(img.width, img.height);
-      const scale = longest > MAX_IMAGE_EDGE ? MAX_IMAGE_EDGE / longest : 1;
-      const width = Math.max(1, Math.round(img.width * scale));
-      const height = Math.max(1, Math.round(img.height * scale));
-
-      const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
-      canvas.getContext("2d").drawImage(img, 0, 0, width, height);
-
-      const { dataUrl, media_type } = encodeCanvas(canvas);
-      const data = dataUrl.split(",")[1] ?? "";
-      if (!data) {
-        reject(new Error("empty canvas"));
-        return;
-      }
-      resolve({ media_type, data, width, height });
-    };
-
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("not an image this browser can open"));
-    };
-
-    img.src = url;
-  });
-}
+   The 1568 above stays here, because it is this screen's answer rather
+   than a shared one: it is the long edge the model works at, so anything
+   bigger costs upload time and buys nothing. A brand asset is kept larger
+   because it goes into things that get printed and projected. */
 
 /* The turn as the model receives it. Plain text when nothing was attached
    or only text files were, so the common case stays a simple string.
@@ -1563,7 +1495,7 @@ export default function Chat() {
       setPendingAttachments((prev) => [...prev, { id, name: file.name, sizeKB, status: "reading" }]);
 
       if (kind === "image") {
-        shrinkImage(file)
+        shrinkImage(file, { maxEdge: MAX_IMAGE_EDGE })
           .then((image) => {
             setPendingAttachments((prev) =>
               prev.map((a) => (a.id === id ? { ...a, status: "ready", image } : a))

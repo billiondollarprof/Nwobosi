@@ -13,6 +13,7 @@
    ========================================================================== */
 
 import { supabase } from "./supabase.js";
+import { BRAND_ASSETS_BUCKET } from "./config.js";
 import { clearAdminClock } from "./adminClock.js";
 
 /* --------------------------------------------------------------------------
@@ -203,6 +204,94 @@ export async function addTextSource({
   if (readyError) console.error("could not mark source ready", readyError);
 
   return { ok: true, source: { ...source, status: "ready" }, chunks: chunks.length };
+}
+
+/* ==========================================================================
+   ADDING AN IMAGE: A LOGO, A PRODUCT SHOT, A BRAND ASSET
+   ==========================================================================
+
+   WHY THIS IS NOT addTextSource WITH A FLAG
+   -----------------------------------------
+   A document becomes rows of text and the file itself is thrown away. An
+   image cannot: the whole point of a logo is the picture, so the file has
+   to survive, and it goes in the brand-assets bucket rather than into
+   knowledge_chunks. Different storage, different failure modes, different
+   clean up. Bolting it onto the text path as a branch would mean one
+   function where half the lines never run.
+
+   THE ORDER MATTERS AND IT IS FILE FIRST
+   --------------------------------------
+   Upload the picture, then write the row that points at it. Do it the
+   other way and a failed upload leaves a row in the list pointing at
+   nothing, which looks like a broken source rather than a failed upload.
+   This way a failed upload leaves an orphan file in the bucket that
+   nobody sees, and that costs bytes rather than confusion.
+
+   THE PATH IS WHAT THE SECURITY IS BUILT ON
+   -----------------------------------------
+   Every object is <company_id>/<uuid>.<ext>, and every storage policy
+   reads that first folder to decide who may touch it. So the company id
+   here is not decoration, it is the thing that stops one company reading
+   another's assets. The database refuses a path that does not match the
+   caller's own company, so getting this wrong fails loudly rather than
+   leaking.
+   ========================================================================== */
+
+export async function addImageSource({
+  companyId,
+  userId,
+  name,
+  description,
+  blob,
+  extension,
+  mediaType,
+  customerVisible = false,
+}) {
+  const path = `${companyId}/${crypto.randomUUID()}.${extension}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from(BRAND_ASSETS_BUCKET)
+    .upload(path, blob, { contentType: mediaType, upsert: false });
+
+  if (uploadError) {
+    console.error("could not upload the image", uploadError);
+    return { ok: false, reason: "Could not upload that picture. Try again." };
+  }
+
+  const { data: source, error: sourceError } = await supabase
+    .from("knowledge_sources")
+    .insert({
+      company_id: companyId,
+      name,
+      description,
+      kind: "image",
+      location: null,
+      asset_path: path,
+      asset_mime: mediaType,
+      /* Ready straight away. There is no text to pull apart and no second
+         step to wait for, so anything other than ready would be a status
+         that never changes. */
+      status: "ready",
+      added_by: userId,
+      customer_visible: customerVisible === true,
+    })
+    .select()
+    .single();
+
+  if (sourceError || !source) {
+    console.error("could not add image source", sourceError);
+    /* Take the file back out. Its own try, and its failure is ignored:
+       the admin is already being told the save failed, and a second
+       message about tidying up tells them nothing they can act on. */
+    try {
+      await supabase.storage.from(BRAND_ASSETS_BUCKET).remove([path]);
+    } catch (err) {
+      console.error("could not remove the orphaned upload", err);
+    }
+    return { ok: false, reason: "Could not save that. Try again." };
+  }
+
+  return { ok: true, source, chunks: 0 };
 }
 
 /* THE ONE SWITCH THAT DECIDES WHAT A STRANGER CAN BE TOLD

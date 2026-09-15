@@ -59,6 +59,7 @@ import {
   loadMe,
   listSources,
   addTextSource,
+  addImageSource,
   removeSource,
   setSourceVisibility,
   listContradictions,
@@ -68,7 +69,9 @@ import {
   signOutCompletely,
 } from "../shared/session.js";
 import { adminSessionExpired } from "../shared/adminClock.js";
-import { readFileAsText, canBecomeText } from "../shared/readFile.js";
+import { readFileAsText, canBecomeText, fileKind } from "../shared/readFile.js";
+import { shrinkImage } from "../shared/shrinkImage.js";
+import { describeSource } from "../shared/describeSource.js";
 import { fetchLinkSource } from "../shared/linkApi.js";
 import { readBeforePublish, loadSourceText } from "../shared/publishCheck.js";
 import { findByName, findByAddress, whenAdded } from "../shared/duplicates.js";
@@ -85,6 +88,7 @@ import {
   OFFERED_LEVELS,
   DEFAULT_LEVEL,
   levelOf,
+  BRAND_ASSET_EDGE,
 } from "../shared/config.js";
 
 /* --------------------------------------------------------------------------
@@ -421,6 +425,12 @@ export function KnowledgeSection({ me, loading: loadingMe }) {
      source is worth opening. A file called final_v3.txt with no
      description is a file the assistant will never choose. */
   const [staged, setStaged] = useState(null);
+
+  /* True while the model is reading a file to name it. It drives one line
+     under the two fields and nothing else: no disabled button, no spinner
+     over the form. Somebody who knows what to call it types straight over
+     the top, and waiting is never made into their problem. */
+  const [naming, setNaming] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const [linkUrl, setLinkUrl] = useState("");
@@ -584,10 +594,23 @@ export function KnowledgeSection({ me, loading: loadingMe }) {
     await stageFile(chosen[0]);
   }
 
+  /* Reads whatever was handed over and gets it ready to be named.
+
+     TWO KINDS OF THING ARRIVE HERE AND THEY SPLIT EARLY. A document
+     becomes text, gets chunked, and the file itself is thrown away. A
+     picture stays a picture: the whole point of a logo is the picture, so
+     it is shrunk, kept, and uploaded when the admin saves.
+
+     Everything after the split is the same, which is why the split is at
+     the top rather than sprinkled through. */
   async function stageFile(file) {
+    if (fileKind(file.name) === "image") {
+      await stageImage(file);
+      return;
+    }
 
     if (!canBecomeText(file.name)) {
-      show(`${file.name} is not a kind of file this can read. PDF, Word, plain text, Markdown, CSV or JSON.`);
+      show(`${file.name} is not a kind of file this can read. PDF, Word, plain text, Markdown, CSV or JSON, or a picture.`);
       return;
     }
     if (file.size > MAX_SOURCE_UPLOAD_KB * 1024) {
@@ -620,6 +643,94 @@ export function KnowledgeSection({ me, loading: loadingMe }) {
       description: "",
       text: result.text,
       truncated: result.truncated,
+    });
+
+    nameItFor({ name: file.name, text: result.text });
+  }
+
+  /* ------------------------------------------------------------------
+     A PICTURE
+
+     Shrunk here, in the browser, before it goes anywhere. A five megabyte
+     phone photo becomes a couple of hundred kilobytes and nothing that
+     uses it can tell the difference. It is also converted to WebP on the
+     way, which halves it again. See shrinkImage for the trap in that.
+
+     BRAND_ASSET_EDGE rather than the 1568 the chat uses. A brand asset is
+     used to BUILD things, so it ends up on a title slide or in a printed
+     deck, and 1568 across is soft the moment it does.
+     ------------------------------------------------------------------ */
+  async function stageImage(file) {
+    if (file.size > MAX_SOURCE_UPLOAD_KB * 1024) {
+      show(
+        `${file.name} is ${(file.size / 1024 / 1024).toFixed(1)} MB, over the ` +
+          `${Math.round(MAX_SOURCE_UPLOAD_KB / 1024)} MB limit.`
+      );
+      return;
+    }
+
+    setReading(file.name);
+    let picture;
+    try {
+      picture = await shrinkImage(file, { maxEdge: BRAND_ASSET_EDGE });
+    } catch {
+      setReading("");
+      show(`${file.name} could not be opened as a picture. Try a PNG, a JPG or a WebP.`);
+      return;
+    }
+    setReading("");
+
+    setStagedVisible(false);
+    /* A picture has nothing to read before publishing, so the gate has
+       nothing to wait on. Cleared rather than left holding the last
+       document's answer, which would attach one file's reading to a
+       different file. */
+    stagedReading.current = null;
+
+    setStaged({
+      fileName: file.name,
+      name: file.name.replace(/\.[^.]+$/, ""),
+      description: "",
+      text: "",
+      truncated: false,
+      picture,
+      preview: URL.createObjectURL(picture.blob),
+    });
+
+    nameItFor({ name: file.name, image: { media_type: picture.media_type, data: picture.data } });
+  }
+
+  /* ------------------------------------------------------------------
+     NAMING IT, SO THE ADMIN DOES NOT HAVE TO
+
+     Anthony, 2026-09-15: "is it not better that when admin is uploading
+     the work, admin doesn't need to write the title or description?"
+
+     Fired and not awaited, on purpose. The form is already on screen and
+     usable, so somebody who knows exactly what they want to call it can
+     type over the top without waiting. The answer lands in the fields
+     when it lands, or it does not land and they type, which is what they
+     did before this existed.
+
+     IT ONLY FILLS A FIELD THE ADMIN HAS NOT TOUCHED. The check below
+     compares against the file name it staged with, so if they started
+     typing while it was thinking, their words win. Nothing is more
+     annoying than a form that overwrites you.
+     ------------------------------------------------------------------ */
+  async function nameItFor({ name, text, image }) {
+    setNaming(true);
+    const suggestion = await describeSource({ name, text, image });
+    setNaming(false);
+    if (!suggestion.title) return;
+
+    const untouched = name.replace(/\.[^.]+$/, "");
+    setStaged((current) => {
+      if (!current || current.fileName !== name) return current;
+      return {
+        ...current,
+        name: current.name === untouched ? suggestion.title : current.name,
+        description: current.description === "" ? suggestion.description : current.description,
+      };
     });
   }
 
@@ -666,15 +777,29 @@ export function KnowledgeSection({ me, loading: loadingMe }) {
     }
 
     setSaving(true);
-    const result = await addTextSource({
-      companyId: me.company.id,
-      userId: me.user.id,
-      name: staged.name.trim(),
-      description: staged.description.trim(),
-      text: staged.text,
-      kind: "file",
-      customerVisible: stagedVisible,
-    });
+    /* A picture goes to the bucket and a document becomes rows of text.
+       Both come back in the same shape, so everything after this line
+       does not care which it was. */
+    const result = staged.picture
+      ? await addImageSource({
+          companyId: me.company.id,
+          userId: me.user.id,
+          name: staged.name.trim(),
+          description: staged.description.trim(),
+          blob: staged.picture.blob,
+          extension: staged.picture.extension,
+          mediaType: staged.picture.media_type,
+          customerVisible: stagedVisible,
+        })
+      : await addTextSource({
+          companyId: me.company.id,
+          userId: me.user.id,
+          name: staged.name.trim(),
+          description: staged.description.trim(),
+          text: staged.text,
+          kind: "file",
+          customerVisible: stagedVisible,
+        });
     setSaving(false);
 
     if (!result.ok) {
@@ -683,7 +808,15 @@ export function KnowledgeSection({ me, loading: loadingMe }) {
     }
 
     setItems((prev) => [result.source, ...prev]);
-    setJustAdded(`${result.source.name}, ${result.chunks} ${result.chunks === 1 ? "piece" : "pieces"} of text`);
+    setJustAdded(
+      staged.picture
+        ? `${result.source.name}, ready to use in designs and documents`
+        : `${result.source.name}, ${result.chunks} ${result.chunks === 1 ? "piece" : "pieces"} of text`
+    );
+    /* The preview holds a blob URL, and a blob URL that is never revoked
+       holds the whole picture in memory for as long as the tab is open.
+       Uploading four logos in a row without this leaks all four. */
+    if (staged.preview) URL.revokeObjectURL(staged.preview);
     setStaged(null);
 
     /* The audience choice does NOT carry over to the next file in the
@@ -908,12 +1041,20 @@ export function KnowledgeSection({ me, loading: loadingMe }) {
 
   return (
     <div className="space-y-5" style={{ animation: "sx-rise 0.3s ease" }}>
+      {/* PICTURES WERE MISSING UNTIL 2026-09-15, which meant a company
+          could put its brand guidelines in and not its own logo.
+
+          The extensions are listed out rather than written as "image/*",
+          so that what this picker offers and what the brand-assets bucket
+          accepts are two lists a person can read against each other. A
+          wildcard here and a fixed list in the bucket is how somebody
+          ends up choosing a file that is refused after they picked it. */}
       <input
         ref={fileInputRef}
         type="file"
         className="hidden"
         multiple
-        accept=".pdf,.docx,.txt,.md,.markdown,.csv,.tsv,.json,.log,.rtf,.xml,.html"
+        accept=".pdf,.docx,.txt,.md,.markdown,.csv,.tsv,.json,.log,.rtf,.xml,.html,.png,.jpg,.jpeg,.webp"
         onChange={pickFiles}
       />
 
@@ -958,7 +1099,14 @@ export function KnowledgeSection({ me, loading: loadingMe }) {
 
       {/* Upload */}
       <GlassPanel className="p-6">
-        <SectionHeading hint="Brand guidelines, templates, past work, anything the assistant should write from. Give each one a clear name and a line saying what it holds, because that is how it decides which to open.">
+        {/* THE OLD LINE TOLD THEM TO DO A JOB THAT IS NOW DONE FOR THEM.
+
+            It read "Give each one a clear name and a line saying what it
+            holds, because that is how it decides which to open." True
+            until 2026-09-15, and now it is an instruction to do work the
+            screen has already done, which makes the product look like it
+            has not noticed what it does. */}
+        <SectionHeading hint="Brand guidelines, templates, logos, past work, anything the assistant should write from. Drop it in and it gets read and named for you. Change the name or the line underneath if you want to.">
           Add company knowledge
         </SectionHeading>
 
@@ -1090,10 +1238,50 @@ export function KnowledgeSection({ me, loading: loadingMe }) {
                   {queue.length + 1} files chosen. This one first.{" "}
                 </span>
               )}
-              Read {staged.fileName}
-              {staged.truncated ? ", the first part of it, which was as much as fits" : ""}. Name it and
-              say what it holds.
+              {staged.picture
+                ? `Read ${staged.fileName}, and it is ready to use in designs and documents.`
+                : `Read ${staged.fileName}${
+                    staged.truncated ? ", the first part of it, which was as much as fits" : ""
+                  }.`}{" "}
+              {naming ? "Naming it now." : "Change either line if you want to."}
             </p>
+
+            {/* THE PICTURE ITSELF, because a name is not enough to tell two
+                logos apart and an admin uploading four of them should be
+                able to see which one they are looking at.
+
+                Sized off the shrunk copy rather than the original, so what
+                is on screen is what was actually kept. Contained rather
+                than cropped: a logo cropped to fill a box is a logo with
+                its edges cut off, which is exactly the thing a brand guide
+                exists to prevent. The chequer behind it is there so a
+                transparent PNG reads as transparent instead of as a white
+                rectangle. */}
+            {staged.preview && (
+              <div
+                className="rounded-[12px] border p-3 flex items-center justify-center"
+                style={{
+                  borderColor: "var(--border)",
+                  backgroundColor: "var(--surface-2)",
+                  /* A chequer, so a transparent PNG reads as transparent
+                     rather than as a white rectangle somebody has to guess
+                     about. Drawn from a fixed low-opacity white rather
+                     than from a theme token: --chip is nearly the same
+                     value as the surface behind it in both themes, so the
+                     squares came out invisible and the whole point of
+                     them went with it. */
+                  backgroundImage:
+                    "repeating-conic-gradient(rgba(255,255,255,0.10) 0% 25%, transparent 0% 50%)",
+                  backgroundSize: "18px 18px",
+                }}
+              >
+                <img
+                  src={staged.preview}
+                  alt={`${staged.fileName}, as it will be kept`}
+                  className="max-h-[160px] w-auto max-w-full object-contain"
+                />
+              </div>
+            )}
             <Field label="Name" required>
               <TextInput
                 value={staged.name}
@@ -1139,6 +1327,11 @@ export function KnowledgeSection({ me, loading: loadingMe }) {
               </PrimaryButton>
               <GhostButton
                 onClick={() => {
+                  /* Same reason as the save path: a blob URL that is never
+                     revoked holds the whole picture until the tab closes,
+                     and cancelling is the easiest way to do it four times
+                     in a row. */
+                  if (staged.preview) URL.revokeObjectURL(staged.preview);
                   setStaged(null);
                   setQueue([]);
                   stagedReading.current = null;
@@ -1169,7 +1362,7 @@ export function KnowledgeSection({ me, loading: loadingMe }) {
               Or choose a file
             </p>
             <p className="text-[13px] mb-4" style={{ color: "var(--text-3)" }}>
-              PDF, Word, plain text, Markdown, CSV or JSON, up to{" "}
+              PDF, Word, plain text, Markdown, CSV, JSON, or a picture, up to{" "}
               {Math.round(MAX_SOURCE_UPLOAD_KB / 1024)} MB
             </p>
             {reading ? (

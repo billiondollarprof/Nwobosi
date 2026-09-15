@@ -59,8 +59,26 @@ export const FUNCTIONS = {
   inviteStaff: "invite-staff",
   sendContact: "send-contact",
   readBeforePublish: "read-before-publish",
+  describeSource: "describe-source",
   canvaConnect: "canva-connect",
 };
+
+/* WHERE A COMPANY'S LOGOS AND BRAND IMAGES LIVE.
+
+   Private, so nothing here is reachable without signing in. The first
+   folder inside it is always the company id, and every storage policy is
+   built on that, so an object path that does not start with the right
+   company is refused by the database rather than by this file. */
+export const BRAND_ASSETS_BUCKET = "brand-assets";
+
+/* The long edge a brand asset is kept at.
+
+   Larger than the 1568 a chat upload is cut to, because these are used to
+   BUILD things rather than to be looked at once. A logo that goes into a
+   deck or a Canva design at 1568 across is soft the moment somebody puts
+   it on a title slide. 2400 is generous for any real use and still small
+   enough that nobody waits for it. */
+export const BRAND_ASSET_EDGE = 2400;
 
 export const OAUTH_REDIRECT_URI =
   "https://cbunsqzkhidwjtxdsmxd.supabase.co/functions/v1/oauth-callback";
