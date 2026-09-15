@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "images": "node scripts/optimise-images.mjs",
     "icons": "node scripts/make-icons.mjs",
-    "lint": "eslint src --no-warn-ignored"
+    "lint": "eslint src --no-warn-ignored",
+    "test": "node scripts/tests/canva-token.test.mjs",
+    "check": "npm run lint && node scripts/check-functions.mjs && npm test && npm run build"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.4",
