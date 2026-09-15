@@ -341,15 +341,27 @@ export const WORKFLOW_TOOLS = [
       "produces a Canva file today. That is the next piece of work, not a maybe.",
   },
   {
+    /* THE LONG NOTE THAT WAS HERE IS GONE, 2026-09-15.
+
+       It explained that Drive was registered with Google, that the keys
+       were in place, and that the sign in was the remaining piece. All of
+       that was true and none of it was any of a customer's business.
+       Anthony: "it's explaining too much... it's client-facing. A
+       client-facing doesn't have to be explaining too much and doesn't
+       need to even be mentioning some technicalities like that."
+
+       He is right, and the reason is not only tone. A progress report on
+       a public surface reads as half finished work, and a buyer prices it
+       down before deciding whether they want it. Where a thing has got to
+       internally belongs in CURRENT.md.
+
+       So Drive now says what every other one says. It gets picked back up
+       after the video walkthrough. */
     id: "drive",
     label: "Google Drive",
     icon: DriveIconGlyph,
     hint: "Point the assistant at a file, and send finished work back",
     state: "registered",
-    note:
-      "Registered with Google and its keys are in place. The sign in that would let you connect " +
-      "your own Drive is the remaining piece. Until then, hand over a file here and download " +
-      "whatever gets made.",
   },
   {
     id: "email",
@@ -377,11 +389,16 @@ export const WORKFLOW_TOOLS = [
 /* Sits behind the info control under the tool list. Answers the question
    a sharp person in the room is already forming: are these real, or is
    this a picture of a product? */
+/* ONE SENTENCE, AND IT SAYS NOTHING ABOUT WHERE THE BUILD HAS GOT TO.
+
+   This used to explain the difference between "registered" and "example",
+   which meant a customer had to learn our internal vocabulary to read
+   their own screen, and what they learned was which parts are unfinished.
+   Neither of those helps them. Rewritten 2026-09-15 alongside the Drive
+   note, for the same reason. */
 export const WORKFLOW_PLAN_NOTE =
-  "Your deployment connects the tools your people actually work in, these or others, scoped to " +
-  "exactly what your team approves. Where one says registered, the account and keys are already " +
-  "in place and the remaining work is the wiring. Where it says example, the shape is drawn and " +
-  "the build is scoped. Tell us what your workflow runs on and it gets wired for you.";
+  "Your deployment connects the tools your people already work in, these or others, " +
+  "scoped to exactly what your team approves.";
 
 export const REGISTERED_CONNECTOR_NOTE =
   "Set up on our side. Not doing work in this demo yet.";

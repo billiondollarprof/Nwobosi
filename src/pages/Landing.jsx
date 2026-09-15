@@ -55,6 +55,7 @@ import { AmaraLockup } from "../shared/icons.jsx";
 import Photo from "../shared/Photo.jsx";
 import ContainmentSeal from "../shared/ContainmentSeal.jsx";
 import Reveal from "../shared/Reveal.jsx";
+import Typewriter from "../shared/Typewriter.jsx";
 import CardStack from "../shared/CardStack.jsx";
 import CountUp from "../shared/CountUp.jsx";
 import { BRAND, GRADIENTS, FONTS } from "../shared/tokens";
@@ -80,6 +81,28 @@ import { SectionHead, GradientText, Eyebrow, Divider } from "../shared/marketing
    what it is, and an enterprise reader who meets "live in 10 minutes" on a
    deployment page discounts everything above it. Seeing it in ten minutes
    is true, and it is what the button below actually offers. */
+/* WHAT IT HANDS BACK, rotating under the subtext.
+
+   Three words each, because Anthony set that length on 2026-09-15 and it
+   is the right length. The line before this one is thirty three words, so
+   anything long here competes with it, and a rotating phrase that has to
+   be read carefully stops being a glance and starts being homework.
+
+   Every one of these is a document the product really produces, and every
+   one names the company's own material rather than a generic deliverable.
+   A board update with your numbers in it is the claim. "A document" is
+   what any chatbot writes.
+
+   The lead is "Ask for", not "It produces". An invitation puts the reader
+   in the chair; a description leaves them watching. */
+const OUTPUTS = [
+  "a board update",
+  "a client quote",
+  "a pitch deck",
+  "a renewal notice",
+  "a policy summary",
+];
+
 /* NO SHORT FORMS ANY MORE. Every phone reads the same words a desktop
    reads.
 
@@ -481,60 +504,98 @@ export default function Landing() {
             className="text-[28px] sm:text-[42px] lg:text-[46px] xl:text-[52px] font-medium leading-[1.08] tracking-[-0.03em] mb-5 sm:mb-6 max-w-4xl mx-auto lg:mx-0"
             style={{ fontFamily: FONTS.display, color: "var(--text-1)", textWrap: "balance" }}
           >
-            {/* ONE SENTENCE. There used to be a second line under this one
-                carrying the containment claim: first "Nothing ever leaves.",
-                then "Zero data leakage." Anthony took it out on 2026-09-15
-                and it does not come back.
+            {/* TWO SENTENCES: the capability, then the containment.
 
-                The reason is that the claim is already made twice below,
-                once in the trust line under the buttons and once in the
-                subtext, so a third go at it in the largest type on the page
-                was the same promise said three times before a reader had
-                got past the fold.
+                That order matters and it is not interchangeable. Lead with
+                the containment and this reads as a compliance tool, which
+                every vendor in the category can also claim. Lead with the
+                capability and the containment becomes the thing that makes
+                the capability allowable.
 
-                THE ACCENT SITS ON A PHRASE NOW, not on a line, and the
-                phrase is the half that no competitor can say. "Private AI"
-                is a category and every vendor in it is selling one. "Already
+                THE ACCENT SITS ON A PHRASE, not on a line, and the phrase
+                is the half that no competitor can say. "Private AI" is a
+                category and every vendor in it is selling one. "Already
                 knows your company" is the product. So the setup stays flat
                 and the light falls on the part that is actually the claim.
 
-                Nothing here is nowrap any more. The line that needed a
-                measured guard against wrapping has gone, and this sentence
-                is meant to wrap: textWrap balance splits it evenly and
-                never leaves one word stranded on its own line. */}
+                The first sentence wraps on purpose. textWrap balance splits
+                it evenly and never leaves one word stranded on a line of
+                its own, so it needs no guard against wrapping. */}
             <span>Private AI that </span>
             <span style={HEADLINE_ACCENT}>already knows your company.</span>
+            {/* THE CONTAINMENT LINE, back on 2026-09-15 and said flat.
+
+                It went through three versions. "Nothing ever leaves" was
+                first, and CURRENT.md recorded it as falsifiable, because
+                prompts still reach a model provider even though documents
+                are never stored here. It came out. Anthony then weighed
+                "Your data never leaves your cloud" against this, said this
+                one was bolder, and chose it.
+
+                WHAT MAKES IT DEFENSIBLE NOW, which it was not before. On a
+                Bedrock deployment behind a VPC interface endpoint the
+                traffic never touches the public internet, AWS does not
+                train on the prompts or the outputs, and the model provider
+                never receives them at all. So this is a claim about an
+                architecture we can point at rather than a promise about an
+                absence. Do not put it back on a page for a deployment that
+                is not built that way.
+
+                It is a block of its own so balance treats it as its own
+                sentence, and it is short enough that it will not wrap on
+                any phone. */}
+            <span className="block">Zero data leakage.</span>
           </h1>
 
-          {/* The subtext carries the third thing the headline could not:
-              that this is easier than the AI they are using now, not just
-              safer.
-
-              ANTHONY WROTE THIS SENTENCE AND IT IS USED AS HE WROTE IT,
-              2026-09-15. One paragraph at both sizes.
-
-              What was here before was two paragraphs, a short one for
-              phones and a long one above tablet, and both ended on a
-              rotating phrase typed out letter by letter. That is gone with
-              this change, because this sentence is complete and closes on
-              a full stop. The component that did it, Typewriter, is still
-              in src/shared and can come back if it is wanted.
-
-              The closing line stays. It is a separate claim, it was not
-              part of what was replaced, and it is the only place on the
-              page that says how long any of this takes to learn. */}
+          {/* ANTHONY WROTE THIS SENTENCE AND IT IS USED AS HE WROTE IT,
+              2026-09-15. One paragraph at both sizes. Do not trim it for
+              phones: the short version that used to live here gave a phone
+              reader the promise without the part that earns it. */}
           <p
-            className="text-[15.5px] sm:text-[17.5px] leading-[1.6] max-w-[620px] mx-auto lg:mx-0 mb-7 sm:mb-9 lg:mb-8"
+            className="text-[15.5px] sm:text-[17.5px] leading-[1.6] max-w-[620px] mx-auto lg:mx-0 mb-4 sm:mb-5"
             style={{ color: "var(--text-2)" }}
           >
             Your team gets company-ready AI that knows your approved files,
             systems, and standards, so they can produce client-ready work in
             plain language without uploading or pasting anything into public
             AI tools.
-            <span className="block mt-3" style={{ color: "var(--text-3)" }}>
-              No prompt course. No power user. Their first afternoon.
-            </span>
           </p>
+
+          {/* THE ROTATING LINE, and it is deliberately the shortest thing
+              in the hero.
+
+              It used to live inside the sentence above, which ran on into
+              it and made the whole paragraph move every time the phrase
+              changed. Now it stands on its own, so the sentence above never
+              reflows and nothing under it walks about.
+
+              HEIGHT IS RESERVED FROM THE CONTENT, not from a measured
+              min-height. Every phrase is rendered once invisibly in the
+              same grid cell as the live one, so the block is always as tall
+              as the longest phrase makes it, in whatever font is actually
+              loaded, at whatever width. Add a phrase to OUTPUTS and nothing
+              needs re-measuring. Without this the buttons underneath walk
+              up and down every few seconds, and a button that moves out
+              from under a thumb is worse than no animation at all. */}
+          <div className="grid mb-7 sm:mb-9 lg:mb-8">
+            {OUTPUTS.map((phrase) => (
+              <p
+                key={phrase}
+                aria-hidden="true"
+                className="invisible col-start-1 row-start-1 pointer-events-none text-[15.5px] sm:text-[17.5px]"
+                style={{ color: "var(--text-3)" }}
+              >
+                Ask for <span style={{ fontWeight: 500 }}>{phrase}|</span>
+              </p>
+            ))}
+            <p
+              className="col-start-1 row-start-1 text-[15.5px] sm:text-[17.5px]"
+              style={{ color: "var(--text-3)" }}
+            >
+              Ask for{" "}
+              <Typewriter phrases={OUTPUTS} style={{ color: "var(--h-a)", fontWeight: 500 }} />
+            </p>
+          </div>
 
           {/* Two actions, and the order matters.
 

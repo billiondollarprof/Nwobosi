@@ -1464,12 +1464,19 @@ function ConnectorsSection() {
 
               {/* No toggle. It used to flip to "Connected" while nothing
                   happened behind it, which is a button that lies to the one
-                  person who most needs to know what is real. */}
-              {tool.state === "registered" ? (
-                <StatusPill tone="pending">Set up</StatusPill>
-              ) : (
-                <StatusPill tone="neutral">Example</StatusPill>
-              )}
+                  person who most needs to know what is real.
+
+                  EVERY ONE OF THESE SAYS THE SAME THING, 2026-09-15. It
+                  used to split them into "Set up" and "Example" off an
+                  internal state field, which told a customer which parts
+                  of our build are further along. That is our business, not
+                  theirs, and a row of tiles graded by how finished they
+                  are reads as a product in progress.
+
+                  Canva is not in this list. It has its own panel with a
+                  real Connect button, so it is the one that says
+                  Connected, and it says it because it is. */}
+              <StatusPill tone="neutral">Coming soon</StatusPill>
             </div>
           ))}
 
