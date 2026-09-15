@@ -152,6 +152,32 @@ Anthony is in charge. That is not a formality, it is the working rule.
 - Read `SESSIONS.md` next. It is the log of past sessions.
 - At the end of a session, update both files.
 
+### Write his requests down the moment he makes them
+
+Anthony, 2026-09-15: "Have you actually been recording my requests or you
+have been throwing them away and only working on the ones you remember?"
+
+He was right to ask. They were being listed back to him in chat and never
+written anywhere that survives, so `CURRENT.md` sat two days stale while
+four of his asks lived only in a conversation. That makes remembering his
+own product his job instead of Claude's, and it is the one thing he should
+never have to do.
+
+So the rule is now:
+
+- **`CURRENT.md` opens with "ANTHONY'S OPEN REQUESTS".** That section is
+  read first, before anything else in the file.
+- **A request he makes that is not built in that same turn goes in that
+  section immediately**, in his own words, with the date. Not at the end of
+  the session, when the session might not get an end.
+- **It comes off the list when it is built and checked**, never when it is
+  planned or when a plan for it has been shown to him.
+- **A decision he makes goes in the "Decided" part** of that section, so
+  nobody reopens a question he has already closed.
+
+Listing something back to him in a reply is not recording it. The reply
+disappears; the file does not.
+
 ## When the user asks for a new feature
 
 1. Repeat the request back in short, simple language. Wait for the user to confirm you understood it right.

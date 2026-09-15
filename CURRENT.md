@@ -7,6 +7,88 @@ being built toward.
 
 ---
 
+## ANTHONY'S OPEN REQUESTS
+
+**Read this before anything else in this file, and add to it the moment he
+asks for something.**
+
+Why this section exists: on 2026-09-15 Anthony asked whether his requests
+were being recorded or thrown away. They were being listed back to him in
+chat every time, and they were never written down anywhere that survives a
+session. He was right. A request that lives only in a conversation is gone
+the moment that conversation ends, and he then has to remember it and ask
+again, which makes remembering his own product his job instead of Claude's.
+
+So: when he asks for something and it is not built in that same turn, it
+goes here, in his words, with the date. It comes off the list when it is
+built and checked, not when it is planned.
+
+### Open
+
+1. **Merge the admin knowledge base "access" subsection into "usage".**
+   Asked 2026-09-15, repeated 2026-09-15. His words: "Why did you put
+   access and usage into two different sections. Besides the upper part of
+   that usage section is already in the access section. The explanation of
+   the capability can be at the bottom of the access section."
+   Not started.
+
+2. **Recheck the admin knowledge base layout on tablet and desktop.**
+   Asked 2026-09-15. His words: "your fix for iPad and desktop needs
+   checking still." A tablet and desktop layout was added on 2026-09-14
+   (md: breakpoints, tablet 1817 to 1660, desktop 1797 to 1559) and he has
+   not seen it verified since.
+   Not started.
+
+3. **Rearrange the landing page below the fold: the mechanism goes above
+   integrations.** Asked 2026-09-15. The plan was written and shown to him
+   and he asked for it again, so it is wanted, not just considered.
+   The plan: the six steps move above integrations, the standalone read
+   back section folds into them, and a four outcome block goes under it.
+   The sixth step is new, "it keeps what you accepted", per staff member
+   and never a company standard. Outcome three reads "Nothing enters your
+   work that you did not approve", which is his decision of 2026-09-15 over
+   "near zero hallucination".
+   Planned, not built.
+
+4. **Canva design creation, item 3 of the agreed order.** Asked
+   2026-09-15. Upload the asset, create the design, place and crop the
+   image, export it, LOOK at the export and correct it before handing it
+   over, and give a one click Open in Canva.
+   Token refresh built and tested. Nothing else built.
+
+5. **Per person connectors**, item 4 of the agreed order. Email, Slack,
+   Notion, each staff member connecting their own. Not started.
+
+6. **Style memory.** When a staff member downloads work they liked, save
+   that style for THAT PERSON so the next similar job does not start from
+   nothing. Per staff member only, never a company standard, and staff A
+   never gets a suggestion from staff B's work. Spec written in
+   STYLE-MEMORY.md. Not built.
+
+7. **Support as a seat, not a page.** A flag on the staff row set by an
+   admin, one door for everybody at /workspace, and a toggle between their
+   own work and the support queue. The escalation email carries a link
+   into their workspace, and support then chooses email or WhatsApp
+   depending on whether the customer gave an email. Agreed 2026-09-15, not
+   built.
+
+### Decided, so nobody reopens them
+
+- **Headline:** "Private AI that already knows your company. / Zero data
+  leakage." His choice, 2026-09-15, over "Your data never leaves your
+  cloud". The accent sits on the closing line because it is the anchor.
+- **Subtext:** his sentence, used as he wrote it. Do not trim it for
+  phones.
+- **The rotating line:** three words a switch, his length.
+- **Hallucination claim:** "Nothing enters your work that you did not
+  approve." His decision over "near zero hallucination".
+- **Connector labels:** every one says Coming soon, Drive included. Drive
+  gets picked up after the video walkthrough.
+- **Bedrock:** never named on a public page. It belongs in a per customer
+  deployment doc, because a customer may want Azure.
+
+---
+
 ## What this repository is, before anything else
 
 **StellaXafe is not SaaS.** There is no plan, no seat, no self serve tier,
