@@ -55,7 +55,6 @@ import { AmaraLockup } from "../shared/icons.jsx";
 import Photo from "../shared/Photo.jsx";
 import ContainmentSeal from "../shared/ContainmentSeal.jsx";
 import Reveal from "../shared/Reveal.jsx";
-import Typewriter from "../shared/Typewriter.jsx";
 import CardStack from "../shared/CardStack.jsx";
 import CountUp from "../shared/CountUp.jsx";
 import { BRAND, GRADIENTS, FONTS } from "../shared/tokens";
@@ -89,78 +88,6 @@ const TRUST_POINTS = [
   { full: "Useful on day one", short: "Useful day one" },
   { full: "See it in 10 minutes", short: "See it in 10 min" },
 ];
-
-/* What the product hands back. These rotate in the subtext, so a reader
-   watching for a few seconds learns the range of work it does without
-   another sentence being written. Every one is a document this really
-   produces: Word and PDF are real, decks are not.
-
-   Each one names the company's own material, and that is the point of the
-   line rather than decoration on it. The list used to read "a project
-   brief", "a board update", "a client one pager". The sentence above
-   promises that everything the company runs on is already inside it, and
-   then paid it off with documents any chatbot writes. The promise and the
-   proof have to be the same size. What no general tool can do is put this
-   quarter's numbers or last year's contract into the first draft, so that
-   is what the line says now. */
-const OUTPUTS = [
-  "a board update with this quarter's numbers",
-  "a renewal notice priced off the contract",
-  "a client one pager in your own template",
-  "a bid that reuses your own pricing",
-  "a policy summary that cites the policy",
-];
-
-/* ==========================================================================
-   HERO LINE
-   The sentence that ends on the rotating phrase, with its height reserved.
-
-   The phrase changes length, that changes how many lines the paragraph
-   takes, and that moves the buttons underneath it. A button that walks out
-   from under a thumb every few seconds is worse than no animation at all.
-
-   The earlier fix was a measured min-height in ems. That was fragile in two
-   ways: it only held at one breakpoint, and it was measured with whatever
-   font happened to be loaded, so a webfont arriving late could make the
-   longest phrase wrap onto a line the reservation did not allow for.
-
-   This reserves the space from the content instead. Every phrase is
-   rendered once, invisibly, stacked in the same grid cell as the live one,
-   so the block is always as tall as the tallest phrase makes it, in
-   whatever font is actually being used, at whatever width. Add a phrase to
-   OUTPUTS and nothing needs re-measuring.
-   ========================================================================== */
-
-/* wrapperClass has to keep this a grid at every width it is visible at.
-   Tailwind's `hidden` beats the base `grid`, which is what makes the two
-   variants below hide correctly, but a breakpoint that sets `block` beats
-   it too and silently unstacks the reservation. */
-function HeroLine({ wrapperClass = "", textClass = "", lead, tail = null }) {
-  return (
-    <div className={`grid ${wrapperClass}`}>
-      {OUTPUTS.map((phrase) => (
-        <p
-          key={phrase}
-          aria-hidden="true"
-          className={`invisible col-start-1 row-start-1 pointer-events-none ${textClass}`}
-          style={{ color: "var(--text-2)" }}
-        >
-          {lead}
-          {/* The weight and the cursor are both here, because both take
-              width and the reservation has to match what is drawn. */}
-          <span style={{ fontWeight: 500 }}>{phrase}|</span>
-          {tail}
-        </p>
-      ))}
-
-      <p className={`col-start-1 row-start-1 ${textClass}`} style={{ color: "var(--text-2)" }}>
-        {lead}
-        <Typewriter phrases={OUTPUTS} style={{ color: "var(--h-a)", fontWeight: 500 }} />
-        {tail}
-      </p>
-    </div>
-  );
-}
 
 /* The three cards under the problem heading. The first one is the whole
    thesis and has to stay first: the leak is not carelessness, it is that
@@ -550,70 +477,90 @@ export default function Landing() {
                 whatever the font measures, which matters because the display
                 face loads from the network and the fallback is a different
                 width. */}
-            {/* The accent is on a phrase, not on a line, and it took three
-                goes to land there.
+            {/* WHICH LINE CARRIES THE ACCENT, and why it is this one.
 
-                On the closing line it was twenty characters, too short a
-                run for a sweep, so it read as a colour sitting on the
-                words rather than light moving over them. Moved to the
-                whole opening sentence it had room to travel, but colour is
-                where the eye goes first, so the setup outshouted the
-                payoff and "Nothing ever leaves." arrived as an
-                afterthought.
+                The opening sentence is flat and the closing line is lit.
+                That is the way round it has to be. The opening sentence
+                sets up; the closing line is the claim. Colour is where the
+                eye lands first, so lighting the setup makes the reader
+                meet the payoff second and quieter, and the line that is
+                supposed to do the work arrives as an afterthought.
 
-                On the phrase it does both jobs. It marks the thing no
-                competitor can claim, it has a long enough run to move, and
-                the closing sentence stays flat, which is what makes it
-                land. */}
+                This comment used to describe the opposite arrangement,
+                left over from an earlier pass, and it had been wrong about
+                the code for a while. If the accent moves, rewrite this
+                with it. */}
             <span className="block">Private AI that already knows your company.</span>
             {/* This line never wraps. It is the shortest sentence on the
                 page and breaking it in two is the one thing that would make
                 it look accidental. Held to one line two ways: nowrap, and a
                 size that shrinks only if a screen is narrow enough to need
                 it, which stops nowrap from pushing the page sideways on a
-                small phone. 10.6em is the measured width of the sentence in
-                the display face. */}
+                small phone.
+
+                THE NUMBER BELOW IS MEASURED, NOT CHOSEN, and it has to be
+                measured again if these words change.
+
+                It is the width of this exact sentence, in em, in the face
+                that actually paints it. Measured with a Range around the
+                text node rather than the span's own box, because the span
+                is display:block and its box is the column, not the words.
+                Letter spacing is -0.03em here and a canvas measureText
+                ignores it, so that route reads about 7% wide.
+
+                "Zero data leakage." measures 7.80em in Sora and 6.82em in
+                the serif fallback, so the widest real case is 7.80. 8.2
+                is that plus a small margin.
+
+                The line this replaced, "Nothing ever leaves.", measures
+                8.52em and carried 10.6 here. That was over by a quarter,
+                and it was not free: it started shrinking this line below
+                341px, on phones where it already fitted, so the closing
+                line came out smaller than the one above it for no reason.
+                At 8.2 the clamp does not bite until about 274px, which is
+                narrower than any phone, so it is a guard rather than
+                something that fires in normal use. */}
             <span
               className="block"
               style={{
                 ...HEADLINE_ACCENT,
                 whiteSpace: "nowrap",
-                fontSize: "min(1em, calc((100vw - 2.75rem) / 10.6))",
+                fontSize: "min(1em, calc((100vw - 2.75rem) / 8.2))",
               }}
             >
-              Nothing ever leaves.
+              Zero data leakage.
             </span>
           </h1>
 
-          {/* The subtext carries the third thing the headline could not: that
-              this is easier than the AI they are using now, not just safer.
-              One paragraph at both sizes. The old page ran two versions and
-              the short one gave a phone reader the promise without the part
-              that earns it. */}
-          {/* Two lengths, not one paragraph squeezed down. Most people meet
-              this page on a phone, and five lines of grey text there is
-              five lines nobody reads. The phone gets the one sentence that
-              matters. Everything above tablet gets the sentence that earns
-              it as well. Both end on the same rotating phrase. */}
-          <HeroLine
-            wrapperClass="sm:hidden mb-7"
-            textClass="text-[15.5px] leading-[1.6] max-w-[330px] mx-auto"
-            lead="Everything your company runs on is already inside it. Your staff ask in plain language and get back "
-          />
-          <HeroLine
-            /* sm:grid, not sm:block. The reservation below is a grid
-               stack, and a display utility at a breakpoint overrides the
-               base one, so sm:block quietly turned the stack back into six
-               paragraphs in a column. */
-            wrapperClass="hidden sm:grid mb-9 lg:mb-8"
-            textClass="text-[17.5px] leading-[1.6] max-w-[620px] mx-auto lg:mx-0"
-            lead="Every document, template and number your company runs on is already inside it. Your staff ask in plain language and get back "
-            tail={
-              <span className="block mt-3" style={{ color: "var(--text-3)" }}>
-                No prompt course. No power user. Their first afternoon.
-              </span>
-            }
-          />
+          {/* The subtext carries the third thing the headline could not:
+              that this is easier than the AI they are using now, not just
+              safer.
+
+              ANTHONY WROTE THIS SENTENCE AND IT IS USED AS HE WROTE IT,
+              2026-09-15. One paragraph at both sizes.
+
+              What was here before was two paragraphs, a short one for
+              phones and a long one above tablet, and both ended on a
+              rotating phrase typed out letter by letter. That is gone with
+              this change, because this sentence is complete and closes on
+              a full stop. The component that did it, Typewriter, is still
+              in src/shared and can come back if it is wanted.
+
+              The closing line stays. It is a separate claim, it was not
+              part of what was replaced, and it is the only place on the
+              page that says how long any of this takes to learn. */}
+          <p
+            className="text-[15.5px] sm:text-[17.5px] leading-[1.6] max-w-[620px] mx-auto lg:mx-0 mb-7 sm:mb-9 lg:mb-8"
+            style={{ color: "var(--text-2)" }}
+          >
+            Your team gets company-ready AI that knows your approved files,
+            systems, and standards, so they can produce client-ready work in
+            plain language without uploading or pasting anything into public
+            AI tools.
+            <span className="block mt-3" style={{ color: "var(--text-3)" }}>
+              No prompt course. No power user. Their first afternoon.
+            </span>
+          </p>
 
           {/* Two actions, and the order matters.
 
