@@ -25,33 +25,22 @@ built and checked, not when it is planned.
 
 ### Open
 
-1. **Rearrange the landing page below the fold: the mechanism goes above
-   integrations.** Asked 2026-09-15. The plan was written and shown to him
-   and he asked for it again, so it is wanted, not just considered.
-   The plan: the six steps move above integrations, the standalone read
-   back section folds into them, and a four outcome block goes under it.
-   The sixth step is new, "it keeps what you accepted", per staff member
-   and never a company standard. Outcome three reads "Nothing enters your
-   work that you did not approve", which is his decision of 2026-09-15 over
-   "near zero hallucination".
-   Planned, not built.
-
-2. **Canva design creation, item 3 of the agreed order.** Asked
+1. **Canva design creation, item 3 of the agreed order.** Asked
    2026-09-15. Upload the asset, create the design, place and crop the
    image, export it, LOOK at the export and correct it before handing it
    over, and give a one click Open in Canva.
    Token refresh built and tested. Nothing else built.
 
-3. **Per person connectors**, item 4 of the agreed order. Email, Slack,
+2. **Per person connectors**, item 4 of the agreed order. Email, Slack,
    Notion, each staff member connecting their own. Not started.
 
-4. **Style memory.** When a staff member downloads work they liked, save
+3. **Style memory.** When a staff member downloads work they liked, save
    that style for THAT PERSON so the next similar job does not start from
    nothing. Per staff member only, never a company standard, and staff A
    never gets a suggestion from staff B's work. Spec written in
    STYLE-MEMORY.md. Not built.
 
-5. **Support as a seat, not a page.** A flag on the staff row set by an
+4. **Support as a seat, not a page.** A flag on the staff row set by an
    admin, one door for everybody at /workspace, and a toggle between their
    own work and the support queue. The escalation email carries a link
    into their workspace, and support then chooses email or WhatsApp
@@ -59,6 +48,18 @@ built and checked, not when it is planned.
    built.
 
 ### Done, 2026-09-15
+
+- **The landing page below the fold is rearranged.** How it works, then
+  the read back, then four outcomes, then the problem and the research,
+  then integrations. A buyer now learns what happens when their staff uses
+  this before they learn what it plugs into.
+- **A sixth step**, "It keeps what you accepted", per staff member and
+  never a company standard.
+- **The capability explainer is inside the selector.** Anthony: "that
+  place is pointless, because that capability description can just be part
+  of the selector." The panel is deleted. Pick a level and the line under
+  it says what that level is for, full sentence in the two forms and the
+  short line in the staff row, where there is no space for more.
 
 - **Access and usage merged into one tab.** Company defaults, the people
   list, recent work, then the capability explanation last, in the order an

@@ -1962,17 +1962,15 @@ export function AccessSection({ me }) {
             label="How far they can go"
             hint="The most this person's work is allowed to reach. Deeper and Deepest are held back in this demo to keep costs down. Your own deployment decides what to offer."
           >
-            <SelectInput value={inviteCeiling} onChange={(e) => setInviteCeiling(e.target.value)}>
-              {/* Only what this deployment actually allows. The two above
-                  were listed once, and choosing one would have been accepted
-                  by a screen and refused by the server, which is a promise
-                  the product cannot keep. */}
-              {OFFERED_LEVELS.map((key) => (
-                <option key={key} value={key}>
-                  {CAPABILITY_LEVELS[key].label}
-                </option>
-              ))}
-            </SelectInput>
+            {/* OFFERED_LEVELS, not every level. The two this deployment
+                holds back were listed once, and choosing one would have
+                been accepted by the screen and refused by the server,
+                which is a promise the product cannot keep. */}
+            <LevelSelect
+              value={inviteCeiling}
+              onChange={(e) => setInviteCeiling(e.target.value)}
+              options={OFFERED_LEVELS}
+            />
           </Field>
 
           <div className="sm:col-span-2">
@@ -2018,13 +2016,11 @@ export function AccessSection({ me }) {
             />
           </Field>
           <Field label="How far anyone can go by default" hint="Applies to a person with no setting of their own.">
-            <SelectInput value={defaultCeiling} onChange={(e) => setDefaultCeiling(e.target.value)}>
-              {LEVEL_ORDER.map((key) => (
-                <option key={key} value={key}>
-                  {CAPABILITY_LEVELS[key].label}
-                </option>
-              ))}
-            </SelectInput>
+            <LevelSelect
+              value={defaultCeiling}
+              onChange={(e) => setDefaultCeiling(e.target.value)}
+              options={LEVEL_ORDER}
+            />
           </Field>
         </div>
       </GlassPanel>
@@ -2067,18 +2063,14 @@ export function AccessSection({ me }) {
                   156px fits the longest label with the arrow, checked at
                   768 and 1024. */}
               <div className="shrink-0 w-[156px]">
-                <SelectInput
+                <LevelSelect
                   value={person.ceiling}
                   onChange={(e) => setCeiling(person.id, e.target.value)}
+                  options={OFFERED_LEVELS}
+                  compact
                   className="py-1.5 text-[12.5px]"
-                  aria-label={`How far ${person.name} can go`}
-                >
-                  {OFFERED_LEVELS.map((key) => (
-                    <option key={key} value={key}>
-                      {CAPABILITY_LEVELS[key].label}
-                    </option>
-                  ))}
-                </SelectInput>
+                  ariaLabel={`How far ${person.name} can go`}
+                />
               </div>
 
               <div className="shrink-0 w-[92px]">
@@ -2142,38 +2134,63 @@ export function AccessSection({ me }) {
         </div>
       </GlassPanel>
 
-      {/* ------------------------------------------------------------------
-          THE LADDER
-
-          These are levels, not products. What actually runs behind each one
-          is decided on the server and is deliberately not on this screen,
-          because a deployment may be moved to another provider and a screen
-          naming one would have to be redesigned to do it.
-
-          The old version of this panel listed four vendor model names with
-          their price per million tokens beside each. Both are gone: the
-          names for the reason above, the prices because a rate card in
-          tokens is exactly the plumbing an admin should never have to read.
-
-          Tap to open rather than hover to reveal. Half the people who open
-          this are on a phone, and a phone has no hover.
-          ------------------------------------------------------------------ */}
-      <GlassPanel className="p-6">
-        <SectionHeading hint="Work only ever reaches as far as it needs to. A quick question never costs what a full report costs.">
-          What the assistant can be allowed to do
-        </SectionHeading>
-
-        <div className="space-y-2">
-          {LEVEL_ORDER.map((key) => (
-            <LevelRow
-              key={key}
-              level={CAPABILITY_LEVELS[key]}
-              isDefault={key === defaultCeiling}
-            />
-          ))}
-        </div>
-      </GlassPanel>
     </div>
+  );
+}
+
+/* ==========================================================================
+   CHOOSING HOW FAR SOMEBODY CAN GO
+
+   WHY THE DESCRIPTION LIVES HERE AND NOT IN A PANEL OF ITS OWN
+
+   There used to be a panel at the bottom of this screen called "What the
+   assistant can be allowed to do", listing all four levels with what each
+   one is for. Anthony, 2026-09-15: "that place is pointless, because that
+   capability description can just be part of the selector... when admin
+   clicks it, he sees the line completely as he's selecting, so he knows
+   what he's selecting."
+
+   He is right, and the reason is about when a person needs the answer. An
+   admin picking a level needs to know what Deeper means AT THE MOMENT THEY
+   PICK IT. A reference block further down the page is read by nobody,
+   because by the time you scroll to it you have already chosen, and a
+   description you read after choosing has not helped you choose.
+
+   So the meaning travels with the control. Pick a level and the line under
+   it changes to say what that level is for.
+
+   TWO LENGTHS, because two places need different amounts of room.
+   A form has a column to itself and gets the full sentence. A row in the
+   staff list has three other controls beside it, so it gets the short
+   line, which is still the answer to "what is this for".
+   ========================================================================== */
+
+function LevelSelect({ value, onChange, options, compact = false, ariaLabel, className = "" }) {
+  const level = CAPABILITY_LEVELS[value];
+
+  return (
+    <>
+      <SelectInput value={value} onChange={onChange} aria-label={ariaLabel} className={className}>
+        {options.map((key) => (
+          <option key={key} value={key}>
+            {CAPABILITY_LEVELS[key].label}
+          </option>
+        ))}
+      </SelectInput>
+
+      {/* aria-live, so somebody using a screen reader hears the meaning
+          change when they change the choice. Without it the description
+          updates silently and only a person looking at it benefits. */}
+      {level && (
+        <p
+          className={compact ? "text-[11.5px] mt-1 leading-snug" : "text-[12px] mt-1.5 leading-relaxed"}
+          style={{ color: "var(--text-3)" }}
+          aria-live="polite"
+        >
+          {compact ? level.use : level.detail}
+        </p>
+      )}
+    </>
   );
 }
 
@@ -2256,58 +2273,6 @@ function StatTile({ label, value, tone = "neutral", hint }) {
    screen reader announces the state rather than reading a lone icon.
    -------------------------------------------------------------------------- */
 
-function LevelRow({ level, isDefault }) {
-  const [open, setOpen] = useState(false);
-  const detailId = `level-detail-${level.label.toLowerCase()}`;
-
-  return (
-    <div
-      className="rounded-[12px] px-3.5 py-3 border"
-      style={{ backgroundColor: "var(--surface-2)", borderColor: "var(--border)" }}
-    >
-      {/* items-start, not items-center. Centring looked right until 320px,
-          where "Almost all office work" wraps to two lines and a vertically
-          centred pill lands in the middle of them. Aligned to the top, the
-          pill and the button sit beside the name where they belong. */}
-      <div className="flex items-start gap-3">
-        <div className="flex-1 min-w-0">
-          <p className="text-[14px] font-medium" style={{ color: "var(--text-1)" }}>
-            {level.label}
-          </p>
-          <p className="text-[12.5px]" style={{ color: "var(--text-3)" }}>
-            {level.use}
-          </p>
-        </div>
-
-        {isDefault && (
-          <span className="shrink-0">
-            <StatusPill tone="accent">Default</StatusPill>
-          </span>
-        )}
-
-        <button
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          aria-expanded={open}
-          aria-controls={detailId}
-          aria-label={`What ${level.label} is for`}
-          className="shrink-0 p-1.5 rounded-[8px] transition-opacity hover:opacity-70"
-        >
-          <Info size={15} style={{ color: open ? "var(--text-1)" : "var(--text-3)" }} />
-        </button>
-      </div>
-
-      <p
-        id={detailId}
-        hidden={!open}
-        className="text-[12.5px] leading-relaxed mt-2.5 pt-2.5 border-t"
-        style={{ color: "var(--text-2)", borderColor: "var(--border)" }}
-      >
-        {level.detail}
-      </p>
-    </div>
-  );
-}
 
 function UsageMeter({ used, limit }) {
   const pct = limit > 0 ? Math.min((used / limit) * 100, 100) : 0;

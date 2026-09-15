@@ -49,6 +49,7 @@ import {
   Users,
   GraduationCap,
   Play,
+  Sparkles,
 } from "lucide-react";
 
 import { AmaraLockup } from "../shared/icons.jsx";
@@ -182,6 +183,67 @@ const STEPS = [
     title: "It writes the prompt, then builds",
     body: "One prompt, written from the brief you approved, and that prompt is the second guardrail: nothing reaches the document that you did not confirm. The finished file comes back two ways at once: a download in the chat, and a draft saved into your own storage, wherever your files already live.",
     wide: true,
+  },
+  {
+    /* THE SIXTH STEP, added 2026-09-15.
+
+       It is per staff member and it is never a company standard. Anthony
+       ruled on that directly: "nobody should set a standard for anybody,
+       not even who downloaded most. Whatever it saves is for that
+       particular staff. Staff A doesn't get a suggestion based on what
+       staff B is doing."
+
+       So the copy says "your" and never "the company's", because the
+       moment this reads as a house style it is promising something he
+       has decided not to build. */
+    icon: Sparkles,
+    title: "It keeps what you accepted",
+    body: "The work you took is remembered, for you. Ask for something like it next month and it starts from what you already approved rather than from nothing. Yours alone, never turned into a standard for anybody else.",
+    wide: true,
+  },
+];
+
+/* WHAT THE MECHANISM ABOVE ACTUALLY BUYS YOU.
+
+   Four, not ten, and each one is produced by a step you have just read
+   rather than asserted on its own. A benefit list that does not follow
+   from the mechanism above it is a list any competitor can copy in an
+   afternoon.
+
+   ON THE THIRD ONE. It used to be going to say "near zero hallucination".
+   Anthony weighed it and chose this instead on 2026-09-15. The reason is
+   that the checkpoints gate two things properly, which direction the work
+   takes and what comes in from outside, and they do not gate the prose
+   the model writes at the end. So "near zero hallucination" is a claim
+   somebody technical reads literally and finds the gap in. This says the
+   same thing about the part we actually control and cannot be argued
+   with.
+
+   ON THE FOURTH ONE, which is the one nobody else sells. The research
+   block directly below this proves it with somebody else's numbers: 79%
+   struggling to get AI adopted, 54% saying it is splitting the company.
+   Everyone in this category sells capability. Adoption is the thing
+   companies actually fail at. */
+const OUTCOMES = [
+  {
+    icon: Lock,
+    title: "Private by design",
+    body: "Your company's material stays inside your boundary, and your staff never paste it into a public AI tool to get their work done.",
+  },
+  {
+    icon: MessagesSquare,
+    title: "Nobody learns to prompt",
+    body: "Your staff describe the job in their own words. The prompt is written for them, from a brief they already approved.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Nothing enters your work that you did not approve",
+    body: "Not a source, not a direction, not a number. The checkpoints are built in rather than offered as an option somebody can skip.",
+  },
+  {
+    icon: Users,
+    title: "Your staff actually use it",
+    body: "The rounds of rewriting are what sends people back to doing it by hand. Settle the direction before the work is built and that reason goes.",
   },
 ];
 
@@ -703,30 +765,66 @@ export default function Landing() {
       </section>
 
       {/* ====================================================================
-          3. INTEGRATIONS
-          Two rows of connectors, moving in opposite directions. A static
-          row of five reads as a short list. A moving strip reads as a
-          surface things plug into.
-
-          The line under it is deliberate. None of these are wired in the
-          demo, and claiming otherwise is the fastest way to lose the
-          technical reader who reviews this page before a deal moves. What
-          is true is that a deployment connects the systems an organization
-          already runs on, and that sentence is the more confident one
-          anyway.
+          6. HOW IT WORKS
           ==================================================================== */}
 
-      <section className="relative z-10 pt-10 sm:pt-4 pb-20 sm:pb-28">
-        <div className="px-5 sm:px-8">
-          <div className="max-w-3xl mx-auto text-center mb-7">
-            <Eyebrow>Integrations</Eyebrow>
-            <p className="text-[15px] leading-relaxed mt-3.5" style={{ color: "var(--text-3)" }}>
-              Your deployment connects to the systems your organization already runs on. Scoped to
-              exactly what your team approves, and nothing beyond it.
-            </p>
+      <section className="relative z-10 px-5 sm:px-8 pb-20 sm:pb-28">
+        <Reveal className="max-w-4xl mx-auto">
+          <h2
+            className="text-[28px] sm:text-[38px] font-medium text-center mb-3 tracking-[-0.025em]"
+            style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
+          >
+            How it works
+          </h2>
+          <p className="text-[15px] text-center mb-11 max-w-lg mx-auto" style={{ color: "var(--text-3)" }}>
+Six steps. All your staff ever do is talk.
+          </p>
+
+          {/* Five steps into a two column grid leaves one on its own, so the
+              last one takes the full width. It is the step that carries the
+              guardrail, which is the point of the whole section, so the
+              extra room is where it should have gone anyway.
+
+              This is the one card section that is not stacked on a phone.
+              A stack levels every card to the tallest, which is right when
+              the cards are peers and wrong here: these are steps of very
+              different lengths, and levelling left two hundred pixels of
+              empty card under the short ones. They are also a sequence,
+              and a numbered list read straight down is the clearest way to
+              show an order. */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            {STEPS.map((step, i) => (
+              <div
+                key={step.title}
+                className={`sx-card rounded-[18px] border p-6 backdrop-blur-xl flex gap-4 h-full ${
+                  step.wide ? "sm:col-span-2" : ""
+                }`}
+                style={{ backgroundColor: "var(--surface)" }}
+              >
+                <div className="shrink-0">
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-white text-[13px] font-bold"
+                    style={{ background: GRADIENTS.brand, fontFamily: FONTS.display }}
+                  >
+                    {i + 1}
+                  </div>
+                </div>
+                <div>
+                  <h3
+                    className="text-[16px] font-bold mb-1.5 flex items-center gap-2"
+                    style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
+                  >
+                    <step.icon size={16} style={{ color: BRAND.accentSoft }} />
+                    {step.title}
+                  </h3>
+                  <p className="text-[14px] leading-relaxed" style={{ color: "var(--text-3)" }}>
+                    {step.body}
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
-        <IntegrationStrip />
+        </Reveal>
       </section>
 
       {/* ====================================================================
@@ -803,6 +901,55 @@ export default function Landing() {
               An example brief. This is the screen your staff see.
             </p>
           </Reveal>
+        </Reveal>
+      </section>
+
+      {/* ====================================================================
+          WHAT THIS CHANGES
+          The mechanism above, turned into the four things a buyer gets.
+          Added 2026-09-15 as part of moving the mechanism above the
+          integrations, which is where Anthony wanted it: a buyer needs to
+          know what happens when their staff uses this before they care
+          what it plugs into.
+          ==================================================================== */}
+
+      <section className="relative z-10 px-5 sm:px-8 pb-20 sm:pb-28">
+        <Reveal className="max-w-5xl mx-auto">
+          <SectionHead
+            eyebrow="What this changes"
+            title="Four things your company gets from that loop"
+            sub="Each one comes out of a step above rather than standing on its own."
+            center
+          />
+
+          {/* Two across from tablet up, never four. Four across puts each
+              of these in a column too narrow to say anything, and these
+              are sentences rather than labels. */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            {OUTCOMES.map((item) => (
+              <div
+                key={item.title}
+                className="sx-card rounded-[18px] border p-6 backdrop-blur-xl h-full"
+                style={{ backgroundColor: "var(--surface)" }}
+              >
+                <span
+                  className="w-10 h-10 rounded-[12px] flex items-center justify-center mb-4"
+                  style={{ backgroundColor: "var(--chip)" }}
+                >
+                  <item.icon size={18} style={{ color: BRAND.accentSoft }} />
+                </span>
+                <h3
+                  className="text-[16.5px] font-bold mb-2 leading-snug"
+                  style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
+                >
+                  {item.title}
+                </h3>
+                <p className="text-[14px] leading-relaxed" style={{ color: "var(--text-3)" }}>
+                  {item.body}
+                </p>
+              </div>
+            ))}
+          </div>
         </Reveal>
       </section>
 
@@ -952,66 +1099,30 @@ export default function Landing() {
       </section>
 
       {/* ====================================================================
-          6. HOW IT WORKS
+          3. INTEGRATIONS
+          Two rows of connectors, moving in opposite directions. A static
+          row of five reads as a short list. A moving strip reads as a
+          surface things plug into.
+
+          The line under it is deliberate. None of these are wired in the
+          demo, and claiming otherwise is the fastest way to lose the
+          technical reader who reviews this page before a deal moves. What
+          is true is that a deployment connects the systems an organization
+          already runs on, and that sentence is the more confident one
+          anyway.
           ==================================================================== */}
 
-      <section className="relative z-10 px-5 sm:px-8 pb-20 sm:pb-28">
-        <Reveal className="max-w-4xl mx-auto">
-          <h2
-            className="text-[28px] sm:text-[38px] font-medium text-center mb-3 tracking-[-0.025em]"
-            style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
-          >
-            How it works
-          </h2>
-          <p className="text-[15px] text-center mb-11 max-w-lg mx-auto" style={{ color: "var(--text-3)" }}>
-Five steps. All your staff ever do is talk.
-          </p>
-
-          {/* Five steps into a two column grid leaves one on its own, so the
-              last one takes the full width. It is the step that carries the
-              guardrail, which is the point of the whole section, so the
-              extra room is where it should have gone anyway.
-
-              This is the one card section that is not stacked on a phone.
-              A stack levels every card to the tallest, which is right when
-              the cards are peers and wrong here: these are steps of very
-              different lengths, and levelling left two hundred pixels of
-              empty card under the short ones. They are also a sequence,
-              and a numbered list read straight down is the clearest way to
-              show an order. */}
-          <div className="grid gap-4 sm:grid-cols-2">
-            {STEPS.map((step, i) => (
-              <div
-                key={step.title}
-                className={`sx-card rounded-[18px] border p-6 backdrop-blur-xl flex gap-4 h-full ${
-                  step.wide ? "sm:col-span-2" : ""
-                }`}
-                style={{ backgroundColor: "var(--surface)" }}
-              >
-                <div className="shrink-0">
-                  <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-white text-[13px] font-bold"
-                    style={{ background: GRADIENTS.brand, fontFamily: FONTS.display }}
-                  >
-                    {i + 1}
-                  </div>
-                </div>
-                <div>
-                  <h3
-                    className="text-[16px] font-bold mb-1.5 flex items-center gap-2"
-                    style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
-                  >
-                    <step.icon size={16} style={{ color: BRAND.accentSoft }} />
-                    {step.title}
-                  </h3>
-                  <p className="text-[14px] leading-relaxed" style={{ color: "var(--text-3)" }}>
-                    {step.body}
-                  </p>
-                </div>
-              </div>
-            ))}
+      <section className="relative z-10 pt-10 sm:pt-4 pb-20 sm:pb-28">
+        <div className="px-5 sm:px-8">
+          <div className="max-w-3xl mx-auto text-center mb-7">
+            <Eyebrow>Integrations</Eyebrow>
+            <p className="text-[15px] leading-relaxed mt-3.5" style={{ color: "var(--text-3)" }}>
+              Your deployment connects to the systems your organization already runs on. Scoped to
+              exactly what your team approves, and nothing beyond it.
+            </p>
           </div>
-        </Reveal>
+        </div>
+        <IntegrationStrip />
       </section>
 
       {/* ====================================================================
