@@ -80,13 +80,23 @@ import { SectionHead, GradientText, Eyebrow, Divider } from "../shared/marketing
    what it is, and an enterprise reader who meets "live in 10 minutes" on a
    deployment page discounts everything above it. Seeing it in ten minutes
    is true, and it is what the button below actually offers. */
+/* NO SHORT FORMS ANY MORE. Every phone reads the same words a desktop
+   reads.
+
+   There used to be a cut down version of each of these for narrow screens,
+   so the three could sit on one line with dividers between them. Anthony
+   read them on a phone on 2026-09-15 and said they came out as incomplete
+   statements, and he was right: "Nothing leaves" is a sentence with its
+   object removed, and "See it in 10 min" is a note to yourself, not a
+   claim to a buyer. Trimming a phrase until it fits is how a claim quietly
+   turns into a fragment.
+
+   So the phone stacks them instead, one to a line, and the dividers only
+   exist on the row that is actually a row. See the strip below. */
 const TRUST_POINTS = [
-  { full: "Nothing leaves your walls", short: "Nothing leaves" },
-  /* "Day one" alone was the short form, and shortening it deleted the word
-     carrying the claim. On a phone it read as a fragment: day one of what.
-     The verb stays in at every width. */
-  { full: "Useful on day one", short: "Useful day one" },
-  { full: "See it in 10 minutes", short: "See it in 10 min" },
+  "Nothing leaves your walls",
+  "Useful on day one",
+  "See it in 10 minutes",
 ];
 
 /* The three cards under the problem heading. The first one is the whole
@@ -471,65 +481,29 @@ export default function Landing() {
             className="text-[28px] sm:text-[42px] lg:text-[46px] xl:text-[52px] font-medium leading-[1.08] tracking-[-0.03em] mb-5 sm:mb-6 max-w-4xl mx-auto lg:mx-0"
             style={{ fontFamily: FONTS.display, color: "var(--text-1)", textWrap: "balance" }}
           >
-            {/* Each sentence is its own block rather than two lines split by
-                a <br>, so balance applies to each one on its own and neither
-                can drop a single word onto a line by itself. This holds
-                whatever the font measures, which matters because the display
-                face loads from the network and the fallback is a different
-                width. */}
-            {/* WHICH LINE CARRIES THE ACCENT, and why it is this one.
+            {/* ONE SENTENCE. There used to be a second line under this one
+                carrying the containment claim: first "Nothing ever leaves.",
+                then "Zero data leakage." Anthony took it out on 2026-09-15
+                and it does not come back.
 
-                The opening sentence is flat and the closing line is lit.
-                That is the way round it has to be. The opening sentence
-                sets up; the closing line is the claim. Colour is where the
-                eye lands first, so lighting the setup makes the reader
-                meet the payoff second and quieter, and the line that is
-                supposed to do the work arrives as an afterthought.
+                The reason is that the claim is already made twice below,
+                once in the trust line under the buttons and once in the
+                subtext, so a third go at it in the largest type on the page
+                was the same promise said three times before a reader had
+                got past the fold.
 
-                This comment used to describe the opposite arrangement,
-                left over from an earlier pass, and it had been wrong about
-                the code for a while. If the accent moves, rewrite this
-                with it. */}
-            <span className="block">Private AI that already knows your company.</span>
-            {/* This line never wraps. It is the shortest sentence on the
-                page and breaking it in two is the one thing that would make
-                it look accidental. Held to one line two ways: nowrap, and a
-                size that shrinks only if a screen is narrow enough to need
-                it, which stops nowrap from pushing the page sideways on a
-                small phone.
+                THE ACCENT SITS ON A PHRASE NOW, not on a line, and the
+                phrase is the half that no competitor can say. "Private AI"
+                is a category and every vendor in it is selling one. "Already
+                knows your company" is the product. So the setup stays flat
+                and the light falls on the part that is actually the claim.
 
-                THE NUMBER BELOW IS MEASURED, NOT CHOSEN, and it has to be
-                measured again if these words change.
-
-                It is the width of this exact sentence, in em, in the face
-                that actually paints it. Measured with a Range around the
-                text node rather than the span's own box, because the span
-                is display:block and its box is the column, not the words.
-                Letter spacing is -0.03em here and a canvas measureText
-                ignores it, so that route reads about 7% wide.
-
-                "Zero data leakage." measures 7.80em in Sora and 6.82em in
-                the serif fallback, so the widest real case is 7.80. 8.2
-                is that plus a small margin.
-
-                The line this replaced, "Nothing ever leaves.", measures
-                8.52em and carried 10.6 here. That was over by a quarter,
-                and it was not free: it started shrinking this line below
-                341px, on phones where it already fitted, so the closing
-                line came out smaller than the one above it for no reason.
-                At 8.2 the clamp does not bite until about 274px, which is
-                narrower than any phone, so it is a guard rather than
-                something that fires in normal use. */}
-            <span
-              className="block"
-              style={{
-                ...HEADLINE_ACCENT,
-                whiteSpace: "nowrap",
-                fontSize: "min(1em, calc((100vw - 2.75rem) / 8.2))",
-              }}
-            >
-              Zero data leakage.
-            </span>
+                Nothing here is nowrap any more. The line that needed a
+                measured guard against wrapping has gone, and this sentence
+                is meant to wrap: textWrap balance splits it evenly and
+                never leaves one word stranded on its own line. */}
+            <span>Private AI that </span>
+            <span style={HEADLINE_ACCENT}>already knows your company.</span>
           </h1>
 
           {/* The subtext carries the third thing the headline could not:
@@ -597,24 +571,32 @@ export default function Landing() {
             </GlassButton>
           </div>
 
-          {/* One line, always. The separators are their own children rather
-              than living inside each item, and nothing wraps, so a divider
-              can never end up stranded at the start of a second row. */}
+          {/* A column on a phone, a row from tablet up.
+
+              The row is the same as it always was: one line, dividers as
+              their own children rather than tucked inside each item, and
+              nothing wrapping, so a divider can never be left stranded at
+              the start of a second row.
+
+              The column is what replaced the cut down phrases. Three full
+              sentences will not fit across a phone, and the old answer was
+              to shorten them until they did, which broke them. Stacking
+              them keeps every word. It also means there is no divider to
+              stand between them, which is why the divider below is drawn
+              only at sm and up: a vertical bar between two stacked lines
+              would be pointing the wrong way. */}
           <div
-            className="flex items-center justify-center lg:justify-start gap-2.5 sm:gap-3 text-[11.5px] sm:text-[12.5px]"
+            className="flex flex-col sm:flex-row items-center lg:items-start sm:items-center justify-center lg:justify-start gap-1.5 sm:gap-3 text-[12px] sm:text-[12.5px]"
             style={{ color: "var(--text-3)" }}
           >
             {TRUST_POINTS.map((point, i) => (
-              <Fragment key={point.full}>
+              <Fragment key={point}>
                 {i > 0 && (
-                  <span aria-hidden="true" style={{ opacity: 0.35 }}>
+                  <span className="hidden sm:inline" aria-hidden="true" style={{ opacity: 0.35 }}>
                     |
                   </span>
                 )}
-                <span className="whitespace-nowrap">
-                  <span className="sm:hidden">{point.short}</span>
-                  <span className="hidden sm:inline">{point.full}</span>
-                </span>
+                <span className="whitespace-nowrap">{point}</span>
               </Fragment>
             ))}
           </div>

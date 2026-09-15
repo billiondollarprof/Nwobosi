@@ -25,13 +25,28 @@
    the other end does not select the token columns at all, so there is
    nothing here to leak even by accident.
 
+   CONNECTED IS NOT A ONE WAY DOOR
+   -------------------------------
+   Anthony connected the wrong Canva account on 2026-09-15 and then found
+   there was nothing here that could undo it. Canva offered him its own
+   account switcher, the switcher would not take, and the only other
+   control on this panel was Check again, which just re-reads what is
+   already there.
+
+   So the main button flips. Not connected, it says Connect Canva.
+   Connected, it says Disconnect. Pressing Disconnect does not disconnect
+   straight away: it asks first, in the panel, and the confirm is the one
+   that acts. That is the whole of the warning, because throwing away a
+   connection is easy to do by accident and tedious to put back, but it is
+   not dangerous enough to deserve a dialog over the top of the screen.
+
    READ TOP TO BOTTOM
      1. Talking to the function
      2. The panel
    ========================================================================== */
 
 import { useEffect, useState } from "react";
-import { ExternalLink, RefreshCw } from "lucide-react";
+import { ExternalLink, RefreshCw, Unplug } from "lucide-react";
 import { supabase } from "./supabase.js";
 import { FUNCTIONS } from "./config.js";
 import { CanvaIconGlyph } from "./icons.jsx";
@@ -102,6 +117,12 @@ export default function CanvaConnect() {
   const [status, setStatus] = useState({ state: "loading" });
   const [starting, setStarting] = useState(false);
   const [problem, setProblem] = useState("");
+
+  /* Two flags, not one. `asking` is the warning being shown, `dropping` is
+     the request being made. Rolled into one they cannot be told apart, and
+     the button spends the request looking like it is still asking. */
+  const [asking, setAsking] = useState(false);
+  const [dropping, setDropping] = useState(false);
 
   async function refresh() {
     setStatus({ state: "loading" });
@@ -207,6 +228,28 @@ export default function CanvaConnect() {
     window.location.assign(result.url);
   }
 
+  /* Deleting the token row here, and nothing on Canva's side. See the note
+     in the function: we cannot revoke their grant, so the panel says so
+     rather than letting somebody believe we did more than we did. */
+  async function disconnect() {
+    if (dropping) return;
+    setDropping(true);
+    setProblem("");
+
+    const result = await askCanva("disconnect");
+
+    setDropping(false);
+    setAsking(false);
+
+    if (!result.ok) {
+      if (result.denied) setStatus({ state: "denied" });
+      setProblem(result.reason ?? "Could not disconnect that. Try again.");
+      return;
+    }
+
+    setStatus({ state: "off" });
+  }
+
   return (
     <div
       className="rounded-[14px] border p-5"
@@ -268,27 +311,62 @@ export default function CanvaConnect() {
            where a braced JSX comment would be a second expression and the
            build refuses it. That is what broke it the first time. */
         <div className="flex flex-wrap gap-2">
-          <PrimaryButton
-            onClick={connect}
-            disabled={starting}
-            className="flex-1 min-w-[150px] flex items-center justify-center gap-2"
-          >
-            {starting ? <Spinner size={14} /> : <ExternalLink size={14} />}
-            {starting
-              ? "Taking you to Canva"
-              : status.state === "connected"
-              ? "Connect a different account"
-              : "Connect Canva"}
-          </PrimaryButton>
+          {asking ? (
+            /* The warning, and it is the whole warning. Two buttons that
+               say what they do, with the safe one first so the thumb
+               nearest the edge is not the one that throws the connection
+               away. No dialog over the screen: this is reversible in about
+               fifteen seconds and a modal for it would be theatre. */
+            <>
+              <button
+                onClick={() => setAsking(false)}
+                disabled={dropping}
+                className="flex-1 min-w-[130px] rounded-[12px] border px-4 py-2.5 text-[13.5px] transition-opacity hover:opacity-80"
+                style={{ borderColor: "var(--border-2)", color: "var(--text-2)" }}
+              >
+                Keep it connected
+              </button>
+              <button
+                onClick={disconnect}
+                disabled={dropping}
+                className="flex-1 min-w-[150px] rounded-[12px] border px-4 py-2.5 text-[13.5px] font-medium flex items-center justify-center gap-2 transition-opacity hover:opacity-80"
+                style={{ borderColor: "var(--caution)", color: "var(--caution)" }}
+              >
+                {dropping ? <Spinner size={14} /> : <Unplug size={14} />}
+                {dropping ? "Disconnecting" : "Yes, disconnect"}
+              </button>
+            </>
+          ) : (
+            <>
+              <PrimaryButton
+                onClick={status.state === "connected" ? () => setAsking(true) : connect}
+                disabled={starting}
+                className="flex-1 min-w-[150px] flex items-center justify-center gap-2"
+              >
+                {starting ? (
+                  <Spinner size={14} />
+                ) : status.state === "connected" ? (
+                  <Unplug size={14} />
+                ) : (
+                  <ExternalLink size={14} />
+                )}
+                {starting
+                  ? "Taking you to Canva"
+                  : status.state === "connected"
+                  ? "Disconnect"
+                  : "Connect Canva"}
+              </PrimaryButton>
 
-          <button
-            onClick={refresh}
-            className="flex-1 min-w-[130px] rounded-[12px] border px-4 py-2.5 text-[13.5px] flex items-center justify-center gap-2 transition-opacity hover:opacity-80"
-            style={{ borderColor: "var(--border-2)", color: "var(--text-2)" }}
-          >
-            <RefreshCw size={13} />
-            Check again
-          </button>
+              <button
+                onClick={refresh}
+                className="flex-1 min-w-[130px] rounded-[12px] border px-4 py-2.5 text-[13.5px] flex items-center justify-center gap-2 transition-opacity hover:opacity-80"
+                style={{ borderColor: "var(--border-2)", color: "var(--text-2)" }}
+              >
+                <RefreshCw size={13} />
+                Check again
+              </button>
+            </>
+          )}
         </div>
       )}
 
@@ -298,8 +376,10 @@ export default function CanvaConnect() {
           job. */}
       {starting === false && status.state !== "loading" && status.state !== "denied" && (
         <p className="text-[12px] mt-3 leading-relaxed" style={{ color: "var(--text-3)" }}>
-          {status.state === "connected"
-            ? "Connecting again replaces the account that is connected now."
+          {asking
+            ? "Disconnecting forgets the account here. It does not sign you out of Canva, so remove StellaXafe in your Canva settings too if you want the access gone from their side as well."
+            : status.state === "connected"
+            ? "To use a different Canva account, disconnect first, then connect again and pick that account on Canva."
             : "You will approve on Canva and land back on this screen."}
         </p>
       )}

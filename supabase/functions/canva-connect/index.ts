@@ -35,17 +35,35 @@
    The dashboard's verify_jwt toggle stays OFF, as on every function in this
    project. See CURRENT.md.
 
-   TWO JOBS, AND THE SAFE ONE IS THE DEFAULT
-   -----------------------------------------
-   The admin screen needs two things from here: "is Canva connected" and
-   "start connecting it". They are one function because the second is
-   meaningless without the first, and because a second function is a second
-   deploy and a second place to keep the admin check in step.
+   THREE JOBS, AND THE SAFE ONE IS THE DEFAULT
+   -------------------------------------------
+   The admin screen needs three things from here: "is Canva connected",
+   "start connecting it", and "forget the account that is connected". They
+   are one function because the last two are meaningless without the first,
+   and because a second function is a second deploy and a second place to
+   keep the admin check in step.
 
-   `intent` picks. Anything that is not exactly "start" is treated as a
-   status request, so a malformed body, a typo, or an old browser reads the
-   state rather than quietly creating a half finished handshake nobody asked
-   for. The dangerous one has to be asked for by name.
+   `intent` picks. Anything that is not exactly "start" or "disconnect" is
+   treated as a status request, so a malformed body, a typo, or an old
+   browser reads the state rather than quietly starting a handshake or
+   throwing a connection away. Both of the jobs that change something have
+   to be asked for by name.
+
+   WHY DISCONNECT EXISTS AT ALL
+   ----------------------------
+   Anthony connected the wrong Canva account on 2026-09-15 and then had no
+   way back. Canva itself offered him an account switcher and the switcher
+   would not take, so the only control left on our side was "Check again",
+   which only re-reads what is already there. A connection somebody can
+   make and cannot unmake is a trap, and the way out of it has to live on
+   the same panel that made it.
+
+   What it deletes is the token row, and that is all it deletes. It does
+   not tell Canva anything and it does not revoke the grant on Canva's
+   side. The person still has the option to remove our integration from
+   their own Canva settings, and they should be told that, because after
+   this the tokens are gone from here and we could not revoke them even if
+   we wanted to.
 
    STATUS NEVER RETURNS A TOKEN. Not the access token, not the refresh
    token, not a prefix of either. It returns whether a row exists, when it
@@ -157,6 +175,7 @@ Deno.serve(async (req: Request) => {
     const body = await req.json() as Record<string, unknown>;
     if (body && typeof body === "object") {
       if (body.intent === "start") intent = "start";
+      if (body.intent === "disconnect") intent = "disconnect";
       /* Checked against the list of addresses this product is served from,
          never trusted. A rejected address is simply null, and the callback
          falls back to a page it controls. See _shared/returnTo.ts for why
@@ -204,7 +223,7 @@ Deno.serve(async (req: Request) => {
      The columns picked here are deliberate. access_token and refresh_token
      are NOT among them, so there is no path from this response to a secret
      even if somebody later widens what the screen shows. */
-  if (intent !== "start") {
+  if (intent === "status") {
     const { data: row, error: readError } = await admin
       .from("integration_tokens")
       .select("provider, scopes, connected_at, expires_at")
@@ -228,7 +247,45 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  /* --- JOB TWO: start connecting -------------------------------------- */
+  /* --- JOB TWO: forget the connected account ---------------------------
+
+     A delete, and it is the only destructive thing this function does. The
+     admin check above has already run, so by here we know an admin asked
+     for it by name.
+
+     It succeeds when there was nothing to delete. An admin pressing this
+     wants to end up disconnected, and they are disconnected either way, so
+     reporting "there was no row" as a failure would be the function
+     telling them off for arriving at the outcome they asked for. */
+  if (intent === "disconnect") {
+    const { error: dropError } = await admin
+      .from("integration_tokens")
+      .delete()
+      .eq("provider", "canva");
+
+    if (dropError) {
+      console.error("could not disconnect canva", dropError.message);
+      return json({ ok: false, reason: "Could not disconnect that. Try again." }, 500);
+    }
+
+    /* Any half finished handshake goes too. Somebody who disconnects has
+       changed their mind about the account they were connecting, so a
+       pending row from a minute ago is only there to complete into the
+       account they just walked away from.
+
+       Its own try, and its failure is ignored. The disconnect has already
+       worked by this point, and tidying must never turn a success into an
+       error message. */
+    try {
+      await admin.from("oauth_pending").delete().eq("provider", "canva");
+    } catch (err) {
+      console.error("could not clear pending canva handshakes", err);
+    }
+
+    return json({ ok: true, connected: false });
+  }
+
+  /* --- JOB THREE: start connecting ------------------------------------- */
 
   const clientId = Deno.env.get("CANVA_CLIENT_ID");
   if (!clientId) {

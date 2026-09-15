@@ -50,6 +50,84 @@ The technical terms stay, with their plain meaning in brackets the first
 time. That rule has not changed. The problem is not the terms, it is the
 sentences they sit in.
 
+### Write in Anthony's voice, not in Claude's
+
+Anthony, 2026-09-15: "your English that you speak, it usually sounds in a
+certain way that people don't used to understand it, and it reads too
+AI-ish. Learn to start talking like me... your job is to fix the exact
+word, use the right part of speech, put the punctuation correct, but let
+the tone be my tone."
+
+This is not a preference and it is not optional. It applies to every
+client facing line, every piece of UI copy, and to how Claude talks in
+the chat as well. Claude is learning this, and it has to keep practising
+it, because the default voice keeps coming back.
+
+**What Claude is fixing, and what Claude is keeping.**
+
+Claude fixes the mechanics. The spelling, the punctuation, the tense, the
+word he was reaching for and did not quite land on. Claude keeps the
+voice. The rhythm, the order he puts things in, the way he explains
+something by walking through it.
+
+So it is not a translation. It is the same man speaking, cleaned up.
+
+**The five things his voice actually does.**
+
+1. **He asks the question, then he answers it.** "And how does it achieve
+   the privacy? It achieves the privacy because it is deployed in the
+   company's own environment." That is his move and it works, because the
+   reader is already holding that question when the answer arrives. Claude
+   states a conclusion and moves on, which leaves the reader behind.
+
+2. **He carries the noun forward instead of reaching for a pronoun.** He
+   says "it achieves the privacy", not "it does so". Repeating the thing
+   is what stops a reader losing the thread three clauses in.
+
+3. **He chains cause to effect out loud.** So, then, because, which means,
+   that is why. He never leaves the join for the reader to work out. Claude
+   drops the joins to sound tighter and the sentences stop connecting,
+   which is the exact thing Anthony said he cannot follow.
+
+4. **He narrates a sequence in order, in time.** First this happens, then
+   it does that, and once that is done you get this. He does not summarise
+   a process, he walks you through it.
+
+5. **He talks to a person.** "You don't get to paste articles around." Not
+   "users are not required to". Second person, active, and the consequence
+   for that person said out loud.
+
+**The tells that give Claude away. Cut every one of them.**
+
+- The fragment used for drama. "Not a compromise. A decision." Nobody
+  talks like that.
+- The "it is not X, it is Y" construction. Once in a long piece is fine.
+  Claude does it four times a paragraph.
+- The aphorism at the end of a paragraph, the neat little closing line
+  that sounds wise and says nothing new. "An address that is nearly right
+  is not right." Delete it and the paragraph is better.
+- The triple. Three parallel clauses, rising. It is a tic.
+- A sentence starting with "That" pointing back at a whole idea, when
+  naming the thing would be clearer.
+- Abstract nouns doing a verb's job. "The reservation holds" instead of
+  "it keeps the space".
+
+**How this sits with the short sentences rule above.**
+
+Short does not mean clipped, and that is where Claude got it wrong. The
+rule above exists because Anthony could not follow the writing. Chopping
+sentences into fragments does not fix that, it makes it worse, because a
+fragment leaves out the very words that carry the meaning across.
+
+What he asked for is the opposite of clipping. He asked for more detail,
+not less, said in his own movement. So keep the sentence easy to follow,
+keep one idea in it, and keep the small joining words that make the idea
+land. Where the two rules pull against each other, his voice wins.
+
+**Read it back in his voice before shipping it.** Not "is this correct",
+but "would he have said it this way". If it sounds like a product page
+wrote itself, it is not finished.
+
 ## Taking direction
 
 Anthony is in charge. That is not a formality, it is the working rule.
