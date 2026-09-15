@@ -24,7 +24,6 @@ import {
   Trash2,
   UploadCloud,
   Users,
-  Gauge,
   AlertCircle,
   AlertTriangle,
   X,
@@ -104,8 +103,23 @@ import {
 const TABS = [
   { id: "knowledge", label: "Knowledge", icon: BookOpen },
   { id: "connectors", label: "Connectors", icon: Link2 },
+  /* ONE TAB, NOT TWO, since 2026-09-15.
+
+     Anthony: "the subsection access is supposed to be merged with usage
+     since some things are repeated there... The explanation of the
+     capability can be at the bottom of the access section."
+
+     The overlap was real. Usage opened with Company defaults, which set
+     the daily limit and the capability ceiling for everybody, and the
+     people list in Access set those same two things per person. So to
+     answer one question, what is this person allowed to do, an admin had
+     to hold two screens in their head.
+
+     Now it reads in the order somebody actually works. Who is asking to
+     get in, invite them, set the default for everyone, tune the people
+     who need tuning, see what they used, and last the explanation of what
+     the levels mean, which is reference rather than a control. */
   { id: "access", label: "Access", icon: Users },
-  { id: "usage", label: "Usage", icon: Gauge },
 ];
 
 /* ==========================================================================
@@ -282,7 +296,6 @@ export default function Admin() {
           {tab === "knowledge" && <KnowledgeSection me={me} loading={loadingMe} />}
           {tab === "connectors" && <ConnectorsSection />}
           {tab === "access" && <AccessSection me={me} />}
-          {tab === "usage" && <UsageSection me={me} />}
         </div>
       </div>
     </PageShell>
@@ -1705,9 +1718,33 @@ function ConnectorsSection() {
    list. Nobody gets in without an invite or an approved request.
    ========================================================================== */
 
-function AccessSection({ me }) {
+/* Exported for scripts/__harness, which renders this one section on its
+   own so the layout can be checked at every width without a signed in
+   workspace. Nothing else imports it. */
+export function AccessSection({ me }) {
   const [requests, setRequests] = useState([]);
   const [staff, setStaff] = useState([]);
+
+  /* Real work, or nothing. A usage panel showing invented spend is the
+     one number an admin would act on, so it is the last place to put a
+     placeholder. */
+  const [history, setHistory] = useState([]);
+
+  useEffect(() => {
+    if (!me?.company?.id) return;
+    let alive = true;
+    (async () => {
+      const rows = await listWork(me.company.id);
+      if (!alive) return;
+      setHistory(rows);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [me?.company?.id]);
+
+  const [defaultLimit, setDefaultLimit] = useState(5);
+  const [defaultCeiling, setDefaultCeiling] = useState(DEFAULT_LEVEL);
 
   /* The real people on this company, read under the admin's own
      identity so row level security decides who is visible. Email is not
@@ -1965,6 +2002,33 @@ function AccessSection({ me }) {
       </GlassPanel>
 
       {/* Staff list */}
+      {/* Company defaults */}
+      <GlassPanel className="p-6">
+        <SectionHeading hint="Applies to every new staff member automatically. Anyone without a custom setting falls back to this.">
+          Company defaults
+        </SectionHeading>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Outputs per day" hint="Raise or lower it for everyone at once.">
+            <TextInput
+              type="number"
+              min="1"
+              value={defaultLimit}
+              onChange={(e) => setDefaultLimit(e.target.value)}
+            />
+          </Field>
+          <Field label="How far anyone can go by default" hint="Applies to a person with no setting of their own.">
+            <SelectInput value={defaultCeiling} onChange={(e) => setDefaultCeiling(e.target.value)}>
+              {LEVEL_ORDER.map((key) => (
+                <option key={key} value={key}>
+                  {CAPABILITY_LEVELS[key].label}
+                </option>
+              ))}
+            </SelectInput>
+          </Field>
+        </div>
+      </GlassPanel>
+
       <GlassPanel className="p-6">
         <SectionHeading hint="Change anyone's model ceiling or their daily limit at any time, or revoke their access. You cannot revoke yourself.">
           Staff
@@ -1993,7 +2057,16 @@ function AccessSection({ me }) {
                 </p>
               </div>
 
-              <div className="shrink-0 w-[132px]">
+              {/* 132px was measured against "Standard" and never against
+                  "Conversational", which is the longest label in the list
+                  and the one that got cut to "Conversatior" on a tablet.
+
+                  A select shows its own arrow inside that width, so the
+                  text has about 18px less than the box suggests, which is
+                  why it looked fine in the markup and wrong on screen.
+                  156px fits the longest label with the arrow, checked at
+                  768 and 1024. */}
+              <div className="shrink-0 w-[156px]">
                 <SelectInput
                   value={person.ceiling}
                   onChange={(e) => setCeiling(person.id, e.target.value)}
@@ -2028,98 +2101,6 @@ function AccessSection({ me }) {
           ))}
         </div>
       </GlassPanel>
-    </div>
-  );
-}
-
-/* ==========================================================================
-   5. PERMISSIONS AND USAGE
-   Company defaults, the model ladder, and what each person has spent.
-   ========================================================================== */
-
-function UsageSection({ me }) {
-  /* Real work, or nothing. A usage panel showing invented spend is the
-     one number an admin would act on, so it is the last place to put a
-     placeholder. */
-  const [history, setHistory] = useState([]);
-
-  useEffect(() => {
-    if (!me?.company?.id) return;
-    let alive = true;
-    (async () => {
-      const rows = await listWork(me.company.id);
-      if (!alive) return;
-      setHistory(rows);
-    })();
-    return () => {
-      alive = false;
-    };
-  }, [me?.company?.id]);
-
-  const [defaultLimit, setDefaultLimit] = useState(5);
-  const [defaultCeiling, setDefaultCeiling] = useState(DEFAULT_LEVEL);
-
-  return (
-    <div className="space-y-5" style={{ animation: "sx-rise 0.3s ease" }}>
-      {/* Company defaults */}
-      <GlassPanel className="p-6">
-        <SectionHeading hint="Applies to every new staff member automatically. Anyone without a custom setting falls back to this.">
-          Company defaults
-        </SectionHeading>
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Outputs per day" hint="Raise or lower it for everyone at once.">
-            <TextInput
-              type="number"
-              min="1"
-              value={defaultLimit}
-              onChange={(e) => setDefaultLimit(e.target.value)}
-            />
-          </Field>
-          <Field label="How far anyone can go by default" hint="Applies to a person with no setting of their own.">
-            <SelectInput value={defaultCeiling} onChange={(e) => setDefaultCeiling(e.target.value)}>
-              {LEVEL_ORDER.map((key) => (
-                <option key={key} value={key}>
-                  {CAPABILITY_LEVELS[key].label}
-                </option>
-              ))}
-            </SelectInput>
-          </Field>
-        </div>
-      </GlassPanel>
-
-      {/* ------------------------------------------------------------------
-          THE LADDER
-
-          These are levels, not products. What actually runs behind each one
-          is decided on the server and is deliberately not on this screen,
-          because a deployment may be moved to another provider and a screen
-          naming one would have to be redesigned to do it.
-
-          The old version of this panel listed four vendor model names with
-          their price per million tokens beside each. Both are gone: the
-          names for the reason above, the prices because a rate card in
-          tokens is exactly the plumbing an admin should never have to read.
-
-          Tap to open rather than hover to reveal. Half the people who open
-          this are on a phone, and a phone has no hover.
-          ------------------------------------------------------------------ */}
-      <GlassPanel className="p-6">
-        <SectionHeading hint="Work only ever reaches as far as it needs to. A quick question never costs what a full report costs.">
-          What the assistant can be allowed to do
-        </SectionHeading>
-
-        <div className="space-y-2">
-          {LEVEL_ORDER.map((key) => (
-            <LevelRow
-              key={key}
-              level={CAPABILITY_LEVELS[key]}
-              isDefault={key === defaultCeiling}
-            />
-          ))}
-        </div>
-      </GlassPanel>
-
       {/* History */}
       <GlassPanel className="p-6">
         <SectionHeading hint="What each person worked on, and what it drew down.">
@@ -2157,6 +2138,38 @@ function UsageSection({ me }) {
 
               <StatusPill tone="neutral">{SKILL_LABELS[row.skill] ?? "Document"}</StatusPill>
             </div>
+          ))}
+        </div>
+      </GlassPanel>
+
+      {/* ------------------------------------------------------------------
+          THE LADDER
+
+          These are levels, not products. What actually runs behind each one
+          is decided on the server and is deliberately not on this screen,
+          because a deployment may be moved to another provider and a screen
+          naming one would have to be redesigned to do it.
+
+          The old version of this panel listed four vendor model names with
+          their price per million tokens beside each. Both are gone: the
+          names for the reason above, the prices because a rate card in
+          tokens is exactly the plumbing an admin should never have to read.
+
+          Tap to open rather than hover to reveal. Half the people who open
+          this are on a phone, and a phone has no hover.
+          ------------------------------------------------------------------ */}
+      <GlassPanel className="p-6">
+        <SectionHeading hint="Work only ever reaches as far as it needs to. A quick question never costs what a full report costs.">
+          What the assistant can be allowed to do
+        </SectionHeading>
+
+        <div className="space-y-2">
+          {LEVEL_ORDER.map((key) => (
+            <LevelRow
+              key={key}
+              level={CAPABILITY_LEVELS[key]}
+              isDefault={key === defaultCeiling}
+            />
           ))}
         </div>
       </GlassPanel>

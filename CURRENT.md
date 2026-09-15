@@ -25,21 +25,7 @@ built and checked, not when it is planned.
 
 ### Open
 
-1. **Merge the admin knowledge base "access" subsection into "usage".**
-   Asked 2026-09-15, repeated 2026-09-15. His words: "Why did you put
-   access and usage into two different sections. Besides the upper part of
-   that usage section is already in the access section. The explanation of
-   the capability can be at the bottom of the access section."
-   Not started.
-
-2. **Recheck the admin knowledge base layout on tablet and desktop.**
-   Asked 2026-09-15. His words: "your fix for iPad and desktop needs
-   checking still." A tablet and desktop layout was added on 2026-09-14
-   (md: breakpoints, tablet 1817 to 1660, desktop 1797 to 1559) and he has
-   not seen it verified since.
-   Not started.
-
-3. **Rearrange the landing page below the fold: the mechanism goes above
+1. **Rearrange the landing page below the fold: the mechanism goes above
    integrations.** Asked 2026-09-15. The plan was written and shown to him
    and he asked for it again, so it is wanted, not just considered.
    The plan: the six steps move above integrations, the standalone read
@@ -50,27 +36,38 @@ built and checked, not when it is planned.
    "near zero hallucination".
    Planned, not built.
 
-4. **Canva design creation, item 3 of the agreed order.** Asked
+2. **Canva design creation, item 3 of the agreed order.** Asked
    2026-09-15. Upload the asset, create the design, place and crop the
    image, export it, LOOK at the export and correct it before handing it
    over, and give a one click Open in Canva.
    Token refresh built and tested. Nothing else built.
 
-5. **Per person connectors**, item 4 of the agreed order. Email, Slack,
+3. **Per person connectors**, item 4 of the agreed order. Email, Slack,
    Notion, each staff member connecting their own. Not started.
 
-6. **Style memory.** When a staff member downloads work they liked, save
+4. **Style memory.** When a staff member downloads work they liked, save
    that style for THAT PERSON so the next similar job does not start from
    nothing. Per staff member only, never a company standard, and staff A
    never gets a suggestion from staff B's work. Spec written in
    STYLE-MEMORY.md. Not built.
 
-7. **Support as a seat, not a page.** A flag on the staff row set by an
+5. **Support as a seat, not a page.** A flag on the staff row set by an
    admin, one door for everybody at /workspace, and a toggle between their
    own work and the support queue. The escalation email carries a link
    into their workspace, and support then chooses email or WhatsApp
    depending on whether the customer gave an email. Agreed 2026-09-15, not
    built.
+
+### Done, 2026-09-15
+
+- **Access and usage merged into one tab.** Company defaults, the people
+  list, recent work, then the capability explanation last, in the order an
+  admin actually works. The Usage tab is gone.
+- **Tablet and desktop checked**, at 768x1024, 1024x768 and 1440x900, both
+  themes. It found a real bug: the level dropdown was 132px, measured
+  against "Standard" and never against "Conversational", so it read
+  "Conversatior" on a tablet. Now 156px, and every label is measured
+  against its own box at all four widths.
 
 ### Decided, so nobody reopens them
 
