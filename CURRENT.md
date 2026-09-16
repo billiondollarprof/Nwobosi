@@ -25,11 +25,19 @@ built and checked, not when it is planned.
 
 ### Open
 
-1. **Canva design creation, item 3 of the agreed order.** Asked
-   2026-09-15. Upload the asset, create the design, place and crop the
-   image, export it, LOOK at the export and correct it before handing it
-   over, and give a one click Open in Canva.
-   Token refresh built and tested. Nothing else built.
+1. **ONE THING IS WAITING ON HIM AND NOTHING ELSE IS: the assistant
+   function has to be redeployed.** The fix for the cut off replies and
+   for the search refusal is written, type checked and pushed to
+   `testing`, and it is NOT live. The deployed `assistant` is still v14.
+   Until it is deployed, the chat still stops mid sentence and still
+   refuses to search when asked. Three steps are in the reply of
+   2026-09-16 and they take about two minutes.
+
+   Why Claude did not deploy it itself: deploying through the tools means
+   retyping all 73,000 characters of the function by hand, and a single
+   slipped character in a file that handles every Claude call and the
+   company's money is not worth the two minutes it saves. The repo copy is
+   correct and checked. Deploying it from the console cannot go wrong.
 
 2. **Per person connectors**, item 4 of the agreed order. Email, Slack,
    Notion, each staff member connecting their own. Not started.
@@ -40,14 +48,73 @@ built and checked, not when it is planned.
    never gets a suggestion from staff B's work. Spec written in
    STYLE-MEMORY.md. Not built.
 
-4. **Support as a seat, not a page.** A flag on the staff row set by an
-   admin, one door for everybody at /workspace, and a toggle between their
-   own work and the support queue. The escalation email carries a link
-   into their workspace, and support then chooses email or WhatsApp
-   depending on whether the customer gave an email. Agreed 2026-09-15, not
-   built.
+### Logged on 2026-09-16, and he said not to build them today
+
+He asked for these to be written down rather than built, to save credits
+before the video. They are real and they are his decisions, not ideas.
+
+4. **The WhatsApp quick reply clash.** The same number that runs the
+   support assistant is also the number the automated follow up templates
+   go out on, and those templates carry quick reply buttons. So when a
+   customer taps a quick reply, it lands in the same thread, and the
+   assistant answers it as though it were a question. Worse, the assistant
+   is trained for the business and not for the business's guests, so what
+   it says back can be wrong for that person. His own fallback, decided:
+   a separate phone number, after the video.
+
+5. **Where a support reply goes, WhatsApp or Gmail.** A toggle, chosen per
+   thread by the person answering. WhatsApp only accepts a free form reply
+   inside 24 hours of the customer's last message, and he wants the cap
+   set at 12 hours rather than 24, so nobody writes a long answer and then
+   watches it bounce. Outside the window it goes by email.
+
+6. **The old message response area in the admin comes out.** Support now
+   has its own route and its own queue, so two places to answer the same
+   customer is one place too many.
+
+7. **The slow send.** He saw a send take longer than it should. Possibly
+   his network, possibly not. Watch it and see whether it repeats.
 
 ### Done, 2026-09-16
+
+- **Support as a seat, not a page.** Built and checked. The flag is on the
+  staff row, the admin sets it, one door for everybody at /workspace, and
+  `WorkSwitch` puts a toggle between their own work and the queue. It
+  renders nothing at all for somebody without the flag.
+- **The support queue shows the flagged question, not the whole thread.**
+  His words: "why not the actual message that was flagged instead of the
+  entire conversation?" The `escalations` table already held it, because
+  an escalation is raised per question and the row keeps the customer's
+  own words. So that one sentence is what the screen shows, open ones
+  first with an amber edge, and the rest of the conversation is behind
+  "Read the whole conversation (9)". Where a thread has no escalation row
+  the last customer message stands in, so the panel is never blank.
+  Clicked through: hidden by default, nine messages appear on click, gone
+  again on hide, and a thread with no email still gets no reply box.
+- **A cut off reply says so.** The function already sent `stop_reason` and
+  nothing in the browser read it, so a reply chopped at the ceiling was
+  handed over looking finished. Chat.jsx reads it now, says "That ran out
+  of room and stopped here" under the reply in plain grey, and stops short
+  of reading half a sentence for a handshake marker. Looked at in both
+  themes at 390 and 1280.
+- **Asking it to search works from any stage.** `NEED_LOOKUP` was only
+  acted on inside the analyse branch, so asking for a search in ordinary
+  conversation could only ever produce a refusal. It is honoured
+  everywhere now, and the stage that raised the card is carried on the
+  card, so a search asked for in conversation comes back to conversation
+  instead of pushing somebody into the document pipeline.
+  THE MODEL SIDE OF THIS IS NOT LIVE. See open request 1.
+- **The chat connector labels match the admin.** Both say "Coming soon"
+  now. The chat used to say "Set up" and "Example" off an internal state
+  field whilst the admin said "Coming soon" for all of them, which is two
+  screens giving different answers about the same tool. Canva keeps a live
+  label because it is the one a person really connects.
+- **A way to look at a signed in screen.** `vite.harness.config.js` plus
+  `scripts/__harness`. It renders a page on its own with a fake Supabase
+  behind it, so a screen that reads the database can be screenshotted and
+  clicked without a workspace. `scripts/__harness/shoot.cjs` does the four
+  shots. This is how the support change above was actually checked, rather
+  than by reading the markup.
 
 - **Support replies really send.** support-reply v1. A person types an
   answer in the queue, it goes to the customer by email and into the
