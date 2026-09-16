@@ -382,17 +382,20 @@ export const WORKFLOW_TOOLS = [
        knows, and because a design made on the admin's account cannot be
        opened by the staff member who asked for it. */
     state: "connectable",
-    /* The admin's Connectors tab does not show this one from here any more:
-       Canva has its own panel with a real Connect button, and listing it
-       twice is two answers to the same question. This entry stays for the
-       chat's connector menu, and the note says where it has actually got to.
+    /* The admin's Connectors tab does not show this one any more. Canva
+       belongs to the person doing the work, not to the company, so it is
+       connected from the chat and the design lands in that person's own
+       Canva where they can open it and change it.
 
-       Updated 2026-09-14. The sign in works now. What is still missing is
-       the part that sends a design through it. */
+       REWRITTEN 2026-09-16. The old note said an admin connects one account
+       for everybody, and then reported that the design part was not built
+       yet. Both halves are now wrong: Canva is per person, and the design
+       pipeline is live. The second half was also a progress report on a
+       client facing screen, which CLAUDE.md says does not go there. Where
+       the build has got to lives in CURRENT.md. */
     note:
-      "An admin connects one Canva account and it serves everybody here. Signing in works. " +
-      "What is not built yet is the part that sends a design through it, so nothing here " +
-      "produces a Canva file today. That is the next piece of work, not a maybe.",
+      "Connect your own Canva and the assistant builds the design straight into it, " +
+      "on your brand, ready for you to open and change.",
   },
   {
     /* THE LONG NOTE THAT WAS HERE IS GONE, 2026-09-15.

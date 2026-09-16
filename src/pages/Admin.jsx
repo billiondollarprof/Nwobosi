@@ -1767,7 +1767,6 @@ export function AccessSection({ me }) {
           role: r.role ?? "Not set",
           ceiling: levelOf(r.model_ceiling),
           canSupport: r.can_support === true,
-          canSupport: r.can_support === true,
           limit: r.daily_limit ?? 5,
           used: 0,
         }))

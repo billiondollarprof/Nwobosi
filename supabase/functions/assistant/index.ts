@@ -260,9 +260,30 @@ function buildBasePrompt(
     "  - Never present something you happen to know about the wider world as though it",
     "    came from their material. If it is not from the four routes above, it is not a",
     "    fact you may use.",
-    "There is exactly one exception and it is not yours to take: if they press the",
-    "button that lets you search, that one turn is given real tools. You cannot reach",
-    "it by asking nicely in any other stage.",
+    "There is exactly one exception, and it is a door you may knock on but never open.",
+    "The tools are attached to one turn only, and only after a person presses the",
+    "button that lets you out. You cannot reach that turn by asking nicely in prose.",
+    "",
+    "HOW YOU ASK TO GO AND LOOK",
+    "You raise that button by ending your message with NEED_LOOKUP on its own final",
+    "line. The app sees it and shows them a card that asks whether you may look this",
+    "up. They press yes, and the next turn is the one that has the search. They press",
+    "no, and you carry on with what you already have.",
+    "",
+    "Raise it in either of these two cases:",
+    "  - THEY ASKED YOU TO. If somebody says look this up, search for it, check what",
+    "    the current figure is, find out who, then the answer is never a flat no. Say",
+    "    in one line what you would go and look for, then end with NEED_LOOKUP. Their",
+    "    request is the reason; you do not have to judge whether the work needs it.",
+    "  - YOU NEED IT. Something public is missing and the work cannot be right without",
+    "    it, and this person would only end up searching for it themselves anyway.",
+    "",
+    "Never raise it for something only they can know: their deadline, who signs it,",
+    "what they decided internally, a figure that lives in their own files. That is a",
+    "question for them, not a search.",
+    "",
+    "Say nothing else after the marker, and never write the marker in the middle of a",
+    "sentence. One line saying what you want to find, why, then the marker last.",
     "",
     "WHEN SOMETHING IS MISSING, BE USEFUL ABOUT IT",
     "Refusing is not enough, and neither is guessing. Say what is missing, then give a",
@@ -324,17 +345,28 @@ function buildBasePrompt(
    wrote the whole one pager on the spot: no read back, no confirmation, no
    file to download, because the app never learned the interview had ended.
 
-   A question is two hundred tokens. A one pager is fifteen hundred. Seven
-   hundred is generous for the first and impossible for the second, so the
-   interview no longer has the room to skip the flow even if it wants to.
+   A question is two hundred tokens. A one pager is fifteen hundred. The
+   ceiling has to sit above the first and below the second, so the
+   conversation never has the room to skip the flow even if it wants to.
    The analysis gets more because thinking tokens are counted here too, and
    only the writing stage gets everything.
 
    Same idea as having no search. Not a rule it may talk itself out of,
-   a ceiling it cannot cross. */
+   a ceiling it cannot cross.
+
+   RAISED FROM 600/700 ON 2026-09-16, because the ceiling was cutting
+   ordinary replies off mid sentence. Anthony asked it a plain question
+   about searching and the answer stopped at "that only happens if you
+   press the". An explanation is not a question, it runs longer than two
+   hundred tokens, and 600 was not enough room to finish one. 1100 still
+   sits well under the fifteen hundred a one pager needs, so the thing this
+   ceiling was built to stop is still stopped.
+
+   The other half of that fix is below: a reply that DOES hit the ceiling
+   now says so instead of being handed over as though it were finished. */
 const MAX_OUTPUT: Record<string, number> = {
-  orient: 600,
-  interview: 700,
+  orient: 1100,
+  interview: 1100,
   analyse: 4000,
   research: 3000,
   brief: 2000,
@@ -928,8 +960,8 @@ Deno.serve(async (req: Request) => {
      THIS IS NOT A SECURITY CONTROL AND IT DOES NOT NEED TO BE. It only
      changes the wording of a nudge. The real ceiling is enforced twice
      where a browser cannot reach: the app moves the work up regardless at
-     MAX_INTERVIEW_TURNS, and the interview stage is given 700 output tokens,
-     which is a question and not a document. A browser that lies here gets a
+     MAX_INTERVIEW_TURNS, and the interview stage is capped by MAX_OUTPUT,
+     which is a conversation and not a document. A browser that lies here gets a
      differently worded question and nothing else. Clamped anyway, because a
      number off the wire goes into a comparison. */
   const askedSoFar = Math.min(Math.max(Number(body?.askedSoFar ?? 0) || 0, 0), 50);

@@ -761,21 +761,41 @@ export default function Chat() {
         updateMessages((prev) => prev.map((m) => (m.id === replyId ? { ...m, content: shown } : m)));
       },
 
-      onDone: () => {
+      onDone: ({ stopReason } = {}) => {
         setTyping(false);
         setStalled(false);
         abortTurnRef.current = null;
 
         const clean = visibleText(raw);
 
+        /* A REPLY THAT RAN OUT OF ROOM IS NEVER HANDED OVER AS FINISHED.
+
+           Every stage has a ceiling on how much it may write (MAX_OUTPUT in
+           the assistant function). When a reply reaches that ceiling the
+           model is cut off wherever it happens to be, which is usually mid
+           sentence, and the turn still ends with a clean "done". Nothing
+           here read that, so a chopped answer looked exactly like a
+           finished one.
+
+           Anthony hit it on 2026-09-16: the reply stopped at "that only
+           happens if you press the" and the app presented it as the whole
+           answer. The ceilings were raised, but a ceiling can always be
+           reached, so the reply now carries a flag and says so on screen. */
+        const cutOff = stopReason === "max_tokens";
+
         /* Built from the ref rather than inside a state updater. An
            updater has to be pure, and React deliberately calls it twice
            in development to catch exactly this: a save fired from inside
            one wrote the conversation to the database twice. */
         const next = updateMessages((prev) =>
-          prev.map((m) => (m.id === replyId ? { ...m, content: clean } : m))
+          prev.map((m) => (m.id === replyId ? { ...m, content: clean, cutOff } : m))
         );
         persist(next, stage);
+
+        /* A cut off reply has no ending, so it cannot carry a marker either.
+           Stopping here keeps the app from reading half a sentence as a read
+           back or as a finished interview. */
+        if (cutOff) return;
 
         /* THE OFFER. The first turn has read the request and the whole of
            the company's material, and has said what it already has. Now it
@@ -787,6 +807,29 @@ export default function Chat() {
 
            No marker means it was not a piece of work, just conversation.
            The stage stays where it is and it reads again next time. */
+        /* GATE ONE, AND IT IS NOT ONLY THE ANALYSIS THAT MAY RAISE IT.
+
+           Anthony, 2026-09-16: "I tried to tell it to search for something,
+           which is supposed to spin up this thing for me to select, for me
+           to approve, and then it will search. It doesn't only spin up when
+           it decides. It can also spin up for me to approve when I decide."
+
+           This used to sit inside the analyse branch below, so asking it to
+           look something up during an ordinary conversation could only ever
+           produce a refusal. The card is raised from whatever stage asked
+           for it, and the stage is remembered so the conversation comes back
+           to where it was instead of being pushed into the work pipeline.
+
+           Nothing else changes. The search tool is still not attached to any
+           request until a person presses the button. */
+        if (raw.includes(MARKER.needLookup)) {
+          updateMessages((prev) => [
+            ...prev,
+            { id: nextId(), role: "assistant", type: "lookup", from: stage },
+          ]);
+          return;
+        }
+
         if (stage === "orient") {
           if (raw.includes(MARKER.offerInterview)) {
             setFlowStage("offered");
@@ -807,7 +850,7 @@ export default function Chat() {
             ...prev.map((m) => (m.id === replyId ? { ...m, type: "finding" } : m)),
             { id: nextId(), role: "assistant", type: "useFinding", content: clean },
           ]);
-          persist(withCard, "analyse");
+          persist(withCard, lookupReturnStage());
           return;
         }
 
@@ -830,14 +873,6 @@ export default function Chat() {
              for the back and forth rather than charging Sonnet rates to
              collect a file name. It comes back up the moment that
              conversation says it is done. */
-          /* GATE ONE. It has asked to search. Nothing happens until a
-             person presses the button, and the search tool is not even in
-             the request until they do. */
-          if (raw.includes(MARKER.needLookup)) {
-            updateMessages((prev) => [...prev, { id: nextId(), role: "assistant", type: "lookup" }]);
-            return;
-          }
-
           if (raw.includes(MARKER.needInput)) {
             /* A fresh, specific ask, so it gets its own allowance rather
                than inheriting one the first interview already spent. */
@@ -1301,23 +1336,44 @@ export default function Chat() {
      wanted, waiting to be reconsidered on a later turn.
      ------------------------------------------------------------------------ */
 
-  function allowLookup() {
+  /* WHERE THE CONVERSATION GOES AFTER A SEARCH.
+
+     The card can now be raised from any stage, so the answer is no longer
+     always "the analysis". Somebody chatting on the first turn who asks it
+     to check a figure should get the figure and still be chatting. They
+     should not find themselves halfway up a document pipeline they never
+     asked to start.
+
+     So the stage that raised the card is carried on the card itself, and
+     everything on the way back reads it. Anything that is not the orient
+     turn lands in the analysis exactly as it did before, which is why the
+     default is "analyse". */
+  const lookupFromRef = useRef("analyse");
+
+  function lookupReturnStage() {
+    return lookupFromRef.current === "orient" ? "orient" : "analyse";
+  }
+
+  function allowLookup(from) {
     if (typing || generating) return;
+    lookupFromRef.current = from || "analyse";
     const kept = messages.filter((m) => m.type !== "lookup");
     updateMessages(kept);
     addMessage({ role: "user", type: "text", content: "Yes, go and look." });
-    setFlowStage("analyse");
+    setFlowStage(lookupReturnStage());
     runTurn("research", toApiMessages([...kept, { role: "user", content: "Yes, go and look." }]));
   }
 
-  function refuseLookup() {
+  function refuseLookup(from) {
     if (typing || generating) return;
+    lookupFromRef.current = from || "analyse";
     declinedRef.current += 1;
     const kept = messages.filter((m) => m.type !== "lookup");
     updateMessages(kept);
     addMessage({ role: "user", type: "text", content: "No, work with what you have." });
-    setFlowStage("analyse");
-    runTurn("analyse", toApiMessages([...kept, { role: "user", content: "No, work with what you have." }]));
+    const back = lookupReturnStage();
+    setFlowStage(back);
+    runTurn(back, toApiMessages([...kept, { role: "user", content: "No, work with what you have." }]));
   }
 
   /* GATE TWO, the yes. Takes a LIST, because the answer is no longer only
@@ -1354,8 +1410,9 @@ export default function Chat() {
     const kept = messages.filter((m) => m.type !== "useFinding");
     updateMessages(kept);
     addMessage({ role: "user", type: "text", content: said });
-    setFlowStage("analyse");
-    runTurn("analyse", toApiMessages([...kept, { role: "user", content: said }]));
+    const back = lookupReturnStage();
+    setFlowStage(back);
+    runTurn(back, toApiMessages([...kept, { role: "user", content: said }]));
   }
 
   /* GATE TWO, the no. Nothing is kept. They are put back in the
@@ -1385,6 +1442,7 @@ export default function Chat() {
     abortTurnRef.current?.();
     abortTurnRef.current = null;
     conversationIdRef.current = null;
+    lookupFromRef.current = "analyse";
     setTyping(false);
     setActiveTier(null);
     updateMessages([]);
@@ -2104,8 +2162,8 @@ export default function Chat() {
                 onAdjust={handleAdjust}
                 onWantInterview={handleWantInterview}
                 onSkipInterview={handleSkipInterview}
-                onAllowLookup={allowLookup}
-                onRefuseLookup={refuseLookup}
+                onAllowLookup={() => allowLookup(m.from)}
+                onRefuseLookup={() => refuseLookup(m.from)}
                 onUseFinding={useFinding}
                 onDropFinding={dropFinding}
                 onReset={handleNewChat}
@@ -2278,13 +2336,25 @@ export default function Chat() {
                           </span>
 
                           <span className="flex items-center gap-1.5 shrink-0">
-                            {/* Nothing here says Connected unless it is doing
-                                work. "Set up" means the account and keys
-                                exist and the wiring does not, which is a real
-                                and different thing from an example, and both
-                                are different from working. */}
-                            {tool.state === "registered" && <StatusPill tone="pending">Set up</StatusPill>}
-                            {tool.state === "connectable" && (
+                            {/* EVERYTHING NOT YET CONNECTABLE SAYS THE SAME
+                                THING, 2026-09-16, and it says "Coming soon".
+
+                                This screen used to split them into "Set up"
+                                and "Example" off an internal state field.
+                                Anthony saw it against the admin screen, which
+                                already says Coming soon for all of them, and
+                                asked for the two to match. He is right twice
+                                over. Two screens giving different answers
+                                about the same tool is a screen somebody has
+                                to work out, and grading tools by how far our
+                                own build has got tells a customer nothing
+                                they can use.
+
+                                Canva is the one that is really connectable,
+                                so it is the only one with a live label, and
+                                that label tracks whether THIS person has
+                                signed in. */}
+                            {tool.state === "connectable" ? (
                               <StatusPill tone={connectors[tool.id] ? "ok" : "neutral"}>
                                 {tool.id === "canva" && canvaBusy
                                   ? "One moment"
@@ -2292,8 +2362,9 @@ export default function Chat() {
                                   ? "Connected"
                                   : "Connect"}
                               </StatusPill>
+                            ) : (
+                              <StatusPill tone="neutral">Coming soon</StatusPill>
                             )}
-                            {tool.state === "sample" && <StatusPill tone="neutral">Example</StatusPill>}
 
                             {/* Anything with more to say carries the info dot,
                                 including the connected one. Green on its own
@@ -2971,6 +3042,17 @@ export function ChatBubble({ message, brief, buildStage = "brief", buildStalled 
       >
         {message.content}
       </p>
+
+      {/* THE REPLY RAN OUT OF ROOM. Said out loud, because the alternative
+          is a sentence that stops halfway and a person who thinks that was
+          the whole answer. Quiet grey rather than a warning colour: nothing
+          has gone wrong, there is just more to come. */}
+      {message.cutOff && (
+        <p className="text-[12.5px] mt-2 max-w-[85%]" style={{ color: "var(--text-3)" }}>
+          That ran out of room and stopped here. Ask me to carry on and I will finish it.
+        </p>
+      )}
+
       <div className="flex items-center gap-1 mt-2.5 -ml-1.5">
         <IconBtn active={feedback === "up"} onClick={() => onFeedback("up")} activeColor={BRAND.green} label="Good response">
           <ThumbsUp size={14} />

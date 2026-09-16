@@ -20,8 +20,17 @@
    It never sends on its own. Every reply is a person pressing send, the
    same rule the rest of this product runs on.
 
+   WHAT IT SHOWS WHEN YOU OPEN A THREAD
+   -----------------------------------
+   The question that was flagged, and nothing else. Anthony, 2026-09-16:
+   "why not the actual message that was flagged instead of the entire
+   conversation?" An escalation is raised per question and the row keeps the
+   customer's own words, so that one sentence is what somebody working this
+   queue is actually here to answer. The rest of the conversation is one
+   click away for the times the question alone is not enough.
+
    Read top to bottom:
-     1. Loading the queue
+     1. Loading the queue, and what was flagged in it
      2. The list
      3. One conversation
    ========================================================================== */
@@ -32,7 +41,7 @@ import { MessageSquare, RefreshCw, Mail, Phone } from "lucide-react";
 import { supabase } from "../shared/supabase.js";
 import { FUNCTIONS } from "../shared/config.js";
 import { GlassPanel, SectionHeading, Spinner, StatusPill, GhostButton, PrimaryButton, TextArea } from "../shared/ui.jsx";
-import { FONTS } from "../shared/tokens";
+import { FONTS, BRAND } from "../shared/tokens";
 import WorkSwitch from "../shared/WorkSwitch.jsx";
 
 /* ==========================================================================
@@ -67,6 +76,71 @@ async function listMessages(threadId) {
     return [];
   }
   return data ?? [];
+}
+
+/* WHAT WAS ACTUALLY FLAGGED.
+
+   Anthony, 2026-09-16: "the messages that get sent to the support is
+   really very plenty. Why not the actual message that was flagged instead
+   of the entire conversation?"
+
+   He is right, and the database already knew the answer. An escalation is
+   raised per question, not per conversation, and the row carries the
+   customer's own words in `question`. So the one thing support has to read
+   was sitting there whilst the screen printed every message in the thread
+   instead.
+
+   Open ones first, newest first, because an open question is the job. The
+   closed ones are kept in the same list so a thread that was answered an
+   hour ago still shows what it was about. */
+async function listFlagged(threadId) {
+  const { data, error } = await supabase
+    .from("escalations")
+    .select("id, question, raised_at, closed_at")
+    .eq("thread_id", threadId)
+    .order("raised_at", { ascending: false })
+    .limit(10);
+
+  if (error) {
+    console.error("could not read what was flagged", error);
+    return [];
+  }
+  return data ?? [];
+}
+
+/* THE ONE THING THIS SCREEN SHOWS BY DEFAULT.
+
+   Takes the escalation rows and the conversation, and hands back the short
+   list of questions worth reading, in the order they should be read: the
+   open ones first, because an open question is somebody still waiting.
+
+   The fallback matters as much as the main path. A thread can exist with
+   no escalation row on it, either because it predates escalations being
+   kept per question, or because a person opened a conversation that never
+   got flagged. In that case the last thing the customer said stands in, so
+   the screen always has a real sentence on it rather than a blank panel.
+
+   Returns plain objects with the fields the render needs, so the render
+   does not have to know which of the two shapes it came from. */
+function askedHere(escalations, messages) {
+  if (escalations.length > 0) {
+    const open = escalations.filter((e) => !e.closed_at);
+    const chosen = open.length > 0 ? open : escalations.slice(0, 1);
+    return chosen.map((e) => ({
+      key: e.id,
+      question: e.question,
+      at: e.raised_at,
+      open: !e.closed_at,
+    }));
+  }
+
+  /* Newest customer message. The list arrives oldest first, so it is the
+     last one going forwards. */
+  let last = null;
+  for (const m of messages) if (m.author_role === "customer") last = m;
+  if (!last) return [];
+
+  return [{ key: last.id, question: last.body, at: last.created_at, open: false }];
 }
 
 /* SENDING A REPLY.
@@ -128,7 +202,17 @@ export default function Support({ me }) {
   const [loading, setLoading] = useState(true);
   const [openId, setOpenId] = useState(null);
   const [messages, setMessages] = useState([]);
+  const [flagged, setFlagged] = useState([]);
   const [reading, setReading] = useState(false);
+
+  /* THE WHOLE CONVERSATION IS OFF BY DEFAULT.
+
+     Opening a thread used to print every message in it, which on a real
+     conversation is a wall of text somebody has to read through to find
+     the one question they were called in for. Now the flagged question
+     shows on its own, and the rest is one click away for the times it
+     matters. Per thread, so opening one does not expand another. */
+  const [showAll, setShowAll] = useState({});
 
   /* Kept per thread rather than as one string. Somebody half way through
      an answer who opens another conversation to check something should
@@ -184,7 +268,14 @@ export default function Support({ me }) {
     if (openId === thread.id) { setOpenId(null); return; }
     setOpenId(thread.id);
     setReading(true);
-    setMessages(await listMessages(thread.id));
+    /* Both at once rather than one after the other, so opening a thread is
+       one wait and not two. */
+    const [asked, all] = await Promise.all([
+      listFlagged(thread.id),
+      listMessages(thread.id),
+    ]);
+    setFlagged(asked);
+    setMessages(all);
     setReading(false);
   }
 
@@ -258,26 +349,77 @@ export default function Support({ me }) {
                         <Spinner size={13} />
                         Opening it
                       </div>
-                    ) : messages.length === 0 ? (
+                    ) : messages.length === 0 && flagged.length === 0 ? (
                       <p className="text-[13px]" style={{ color: "var(--text-3)" }}>
                         Nothing in this one yet.
                       </p>
                     ) : (
-                      messages.map((m) => (
-                        <div key={m.id}>
-                          <p
-                            className="text-[11.5px] uppercase tracking-wide mb-1"
-                            style={{ color: "var(--text-3)", fontFamily: FONTS.display }}
+                      <>
+                        {/* WHAT THEY ACTUALLY ASKED, on its own.
+
+                            This is the whole point of the screen. Somebody
+                            opening a thread is answering one question, so
+                            that question is the first and usually the only
+                            thing they read.
+
+                            Where there is no escalation row, which happens
+                            on a thread raised before escalations were kept
+                            per question, the last thing the customer said
+                            stands in for it. Better a real sentence than an
+                            empty card. */}
+                        {askedHere(flagged, messages).map((item) => (
+                          <div
+                            key={item.key}
+                            className="rounded-[10px] border-l-[3px] pl-3 py-1"
+                            style={{ borderLeftColor: item.open ? BRAND.amber : "var(--border-2)" }}
                           >
-                            {m.author_role === "customer" ? "Customer" : "Assistant"}
-                            {"  "}
-                            {whenReadable(m.created_at)}
-                          </p>
-                          <p className="text-[14px] leading-relaxed" style={{ color: "var(--text-2)" }}>
-                            {m.body}
-                          </p>
-                        </div>
-                      ))
+                            <p
+                              className="text-[11.5px] uppercase tracking-wide mb-1"
+                              style={{ color: "var(--text-3)", fontFamily: FONTS.display }}
+                            >
+                              {item.open ? "Waiting on you" : "Asked"}
+                              {"  "}
+                              {whenReadable(item.at)}
+                            </p>
+                            <p className="text-[14.5px] leading-relaxed" style={{ color: "var(--text-1)" }}>
+                              {item.question}
+                            </p>
+                          </div>
+                        ))}
+
+                        {/* The rest of the conversation, for the times the
+                            question alone is not enough. Off by default. */}
+                        {messages.length > 0 && (
+                          <button
+                            onClick={() =>
+                              setShowAll((prev) => ({ ...prev, [thread.id]: !prev[thread.id] }))
+                            }
+                            className="text-[12.5px] underline underline-offset-2 hover:opacity-80 transition-opacity"
+                            style={{ color: "var(--text-3)" }}
+                          >
+                            {showAll[thread.id]
+                              ? "Hide the conversation"
+                              : `Read the whole conversation (${messages.length})`}
+                          </button>
+                        )}
+
+                        {showAll[thread.id] &&
+                          messages.map((m) => (
+                            <div key={m.id}>
+                              <p
+                                className="text-[11.5px] uppercase tracking-wide mb-1"
+                                style={{ color: "var(--text-3)", fontFamily: FONTS.display }}
+                              >
+                                {m.author_role === "customer" ? "Customer" : "Assistant"}
+                                {"  "}
+                                {whenReadable(m.created_at)}
+                              </p>
+                              <p className="text-[14px] leading-relaxed" style={{ color: "var(--text-2)" }}>
+                                {m.body}
+                              </p>
+                            </div>
+                          ))}
+                      </>
                     )}
 
                     {/* THE REPLY BOX, and it only appears where a reply can
