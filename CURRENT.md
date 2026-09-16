@@ -49,6 +49,20 @@ built and checked, not when it is planned.
 
 ### Done, 2026-09-16
 
+- **Support replies really send.** support-reply v1. A person types an
+  answer in the queue, it goes to the customer by email and into the
+  thread. Three checks the browser cannot do: support access, the thread
+  belongs to their company, and there is somewhere to send. WhatsApp is
+  not wired, and a thread with no email gets no box at all plus the
+  reason.
+- **A design is looked at before it is handed over.** canva-design v2. The
+  export is fetched by the model, judged against what was asked for, and
+  the verdict comes back with the design. It checks and reports; it does
+  not reach back into Canva and move things, because placing elements
+  needs editing the free plan does not give us.
+- **Conversational is back in the ladder**, green, labelled support, and
+  locked.
+
 - **Canva moved from the admin to the person.** integration_tokens is keyed
   (staff_id, provider) now. The Design panel is gone from the admin, and
   Canva is a connector a staff member connects from the chat like any
