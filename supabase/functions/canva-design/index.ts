@@ -48,6 +48,7 @@
    ========================================================================== */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import Anthropic from "npm:@anthropic-ai/sdk@0.68.0";
 import { canvaAccessToken } from "../_shared/canva.ts";
 
 /* ==========================================================================
@@ -169,10 +170,114 @@ async function waitForJob(
 }
 
 /* ==========================================================================
+   2b. LOOKING AT WHAT IT MADE
+
+   Anthony asked for this directly: "whenever it's building something, it
+   should always go over its output thoroughly and make corrections before
+   deciding the design matches the expected output according to the
+   prompt."
+
+   THIS IS WHY THE EXPORT EXISTS. The model cannot read a Canva file, so
+   without an export there is nothing to look at and "it checked its work"
+   would be a claim rather than a step. It can look at a PNG.
+
+   WHAT IT CAN AND CANNOT DO, SAID PLAINLY. It looks at the finished
+   picture against what was asked for and says whether it matches, and
+   where it does not. It does not reach back into Canva and move things,
+   because placing elements needs design editing the free plan does not
+   give us. So the honest shape today is: it checks, and it tells the
+   person what it found, rather than quietly handing over something wrong.
+
+   A REVIEW THAT FAILS NEVER FAILS THE DESIGN. The design is in their
+   Canva whatever the reviewer thinks, so a reviewer that cannot run comes
+   back as "not checked", which is different from "checked and fine" and
+   the screen shows the two differently.
+   ========================================================================== */
+
+const REVIEW_MODEL = "claude-sonnet-5";
+
+const REVIEW_TOOL: Anthropic.Tool = {
+  name: "verdict",
+  description: "Say whether this design matches what was asked for.",
+  input_schema: {
+    type: "object",
+    properties: {
+      matches: {
+        type: "boolean",
+        description: "True only if you would hand this to the person who asked without apologising for anything.",
+      },
+      note: {
+        type: "string",
+        description:
+          "One short line in plain words. If it matches, say what it is. If it does not, say exactly what is wrong and where, so a person can fix it in Canva in under a minute. Text running off the edge, something overlapping, a logo stretched or upside down, the wrong words. Under 200 characters.",
+      },
+    },
+    required: ["matches", "note"],
+  },
+};
+
+const REVIEW_INSTRUCTIONS = `You are looking at a design that has just been made, before the person who asked for it sees it.
+
+Judge it against what they asked for, and judge it as somebody who has to hand it over, not as somebody hoping it passes.
+
+LOOK FOR THE THINGS THAT ACTUALLY GO WRONG:
+  - text running off the edge of the canvas, or cut in half
+  - two things sitting on top of each other
+  - an image stretched out of shape, squashed, or rotated
+  - a logo cropped so part of it is missing
+  - text too small to read at the size this will be seen
+  - large empty areas that look like something failed to load
+  - the wrong content entirely
+
+DO NOT fail it for taste. A layout you would have done differently is not a broken layout. Only say it does not match if a person receiving this would have to fix something before using it.
+
+Write in British English, in plain words, for somebody who is not a designer.`;
+
+async function review(imageUrl: string, title: string, brief: string) {
+  const key = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!key) {
+    console.error("ANTHROPIC_API_KEY is not set, design not checked");
+    return null;
+  }
+
+  const anthropic = new Anthropic({ apiKey: key });
+  const result = await anthropic.messages.create({
+    model: REVIEW_MODEL,
+    max_tokens: 300,
+    system: REVIEW_INSTRUCTIONS,
+    tools: [REVIEW_TOOL],
+    tool_choice: { type: "tool", name: "verdict" },
+    messages: [{
+      role: "user",
+      content: [
+        /* Canva's export URL is fetched by the model rather than pulled
+           down here and re-sent. It is a short lived link on their own
+           storage, so this is one hop instead of two and no megabytes pass
+           through this function. */
+        { type: "image", source: { type: "url", url: imageUrl } },
+        {
+          type: "text",
+          text: `They asked for: ${brief || title}\n\nThe design is titled: ${title}`,
+        },
+      ],
+    }],
+  });
+
+  const call = result.content.find((block) => block.type === "tool_use");
+  if (call?.type !== "tool_use") return null;
+
+  const input = call.input as Record<string, unknown>;
+  return {
+    matches: input.matches === true,
+    note: String(input.note ?? "").trim().slice(0, 240),
+  };
+}
+
+/* ==========================================================================
    3. THE REQUEST
 
-   In:  { title, imageBase64, imageMime, designType }
-   Out: { ok: true, designId, editUrl, viewUrl, exportUrl }
+   In:  { title, imageBase64, designType, brief }
+   Out: { ok: true, designId, editUrl, viewUrl, exportUrl, review }
         { ok: false, reason, needsConnect? , step? }
    ========================================================================== */
 
@@ -218,6 +323,7 @@ Deno.serve(async (req: Request) => {
   const title = String(body?.title ?? "Untitled design").trim().slice(0, 120) || "Untitled design";
   const imageBase64 = String(body?.imageBase64 ?? "");
   const designType = String(body?.designType ?? "presentation");
+  const brief = String(body?.brief ?? "").slice(0, 2000);
 
   if (!imageBase64) {
     return json({ ok: false, reason: "There was no picture to put in it." }, 400);
@@ -348,11 +454,36 @@ Deno.serve(async (req: Request) => {
     }
   }
 
+  /* --- STEP FOUR: look at it before handing it over -------------------
+
+     Only possible when there is an export to look at. No export means the
+     honest answer is "not checked", which the screen shows differently
+     from "checked and fine".
+
+     Its own try, because a reviewer that throws must never turn a design
+     that exists into a failure. The person still gets their design and
+     the note says nobody checked it. */
+  let reviewed: { matches: boolean; note: string } | null = null;
+  if (exportUrl) {
+    try {
+      reviewed = await review(exportUrl, title, brief);
+    } catch (err) {
+      console.error("could not check the design", err);
+    }
+  }
+
   return json({
     ok: true,
     designId,
     editUrl,
     viewUrl: String(urls.view_url ?? ""),
     exportUrl,
+    /* checked false is NOT the same as matches false. The first means
+       nobody looked; the second means somebody looked and found a
+       problem. Rolled into one they would read the same on screen and
+       one of them is a reason to worry. */
+    review: reviewed
+      ? { checked: true, matches: reviewed.matches, note: reviewed.note }
+      : { checked: false, matches: false, note: "Nobody has checked this one." },
   });
 });

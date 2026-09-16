@@ -34,7 +34,7 @@ await build({
 let handler;
 globalThis.Deno = {
   serve: (fn) => { handler = fn; },
-  env: { get: (k) => ({ SUPABASE_URL: "http://db", SUPABASE_ANON_KEY: "anon", SUPABASE_SERVICE_ROLE_KEY: "svc" }[k]) },
+  env: { get: (k) => ({ SUPABASE_URL: "http://db", SUPABASE_ANON_KEY: "anon", SUPABASE_SERVICE_ROLE_KEY: "svc", ANTHROPIC_API_KEY: "test-key" }[k]) },
 };
 
 /* The supabase client and the token module are replaced at the module
@@ -49,8 +49,22 @@ code = code
      captures whatever __token was when the module loaded, which is
      before any test has set it. */
   .replace(/import \{ canvaAccessToken \} from "[^"]+";/,
-           "const canvaAccessToken = (...a) => globalThis.__token(...a);");
+           "const canvaAccessToken = (...a) => globalThis.__token(...a);")
+  /* The reviewer is stubbed the same way. It reaches the model, which
+     is a second thing this container cannot reach. */
+  .replace(/import Anthropic from "[^"]+";/,
+           "class Anthropic { constructor(...a) { return new globalThis.__anthropic(...a); } }");
 fs.writeFileSync(join(dir, "fn2.mjs"), code);
+
+globalThis.__reviewSays = { matches: true, note: "A poster with the logo top left." };
+globalThis.__anthropic = class {
+  constructor() {}
+  messages = {
+    create: async () => ({
+      content: [{ type: "tool_use", input: globalThis.__reviewSays }],
+    }),
+  };
+};
 
 globalThis.__createClient = () => ({
   auth: { getUser: async () => ({ data: { user: { id: "s1" } }, error: null }) },
@@ -170,6 +184,70 @@ canvaSays([
     body: JSON.stringify({ title: "Nothing" }),
   }));
   check("no picture is refused up front", res.status, 400);
+}
+
+/* 9. THE REVIEW RUNS, and its verdict comes back with the design. */
+canvaSays([
+  { body: { job: { id: "up1", status: "success", asset: { id: "A1" } } } },
+  { body: { job: { id: "up1", status: "success", asset: { id: "A1" } } } },
+  { body: { design: { id: "D3", urls: { edit_url: "https://canva/edit/D3" } } } },
+  { body: { job: { id: "ex1", status: "success", urls: ["https://canva/out.png"] } } },
+  { body: { job: { id: "ex1", status: "success", urls: ["https://canva/out.png"] } } },
+]);
+{
+  const r = await call();
+  check("the design is checked before it is handed over", r.body.review.checked, true);
+  check("  and the verdict comes back", r.body.review.matches, true);
+}
+
+/* 10. A REVIEW THAT FINDS A PROBLEM still returns the design, because the
+       design exists either way. The note is what the person acts on. */
+globalThis.__reviewSays = { matches: false, note: "The title runs off the right edge." };
+canvaSays([
+  { body: { job: { id: "up1", status: "success", asset: { id: "A1" } } } },
+  { body: { job: { id: "up1", status: "success", asset: { id: "A1" } } } },
+  { body: { design: { id: "D4", urls: { edit_url: "https://canva/edit/D4" } } } },
+  { body: { job: { id: "ex1", status: "success", urls: ["https://canva/out.png"] } } },
+  { body: { job: { id: "ex1", status: "success", urls: ["https://canva/out.png"] } } },
+]);
+{
+  const r = await call();
+  check("a problem found still returns the design", [r.body.ok, r.body.designId], [true, "D4"]);
+  check("  and says what is wrong", r.body.review.note, "The title runs off the right edge.");
+}
+
+/* 11. NO EXPORT MEANS NOT CHECKED, which is not the same as checked and
+       wrong. Rolled into one they read the same and one is a worry. */
+globalThis.__reviewSays = { matches: true, note: "fine" };
+canvaSays([
+  { body: { job: { id: "up1", status: "success", asset: { id: "A1" } } } },
+  { body: { job: { id: "up1", status: "success", asset: { id: "A1" } } } },
+  { body: { design: { id: "D5", urls: { edit_url: "https://canva/edit/D5" } } } },
+  { body: { job: { id: "ex1", status: "failed", error: { message: "nope" } } } },
+  { body: { job: { id: "ex1", status: "failed", error: { message: "nope" } } } },
+]);
+{
+  const r = await call();
+  check("no export means not checked", r.body.review.checked, false);
+  check("  and the design still comes back", r.body.designId, "D5");
+}
+
+/* 12. A REVIEWER THAT THROWS must never turn a real design into a
+       failure. */
+globalThis.__anthropic = class {
+  messages = { create: async () => { throw new Error("model down"); } };
+};
+canvaSays([
+  { body: { job: { id: "up1", status: "success", asset: { id: "A1" } } } },
+  { body: { job: { id: "up1", status: "success", asset: { id: "A1" } } } },
+  { body: { design: { id: "D6", urls: { edit_url: "https://canva/edit/D6" } } } },
+  { body: { job: { id: "ex1", status: "success", urls: ["https://canva/out.png"] } } },
+  { body: { job: { id: "ex1", status: "success", urls: ["https://canva/out.png"] } } },
+]);
+{
+  const r = await call();
+  check("a reviewer that throws does not fail the design", [r.body.ok, r.body.designId], [true, "D6"]);
+  check("  it reports as not checked", r.body.review.checked, false);
 }
 
 console.log(failures === 0 ? "\nAll clean.\n" : `\n${failures} failing.\n`);

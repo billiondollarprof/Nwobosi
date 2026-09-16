@@ -30,7 +30,8 @@ import { useEffect, useState } from "react";
 import { MessageSquare, RefreshCw, Mail, Phone } from "lucide-react";
 
 import { supabase } from "../shared/supabase.js";
-import { GlassPanel, SectionHeading, Spinner, StatusPill, GhostButton } from "../shared/ui.jsx";
+import { FUNCTIONS } from "../shared/config.js";
+import { GlassPanel, SectionHeading, Spinner, StatusPill, GhostButton, PrimaryButton, TextArea } from "../shared/ui.jsx";
 import { FONTS } from "../shared/tokens";
 import WorkSwitch from "../shared/WorkSwitch.jsx";
 
@@ -68,6 +69,41 @@ async function listMessages(threadId) {
   return data ?? [];
 }
 
+/* SENDING A REPLY.
+
+   It goes through an edge function rather than straight to the database,
+   because the reply has to leave the building as well as be recorded, and
+   sending needs a key that must never sit in a browser bundle.
+
+   The function checks three things this file cannot: that the person has
+   support access, that the thread belongs to their company, and that
+   there is somewhere to send it. So a refusal here is a real answer worth
+   showing rather than a network wobble. */
+async function sendReply(threadId, body) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return { ok: false, reason: "Sign in again." };
+
+  try {
+    const response = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${FUNCTIONS.supportReply}`,
+      {
+        method: "POST",
+        headers: {
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ threadId, body }),
+      },
+    );
+    const payload = await response.json().catch(() => null);
+    if (!payload) return { ok: false, reason: "Nothing came back. Try again." };
+    return payload;
+  } catch {
+    return { ok: false, reason: "Could not reach it just now. Try again." };
+  }
+}
+
 /* Plain words rather than a timestamp. Somebody reading their own queue is
    not reading a log. */
 function whenReadable(iso) {
@@ -94,6 +130,13 @@ export default function Support({ me }) {
   const [messages, setMessages] = useState([]);
   const [reading, setReading] = useState(false);
 
+  /* Kept per thread rather than as one string. Somebody half way through
+     an answer who opens another conversation to check something should
+     come back and still have their words. */
+  const [drafts, setDrafts] = useState({});
+  const [sending, setSending] = useState(false);
+  const [replyNote, setReplyNote] = useState("");
+
   const companyId = me?.company?.id;
 
   async function refresh() {
@@ -114,6 +157,28 @@ export default function Support({ me }) {
     })();
     return () => { alive = false; };
   }, [companyId]);
+
+  async function reply(thread) {
+    const body = (drafts[thread.id] ?? "").trim();
+    if (!body || sending) return;
+
+    setSending(true);
+    setReplyNote("");
+    const result = await sendReply(thread.id, body);
+    setSending(false);
+
+    if (!result.ok) {
+      setReplyNote(result.reason ?? "Could not send that. Try again.");
+      return;
+    }
+
+    /* Cleared only on a real send. A failed send that wiped the box would
+       lose an answer somebody just wrote. */
+    setDrafts((prev) => ({ ...prev, [thread.id]: "" }));
+    setMessages(await listMessages(thread.id));
+    setReplyNote("Sent.");
+    setTimeout(() => setReplyNote(""), 4000);
+  }
 
   async function open(thread) {
     if (openId === thread.id) { setOpenId(null); return; }
@@ -215,17 +280,57 @@ export default function Support({ me }) {
                       ))
                     )}
 
-                    {/* SAYING WHAT IS NOT BUILT, rather than showing a send
-                        box that does nothing. A reply box that silently
-                        fails is worse than no reply box, because somebody
-                        types a real answer into it and loses it. */}
-                    <p
-                      className="text-[12.5px] leading-relaxed pt-2 border-t"
-                      style={{ color: "var(--text-3)", borderColor: "var(--border)" }}
-                    >
-                      Replying from here is the next piece of work. For now this is the read of the
-                      conversation, and the assistant's answer has already gone to the customer.
-                    </p>
+                    {/* THE REPLY BOX, and it only appears where a reply can
+                        actually go somewhere.
+
+                        A thread with no email has nowhere to send to, and a
+                        WhatsApp thread cannot be answered from here yet. In
+                        both cases the box is not drawn and the reason is
+                        said instead, because a box that accepts a real
+                        answer and then drops it is worse than no box. */}
+                    <div className="pt-3 border-t" style={{ borderColor: "var(--border)" }}>
+                      {thread.customer_email ? (
+                        <>
+                          <TextArea
+                            value={drafts[thread.id] ?? ""}
+                            onChange={(e) =>
+                              setDrafts((prev) => ({ ...prev, [thread.id]: e.target.value }))
+                            }
+                            rows={4}
+                            placeholder={`Write back to ${thread.customer_name || "them"}`}
+                          />
+                          <div className="flex items-center gap-3 mt-2 flex-wrap">
+                            <PrimaryButton
+                              onClick={() => reply(thread)}
+                              disabled={sending || !(drafts[thread.id] ?? "").trim()}
+                              className="flex items-center gap-2"
+                            >
+                              {sending && <Spinner size={13} color="#fff" />}
+                              {sending ? "Sending" : "Send reply"}
+                            </PrimaryButton>
+                            <span className="text-[12px]" style={{ color: "var(--text-3)" }}>
+                              Goes to {thread.customer_email}
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <p className="text-[12.5px] leading-relaxed" style={{ color: "var(--text-3)" }}>
+                          {thread.channel === "whatsapp"
+                            ? "This one came in on WhatsApp. Answering from here is not built yet, so reply in WhatsApp."
+                            : "This person left no email address, so there is nowhere to send a reply."}
+                        </p>
+                      )}
+
+                      {replyNote && (
+                        <p
+                          className="text-[12.5px] mt-2"
+                          role="alert"
+                          style={{ color: replyNote === "Sent." ? "var(--text-3)" : "var(--caution)" }}
+                        >
+                          {replyNote}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

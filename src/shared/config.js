@@ -61,6 +61,7 @@ export const FUNCTIONS = {
   readBeforePublish: "read-before-publish",
   describeSource: "describe-source",
   canvaDesign: "canva-design",
+  supportReply: "support-reply",
   canvaConnect: "canva-connect",
 };
 
