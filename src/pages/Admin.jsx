@@ -88,6 +88,7 @@ import {
   DEFAULT_LEVEL,
   levelOf,
   BRAND_ASSET_EDGE,
+  SUPPORT_LEVEL,
 } from "../shared/config.js";
 
 /* --------------------------------------------------------------------------
@@ -2226,6 +2227,24 @@ function LevelSelect({ value, onChange, options, compact = false, ariaLabel, cla
   return (
     <>
       <SelectInput value={value} onChange={onChange} aria-label={ariaLabel} className={className}>
+        {/* THE SUPPORT LEVEL SITS AT THE TOP, GREEN AND LOCKED.
+
+            It is not a choice anybody makes. Support runs at it on its
+            own, so an admin selecting it for a staff member would be
+            answering a question that is already answered. But taking it
+            out of the ladder altogether left a gap, and a gap is a thing
+            somebody has to be told about instead of shown.
+
+            disabled, so it cannot be picked by mouse, keyboard or a
+            screen reader. The green is set inline because option styling
+            through a class is ignored by most browsers. */}
+        <option
+          value={SUPPORT_LEVEL}
+          disabled
+          style={{ color: BRAND.green }}
+        >
+          {CAPABILITY_LEVELS[SUPPORT_LEVEL].label} — support
+        </option>
         {options.map((key) => (
           <option key={key} value={key}>
             {CAPABILITY_LEVELS[key].label}
@@ -2236,6 +2255,15 @@ function LevelSelect({ value, onChange, options, compact = false, ariaLabel, cla
       {/* aria-live, so somebody using a screen reader hears the meaning
           change when they change the choice. Without it the description
           updates silently and only a person looking at it benefits. */}
+      {/* Said in words as well as shown in the list, for the person who
+          never opens the dropdown. Only where there is room for it. */}
+      {!compact && (
+        <p className="text-[11.5px] mt-1.5 flex items-center gap-1.5" style={{ color: BRAND.green }}>
+          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: BRAND.green }} />
+          Support answers customers at Conversational. Nobody sets that.
+        </p>
+      )}
+
       {level && (
         <p
           className={compact ? "text-[11.5px] mt-1 leading-snug" : "text-[12px] mt-1.5 leading-relaxed"}

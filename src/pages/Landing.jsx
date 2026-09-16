@@ -243,7 +243,7 @@ const OUTCOMES = [
   {
     icon: Users,
     title: "Your staff actually use it",
-    body: "Most people give up on AI at the third rewrite and go back to doing the job by hand. Here the direction is agreed before anything is built, so there is no third rewrite to give up at.",
+    body: "Rewrite after rewrite is what wears people down. They get something half right, and fixing it starts to feel slower than just writing it themselves, so they go back to doing it by hand and the tool sits there unused. Agreeing the direction first is what stops that, because the first draft is already the right piece of work.",
   },
 ];
 

@@ -60,6 +60,7 @@ export const FUNCTIONS = {
   sendContact: "send-contact",
   readBeforePublish: "read-before-publish",
   describeSource: "describe-source",
+  canvaDesign: "canva-design",
   canvaConnect: "canva-connect",
 };
 
@@ -222,6 +223,20 @@ export const DEFAULT_LEVEL = "standard";
    It stays in CAPABILITY_LEVELS and in LEVEL_ORDER, because support really
    does run at it and a row already holding it still has to read properly. */
 export const OFFERED_LEVELS = ["standard", "deeper", "deepest"];
+
+/* SHOWN IN THE LIST, GREYED, NEVER PICKABLE.
+
+   Anthony, 2026-09-16: "I didn't think removing conversational was okay.
+   You can keep it there, label it in green, support. And it's not
+   pickable. It's just there... It just makes the walkthrough make more
+   sense because I have to do explanation."
+
+   So it is in the ladder where somebody expects to see it, marked as the
+   support level and locked. Taking it out entirely left a gap an admin
+   has to be told about; leaving it selectable would offer a setting whose
+   only right answer is already decided. Present and locked says both
+   things at once, and it gives him something to point at. */
+export const SUPPORT_LEVEL = "conversational";
 
 /* READING A ROW WRITTEN BEFORE THE RENAME.
 
