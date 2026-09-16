@@ -204,11 +204,24 @@ export const LEVEL_ORDER = ["conversational", "standard", "deeper", "deepest"];
 
 export const DEFAULT_LEVEL = "standard";
 
-/* What an admin may actually hand out here. The two above exist and the
-   server will run them, but this deployment does not offer them, and a
-   selector listing a choice the server refuses is a promise the product
-   cannot keep. */
-export const OFFERED_LEVELS = ["conversational", "standard"];
+/* WHAT AN ADMIN ACTUALLY PICKS FROM, and it is three of the four.
+
+   It was conversational and standard only, which Anthony set that way for
+   a competition where the cost of the top two mattered. He lifted that on
+   2026-09-16: "let the other four be part of the access. But by default,
+   it's always on standard for staffs."
+
+   CONVERSATIONAL IS NOT IN THE LIST, and that is deliberate rather than a
+   leftover. Anthony: "we already know that conversational is standard for
+   customer care. Nobody needs to select that." It is the level the support
+   assistant runs at on its own, so it is a fact about support rather than
+   a choice anybody makes about a staff member. Leaving it in the picker
+   would be offering somebody a setting whose only correct value is already
+   decided for them, which is the kind of knob this product does not show.
+
+   It stays in CAPABILITY_LEVELS and in LEVEL_ORDER, because support really
+   does run at it and a row already holding it still has to read properly. */
+export const OFFERED_LEVELS = ["standard", "deeper", "deepest"];
 
 /* READING A ROW WRITTEN BEFORE THE RENAME.
 
@@ -345,7 +358,14 @@ export const WORKFLOW_TOOLS = [
     label: "Canva",
     icon: CanvaIconGlyph,
     hint: "Design and brand assets",
-    state: "registered",
+    /* CONNECTABLE BY THE PERSON LOOKING AT IT, since 2026-09-16.
+
+       It was "registered", meaning set up on our side and connected by an
+       admin for the whole company. Anthony moved it to the person, because
+       Canva is where somebody works rather than something the company
+       knows, and because a design made on the admin's account cannot be
+       opened by the staff member who asked for it. */
+    state: "connectable",
     /* The admin's Connectors tab does not show this one from here any more:
        Canva has its own panel with a real Connect button, and listing it
        twice is two answers to the same question. This entry stays for the

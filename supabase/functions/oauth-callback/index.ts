@@ -17,13 +17,13 @@
    string, so a caller cannot pick which service they are completing. That
    column was in the table from the day it was written, for this.
 
-   The company is read off that same row, and for the same reason. This
-   function has no session to look a person up by, because the browser
-   arrives here carrying Canva's redirect and nothing of ours. So the
-   company was decided at the start, by the function that checked who was
-   asking, and written down. Take it off the query string instead and
-   anybody who can reach this address could drop a token into any company
-   they liked.
+   WHO this is for is read off that same row, and for the same reason.
+   This function has no session to look a person up by, because the browser
+   arrives here carrying Canva's redirect and nothing of ours. So the staff
+   member and their company were both decided at the start, by the function
+   that checked who was asking, and written down. Take either off the query
+   string instead and anybody who can reach this address could drop a token
+   onto any person they liked.
 
    PROVIDERS below is the whole list. Adding one is a few lines in that
    object and nothing else in this file moves.
@@ -227,7 +227,7 @@ Deno.serve(async (req: Request) => {
     .from("oauth_pending")
     .delete()
     .eq("state", state)
-    .select("provider, code_verifier, created_at, return_to, company_id")
+    .select("provider, code_verifier, created_at, return_to, company_id, staff_id")
     .maybeSingle();
 
   if (pendingError || !pending) {
@@ -302,11 +302,16 @@ Deno.serve(async (req: Request) => {
 
   /* --- Keep it ---------------------------------------------------------
 
-     upsert on the pair (company_id, provider), so one company connecting
+     upsert on the pair (staff_id, provider), so one person connecting
      again replaces their own row rather than leaving two and a coin toss
-     about which gets used. It was upsert on provider alone until the
-     canva_tokens_per_company migration, which meant a second company
-     connecting wiped the first company's connection.
+     about which gets used.
+
+     It has been three keys. provider alone, which meant a second company
+     wiped the first. Then (company_id, provider), which fixed that and
+     still put everybody's designs in one person's account. Now the person,
+     which is where Anthony put it on 2026-09-16 and where it belongs:
+     Canva is a place somebody works, not a knowledge base an admin sets
+     up for them.
 
      expires_at is worked out here rather than stored as a duration, because
      a duration is only meaningful next to the moment it was issued, and the
@@ -317,6 +322,7 @@ Deno.serve(async (req: Request) => {
   const { error: keepError } = await admin
     .from("integration_tokens")
     .upsert({
+      staff_id: pending.staff_id,
       company_id: pending.company_id,
       provider: String(pending.provider),
       access_token: accessToken,
@@ -324,7 +330,7 @@ Deno.serve(async (req: Request) => {
       expires_at: expiresAt.toISOString(),
       scopes: typeof traded.data.scope === "string" ? traded.data.scope : null,
       updated_at: new Date().toISOString(),
-    }, { onConflict: "company_id,provider" });
+    }, { onConflict: "staff_id,provider" });
 
   if (keepError) {
     /* The keys are logged, never the values. A refresh token in a log is a

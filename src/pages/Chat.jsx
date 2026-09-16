@@ -47,6 +47,7 @@ import {
   Search,
   Globe,
   Shield,
+  LifeBuoy,
   Info,
 } from "lucide-react";
 
@@ -64,6 +65,7 @@ import {
 } from "../shared/session.js";
 import { readFileAsText, fileKind } from "../shared/readFile.js";
 import { shrinkImage } from "../shared/shrinkImage.js";
+import { askCanva } from "../shared/canvaApi.js";
 import { downloadPdf, downloadDocx } from "../shared/download.js";
 /* Each in its own file, and each loaded only when somebody actually asks
    for that format. The deck and spreadsheet libraries are megabytes, and
@@ -1541,6 +1543,87 @@ export default function Chat() {
     setConnectors((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
+  /* ------------------------------------------------------------------
+     CONNECTING YOUR OWN CANVA, FROM HERE
+
+     Canva is the one connector in this list that really connects, so it
+     does not just flip a switch in this browser the way the others do
+     while they wait to be built.
+
+     It leaves this page and comes back. Anthony, 2026-09-14: "it doesn't
+     open a different tab, but rather preserves the page... It returns back
+     to where the person was, exactly." So the address travels with the
+     request and the callback redirects to it. Nothing to block, nothing to
+     close, no orphan tab.
+
+     WHY THE PERSON AND NOT THE ADMIN. An admin connecting one account for
+     everybody put every design in one person's Canva, so a staff member
+     who clicked Open in Canva landed in their own account and the file was
+     not there. Their own connection, their own account, their own designs.
+     ------------------------------------------------------------------ */
+  const [canvaBusy, setCanvaBusy] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const result = await askCanva("status");
+      if (!alive || !result?.ok) return;
+      setConnectors((prev) => ({ ...prev, canva: Boolean(result.connected) }));
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  /* Read once on the way back in, said once, then taken out of the address
+     bar so a refresh does not replay a message about something that
+     happened a while ago. */
+  const [canvaJustBack] = useState(() => {
+    if (typeof window === "undefined") return "";
+    const marker = new URLSearchParams(window.location.search).get("connected");
+    return marker === "canva" || marker === "failed" ? marker : "";
+  });
+
+  useEffect(() => {
+    if (!canvaJustBack || typeof window === "undefined") return;
+    setToast(canvaJustBack === "canva"
+      ? "Canva is connected. Nothing else to do."
+      : "Canva did not finish that, so nothing was connected.");
+    const url = new URL(window.location.href);
+    url.searchParams.delete("connected");
+    window.history.replaceState({}, "", url.toString());
+  }, [canvaJustBack]);
+
+  async function connectCanva() {
+    if (canvaBusy) return;
+
+    /* Already connected means this press is a disconnect. Same control,
+       both directions, so there is never a connection somebody can make
+       and cannot unmake. */
+    if (connectors.canva) {
+      setCanvaBusy(true);
+      const result = await askCanva("disconnect");
+      setCanvaBusy(false);
+      if (!result?.ok) {
+        setToast(result?.reason ?? "Could not disconnect that. Try again.");
+        return;
+      }
+      setConnectors((prev) => ({ ...prev, canva: false }));
+      setToast("Canva disconnected. It is still in your Canva settings if you want it gone from there too.");
+      return;
+    }
+
+    setCanvaBusy(true);
+    const result = await askCanva("start");
+    if (!result?.ok || !result.url) {
+      setCanvaBusy(false);
+      setToast(result?.reason ?? "Could not start that. Try again.");
+      return;
+    }
+    /* busy stays true on purpose. The page is about to be replaced, and
+       putting the row back to normal for the half second in between reads
+       as nothing having happened. */
+    window.location.assign(result.url);
+  }
+
   function toggleFeedback(id, kind) {
     setFeedback((prev) => ({ ...prev, [id]: prev[id] === kind ? null : kind }));
   }
@@ -1838,6 +1921,24 @@ export default function Chat() {
               shown a door they are not allowed through is an invitation to
               try it, and a door that opens onto a panel where every save
               fails is worse than no door. */}
+          {/* THE SUPPORT QUEUE, for somebody an admin has given it to.
+
+              It sits in the same stack as the admin door and follows the
+              same rule: a person is only ever shown a door they can
+              actually walk through. can_support is false for everybody
+              until an admin turns it on, so most people never see this at
+              all. */}
+          {me?.staff?.can_support === true && (
+            <button
+              onClick={() => navigate("/workspace?view=support")}
+              className="w-full flex items-center gap-2 rounded-[12px] px-3.5 py-2.5 text-[14px] font-medium transition-colors hover:opacity-80"
+              style={{ color: "var(--text-2)" }}
+            >
+              <LifeBuoy size={15} />
+              Support queue
+            </button>
+          )}
+
           {me?.staff?.access_level === "admin" && (
             <button
               onClick={() => navigate("/admin")}
@@ -2160,10 +2261,13 @@ export default function Chat() {
                       <div key={tool.id}>
                         <button
                           onClick={() =>
-                            tool.state === "connectable"
+                            tool.id === "canva"
+                              ? connectCanva()
+                              : tool.state === "connectable"
                               ? toggleConnector(tool.id)
                               : setDemoNoteFor((open) => (open === tool.id ? null : tool.id))
                           }
+                          disabled={tool.id === "canva" && canvaBusy}
                           className="w-full flex items-center justify-between pl-9 pr-4 py-2.5 hover:opacity-80 transition-opacity"
                         >
                           <span className="flex items-center gap-2.5">
@@ -2182,7 +2286,11 @@ export default function Chat() {
                             {tool.state === "registered" && <StatusPill tone="pending">Set up</StatusPill>}
                             {tool.state === "connectable" && (
                               <StatusPill tone={connectors[tool.id] ? "ok" : "neutral"}>
-                                {connectors[tool.id] ? "Connected" : "Connect"}
+                                {tool.id === "canva" && canvaBusy
+                                  ? "One moment"
+                                  : connectors[tool.id]
+                                  ? "Connected"
+                                  : "Connect"}
                               </StatusPill>
                             )}
                             {tool.state === "sample" && <StatusPill tone="neutral">Example</StatusPill>}

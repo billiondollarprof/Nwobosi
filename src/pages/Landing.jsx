@@ -243,7 +243,7 @@ const OUTCOMES = [
   {
     icon: Users,
     title: "Your staff actually use it",
-    body: "The rounds of rewriting are what sends people back to doing it by hand. Settle the direction before the work is built and that reason goes.",
+    body: "Most people give up on AI at the third rewrite and go back to doing the job by hand. Here the direction is agreed before anything is built, so there is no third rewrite to give up at.",
   },
 ];
 
@@ -765,192 +765,30 @@ export default function Landing() {
       </section>
 
       {/* ====================================================================
-          6. HOW IT WORKS
+          3. INTEGRATIONS
+          Two rows of connectors, moving in opposite directions. A static
+          row of five reads as a short list. A moving strip reads as a
+          surface things plug into.
+
+          The line under it is deliberate. None of these are wired in the
+          demo, and claiming otherwise is the fastest way to lose the
+          technical reader who reviews this page before a deal moves. What
+          is true is that a deployment connects the systems an organization
+          already runs on, and that sentence is the more confident one
+          anyway.
           ==================================================================== */}
 
-      <section className="relative z-10 px-5 sm:px-8 pb-20 sm:pb-28">
-        <Reveal className="max-w-4xl mx-auto">
-          <h2
-            className="text-[28px] sm:text-[38px] font-medium text-center mb-3 tracking-[-0.025em]"
-            style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
-          >
-            How it works
-          </h2>
-          <p className="text-[15px] text-center mb-11 max-w-lg mx-auto" style={{ color: "var(--text-3)" }}>
-Six steps. All your staff ever do is talk.
-          </p>
-
-          {/* Five steps into a two column grid leaves one on its own, so the
-              last one takes the full width. It is the step that carries the
-              guardrail, which is the point of the whole section, so the
-              extra room is where it should have gone anyway.
-
-              This is the one card section that is not stacked on a phone.
-              A stack levels every card to the tallest, which is right when
-              the cards are peers and wrong here: these are steps of very
-              different lengths, and levelling left two hundred pixels of
-              empty card under the short ones. They are also a sequence,
-              and a numbered list read straight down is the clearest way to
-              show an order. */}
-          <div className="grid gap-4 sm:grid-cols-2">
-            {STEPS.map((step, i) => (
-              <div
-                key={step.title}
-                className={`sx-card rounded-[18px] border p-6 backdrop-blur-xl flex gap-4 h-full ${
-                  step.wide ? "sm:col-span-2" : ""
-                }`}
-                style={{ backgroundColor: "var(--surface)" }}
-              >
-                <div className="shrink-0">
-                  <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-white text-[13px] font-bold"
-                    style={{ background: GRADIENTS.brand, fontFamily: FONTS.display }}
-                  >
-                    {i + 1}
-                  </div>
-                </div>
-                <div>
-                  <h3
-                    className="text-[16px] font-bold mb-1.5 flex items-center gap-2"
-                    style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
-                  >
-                    <step.icon size={16} style={{ color: BRAND.accentSoft }} />
-                    {step.title}
-                  </h3>
-                  <p className="text-[14px] leading-relaxed" style={{ color: "var(--text-3)" }}>
-                    {step.body}
-                  </p>
-                </div>
-              </div>
-            ))}
+      <section className="relative z-10 pt-10 sm:pt-4 pb-20 sm:pb-28">
+        <div className="px-5 sm:px-8">
+          <div className="max-w-3xl mx-auto text-center mb-7">
+            <Eyebrow>Integrations</Eyebrow>
+            <p className="text-[15px] leading-relaxed mt-3.5" style={{ color: "var(--text-3)" }}>
+              Your deployment connects to the systems your organization already runs on. Scoped to
+              exactly what your team approves, and nothing beyond it.
+            </p>
           </div>
-        </Reveal>
-      </section>
-
-      {/* ====================================================================
-          4. THE READ BACK
-          The one thing worth showing rather than describing, and the
-          reason the product can be trusted with somebody's afternoon. The
-          panel on the right is the real component from the chat screen,
-          same rows, same words, not a drawing of one.
-          ==================================================================== */}
-
-      <section className="relative z-10 px-5 sm:px-8 pb-20 sm:pb-28">
-        <Reveal className="max-w-5xl mx-auto grid gap-10 lg:grid-cols-2 lg:gap-16 items-center">
-          <Reveal>
-            <Eyebrow>Before it spends your time</Eyebrow>
-            <h2
-              className="text-[28px] sm:text-[38px] font-medium leading-[1.12] tracking-[-0.025em] mt-4"
-              style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
-            >
-              It tells you what it understood <GradientText>before it builds anything</GradientText>
-            </h2>
-            <p className="text-[16px] leading-relaxed mt-5" style={{ color: "var(--text-2)" }}>
-              Every brief comes back to you first: what it is making, who it is for, which of your
-              own sources it will use, and what it is assuming. You confirm, or you say what is
-              wrong.
-            </p>
-            <p className="text-[16px] leading-relaxed mt-4" style={{ color: "var(--text-2)" }}>
-              The back and forth happens here, in conversation, instead of after somebody has read a
-              finished document that was never going to be right. What you confirm becomes the
-              brief. Nothing outside it reaches the finished file.
-            </p>
-          </Reveal>
-
-          <Reveal delay={90}>
-            <GlassPanel className="p-5 sm:p-6">
-              <p className="text-[15.5px] mb-4" style={{ color: "var(--text-1)" }}>
-                Here is what I have got. Let me know if anything needs to change.
-              </p>
-              <div className="mb-5">
-                {[
-                  ["Project", "Renewal one pager for Meridian Health"],
-                  ["Template", "Client One Pager"],
-                  ["Audience", "Their operations director"],
-                  ["Sources", "Brand Guide, Q2 Renewals Summary"],
-                ].map(([label, value]) => (
-                  <div
-                    key={label}
-                    className="flex gap-4 py-2 border-b"
-                    style={{ borderColor: "var(--border)" }}
-                  >
-                    <span
-                      className="w-20 shrink-0 text-[11px] font-semibold uppercase tracking-wide pt-0.5"
-                      style={{ color: "var(--text-3)" }}
-                    >
-                      {label}
-                    </span>
-                    <span className="text-[14.5px]" style={{ color: "var(--text-1)" }}>
-                      {value}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              {/* Presentational. The real one spends money, and a button on
-                  a landing page that looks like it does and does not is
-                  worse than no button. */}
-              <div
-                aria-hidden="true"
-                className="px-5 py-2.5 rounded-[12px] text-[14px] font-semibold text-white w-fit"
-                style={{ background: GRADIENTS.action }}
-              >
-                Generate
-              </div>
-            </GlassPanel>
-            <p className="text-[12.5px] mt-3" style={{ color: "var(--text-3)" }}>
-              An example brief. This is the screen your staff see.
-            </p>
-          </Reveal>
-        </Reveal>
-      </section>
-
-      {/* ====================================================================
-          WHAT THIS CHANGES
-          The mechanism above, turned into the four things a buyer gets.
-          Added 2026-09-15 as part of moving the mechanism above the
-          integrations, which is where Anthony wanted it: a buyer needs to
-          know what happens when their staff uses this before they care
-          what it plugs into.
-          ==================================================================== */}
-
-      <section className="relative z-10 px-5 sm:px-8 pb-20 sm:pb-28">
-        <Reveal className="max-w-5xl mx-auto">
-          <SectionHead
-            eyebrow="What this changes"
-            title="Four things your company gets from that loop"
-            sub="Each one comes out of a step above rather than standing on its own."
-            center
-          />
-
-          {/* Two across from tablet up, never four. Four across puts each
-              of these in a column too narrow to say anything, and these
-              are sentences rather than labels. */}
-          <div className="grid gap-4 sm:grid-cols-2">
-            {OUTCOMES.map((item) => (
-              <div
-                key={item.title}
-                className="sx-card rounded-[18px] border p-6 backdrop-blur-xl h-full"
-                style={{ backgroundColor: "var(--surface)" }}
-              >
-                <span
-                  className="w-10 h-10 rounded-[12px] flex items-center justify-center mb-4"
-                  style={{ backgroundColor: "var(--chip)" }}
-                >
-                  <item.icon size={18} style={{ color: BRAND.accentSoft }} />
-                </span>
-                <h3
-                  className="text-[16.5px] font-bold mb-2 leading-snug"
-                  style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
-                >
-                  {item.title}
-                </h3>
-                <p className="text-[14px] leading-relaxed" style={{ color: "var(--text-3)" }}>
-                  {item.body}
-                </p>
-              </div>
-            ))}
-          </div>
-        </Reveal>
+        </div>
+        <IntegrationStrip />
       </section>
 
       {/* ====================================================================
@@ -1099,30 +937,192 @@ Six steps. All your staff ever do is talk.
       </section>
 
       {/* ====================================================================
-          3. INTEGRATIONS
-          Two rows of connectors, moving in opposite directions. A static
-          row of five reads as a short list. A moving strip reads as a
-          surface things plug into.
-
-          The line under it is deliberate. None of these are wired in the
-          demo, and claiming otherwise is the fastest way to lose the
-          technical reader who reviews this page before a deal moves. What
-          is true is that a deployment connects the systems an organization
-          already runs on, and that sentence is the more confident one
-          anyway.
+          WHAT THIS CHANGES
+          The mechanism above, turned into the four things a buyer gets.
+          Added 2026-09-15 as part of moving the mechanism above the
+          integrations, which is where Anthony wanted it: a buyer needs to
+          know what happens when their staff uses this before they care
+          what it plugs into.
           ==================================================================== */}
 
-      <section className="relative z-10 pt-10 sm:pt-4 pb-20 sm:pb-28">
-        <div className="px-5 sm:px-8">
-          <div className="max-w-3xl mx-auto text-center mb-7">
-            <Eyebrow>Integrations</Eyebrow>
-            <p className="text-[15px] leading-relaxed mt-3.5" style={{ color: "var(--text-3)" }}>
-              Your deployment connects to the systems your organization already runs on. Scoped to
-              exactly what your team approves, and nothing beyond it.
-            </p>
+      <section className="relative z-10 px-5 sm:px-8 pb-20 sm:pb-28">
+        <Reveal className="max-w-5xl mx-auto">
+          <SectionHead
+            eyebrow="What this changes"
+            title="Four things your company gets from that loop"
+            sub="Each one comes out of a step above rather than standing on its own."
+            center
+          />
+
+          {/* Two across from tablet up, never four. Four across puts each
+              of these in a column too narrow to say anything, and these
+              are sentences rather than labels. */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            {OUTCOMES.map((item) => (
+              <div
+                key={item.title}
+                className="sx-card rounded-[18px] border p-6 backdrop-blur-xl h-full"
+                style={{ backgroundColor: "var(--surface)" }}
+              >
+                <span
+                  className="w-10 h-10 rounded-[12px] flex items-center justify-center mb-4"
+                  style={{ backgroundColor: "var(--chip)" }}
+                >
+                  <item.icon size={18} style={{ color: BRAND.accentSoft }} />
+                </span>
+                <h3
+                  className="text-[16.5px] font-bold mb-2 leading-snug"
+                  style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
+                >
+                  {item.title}
+                </h3>
+                <p className="text-[14px] leading-relaxed" style={{ color: "var(--text-3)" }}>
+                  {item.body}
+                </p>
+              </div>
+            ))}
           </div>
-        </div>
-        <IntegrationStrip />
+        </Reveal>
+      </section>
+
+      {/* ====================================================================
+          6. HOW IT WORKS
+          ==================================================================== */}
+
+      <section className="relative z-10 px-5 sm:px-8 pb-20 sm:pb-28">
+        <Reveal className="max-w-4xl mx-auto">
+          <h2
+            className="text-[28px] sm:text-[38px] font-medium text-center mb-3 tracking-[-0.025em]"
+            style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
+          >
+            How it works
+          </h2>
+          <p className="text-[15px] text-center mb-11 max-w-lg mx-auto" style={{ color: "var(--text-3)" }}>
+Six steps. All your staff ever do is talk.
+          </p>
+
+          {/* Five steps into a two column grid leaves one on its own, so the
+              last one takes the full width. It is the step that carries the
+              guardrail, which is the point of the whole section, so the
+              extra room is where it should have gone anyway.
+
+              This is the one card section that is not stacked on a phone.
+              A stack levels every card to the tallest, which is right when
+              the cards are peers and wrong here: these are steps of very
+              different lengths, and levelling left two hundred pixels of
+              empty card under the short ones. They are also a sequence,
+              and a numbered list read straight down is the clearest way to
+              show an order. */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            {STEPS.map((step, i) => (
+              <div
+                key={step.title}
+                className={`sx-card rounded-[18px] border p-6 backdrop-blur-xl flex gap-4 h-full ${
+                  step.wide ? "sm:col-span-2" : ""
+                }`}
+                style={{ backgroundColor: "var(--surface)" }}
+              >
+                <div className="shrink-0">
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-white text-[13px] font-bold"
+                    style={{ background: GRADIENTS.brand, fontFamily: FONTS.display }}
+                  >
+                    {i + 1}
+                  </div>
+                </div>
+                <div>
+                  <h3
+                    className="text-[16px] font-bold mb-1.5 flex items-center gap-2"
+                    style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
+                  >
+                    <step.icon size={16} style={{ color: BRAND.accentSoft }} />
+                    {step.title}
+                  </h3>
+                  <p className="text-[14px] leading-relaxed" style={{ color: "var(--text-3)" }}>
+                    {step.body}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Reveal>
+      </section>
+
+      {/* ====================================================================
+          4. THE READ BACK
+          The one thing worth showing rather than describing, and the
+          reason the product can be trusted with somebody's afternoon. The
+          panel on the right is the real component from the chat screen,
+          same rows, same words, not a drawing of one.
+          ==================================================================== */}
+
+      <section className="relative z-10 px-5 sm:px-8 pb-20 sm:pb-28">
+        <Reveal className="max-w-5xl mx-auto grid gap-10 lg:grid-cols-2 lg:gap-16 items-center">
+          <Reveal>
+            <Eyebrow>Before it spends your time</Eyebrow>
+            <h2
+              className="text-[28px] sm:text-[38px] font-medium leading-[1.12] tracking-[-0.025em] mt-4"
+              style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
+            >
+              It tells you what it understood <GradientText>before it builds anything</GradientText>
+            </h2>
+            <p className="text-[16px] leading-relaxed mt-5" style={{ color: "var(--text-2)" }}>
+              Every brief comes back to you first: what it is making, who it is for, which of your
+              own sources it will use, and what it is assuming. You confirm, or you say what is
+              wrong.
+            </p>
+            <p className="text-[16px] leading-relaxed mt-4" style={{ color: "var(--text-2)" }}>
+              The back and forth happens here, in conversation, instead of after somebody has read a
+              finished document that was never going to be right. What you confirm becomes the
+              brief. Nothing outside it reaches the finished file.
+            </p>
+          </Reveal>
+
+          <Reveal delay={90}>
+            <GlassPanel className="p-5 sm:p-6">
+              <p className="text-[15.5px] mb-4" style={{ color: "var(--text-1)" }}>
+                Here is what I have got. Let me know if anything needs to change.
+              </p>
+              <div className="mb-5">
+                {[
+                  ["Project", "Renewal one pager for Meridian Health"],
+                  ["Template", "Client One Pager"],
+                  ["Audience", "Their operations director"],
+                  ["Sources", "Brand Guide, Q2 Renewals Summary"],
+                ].map(([label, value]) => (
+                  <div
+                    key={label}
+                    className="flex gap-4 py-2 border-b"
+                    style={{ borderColor: "var(--border)" }}
+                  >
+                    <span
+                      className="w-20 shrink-0 text-[11px] font-semibold uppercase tracking-wide pt-0.5"
+                      style={{ color: "var(--text-3)" }}
+                    >
+                      {label}
+                    </span>
+                    <span className="text-[14.5px]" style={{ color: "var(--text-1)" }}>
+                      {value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              {/* Presentational. The real one spends money, and a button on
+                  a landing page that looks like it does and does not is
+                  worse than no button. */}
+              <div
+                aria-hidden="true"
+                className="px-5 py-2.5 rounded-[12px] text-[14px] font-semibold text-white w-fit"
+                style={{ background: GRADIENTS.action }}
+              >
+                Generate
+              </div>
+            </GlassPanel>
+            <p className="text-[12.5px] mt-3" style={{ color: "var(--text-3)" }}>
+              An example brief. This is the screen your staff see.
+            </p>
+          </Reveal>
+        </Reveal>
       </section>
 
       {/* ====================================================================

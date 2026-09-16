@@ -21,23 +21,35 @@
         elsewhere. Generated here so the callback can recognise its own
         work.
 
-   ONE CONNECTION PER COMPANY
-   --------------------------
-   Not per person. Every staff member at a company shares the one account
-   their admin connected, so nobody signs in to Canva themselves.
+   ONE CONNECTION PER PERSON
+   -------------------------
+   Whoever does the design work connects their own Canva. Not the admin on
+   everybody's behalf, and not one account for the whole company.
 
-   IT USED TO BE ONE CONNECTION FOR THE WHOLE DEPLOYMENT, AND THAT WAS A
-   BUG WAITING TO FIRE. integration_tokens was keyed on provider alone, so
-   it could only hold one Canva row at a time. The second company to
-   connect would have overwritten the first company's row, and the first
-   company would have lost their connection without being told. Two
-   companies already exist on this deployment, so this was live rather
-   than theoretical. Fixed by the canva_tokens_per_company migration,
-   which made the key (company_id, provider).
+   IT WENT THROUGH BOTH OF THOSE FIRST. One row for the deployment, which
+   meant the second company to connect silently wiped the first. Then one
+   row per company, connected by an admin. Anthony took it to the person on
+   2026-09-16, and the reason is the one that matters:
 
-   The company is read off the caller's staff row, never off the request.
-   A browser can say anything; a staff row is the database's own answer to
-   which company somebody belongs to.
+     "Admin is not creating any design. And what is even the function of
+      admin connecting Canva in the first place? Admin only connects
+      knowledge bases... But Canva, it's not knowledge base. It's a place
+      for work."
+
+   And the hole that closes. With one company account, a staff member who
+   wants to move the logo themselves clicks Open in Canva, lands in their
+   own Canva, and the design is not there, because the design is sitting in
+   somebody else's account. Per person, the design is in the account they
+   are already signed into, so that button tells the truth.
+
+   Both ids are read off the caller's own staff row, never off the request.
+   A browser can say anything; a staff row is the database's answer to who
+   somebody is and which company they are on.
+
+   NO ADMIN CHECK ANY MORE. Connecting your own Canva is your business, the
+   same as any other connector a staff member sets up from the chat. What
+   an admin still owns is the knowledge base, which is a completely
+   different question from where somebody does their design work.
 
    ONLY AN ADMIN
    -------------
@@ -219,9 +231,6 @@ Deno.serve(async (req: Request) => {
   if (staffError || !staff) {
     return json({ ok: false, reason: "Your account is not set up on a company yet." }, 403);
   }
-  if (staff.access_level !== "admin") {
-    return json({ ok: false, reason: "Only an admin can connect Canva." }, 403);
-  }
 
   /* The service role, because both tables have row level security on and no
      policies at all. Nobody reaches them except this. */
@@ -239,7 +248,7 @@ Deno.serve(async (req: Request) => {
     const { data: row, error: readError } = await admin
       .from("integration_tokens")
       .select("provider, scopes, connected_at, expires_at")
-      .eq("company_id", staff.company_id)
+      .eq("staff_id", staff.id)
       .eq("provider", "canva")
       .maybeSingle();
 
@@ -266,8 +275,8 @@ Deno.serve(async (req: Request) => {
      admin check above has already run, so by here we know an admin asked
      for it by name.
 
-     Scoped to their own company, so an admin can only ever throw away
-     their own connection. Without that eq this would empty the table.
+     Scoped to the caller's own staff id, so somebody can only ever throw
+     away their own connection. Without that eq this would empty the table.
 
      It succeeds when there was nothing to delete. An admin pressing this
      wants to end up disconnected, and they are disconnected either way, so
@@ -277,7 +286,7 @@ Deno.serve(async (req: Request) => {
     const { error: dropError } = await admin
       .from("integration_tokens")
       .delete()
-      .eq("company_id", staff.company_id)
+      .eq("staff_id", staff.id)
       .eq("provider", "canva");
 
     if (dropError) {
@@ -297,7 +306,7 @@ Deno.serve(async (req: Request) => {
       await admin
         .from("oauth_pending")
         .delete()
-        .eq("company_id", staff.company_id)
+        .eq("staff_id", staff.id)
         .eq("provider", "canva");
     } catch (err) {
       console.error("could not clear pending canva handshakes", err);
@@ -333,6 +342,7 @@ Deno.serve(async (req: Request) => {
          row to read at that end. It reads the company off this row, the
          same way it already reads the provider off it, which means the
          browser never gets to choose which company a token lands in. */
+      staff_id: staff.id,
       company_id: staff.company_id,
     });
 

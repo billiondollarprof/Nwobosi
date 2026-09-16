@@ -34,7 +34,6 @@ import {
 
 import { LogoMark } from "../shared/icons.jsx";
 import PublishGate from "../shared/PublishGate.jsx";
-import CanvaConnect from "../shared/CanvaConnect.jsx";
 import ConfirmDelete from "../shared/ConfirmDelete.jsx";
 import RefreshOrKeep from "../shared/RefreshOrKeep.jsx";
 import AudienceControl from "../shared/AudienceControl.jsx";
@@ -59,6 +58,7 @@ import {
   listSources,
   addTextSource,
   addImageSource,
+  setSupportAccess,
   removeSource,
   setSourceVisibility,
   listContradictions,
@@ -1692,22 +1692,23 @@ function ConnectorsSection() {
         </div>
       </GlassPanel>
 
-      {/* WHAT WAS HERE WAS NOT TRUE, replaced 2026-09-14.
+      {/* CANVA IS NOT HERE ANY MORE, removed 2026-09-16.
 
-          It read "Canva is connected per person" and said the assistant
-          would ask each staff member to connect at the moment they needed
-          it. That was written before any of it existed, and it is not what
-          was built: one account backs the whole deployment and an admin
-          connects it once.
+          There was a Design panel on this screen with a Connect button on
+          it, and an admin connected one Canva account for everybody.
+          Anthony took it out and he is right about why:
 
-          A screen describing a product nobody built is worse than a blank
-          one, because the admin plans around it. */}
-      <GlassPanel className="p-6">
-        <SectionHeading hint="One account serves everybody here, so nobody else has to sign in or hold a licence.">
-          Design
-        </SectionHeading>
-        <CanvaConnect />
-      </GlassPanel>
+            "Admin is not creating any design. And what is even the
+             function of admin connecting Canva in the first place? Admin
+             only connects knowledge bases... But Canva, it's not knowledge
+             base. It's a place for work."
+
+          This tab is for what the company knows. Canva is where a person
+          does their work, so it sits with the other connectors in the
+          chat, and whoever has the design job connects their own. That
+          also fixes the thing that made the old shape wrong: a design made
+          on the admin's account cannot be opened by the staff member who
+          asked for it. */}
     </div>
   );
 }
@@ -1764,6 +1765,8 @@ export function AccessSection({ me }) {
           email: "",
           role: r.role ?? "Not set",
           ceiling: levelOf(r.model_ceiling),
+          canSupport: r.can_support === true,
+          canSupport: r.can_support === true,
           limit: r.daily_limit ?? 5,
           used: 0,
         }))
@@ -1780,6 +1783,11 @@ export function AccessSection({ me }) {
   const [inviteLimit, setInviteLimit] = useState(5);
   const [inviting, setInviting] = useState(false);
   const [inviteError, setInviteError] = useState("");
+
+  /* Its own message, not the invite form's. A support toggle that failed
+     has nothing to do with inviting somebody, and putting the words in
+     that panel sends an admin to look at the wrong control. */
+  const [staffNote, setStaffNote] = useState("");
   const [invited, setInvited] = useState(null);
 
   /* Every required box filled. The button reads this rather than waiting
@@ -1797,6 +1805,7 @@ export function AccessSection({ me }) {
         email: req.email,
         role: "Not set",
         ceiling: DEFAULT_LEVEL,
+        canSupport: false,
         limit: 5,
         used: 0,
       },
@@ -1858,6 +1867,20 @@ export function AccessSection({ me }) {
 
   function revoke(id) {
     setStaff((prev) => prev.filter((s) => s.id !== id));
+  }
+
+  /* Optimistic, then corrected if the write fails. A toggle that waits for
+     a round trip before it moves feels broken, and this one is reversible
+     in one tap, so showing the change immediately costs nothing. */
+  async function toggleSupport(person) {
+    const next = !person.canSupport;
+    setStaff((prev) => prev.map((x) => (x.id === person.id ? { ...x, canSupport: next } : x)));
+    const result = await setSupportAccess(person.id, next);
+    if (!result.ok) {
+      setStaff((prev) => prev.map((x) => (x.id === person.id ? { ...x, canSupport: !next } : x)));
+      setStaffNote(result.reason);
+      setTimeout(() => setStaffNote(""), 6000);
+    }
   }
 
   function setCeiling(id, ceiling) {
@@ -2026,9 +2049,15 @@ export function AccessSection({ me }) {
       </GlassPanel>
 
       <GlassPanel className="p-6">
-        <SectionHeading hint="Change anyone's model ceiling or their daily limit at any time, or revoke their access. You cannot revoke yourself.">
+        <SectionHeading hint="Change anyone's ceiling or daily limit, give them the support queue, or revoke their access. You cannot revoke yourself.">
           Staff
         </SectionHeading>
+
+        {staffNote && (
+          <p className="text-[12.5px] mb-3" role="alert" style={{ color: "var(--caution)" }}>
+            {staffNote}
+          </p>
+        )}
 
         <div className="space-y-2">
           {staff.map((person) => (
@@ -2072,6 +2101,32 @@ export function AccessSection({ me }) {
                   ariaLabel={`How far ${person.name} can go`}
                 />
               </div>
+
+              {/* SUPPORT, as a toggle on the person.
+
+                  It reads "Support" either way and fills in when it is on,
+                  so the control says what it is rather than what pressing
+                  it would do. A button labelled by its action is the thing
+                  an admin has to think about twice.
+
+                  Off for everybody until somebody turns it on, admins
+                  included, because running the company and answering its
+                  customers are two different jobs. */}
+              <button
+                onClick={() => toggleSupport(person)}
+                className="shrink-0 rounded-full px-3 py-1.5 text-[12.5px] font-medium border transition-colors hover:opacity-80"
+                style={
+                  person.canSupport
+                    ? { borderColor: BRAND.green, color: BRAND.green, backgroundColor: "rgba(22,176,74,0.10)" }
+                    : { borderColor: "var(--border-2)", color: "var(--text-3)" }
+                }
+                aria-pressed={person.canSupport}
+                title={person.canSupport
+                  ? `${person.name} can answer support. Tap to take it away.`
+                  : `Let ${person.name} answer support.`}
+              >
+                Support
+              </button>
 
               <div className="shrink-0 w-[92px]">
                 <UsageMeter used={person.used} limit={person.limit} />

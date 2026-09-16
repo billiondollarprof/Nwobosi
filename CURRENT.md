@@ -47,6 +47,24 @@ built and checked, not when it is planned.
    depending on whether the customer gave an email. Agreed 2026-09-15, not
    built.
 
+### Done, 2026-09-16
+
+- **Canva moved from the admin to the person.** integration_tokens is keyed
+  (staff_id, provider) now. The Design panel is gone from the admin, and
+  Canva is a connector a staff member connects from the chat like any
+  other. This is what fixes Open in Canva: the design is in the account
+  they are already signed into.
+- **Support is a seat.** staff.can_support, an admin toggle on the staff
+  row, a Support queue screen reading the existing support_threads and
+  support_messages, and a switch between it and their own work at the same
+  /workspace address.
+- **All three levels are offered:** standard, deeper, deepest, default
+  standard. Conversational is what support runs at on its own, so nobody
+  picks it.
+- **Section order:** integrations, the problem, what this changes, how it
+  works, the read back. Sold before told how.
+- **The fourth outcome card** rewritten so it reads once.
+
 ### Done, 2026-09-15
 
 - **The landing page below the fold is rearranged.** How it works, then

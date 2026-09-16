@@ -294,6 +294,36 @@ export async function addImageSource({
   return { ok: true, source, chunks: 0 };
 }
 
+/* GIVING SOMEBODY THE SUPPORT QUEUE, OR TAKING IT BACK.
+
+   A flag on the person, not a second account and not a second address.
+   Anthony's design, and the reason it beats a separate support site: a
+   second site is a second door, a second sign in, and a second place for
+   the access rules to drift apart from these ones.
+
+   So the support person signs in at /workspace like everybody else, and
+   what they get is one extra switch between their own work and the queue.
+   Taking it away is this same call with false, rather than hunting down an
+   account on another system.
+
+   ADMINS ARE NOT AUTOMATICALLY SUPPORT. Running the company and answering
+   its customers are two different jobs, and an admin who wants both turns
+   it on for themselves like anybody else.
+   ========================================================================== */
+
+export async function setSupportAccess(staffId, canSupport) {
+  const { error } = await supabase
+    .from("staff")
+    .update({ can_support: canSupport === true })
+    .eq("id", staffId);
+
+  if (error) {
+    console.error("could not change support access", error);
+    return { ok: false, reason: "Could not change that. Try again." };
+  }
+  return { ok: true };
+}
+
 /* THE ONE SWITCH THAT DECIDES WHAT A STRANGER CAN BE TOLD
    Staff read everything in the knowledge base. Support reads only the
    sources with this turned on, and it is off until somebody deliberately
@@ -419,7 +449,7 @@ export async function saveWork({ companyId, staffId, title, skill, content, sour
 export async function listStaff(companyId) {
   const { data, error } = await supabase
     .from("staff_effective_limits")
-    .select("id, name, role, access_level, model_ceiling, daily_limit")
+    .select("id, name, role, access_level, model_ceiling, daily_limit, can_support")
     .eq("company_id", companyId)
     .order("name", { ascending: true });
 

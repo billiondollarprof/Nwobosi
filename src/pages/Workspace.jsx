@@ -48,6 +48,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import Admin from "./Admin.jsx";
 import Chat from "./Chat.jsx";
+import Support from "./Support.jsx";
 import ContainmentSeal from "../shared/ContainmentSeal.jsx";
 import { PageShell, Spinner } from "../shared/ui.jsx";
 import { loadMe } from "../shared/session.js";
@@ -125,7 +126,26 @@ export default function Workspace() {
      ------------------------------------------------------------------------ */
 
   const isAdmin = me?.staff?.access_level === "admin";
-  const wantsAssistant = params.get("view") === "assistant";
+  const canSupport = me?.staff?.can_support === true;
+  const view = params.get("view");
 
-  return isAdmin && !wantsAssistant ? <Admin /> : <Chat />;
+  /* SUPPORT IS A VIEW AT THIS SAME ADDRESS, since 2026-09-16.
+
+     An admin turns can_support on for somebody, and that person gets one
+     extra switch. No second site, no second sign in, and no second set of
+     access rules to keep in step with these ones.
+
+     The flag is checked here as well as in the database, and that is not
+     belt and braces. ?view=support is a string anybody can type, so
+     without this check a staff member could put it in the bar and reach a
+     screen they were never given. The database is what actually stops them
+     reading any rows, and this is what stops them seeing the shell of a
+     screen they have no business on.
+
+     An admin is NOT automatically support. Running the company and
+     answering its customers are two different jobs, so an admin who wants
+     both turns it on for themselves like anybody else. */
+  if (view === "support" && canSupport) return <Support me={me} />;
+
+  return isAdmin && view !== "assistant" ? <Admin /> : <Chat />;
 }

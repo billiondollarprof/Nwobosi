@@ -105,19 +105,19 @@ console.log("\nCANVA TOKEN\n");
       write, because a refresh we did not need spends a refresh token we
       cannot get back. */
 {
-  const db = fakeDb([{ company_id: "c1", provider: "canva", access_token: "good", refresh_token: "r1", expires_at: hoursFromNow(3) }]);
+  const db = fakeDb([{ staff_id: "s1", company_id: "c1", provider: "canva", access_token: "good", refresh_token: "r1", expires_at: hoursFromNow(3) }]);
   globalThis.fetch = async () => { throw new Error("should not have called canva"); };
-  check("a fresh token is used as is", await canvaAccessToken(db, "c1"), { ok: true, token: "good" });
+  check("a fresh token is used as is", await canvaAccessToken(db, "s1"), { ok: true, token: "good" });
   check("  and nothing was written", db.updates, 0);
 }
 
 /* 2. A stale token is refreshed, and BOTH halves of the new pair are
       stored. Storing only the access token is failure 1 above. */
 {
-  const row = { company_id: "c1", provider: "canva", access_token: "old", refresh_token: "r1", expires_at: hoursFromNow(-1) };
+  const row = { staff_id: "s1", company_id: "c1", provider: "canva", access_token: "old", refresh_token: "r1", expires_at: hoursFromNow(-1) };
   const db = fakeDb([row]);
   canvaReplies(200, { access_token: "new", refresh_token: "r2", expires_in: 14400 });
-  check("a stale token is refreshed", await canvaAccessToken(db, "c1"), { ok: true, token: "new" });
+  check("a stale token is refreshed", await canvaAccessToken(db, "s1"), { ok: true, token: "new" });
   check("  the new access token is stored", row.access_token, "new");
   check("  the new REFRESH token is stored", row.refresh_token, "r2");
 }
@@ -126,17 +126,17 @@ console.log("\nCANVA TOKEN\n");
       creates and exports takes longer than that, so handing it back would
       fail somewhere in the middle. */
 {
-  const row = { company_id: "c1", provider: "canva", access_token: "old", refresh_token: "r1", expires_at: new Date(Date.now() + 2 * 60 * 1000).toISOString() };
+  const row = { staff_id: "s1", company_id: "c1", provider: "canva", access_token: "old", refresh_token: "r1", expires_at: new Date(Date.now() + 2 * 60 * 1000).toISOString() };
   const db = fakeDb([row]);
   canvaReplies(200, { access_token: "new", refresh_token: "r2", expires_in: 14400 });
-  check("expiring in two minutes counts as stale", (await canvaAccessToken(db, "c1")).token, "new");
+  check("expiring in two minutes counts as stale", (await canvaAccessToken(db, "s1")).token, "new");
 }
 
 /* 4. THE CONCURRENT CASE. Another request refreshed while this one was
       waiting on Canva, so the row already holds a newer pair. This one
       must NOT write over it, and must use the newer token. */
 {
-  const row = { company_id: "c1", provider: "canva", access_token: "old", refresh_token: "r1", expires_at: hoursFromNow(-1) };
+  const row = { staff_id: "s1", company_id: "c1", provider: "canva", access_token: "old", refresh_token: "r1", expires_at: hoursFromNow(-1) };
   const db = fakeDb([row]);
   globalThis.fetch = async () => {
     /* The other request lands while Canva is answering this one. */
@@ -145,7 +145,7 @@ console.log("\nCANVA TOKEN\n");
     row.expires_at = hoursFromNow(4);
     return new Response(JSON.stringify({ access_token: "ours", refresh_token: "r2", expires_in: 14400 }), { status: 200 });
   };
-  const got = await canvaAccessToken(db, "c1");
+  const got = await canvaAccessToken(db, "s1");
   check("a concurrent refresh does not get overwritten", row.refresh_token, "r9");
   check("  and the winner's token is the one used", got, { ok: true, token: "theirs" });
 }
@@ -153,39 +153,39 @@ console.log("\nCANVA TOKEN\n");
 /* 5. Canva refusing the refresh token is not a retry. It is spent, revoked
       or from a changed secret, and the admin has to reconnect. */
 {
-  const db = fakeDb([{ company_id: "c1", provider: "canva", access_token: "old", refresh_token: "r1", expires_at: hoursFromNow(-1) }]);
+  const db = fakeDb([{ staff_id: "s1", company_id: "c1", provider: "canva", access_token: "old", refresh_token: "r1", expires_at: hoursFromNow(-1) }]);
   canvaReplies(400, { error: "invalid_grant" });
-  check("a refused refresh asks for a reconnect", await canvaAccessToken(db, "c1"), { ok: false, reason: "reconnect_needed" });
+  check("a refused refresh asks for a reconnect", await canvaAccessToken(db, "s1"), { ok: false, reason: "reconnect_needed" });
 }
 
 /* 6. Canva having a bad day IS a retry, and must not tell somebody to
       reconnect a connection that is perfectly fine. */
 {
-  const db = fakeDb([{ company_id: "c1", provider: "canva", access_token: "old", refresh_token: "r1", expires_at: hoursFromNow(-1) }]);
+  const db = fakeDb([{ staff_id: "s1", company_id: "c1", provider: "canva", access_token: "old", refresh_token: "r1", expires_at: hoursFromNow(-1) }]);
   canvaReplies(503, { error: "unavailable" });
-  check("a Canva outage is not a reconnect", await canvaAccessToken(db, "c1"), { ok: false, reason: "failed" });
+  check("a Canva outage is not a reconnect", await canvaAccessToken(db, "s1"), { ok: false, reason: "failed" });
 }
 
 /* 7. Half a pair is no pair. Storing the access token without the new
       refresh token locks the company out on the next call. */
 {
-  const row = { company_id: "c1", provider: "canva", access_token: "old", refresh_token: "r1", expires_at: hoursFromNow(-1) };
+  const row = { staff_id: "s1", company_id: "c1", provider: "canva", access_token: "old", refresh_token: "r1", expires_at: hoursFromNow(-1) };
   const db = fakeDb([row]);
   canvaReplies(200, { access_token: "new", expires_in: 14400 });
-  check("a reply missing the refresh token is refused", await canvaAccessToken(db, "c1"), { ok: false, reason: "failed" });
+  check("a reply missing the refresh token is refused", await canvaAccessToken(db, "s1"), { ok: false, reason: "failed" });
   check("  and nothing was written", row.access_token, "old");
 }
 
 /* 8. A company that never connected is told that, not that it is broken. */
 {
   const db = fakeDb([]);
-  check("never connected says so", await canvaAccessToken(db, "c1"), { ok: false, reason: "not_connected" });
+  check("never connected says so", await canvaAccessToken(db, "s1"), { ok: false, reason: "not_connected" });
 }
 
 /* 9. One company's row is never handed to another company. */
 {
-  const db = fakeDb([{ company_id: "c1", provider: "canva", access_token: "amara", refresh_token: "r1", expires_at: hoursFromNow(3) }]);
-  check("another company gets nothing", await canvaAccessToken(db, "c2"), { ok: false, reason: "not_connected" });
+  const db = fakeDb([{ staff_id: "s1", company_id: "c1", provider: "canva", access_token: "amara", refresh_token: "r1", expires_at: hoursFromNow(3) }]);
+  check("another person gets nothing", await canvaAccessToken(db, "s2"), { ok: false, reason: "not_connected" });
 }
 
 console.log(failures === 0 ? "\nAll clean.\n" : `\n${failures} failing.\n`);

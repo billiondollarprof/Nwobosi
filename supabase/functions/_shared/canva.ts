@@ -47,7 +47,7 @@
    Three outcomes and they are genuinely different, so they are three
    answers rather than a token or null.
 
-     not_connected     nobody has ever connected Canva for this company
+     not_connected     this person has never connected their Canva
      reconnect_needed  it was connected and the connection is now dead
      failed            Canva did not answer, try again later
 
@@ -161,11 +161,11 @@ async function refresh(refreshToken: string): Promise<Refreshed | "dead" | "fail
    ========================================================================== */
 
 // deno-lint-ignore no-explicit-any
-export async function canvaAccessToken(admin: any, companyId: string): Promise<CanvaToken> {
+export async function canvaAccessToken(admin: any, staffId: string): Promise<CanvaToken> {
   const { data: row, error } = await admin
     .from("integration_tokens")
     .select("access_token, refresh_token, expires_at")
-    .eq("company_id", companyId)
+    .eq("staff_id", staffId)
     .eq("provider", "canva")
     .maybeSingle();
 
@@ -212,7 +212,7 @@ export async function canvaAccessToken(admin: any, companyId: string): Promise<C
       expires_at: fresh.expiresAt.toISOString(),
       updated_at: new Date().toISOString(),
     })
-    .eq("company_id", companyId)
+    .eq("staff_id", staffId)
     .eq("provider", "canva")
     .eq("refresh_token", spent)
     .select("access_token");
@@ -232,7 +232,7 @@ export async function canvaAccessToken(admin: any, companyId: string): Promise<C
     const { data: newer } = await admin
       .from("integration_tokens")
       .select("access_token")
-      .eq("company_id", companyId)
+      .eq("staff_id", staffId)
       .eq("provider", "canva")
       .maybeSingle();
 
