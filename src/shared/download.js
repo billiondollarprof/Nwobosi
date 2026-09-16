@@ -23,6 +23,8 @@
    lists, bold runs, and rules.
    -------------------------------------------------------------------------- */
 
+import { isTableLine, isDivider, rawCells } from "./structure.js";
+
 /* Bold is the only inline mark that survives into the file. Everything
    else is stripped rather than printed raw, because **like this** on a
    printed page is worse than the emphasis being lost. */
@@ -62,8 +64,39 @@ export function parseMarkdown(markdown) {
     paragraph = [];
   }
 
-  for (const rawLine of lines) {
+  /* A NOTE FOR ANYONE ADDING A BLOCK TYPE HERE.
+
+     Every reader of these blocks ends with a fall through that calls
+     drawRuns(block.runs). A block without `runs` reaches it and throws. So
+     a new type is never just a change here: it is a change here AND in the
+     PDF writer AND in the Word writer AND in the preview.
+
+     Tables were added on 2026-09-14 for exactly that reason. Before that a
+     table in a document came out as lines of pipes and dashes in the PDF,
+     in Word, and on screen, because nothing recognised it and it fell
+     through as ordinary paragraphs. */
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const rawLine = lines[index];
     const line = rawLine.trim();
+
+    /* A header row followed by a divider row. Both are required: three
+       lines that happen to contain a pipe are not a table. */
+    if (isTableLine(line) && isDivider(lines[index + 1])) {
+      flush();
+      const header = rawCells(line).map((text) => splitBold(text));
+      const rows = [];
+      index += 2;
+      while (index < lines.length && isTableLine(lines[index].trim())) {
+        const row = rawCells(lines[index].trim());
+        while (row.length < header.length) row.push("");
+        rows.push(row.slice(0, header.length).map((text) => splitBold(text)));
+        index += 1;
+      }
+      index -= 1;
+      if (rows.length) blocks.push({ type: "table", header, rows });
+      continue;
+    }
 
     if (!line) {
       flush();
@@ -236,6 +269,72 @@ export async function downloadPdf(title, markdown) {
       continue;
     }
 
+    /* A REAL GRID, not a row of pipes.
+
+       Before 2026-09-14 a table fell through to the line below and came out
+       as "| North | 74.1% |" printed as ordinary text. Every column width
+       is worked out from the widest cell in it, then all of them are scaled
+       to fit the page, so a table with one long column does not run off the
+       edge. */
+    if (block.type === "table") {
+      const usable = pageWidth - PAGE.marginX * 2;
+      const size = 9.5;
+      const pad = 5;
+      const lineHeight = size * 1.35;
+
+      const plain = (runsList) => runsList.map((r) => r.text).join("");
+      const columns = block.header.length;
+
+      doc.setFontSize(size);
+      const natural = block.header.map((cell, i) => {
+        const widest = [plain(cell), ...block.rows.map((r) => plain(r[i] ?? []))]
+          .reduce((most, text) => Math.max(most, doc.getTextWidth(String(text))), 0);
+        return widest + pad * 2;
+      });
+      const total = natural.reduce((a, b) => a + b, 0) || 1;
+      const widths = natural.map((w) => (w / total) * usable);
+
+      const drawRow = (cellRuns, bold) => {
+        /* Every cell wrapped first, so the row is as tall as its tallest
+           cell rather than clipping the long one. */
+        const wrapped = cellRuns.map((cell, i) => {
+          doc.setFont("helvetica", bold ? "bold" : "normal");
+          return doc.splitTextToSize(plain(cell ?? []), widths[i] - pad * 2);
+        });
+        const tallest = Math.max(1, ...wrapped.map((w) => w.length));
+        room(tallest * lineHeight + pad * 2);
+
+        const top = y - lineHeight + 2;
+        let x = PAGE.marginX;
+
+        if (bold) {
+          doc.setFillColor(243, 244, 246);
+          doc.rect(PAGE.marginX, top, usable, tallest * lineHeight + pad, "F");
+        }
+
+        wrapped.forEach((linesInCell, i) => {
+          doc.setFont("helvetica", bold ? "bold" : "normal");
+          doc.setFontSize(size);
+          linesInCell.forEach((text, n) => {
+            doc.text(String(text), x + pad, y + n * lineHeight);
+          });
+          x += widths[i];
+        });
+
+        y += tallest * lineHeight + pad;
+        doc.setDrawColor(222);
+        doc.line(PAGE.marginX, y - lineHeight + 4, pageWidth - PAGE.marginX, y - lineHeight + 4);
+      };
+
+      y += 6;
+      drawRow(block.header, true);
+      block.rows.forEach((row) => drawRow(row, false));
+      y += 10;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(PAGE.body);
+      continue;
+    }
+
     drawRuns(block.runs, { size: PAGE.body, bold: false, gapAfter: 7 });
   }
 
@@ -261,7 +360,7 @@ export async function downloadPdf(title, markdown) {
    -------------------------------------------------------------------------- */
 
 export async function downloadDocx(title, markdown) {
-  const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } = await import("docx");
+  const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, Table, TableRow, TableCell, WidthType } = await import("docx");
 
   const runs = (list) =>
     list.map((r) => new TextRun({ text: r.text, bold: r.bold }));
@@ -315,6 +414,36 @@ export async function downloadDocx(title, markdown) {
           spacing: { after: 120 },
         })
       );
+      continue;
+    }
+
+    /* A real Word table, so it can be sorted, styled and edited by the
+       person who receives it. Same reason as the PDF: before this it came
+       out as paragraphs full of pipes. */
+    if (block.type === "table") {
+      const cell = (cellRuns, bold) =>
+        new TableCell({
+          children: [
+            new Paragraph({
+              children: runs((cellRuns ?? []).map((r) => ({ ...r, bold: bold || r.bold }))),
+            }),
+          ],
+          shading: bold ? { fill: "F3F4F6" } : undefined,
+          margins: { top: 60, bottom: 60, left: 100, right: 100 },
+        });
+
+      children.push(
+        new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          rows: [
+            new TableRow({ children: block.header.map((c) => cell(c, true)), tableHeader: true }),
+            ...block.rows.map((row) => new TableRow({ children: row.map((c) => cell(c, false)) })),
+          ],
+        }),
+      );
+      /* An empty paragraph after it. Two tables touching each other are
+         merged into one by Word, which is not what anybody wrote. */
+      children.push(new Paragraph({ children: [], spacing: { after: 160 } }));
       continue;
     }
 

@@ -47,6 +47,7 @@ import {
   Search,
   Globe,
   Shield,
+  LifeBuoy,
   Info,
 } from "lucide-react";
 
@@ -63,14 +64,24 @@ import {
   signOutCompletely,
 } from "../shared/session.js";
 import { readFileAsText, fileKind } from "../shared/readFile.js";
+import { shrinkImage } from "../shared/shrinkImage.js";
+import { askCanva } from "../shared/canvaApi.js";
 import { downloadPdf, downloadDocx } from "../shared/download.js";
+/* Each in its own file, and each loaded only when somebody actually asks
+   for that format. The deck and spreadsheet libraries are megabytes, and
+   a person who only ever makes reports should not download either one to
+   open the chat. */
+import { downloadPptx } from "../shared/downloadDeck.js";
+import { downloadXlsx } from "../shared/downloadSheet.js";
+import { toTables } from "../shared/structure.js";
+import DocumentView from "../shared/DocumentView.jsx";
 import { BRAND, GRADIENTS, FONTS } from "../shared/tokens";
 import {
   PageShell,
   FloatingNav,
   ThemeToggle,
   TypewriterText,
-  TypingDots,
+  Thinking,
   IconBtn,
   PrimaryButton,
   GhostButton,
@@ -98,6 +109,12 @@ import {
    gets their approved findings and their spent question allowance back, not
    just the messages. The shape lives in that file, never inline here. */
 import { buildResumeLog, readResumeLog, resumeLine } from "../shared/resumeLog.js";
+
+/* Gate two, in its own file. It grew a list and local state of its own the
+   day it learned to keep some findings and not others, and a card with
+   state belongs somewhere it can be read top to bottom. */
+import FindingPicker from "../shared/FindingPicker.jsx";
+import { withoutMarks } from "../shared/findings.js";
 
 /* ==========================================================================
    1. INTERVIEW HELPERS
@@ -187,46 +204,16 @@ const MAX_TURN_CHARS = 60000;
    of tokens, resent on every single turn. Shrunk, a screenshot is about
    fifteen hundred. */
 const MAX_IMAGE_EDGE = 1568;
-const IMAGE_QUALITY = 0.85;
 
-/* Draws the image smaller and re-encodes it. Done here, in the browser,
-   because a five megabyte photo that becomes two hundred kilobytes before
-   it leaves the device is faster for them and cheaper for the company, and
-   the model sees no difference. */
-function shrinkImage(file) {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
+/* The encoder itself lives in src/shared/shrinkImage.js now, because the
+   admin knowledge base needs the identical one for brand assets, and two
+   copies of an encoder is two copies that drift. The quality it uses, the
+   WebP fallback and the reason for both are in that file's header.
 
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const longest = Math.max(img.width, img.height);
-      const scale = longest > MAX_IMAGE_EDGE ? MAX_IMAGE_EDGE / longest : 1;
-      const width = Math.max(1, Math.round(img.width * scale));
-      const height = Math.max(1, Math.round(img.height * scale));
-
-      const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
-      canvas.getContext("2d").drawImage(img, 0, 0, width, height);
-
-      const dataUrl = canvas.toDataURL("image/jpeg", IMAGE_QUALITY);
-      const data = dataUrl.split(",")[1] ?? "";
-      if (!data) {
-        reject(new Error("empty canvas"));
-        return;
-      }
-      resolve({ media_type: "image/jpeg", data, width, height });
-    };
-
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("not an image this browser can open"));
-    };
-
-    img.src = url;
-  });
-}
+   The 1568 above stays here, because it is this screen's answer rather
+   than a shared one: it is the long edge the model works at, so anything
+   bigger costs upload time and buys nothing. A brand asset is kept larger
+   because it goes into things that get printed and projected. */
 
 /* The turn as the model receives it. Plain text when nothing was attached
    or only text files were, so the common case stays a simple string.
@@ -399,6 +386,24 @@ export default function Chat() {
   const [step, setStep] = useState(0);
   const [brief, setBrief] = useState({});
   const [typing, setTyping] = useState(false);
+
+  /* WHAT IT SAYS WHILE IT WORKS.
+
+     Anthony, 2026-09-10: "if it's still thinking or analyzing, there's no
+     way a person knows... so a person can know it's still working and wait
+     for it." Three grey dots cannot tell anybody whether it has been
+     reading for two seconds or has been dead for two minutes, and the only
+     safe reading of that is to press the button again.
+
+       turnStage  which stage is running right now. NOT flowStage: that is
+                  the stage the NEXT turn will run at, and the two differ
+                  exactly when it matters, because runTurn("research") is
+                  fired while flowStage says "analyse".
+       stalled    the request has gone quiet for a long time. Set from
+                  sendTurn's onStall, which knows how long quiet has been,
+                  and cleared the moment anything arrives. */
+  const [turnStage, setTurnStage] = useState("orient");
+  const [stalled, setStalled] = useState(false);
 
   /* Which model actually ran the last turn, reported by the server rather
      than assumed here. The ladder is a real feature, so it gets shown. */
@@ -712,6 +717,8 @@ export default function Chat() {
      against what this staff member is allowed. */
   function runTurn(stage, history) {
     setTyping(true);
+    setTurnStage(stage);
+    setStalled(false);
 
     /* The bubble the reply streams into. Created empty and filled as
        chunks arrive, so words appear rather than a spinner resolving into
@@ -738,8 +745,13 @@ export default function Chat() {
 
       onMeta: ({ tier }) => setActiveTier(tier),
 
+      /* Quiet for a long time. The turn is still running, so this only
+         changes what the line says. Nothing is cancelled here. */
+      onStall: () => setStalled(true),
+
       onText: (chunk) => {
         raw += chunk;
+        setStalled(false);
         if (!started) {
           started = true;
           setTyping(false);
@@ -749,20 +761,41 @@ export default function Chat() {
         updateMessages((prev) => prev.map((m) => (m.id === replyId ? { ...m, content: shown } : m)));
       },
 
-      onDone: () => {
+      onDone: ({ stopReason } = {}) => {
         setTyping(false);
+        setStalled(false);
         abortTurnRef.current = null;
 
         const clean = visibleText(raw);
+
+        /* A REPLY THAT RAN OUT OF ROOM IS NEVER HANDED OVER AS FINISHED.
+
+           Every stage has a ceiling on how much it may write (MAX_OUTPUT in
+           the assistant function). When a reply reaches that ceiling the
+           model is cut off wherever it happens to be, which is usually mid
+           sentence, and the turn still ends with a clean "done". Nothing
+           here read that, so a chopped answer looked exactly like a
+           finished one.
+
+           Anthony hit it on 2026-09-16: the reply stopped at "that only
+           happens if you press the" and the app presented it as the whole
+           answer. The ceilings were raised, but a ceiling can always be
+           reached, so the reply now carries a flag and says so on screen. */
+        const cutOff = stopReason === "max_tokens";
 
         /* Built from the ref rather than inside a state updater. An
            updater has to be pure, and React deliberately calls it twice
            in development to catch exactly this: a save fired from inside
            one wrote the conversation to the database twice. */
         const next = updateMessages((prev) =>
-          prev.map((m) => (m.id === replyId ? { ...m, content: clean } : m))
+          prev.map((m) => (m.id === replyId ? { ...m, content: clean, cutOff } : m))
         );
         persist(next, stage);
+
+        /* A cut off reply has no ending, so it cannot carry a marker either.
+           Stopping here keeps the app from reading half a sentence as a read
+           back or as a finished interview. */
+        if (cutOff) return;
 
         /* THE OFFER. The first turn has read the request and the whole of
            the company's material, and has said what it already has. Now it
@@ -774,6 +807,29 @@ export default function Chat() {
 
            No marker means it was not a piece of work, just conversation.
            The stage stays where it is and it reads again next time. */
+        /* GATE ONE, AND IT IS NOT ONLY THE ANALYSIS THAT MAY RAISE IT.
+
+           Anthony, 2026-09-16: "I tried to tell it to search for something,
+           which is supposed to spin up this thing for me to select, for me
+           to approve, and then it will search. It doesn't only spin up when
+           it decides. It can also spin up for me to approve when I decide."
+
+           This used to sit inside the analyse branch below, so asking it to
+           look something up during an ordinary conversation could only ever
+           produce a refusal. The card is raised from whatever stage asked
+           for it, and the stage is remembered so the conversation comes back
+           to where it was instead of being pushed into the work pipeline.
+
+           Nothing else changes. The search tool is still not attached to any
+           request until a person presses the button. */
+        if (raw.includes(MARKER.needLookup)) {
+          updateMessages((prev) => [
+            ...prev,
+            { id: nextId(), role: "assistant", type: "lookup", from: stage },
+          ]);
+          return;
+        }
+
         if (stage === "orient") {
           if (raw.includes(MARKER.offerInterview)) {
             setFlowStage("offered");
@@ -794,7 +850,7 @@ export default function Chat() {
             ...prev.map((m) => (m.id === replyId ? { ...m, type: "finding" } : m)),
             { id: nextId(), role: "assistant", type: "useFinding", content: clean },
           ]);
-          persist(withCard, "analyse");
+          persist(withCard, lookupReturnStage());
           return;
         }
 
@@ -817,14 +873,6 @@ export default function Chat() {
              for the back and forth rather than charging Sonnet rates to
              collect a file name. It comes back up the moment that
              conversation says it is done. */
-          /* GATE ONE. It has asked to search. Nothing happens until a
-             person presses the button, and the search tool is not even in
-             the request until they do. */
-          if (raw.includes(MARKER.needLookup)) {
-            updateMessages((prev) => [...prev, { id: nextId(), role: "assistant", type: "lookup" }]);
-            return;
-          }
-
           if (raw.includes(MARKER.needInput)) {
             /* A fresh, specific ask, so it gets its own allowance rather
                than inheriting one the first interview already spent. */
@@ -850,6 +898,7 @@ export default function Chat() {
 
       onError: ({ reason, message }) => {
         setTyping(false);
+        setStalled(false);
         abortTurnRef.current = null;
 
         /* Running out is not a failure, it is the end of a trial, and the
@@ -985,12 +1034,36 @@ export default function Chat() {
     const guessed = SKILL_BY_TYPE[guessProjectType(text)];
     if (guessed && !autoSkill) setAutoSkill(guessed);
 
-    /* Anything typed after a read back is a correction, and a correction is
-       a conversation, so it drops back to the cheap model. Working it out
-       here rather than reading it back off state matters: setting state
-       does not change it in time for the line below. */
+    /* THE LOOP THAT COULD NOT CLOSE, fixed 2026-09-14.
+
+       This line used to read:
+
+         let stage = flowStage === "analyse" ? "interview" : flowStage;
+
+       The reasoning was cost: a correction is a conversation, so drop to
+       the cheaper stage. The consequence was that the work could never get
+       back to a Build button.
+
+       Only the analyse stage emits READBACK_COMPLETE, and only that marker
+       puts the Build card on screen. The interview stage cannot produce
+       one. So typing anything after a read back threw the flow into a stage
+       with no way out, and it only climbed back after five more messages or
+       when the model happened to say it was done.
+
+       Anthony hit it exactly: the reply read "I'm ready to draft that
+       whenever you say go", with no button to press. He said go. It talked
+       again. There was nothing else it could do.
+
+       So a correction after a read back now goes back to ANALYSE, which is
+       the one stage that can close the loop. It re-reads, and it ends in
+       one of three places every time: it asks him for something
+       (NEED_INPUT, which drops to the interview by itself, so the cheap
+       path is still there when it is genuinely a conversation), it asks to
+       search (NEED_LOOKUP), or it reads back again with the Build card.
+
+       It costs more per correction. A loop that terminates is worth it. */
     updateMessages((prev) => prev.filter((m) => m.type !== "build" && m.type !== "offer" && m.type !== "lookup" && m.type !== "useFinding"));
-    let stage = flowStage === "analyse" ? "interview" : flowStage;
+    let stage = flowStage;
 
     /* They typed instead of tapping either button. Typing is a conversation
        and the interview is the conversation stage, so it goes there. That
@@ -1066,6 +1139,9 @@ export default function Chat() {
 
     let brief = "";
 
+    setTurnStage("brief");
+    setStalled(false);
+
     abortTurnRef.current = sendTurn({
       stage: "brief",
       /* The build does not go through runTurn, so it has to carry the
@@ -1076,10 +1152,12 @@ export default function Chat() {
       messages: toApiMessages(messages),
 
       onMeta: ({ tier }) => setActiveTier(tier),
-      onText: (chunk) => { brief += chunk; },
+      onStall: () => setStalled(true),
+      onText: (chunk) => { brief += chunk; setStalled(false); },
 
       onError: ({ reason, message }) => {
         setGenerating(false);
+        setStalled(false);
         abortTurnRef.current = null;
         updateMessages((prev) => [
           ...prev.filter((m) => m.type !== "generating"),
@@ -1111,6 +1189,13 @@ export default function Chat() {
        inside is on the row whether or not the writing finishes. */
     persist(messages, "generate", brief);
 
+    /* The card on screen is still the build card, so moving this on is what
+       changes its line from "Writing the brief" to "Building your
+       document". Without it the card would still be talking about the
+       brief while the document was being written. */
+    setTurnStage("generate");
+    setStalled(false);
+
     abortTurnRef.current = sendTurn({
       stage: "generate",
       brief,
@@ -1118,9 +1203,11 @@ export default function Chat() {
       messages: toApiMessages(messages),
 
       onMeta: ({ tier }) => setActiveTier(tier),
+      onStall: () => setStalled(true),
 
       onText: (chunk) => {
         finished += chunk;
+        setStalled(false);
         if (!started) {
           started = true;
           updateMessages((prev) => [
@@ -1135,6 +1222,7 @@ export default function Chat() {
 
       onDone: () => {
         setGenerating(false);
+        setStalled(false);
         abortTurnRef.current = null;
         setDailyUsed((n) => Math.min(n + 1, DAILY_LIMIT));
 
@@ -1165,6 +1253,7 @@ export default function Chat() {
 
       onError: ({ reason, message }) => {
         setGenerating(false);
+        setStalled(false);
         abortTurnRef.current = null;
         updateMessages((prev) => [
           ...prev.filter((m) => m.type !== "generating"),
@@ -1247,38 +1336,83 @@ export default function Chat() {
      wanted, waiting to be reconsidered on a later turn.
      ------------------------------------------------------------------------ */
 
-  function allowLookup() {
+  /* WHERE THE CONVERSATION GOES AFTER A SEARCH.
+
+     The card can now be raised from any stage, so the answer is no longer
+     always "the analysis". Somebody chatting on the first turn who asks it
+     to check a figure should get the figure and still be chatting. They
+     should not find themselves halfway up a document pipeline they never
+     asked to start.
+
+     So the stage that raised the card is carried on the card itself, and
+     everything on the way back reads it. Anything that is not the orient
+     turn lands in the analysis exactly as it did before, which is why the
+     default is "analyse". */
+  const lookupFromRef = useRef("analyse");
+
+  function lookupReturnStage() {
+    return lookupFromRef.current === "orient" ? "orient" : "analyse";
+  }
+
+  function allowLookup(from) {
     if (typing || generating) return;
+    lookupFromRef.current = from || "analyse";
     const kept = messages.filter((m) => m.type !== "lookup");
     updateMessages(kept);
     addMessage({ role: "user", type: "text", content: "Yes, go and look." });
-    setFlowStage("analyse");
+    setFlowStage(lookupReturnStage());
     runTurn("research", toApiMessages([...kept, { role: "user", content: "Yes, go and look." }]));
   }
 
-  function refuseLookup() {
+  function refuseLookup(from) {
     if (typing || generating) return;
+    lookupFromRef.current = from || "analyse";
     declinedRef.current += 1;
     const kept = messages.filter((m) => m.type !== "lookup");
     updateMessages(kept);
     addMessage({ role: "user", type: "text", content: "No, work with what you have." });
-    setFlowStage("analyse");
-    runTurn("analyse", toApiMessages([...kept, { role: "user", content: "No, work with what you have." }]));
+    const back = lookupReturnStage();
+    setFlowStage(back);
+    runTurn(back, toApiMessages([...kept, { role: "user", content: "No, work with what you have." }]));
   }
 
-  /* GATE TWO, the yes. The finding is written to the ref first and the
-     state second, because the very next line fires a turn that reads the
-     ref, and state would not have caught up. */
-  function useFinding(text) {
+  /* GATE TWO, the yes. Takes a LIST, because the answer is no longer only
+     all or nothing: the picker hands back every finding still ticked, which
+     may be all of them, some of them, or one.
+
+     Written to the ref first and the state second, because the very next
+     line fires a turn that reads the ref, and state would not have caught
+     up.
+
+     What the person is recorded as saying changes with what they kept. "Use
+     that" after unticking two of three would be the conversation carrying a
+     claim the person did not make, and the model reads that line as theirs.
+     So it says how many, and when they dropped some it says that too. */
+  function useFinding(chosen, droppedCount = 0) {
     if (typing || generating) return;
-    findingsRef.current = [...findingsRef.current, text];
+
+    const list = (Array.isArray(chosen) ? chosen : [chosen])
+      .filter((t) => typeof t === "string" && t.trim());
+    if (!list.length) return dropFinding();
+
+    /* Counted, never stored. Somebody who unticked two of three findings has
+       turned two down, and the resume log wants to know that happened
+       without keeping a word of what they were. */
+    if (droppedCount > 0) declinedRef.current += droppedCount;
+
+    findingsRef.current = [...findingsRef.current, ...list];
     setFindings(findingsRef.current);
+
+    const said = list.length === 1
+      ? "Use that."
+      : `Use those ${list.length}.`;
 
     const kept = messages.filter((m) => m.type !== "useFinding");
     updateMessages(kept);
-    addMessage({ role: "user", type: "text", content: "Use that." });
-    setFlowStage("analyse");
-    runTurn("analyse", toApiMessages([...kept, { role: "user", content: "Use that." }]));
+    addMessage({ role: "user", type: "text", content: said });
+    const back = lookupReturnStage();
+    setFlowStage(back);
+    runTurn(back, toApiMessages([...kept, { role: "user", content: said }]));
   }
 
   /* GATE TWO, the no. Nothing is kept. They are put back in the
@@ -1308,6 +1442,7 @@ export default function Chat() {
     abortTurnRef.current?.();
     abortTurnRef.current = null;
     conversationIdRef.current = null;
+    lookupFromRef.current = "analyse";
     setTyping(false);
     setActiveTier(null);
     updateMessages([]);
@@ -1420,7 +1555,7 @@ export default function Chat() {
       setPendingAttachments((prev) => [...prev, { id, name: file.name, sizeKB, status: "reading" }]);
 
       if (kind === "image") {
-        shrinkImage(file)
+        shrinkImage(file, { maxEdge: MAX_IMAGE_EDGE })
           .then((image) => {
             setPendingAttachments((prev) =>
               prev.map((a) => (a.id === id ? { ...a, status: "ready", image } : a))
@@ -1466,19 +1601,120 @@ export default function Chat() {
     setConnectors((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
+  /* ------------------------------------------------------------------
+     CONNECTING YOUR OWN CANVA, FROM HERE
+
+     Canva is the one connector in this list that really connects, so it
+     does not just flip a switch in this browser the way the others do
+     while they wait to be built.
+
+     It leaves this page and comes back. Anthony, 2026-09-14: "it doesn't
+     open a different tab, but rather preserves the page... It returns back
+     to where the person was, exactly." So the address travels with the
+     request and the callback redirects to it. Nothing to block, nothing to
+     close, no orphan tab.
+
+     WHY THE PERSON AND NOT THE ADMIN. An admin connecting one account for
+     everybody put every design in one person's Canva, so a staff member
+     who clicked Open in Canva landed in their own account and the file was
+     not there. Their own connection, their own account, their own designs.
+     ------------------------------------------------------------------ */
+  const [canvaBusy, setCanvaBusy] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const result = await askCanva("status");
+      if (!alive || !result?.ok) return;
+      setConnectors((prev) => ({ ...prev, canva: Boolean(result.connected) }));
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  /* Read once on the way back in, said once, then taken out of the address
+     bar so a refresh does not replay a message about something that
+     happened a while ago. */
+  const [canvaJustBack] = useState(() => {
+    if (typeof window === "undefined") return "";
+    const marker = new URLSearchParams(window.location.search).get("connected");
+    return marker === "canva" || marker === "failed" ? marker : "";
+  });
+
+  useEffect(() => {
+    if (!canvaJustBack || typeof window === "undefined") return;
+    setToast(canvaJustBack === "canva"
+      ? "Canva is connected. Nothing else to do."
+      : "Canva did not finish that, so nothing was connected.");
+    const url = new URL(window.location.href);
+    url.searchParams.delete("connected");
+    window.history.replaceState({}, "", url.toString());
+  }, [canvaJustBack]);
+
+  async function connectCanva() {
+    if (canvaBusy) return;
+
+    /* Already connected means this press is a disconnect. Same control,
+       both directions, so there is never a connection somebody can make
+       and cannot unmake. */
+    if (connectors.canva) {
+      setCanvaBusy(true);
+      const result = await askCanva("disconnect");
+      setCanvaBusy(false);
+      if (!result?.ok) {
+        setToast(result?.reason ?? "Could not disconnect that. Try again.");
+        return;
+      }
+      setConnectors((prev) => ({ ...prev, canva: false }));
+      setToast("Canva disconnected. It is still in your Canva settings if you want it gone from there too.");
+      return;
+    }
+
+    setCanvaBusy(true);
+    const result = await askCanva("start");
+    if (!result?.ok || !result.url) {
+      setCanvaBusy(false);
+      setToast(result?.reason ?? "Could not start that. Try again.");
+      return;
+    }
+    /* busy stays true on purpose. The page is about to be replaced, and
+       putting the row back to normal for the half second in between reads
+       as nothing having happened. */
+    window.location.assign(result.url);
+  }
+
   function toggleFeedback(id, kind) {
     setFeedback((prev) => ({ ...prev, [id]: prev[id] === kind ? null : kind }));
   }
 
   /* Writing a file can fail, and a download button that silently does
      nothing is the worst control on any screen. Say what happened. */
+  /* FOUR FORMATS, AND ONE OF THEM CAN LEGITIMATELY REFUSE.
+
+     A spreadsheet is the numbers. A document with no table in it has no
+     numbers to put in one, so downloadXlsx throws with code "no_tables"
+     rather than handing somebody an empty file. An empty spreadsheet looks
+     like a bug and sends people hunting for a failure that never happened,
+     so that case gets its own message and is not logged as an error. */
+  const MAKING = {
+    pdf: "Making the PDF",
+    docx: "Making the Word file",
+    pptx: "Making the slides",
+    xlsx: "Making the spreadsheet",
+  };
+
   async function handleDownload(format, title, content) {
-    setToast(format === "pdf" ? "Making the PDF" : "Making the Word file");
+    setToast(MAKING[format] ?? "Making the file");
     try {
       if (format === "pdf") await downloadPdf(title, content);
+      else if (format === "pptx") await downloadPptx(title, content);
+      else if (format === "xlsx") await downloadXlsx(title, content);
       else await downloadDocx(title, content);
       setToast("Saved to your downloads");
     } catch (err) {
+      if (err?.code === "no_tables") {
+        setToast("There is no table in this one, so there is nothing to put in a spreadsheet.");
+        return;
+      }
       console.error("could not build the file", err);
       setToast("Could not build that file. Copy the text instead.");
     }
@@ -1743,6 +1979,24 @@ export default function Chat() {
               shown a door they are not allowed through is an invitation to
               try it, and a door that opens onto a panel where every save
               fails is worse than no door. */}
+          {/* THE SUPPORT QUEUE, for somebody an admin has given it to.
+
+              It sits in the same stack as the admin door and follows the
+              same rule: a person is only ever shown a door they can
+              actually walk through. can_support is false for everybody
+              until an admin turns it on, so most people never see this at
+              all. */}
+          {me?.staff?.can_support === true && (
+            <button
+              onClick={() => navigate("/workspace?view=support")}
+              className="w-full flex items-center gap-2 rounded-[12px] px-3.5 py-2.5 text-[14px] font-medium transition-colors hover:opacity-80"
+              style={{ color: "var(--text-2)" }}
+            >
+              <LifeBuoy size={15} />
+              Support queue
+            </button>
+          )}
+
           {me?.staff?.access_level === "admin" && (
             <button
               onClick={() => navigate("/admin")}
@@ -1902,12 +2156,14 @@ export default function Chat() {
                 key={m.id}
                 message={m}
                 brief={brief}
+                buildStage={turnStage}
+                buildStalled={stalled}
                 onGenerate={handleGenerate}
                 onAdjust={handleAdjust}
                 onWantInterview={handleWantInterview}
                 onSkipInterview={handleSkipInterview}
-                onAllowLookup={allowLookup}
-                onRefuseLookup={refuseLookup}
+                onAllowLookup={() => allowLookup(m.from)}
+                onRefuseLookup={() => refuseLookup(m.from)}
                 onUseFinding={useFinding}
                 onDropFinding={dropFinding}
                 onReset={handleNewChat}
@@ -1918,7 +2174,7 @@ export default function Chat() {
                 onDownload={(format) => handleDownload(format, m.title || "Your document", m.content)}
               />
             ))}
-            {typing && <TypingDots />}
+            {typing && <Thinking stage={turnStage} stalled={stalled} />}
           </div>
         </div>
       )}
@@ -2063,10 +2319,13 @@ export default function Chat() {
                       <div key={tool.id}>
                         <button
                           onClick={() =>
-                            tool.state === "connectable"
+                            tool.id === "canva"
+                              ? connectCanva()
+                              : tool.state === "connectable"
                               ? toggleConnector(tool.id)
                               : setDemoNoteFor((open) => (open === tool.id ? null : tool.id))
                           }
+                          disabled={tool.id === "canva" && canvaBusy}
                           className="w-full flex items-center justify-between pl-9 pr-4 py-2.5 hover:opacity-80 transition-opacity"
                         >
                           <span className="flex items-center gap-2.5">
@@ -2077,18 +2336,35 @@ export default function Chat() {
                           </span>
 
                           <span className="flex items-center gap-1.5 shrink-0">
-                            {/* Nothing here says Connected unless it is doing
-                                work. "Set up" means the account and keys
-                                exist and the wiring does not, which is a real
-                                and different thing from an example, and both
-                                are different from working. */}
-                            {tool.state === "registered" && <StatusPill tone="pending">Set up</StatusPill>}
-                            {tool.state === "connectable" && (
+                            {/* EVERYTHING NOT YET CONNECTABLE SAYS THE SAME
+                                THING, 2026-09-16, and it says "Coming soon".
+
+                                This screen used to split them into "Set up"
+                                and "Example" off an internal state field.
+                                Anthony saw it against the admin screen, which
+                                already says Coming soon for all of them, and
+                                asked for the two to match. He is right twice
+                                over. Two screens giving different answers
+                                about the same tool is a screen somebody has
+                                to work out, and grading tools by how far our
+                                own build has got tells a customer nothing
+                                they can use.
+
+                                Canva is the one that is really connectable,
+                                so it is the only one with a live label, and
+                                that label tracks whether THIS person has
+                                signed in. */}
+                            {tool.state === "connectable" ? (
                               <StatusPill tone={connectors[tool.id] ? "ok" : "neutral"}>
-                                {connectors[tool.id] ? "Connected" : "Connect"}
+                                {tool.id === "canva" && canvaBusy
+                                  ? "One moment"
+                                  : connectors[tool.id]
+                                  ? "Connected"
+                                  : "Connect"}
                               </StatusPill>
+                            ) : (
+                              <StatusPill tone="neutral">Coming soon</StatusPill>
                             )}
-                            {tool.state === "sample" && <StatusPill tone="neutral">Example</StatusPill>}
 
                             {/* Anything with more to say carries the info dot,
                                 including the connected one. Green on its own
@@ -2335,7 +2611,7 @@ THE GLOW AND THE PULSE STAY. They were
    avatar, staff messages sit in a neutral capsule on the right.
    ========================================================================== */
 
-export function ChatBubble({ message, brief, onGenerate, onAdjust, onWantInterview, onSkipInterview, onAllowLookup, onRefuseLookup, onUseFinding, onDropFinding, onReset, onRetry, feedback, onFeedback, onCopy, onDownload }) {
+export function ChatBubble({ message, brief, buildStage = "brief", buildStalled = false, onGenerate, onAdjust, onWantInterview, onSkipInterview, onAllowLookup, onRefuseLookup, onUseFinding, onDropFinding, onReset, onRetry, feedback, onFeedback, onCopy, onDownload }) {
   const isUser = message.role === "user";
   const riseStyle = { animation: "sx-rise 0.35s ease" };
 
@@ -2474,45 +2750,30 @@ export function ChatBubble({ message, brief, onGenerate, onAdjust, onWantIntervi
               From outside your company
             </span>
           </div>
+          {/* withoutMarks, because the research stage puts [FINDING] before
+              each one so the picker below knows where to split. That is
+              plumbing and it must never reach a person's eyes. */}
           <div className="text-[14.5px] leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-1)" }}>
-            {message.content}
+            {withoutMarks(message.content)}
           </div>
         </div>
       </div>
     );
   }
 
-  /* --- GATE TWO: does any of it get used --- */
+  /* --- GATE TWO: does any of it get used, and which of it ---
+
+     The whole card lives in src/shared/FindingPicker.jsx, because it holds
+     state of its own now: which findings are still ticked. Hooks cannot be
+     called from inside a branch like this one, so it has to be a component
+     rather than a few more lines here. */
   if (message.type === "useFinding") {
     return (
-      <div style={riseStyle}>
-        <div
-          className="rounded-[18px] border p-5 backdrop-blur-xl"
-          style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
-        >
-          <p className="text-[15.5px] font-semibold mb-1" style={{ color: "var(--text-1)" }}>
-            Use this in the work?
-          </p>
-          <p className="text-[13.5px] mb-4 leading-relaxed" style={{ color: "var(--text-3)" }}>
-            Check the numbers and the sources first. If something is wrong, say no and tell
-            me what to use instead.
-          </p>
-          <PrimaryButton
-            onClick={() => onUseFinding(message.content)}
-            className="w-full flex items-center justify-center gap-2"
-          >
-            <Check size={15} />
-            Yes, use it
-          </PrimaryButton>
-          <button
-            onClick={onDropFinding}
-            className="w-full mt-2.5 rounded-[12px] border py-2.5 text-[13.5px] transition-opacity hover:opacity-80"
-            style={{ borderColor: "var(--border-2)", color: "var(--text-2)" }}
-          >
-            No, do not use it
-          </button>
-        </div>
-      </div>
+      <FindingPicker
+        content={message.content}
+        onUse={onUseFinding}
+        onDrop={onDropFinding}
+      />
     );
   }
 
@@ -2589,38 +2850,37 @@ export function ChatBubble({ message, brief, onGenerate, onAdjust, onWantIntervi
     );
   }
 
-  /* --- Building it now --- */
-  if (message.type === "generating") {
-    const stepLabel =
-      brief.skill === "word"
-        ? "Compiling document"
-        : brief.skill === "excel"
-        ? "Structuring spreadsheet"
-        : "Checking for a connected Canva account";
+  /* --- Building it now ---
 
+     THE TICKS THAT WERE NOT TRUE, removed 2026-09-14. This card used to
+     show two green ticks reading "Applied brand kit and template" and
+     "Structured layout", both hard coded, neither connected to anything
+     the product does. There is no brand kit. Nothing applies a template.
+     They were on screen while the model was still writing the first line.
+
+     In a product whose entire argument is that it does not invent, a green
+     tick against work that did not happen is the worst thing on the
+     screen, and it was about to be in a demo video.
+
+     What it says now is what is actually happening: the stage it is on,
+     and whether it has gone quiet. Both are known for certain. */
+  if (message.type === "generating") {
     return (
       <div style={riseStyle}>
         <div
           className="rounded-[18px] border p-5 backdrop-blur-xl"
           style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
         >
-          <div className="flex items-center gap-2.5 mb-3">
+          <div className="flex items-center gap-2.5 mb-2">
             <Spinner size={16} />
             <span className="text-[14.5px] font-medium" style={{ color: "var(--text-1)" }}>
               Building it now
             </span>
           </div>
-          <ul className="space-y-1.5 text-[13px] pl-6" style={{ color: "var(--text-3)" }}>
-            <li className="flex items-center gap-2">
-              <Check size={12} style={{ color: BRAND.green }} /> Applied brand kit and template
-            </li>
-            <li className="flex items-center gap-2">
-              <Check size={12} style={{ color: BRAND.green }} /> Structured layout
-            </li>
-            <li className="flex items-center gap-2" style={{ color: "var(--text-1)" }}>
-              {stepLabel}
-            </li>
-          </ul>
+
+          <div className="pl-[26px]">
+            <Thinking stage={buildStage} stalled={buildStalled} />
+          </div>
         </div>
       </div>
     );
@@ -2631,6 +2891,11 @@ export function ChatBubble({ message, brief, onGenerate, onAdjust, onWantIntervi
      preview: what is in this box is exactly what downloads. */
   if (message.type === "result") {
     const title = message.title || "Your document";
+    /* Read from the document itself rather than from what the person asked
+       for. Somebody can ask for a report and get one with a table in it,
+       and somebody can ask for "the numbers" and get prose. What is
+       actually there is the only thing that decides. */
+    const hasTable = toTables(message.content ?? "").length > 0;
 
     return (
       <div style={riseStyle}>
@@ -2645,27 +2910,78 @@ export function ChatBubble({ message, brief, onGenerate, onAdjust, onWantIntervi
             </span>
           </div>
 
-          <div
-            className="rounded-[14px] border p-4 mb-4 max-h-[380px] overflow-y-auto"
-            style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-2)" }}
-          >
-            <pre
-              className="text-[13px] leading-relaxed whitespace-pre-wrap font-sans"
-              style={{ color: "var(--text-2)" }}
+          {/* TALLER, AND IT SHOWS THAT IT SCROLLS.
+
+              380px was chosen when this box held raw Markdown, where being
+              cut off looked like being cut off. Rendered, the same height
+              sliced the document exactly at a table header, so the numbers
+              were hidden and it read as broken.
+
+              60vh, with a floor and a ceiling. On a phone that is most of
+              the screen, which is right: this is the thing they came to
+              read. On a tall desktop the ceiling stops one report filling
+              the window and pushing the buttons out of reach.
+
+              The fade underneath is not decoration. A box that scrolls with
+              no sign that it scrolls is a box people think is the whole
+              document, and then they judge the work by half of it. */}
+          <div className="relative mb-4">
+            <div
+              className="rounded-[14px] border p-4 overflow-y-auto"
+              style={{
+                borderColor: "var(--border)",
+                backgroundColor: "var(--surface-2)",
+                maxHeight: "min(60vh, 560px)",
+                minHeight: "120px",
+              }}
             >
-              {message.content}
-            </pre>
+            {/* Rendered, not raw. This is the box somebody reads before
+                deciding to download, and the download is the signal the
+                whole style memory rests on. A decision made from a wall of
+                hashes and pipes is not a decision. */}
+              <DocumentView markdown={message.content} />
+            </div>
+
+            {/* aria-hidden and pointer-events-none: it is a hint for the
+                eye, not a thing to read or to tap through. */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute left-px right-px bottom-px h-10 rounded-b-[14px]"
+              style={{ background: "linear-gradient(to bottom, transparent, var(--surface-2))" }}
+            />
           </div>
 
+          {/* TWO ROWS, BECAUSE THEY ARE TWO DIFFERENT QUESTIONS.
+
+              The top row is "what shall I take away". The bottom row is
+              "what shall I do now". Six buttons in one line reads as six
+              equal choices, and on a phone it wraps into a block nobody
+              can scan.
+
+              THE SPREADSHEET BUTTON IS NOT ALWAYS THERE. A spreadsheet is
+              the numbers, so a document with no table in it has nothing to
+              put in one. Showing the button anyway and refusing when it is
+              pressed is a control that exists to say no. It appears when
+              it can work and not before. */}
           <div className="flex flex-wrap gap-2.5">
             <PrimaryButton
               onClick={() => onDownload("pdf")}
               className="flex items-center gap-2 text-[13.5px] px-4"
             >
               <Download size={14} />
-              Download PDF
+              PDF
             </PrimaryButton>
             <GhostButton onClick={() => onDownload("docx")}>Word</GhostButton>
+            <GhostButton onClick={() => onDownload("pptx")}>Slides</GhostButton>
+            {hasTable && (
+              <GhostButton onClick={() => onDownload("xlsx")}>Spreadsheet</GhostButton>
+            )}
+          </div>
+
+          <div
+            className="flex flex-wrap gap-2.5 mt-2.5 pt-3 border-t"
+            style={{ borderColor: "var(--border)" }}
+          >
             <GhostButton onClick={onCopy}>Copy</GhostButton>
             <GhostButton onClick={onReset}>Start something new</GhostButton>
           </div>
@@ -2726,6 +3042,17 @@ export function ChatBubble({ message, brief, onGenerate, onAdjust, onWantIntervi
       >
         {message.content}
       </p>
+
+      {/* THE REPLY RAN OUT OF ROOM. Said out loud, because the alternative
+          is a sentence that stops halfway and a person who thinks that was
+          the whole answer. Quiet grey rather than a warning colour: nothing
+          has gone wrong, there is just more to come. */}
+      {message.cutOff && (
+        <p className="text-[12.5px] mt-2 max-w-[85%]" style={{ color: "var(--text-3)" }}>
+          That ran out of room and stopped here. Ask me to carry on and I will finish it.
+        </p>
+      )}
+
       <div className="flex items-center gap-1 mt-2.5 -ml-1.5">
         <IconBtn active={feedback === "up"} onClick={() => onFeedback("up")} activeColor={BRAND.green} label="Good response">
           <ThumbsUp size={14} />

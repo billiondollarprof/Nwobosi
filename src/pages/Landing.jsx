@@ -27,7 +27,7 @@
      13. Footer
    ========================================================================== */
 
-import { Fragment, useEffect } from "react";
+import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   ArrowRight,
@@ -49,6 +49,7 @@ import {
   Users,
   GraduationCap,
   Play,
+  Sparkles,
 } from "lucide-react";
 
 import { AmaraLockup } from "../shared/icons.jsx";
@@ -81,86 +82,46 @@ import { SectionHead, GradientText, Eyebrow, Divider } from "../shared/marketing
    what it is, and an enterprise reader who meets "live in 10 minutes" on a
    deployment page discounts everything above it. Seeing it in ten minutes
    is true, and it is what the button below actually offers. */
-const TRUST_POINTS = [
-  { full: "Nothing leaves your walls", short: "Nothing leaves" },
-  /* "Day one" alone was the short form, and shortening it deleted the word
-     carrying the claim. On a phone it read as a fragment: day one of what.
-     The verb stays in at every width. */
-  { full: "Useful on day one", short: "Useful day one" },
-  { full: "See it in 10 minutes", short: "See it in 10 min" },
-];
+/* WHAT IT HANDS BACK, rotating under the subtext.
 
-/* What the product hands back. These rotate in the subtext, so a reader
-   watching for a few seconds learns the range of work it does without
-   another sentence being written. Every one is a document this really
-   produces: Word and PDF are real, decks are not.
+   Three words each, because Anthony set that length on 2026-09-15 and it
+   is the right length. The line before this one is thirty three words, so
+   anything long here competes with it, and a rotating phrase that has to
+   be read carefully stops being a glance and starts being homework.
 
-   Each one names the company's own material, and that is the point of the
-   line rather than decoration on it. The list used to read "a project
-   brief", "a board update", "a client one pager". The sentence above
-   promises that everything the company runs on is already inside it, and
-   then paid it off with documents any chatbot writes. The promise and the
-   proof have to be the same size. What no general tool can do is put this
-   quarter's numbers or last year's contract into the first draft, so that
-   is what the line says now. */
+   Every one of these is a document the product really produces, and every
+   one names the company's own material rather than a generic deliverable.
+   A board update with your numbers in it is the claim. "A document" is
+   what any chatbot writes.
+
+   The lead is "Ask for", not "It produces". An invitation puts the reader
+   in the chair; a description leaves them watching. */
 const OUTPUTS = [
-  "a board update with this quarter's numbers",
-  "a renewal notice priced off the contract",
-  "a client one pager in your own template",
-  "a bid that reuses your own pricing",
-  "a policy summary that cites the policy",
+  "a board update",
+  "a client quote",
+  "a pitch deck",
+  "a renewal notice",
+  "a policy summary",
 ];
 
-/* ==========================================================================
-   HERO LINE
-   The sentence that ends on the rotating phrase, with its height reserved.
+/* NO SHORT FORMS ANY MORE. Every phone reads the same words a desktop
+   reads.
 
-   The phrase changes length, that changes how many lines the paragraph
-   takes, and that moves the buttons underneath it. A button that walks out
-   from under a thumb every few seconds is worse than no animation at all.
+   There used to be a cut down version of each of these for narrow screens,
+   so the three could sit on one line with dividers between them. Anthony
+   read them on a phone on 2026-09-15 and said they came out as incomplete
+   statements, and he was right: "Nothing leaves" is a sentence with its
+   object removed, and "See it in 10 min" is a note to yourself, not a
+   claim to a buyer. Trimming a phrase until it fits is how a claim quietly
+   turns into a fragment.
 
-   The earlier fix was a measured min-height in ems. That was fragile in two
-   ways: it only held at one breakpoint, and it was measured with whatever
-   font happened to be loaded, so a webfont arriving late could make the
-   longest phrase wrap onto a line the reservation did not allow for.
-
-   This reserves the space from the content instead. Every phrase is
-   rendered once, invisibly, stacked in the same grid cell as the live one,
-   so the block is always as tall as the tallest phrase makes it, in
-   whatever font is actually being used, at whatever width. Add a phrase to
-   OUTPUTS and nothing needs re-measuring.
-   ========================================================================== */
-
-/* wrapperClass has to keep this a grid at every width it is visible at.
-   Tailwind's `hidden` beats the base `grid`, which is what makes the two
-   variants below hide correctly, but a breakpoint that sets `block` beats
-   it too and silently unstacks the reservation. */
-function HeroLine({ wrapperClass = "", textClass = "", lead, tail = null }) {
-  return (
-    <div className={`grid ${wrapperClass}`}>
-      {OUTPUTS.map((phrase) => (
-        <p
-          key={phrase}
-          aria-hidden="true"
-          className={`invisible col-start-1 row-start-1 pointer-events-none ${textClass}`}
-          style={{ color: "var(--text-2)" }}
-        >
-          {lead}
-          {/* The weight and the cursor are both here, because both take
-              width and the reservation has to match what is drawn. */}
-          <span style={{ fontWeight: 500 }}>{phrase}|</span>
-          {tail}
-        </p>
-      ))}
-
-      <p className={`col-start-1 row-start-1 ${textClass}`} style={{ color: "var(--text-2)" }}>
-        {lead}
-        <Typewriter phrases={OUTPUTS} style={{ color: "var(--h-a)", fontWeight: 500 }} />
-        {tail}
-      </p>
-    </div>
-  );
-}
+   So the phone stacks them instead, one to a line, and the dividers only
+   exist on the row that is actually a row. See the strip below. */
+const TRUST_POINTS = [
+  "Nothing leaves your walls",
+  "Useful on day one",
+  "See it in 10 minutes",
+];
 
 /* The three cards under the problem heading. The first one is the whole
    thesis and has to stay first: the leak is not carelessness, it is that
@@ -222,6 +183,67 @@ const STEPS = [
     title: "It writes the prompt, then builds",
     body: "One prompt, written from the brief you approved, and that prompt is the second guardrail: nothing reaches the document that you did not confirm. The finished file comes back two ways at once: a download in the chat, and a draft saved into your own storage, wherever your files already live.",
     wide: true,
+  },
+  {
+    /* THE SIXTH STEP, added 2026-09-15.
+
+       It is per staff member and it is never a company standard. Anthony
+       ruled on that directly: "nobody should set a standard for anybody,
+       not even who downloaded most. Whatever it saves is for that
+       particular staff. Staff A doesn't get a suggestion based on what
+       staff B is doing."
+
+       So the copy says "your" and never "the company's", because the
+       moment this reads as a house style it is promising something he
+       has decided not to build. */
+    icon: Sparkles,
+    title: "It keeps what you accepted",
+    body: "The work you took is remembered, for you. Ask for something like it next month and it starts from what you already approved rather than from nothing. Yours alone, never turned into a standard for anybody else.",
+    wide: true,
+  },
+];
+
+/* WHAT THE MECHANISM ABOVE ACTUALLY BUYS YOU.
+
+   Four, not ten, and each one is produced by a step you have just read
+   rather than asserted on its own. A benefit list that does not follow
+   from the mechanism above it is a list any competitor can copy in an
+   afternoon.
+
+   ON THE THIRD ONE. It used to be going to say "near zero hallucination".
+   Anthony weighed it and chose this instead on 2026-09-15. The reason is
+   that the checkpoints gate two things properly, which direction the work
+   takes and what comes in from outside, and they do not gate the prose
+   the model writes at the end. So "near zero hallucination" is a claim
+   somebody technical reads literally and finds the gap in. This says the
+   same thing about the part we actually control and cannot be argued
+   with.
+
+   ON THE FOURTH ONE, which is the one nobody else sells. The research
+   block directly below this proves it with somebody else's numbers: 79%
+   struggling to get AI adopted, 54% saying it is splitting the company.
+   Everyone in this category sells capability. Adoption is the thing
+   companies actually fail at. */
+const OUTCOMES = [
+  {
+    icon: Lock,
+    title: "Private by design",
+    body: "Your company's material stays inside your boundary, and your staff never paste it into a public AI tool to get their work done.",
+  },
+  {
+    icon: MessagesSquare,
+    title: "Nobody learns to prompt",
+    body: "Your staff describe the job in their own words. The prompt is written for them, from a brief they already approved.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Nothing enters your work that you did not approve",
+    body: "Not a source, not a direction, not a number. The checkpoints are built in rather than offered as an option somebody can skip.",
+  },
+  {
+    icon: Users,
+    title: "Your staff actually use it",
+    body: "Rewrite after rewrite is what wears people down. They get something half right, and fixing it starts to feel slower than just writing it themselves, so they go back to doing it by hand and the tool sits there unused. Agreeing the direction first is what stops that, because the first draft is already the right piece of work.",
   },
 ];
 
@@ -544,76 +566,106 @@ export default function Landing() {
             className="text-[28px] sm:text-[42px] lg:text-[46px] xl:text-[52px] font-medium leading-[1.08] tracking-[-0.03em] mb-5 sm:mb-6 max-w-4xl mx-auto lg:mx-0"
             style={{ fontFamily: FONTS.display, color: "var(--text-1)", textWrap: "balance" }}
           >
-            {/* Each sentence is its own block rather than two lines split by
-                a <br>, so balance applies to each one on its own and neither
-                can drop a single word onto a line by itself. This holds
-                whatever the font measures, which matters because the display
-                face loads from the network and the fallback is a different
-                width. */}
-            {/* The accent is on a phrase, not on a line, and it took three
-                goes to land there.
+            {/* TWO SENTENCES: the capability, then the containment.
 
-                On the closing line it was twenty characters, too short a
-                run for a sweep, so it read as a colour sitting on the
-                words rather than light moving over them. Moved to the
-                whole opening sentence it had room to travel, but colour is
-                where the eye goes first, so the setup outshouted the
-                payoff and "Nothing ever leaves." arrived as an
-                afterthought.
+                That order matters and it is not interchangeable. Lead with
+                the containment and this reads as a compliance tool, which
+                every vendor in the category can also claim. Lead with the
+                capability and the containment becomes the thing that makes
+                the capability allowable.
 
-                On the phrase it does both jobs. It marks the thing no
-                competitor can claim, it has a long enough run to move, and
-                the closing sentence stays flat, which is what makes it
-                land. */}
+                THE ACCENT IS ON THE CLOSING LINE, and it took a wrong
+                turn to get there.
+
+                It sat on "already knows your company" for a day, on my
+                reasoning that the capability is the thing no competitor
+                can claim. Anthony moved it, 2026-09-15: "the part that
+                carries the different color should be the zero data
+                leakage... that's like the anchor of the line."
+
+                He is right and the reason is worth keeping. The eye lands
+                on colour first and leaves from it last, so whatever is lit
+                is what a reader carries away. Light the setup and they
+                leave holding the setup. The anchor is the last line, so
+                the anchor is what gets the light.
+
+                This sentence wraps on purpose. textWrap balance splits it
+                evenly and never leaves one word stranded on a line of its
+                own, so it needs no guard against wrapping. */}
             <span className="block">Private AI that already knows your company.</span>
-            {/* This line never wraps. It is the shortest sentence on the
-                page and breaking it in two is the one thing that would make
-                it look accidental. Held to one line two ways: nowrap, and a
-                size that shrinks only if a screen is narrow enough to need
-                it, which stops nowrap from pushing the page sideways on a
-                small phone. 10.6em is the measured width of the sentence in
-                the display face. */}
-            <span
-              className="block"
-              style={{
-                ...HEADLINE_ACCENT,
-                whiteSpace: "nowrap",
-                fontSize: "min(1em, calc((100vw - 2.75rem) / 10.6))",
-              }}
-            >
-              Nothing ever leaves.
-            </span>
+            {/* THE CONTAINMENT LINE, back on 2026-09-15 and said flat.
+
+                It went through three versions. "Nothing ever leaves" was
+                first, and CURRENT.md recorded it as falsifiable, because
+                prompts still reach a model provider even though documents
+                are never stored here. It came out. Anthony then weighed
+                "Your data never leaves your cloud" against this, said this
+                one was bolder, and chose it.
+
+                WHAT MAKES IT DEFENSIBLE NOW, which it was not before. On a
+                Bedrock deployment behind a VPC interface endpoint the
+                traffic never touches the public internet, AWS does not
+                train on the prompts or the outputs, and the model provider
+                never receives them at all. So this is a claim about an
+                architecture we can point at rather than a promise about an
+                absence. Do not put it back on a page for a deployment that
+                is not built that way.
+
+                It is a block of its own so balance treats it as its own
+                sentence, and it is short enough that it will not wrap on
+                any phone. */}
+            <span className="block" style={HEADLINE_ACCENT}>Zero data leakage.</span>
           </h1>
 
-          {/* The subtext carries the third thing the headline could not: that
-              this is easier than the AI they are using now, not just safer.
-              One paragraph at both sizes. The old page ran two versions and
-              the short one gave a phone reader the promise without the part
-              that earns it. */}
-          {/* Two lengths, not one paragraph squeezed down. Most people meet
-              this page on a phone, and five lines of grey text there is
-              five lines nobody reads. The phone gets the one sentence that
-              matters. Everything above tablet gets the sentence that earns
-              it as well. Both end on the same rotating phrase. */}
-          <HeroLine
-            wrapperClass="sm:hidden mb-7"
-            textClass="text-[15.5px] leading-[1.6] max-w-[330px] mx-auto"
-            lead="Everything your company runs on is already inside it. Your staff ask in plain language and get back "
-          />
-          <HeroLine
-            /* sm:grid, not sm:block. The reservation below is a grid
-               stack, and a display utility at a breakpoint overrides the
-               base one, so sm:block quietly turned the stack back into six
-               paragraphs in a column. */
-            wrapperClass="hidden sm:grid mb-9 lg:mb-8"
-            textClass="text-[17.5px] leading-[1.6] max-w-[620px] mx-auto lg:mx-0"
-            lead="Every document, template and number your company runs on is already inside it. Your staff ask in plain language and get back "
-            tail={
-              <span className="block mt-3" style={{ color: "var(--text-3)" }}>
-                No prompt course. No power user. Their first afternoon.
-              </span>
-            }
-          />
+          {/* ANTHONY WROTE THIS SENTENCE AND IT IS USED AS HE WROTE IT,
+              2026-09-15. One paragraph at both sizes. Do not trim it for
+              phones: the short version that used to live here gave a phone
+              reader the promise without the part that earns it. */}
+          <p
+            className="text-[15.5px] sm:text-[17.5px] leading-[1.6] max-w-[620px] mx-auto lg:mx-0 mb-4 sm:mb-5"
+            style={{ color: "var(--text-2)" }}
+          >
+            Your team gets company-ready AI that knows your approved files,
+            systems, and standards, so they can produce client-ready work in
+            plain language without uploading or pasting anything into public
+            AI tools.
+          </p>
+
+          {/* THE ROTATING LINE, and it is deliberately the shortest thing
+              in the hero.
+
+              It used to live inside the sentence above, which ran on into
+              it and made the whole paragraph move every time the phrase
+              changed. Now it stands on its own, so the sentence above never
+              reflows and nothing under it walks about.
+
+              HEIGHT IS RESERVED FROM THE CONTENT, not from a measured
+              min-height. Every phrase is rendered once invisibly in the
+              same grid cell as the live one, so the block is always as tall
+              as the longest phrase makes it, in whatever font is actually
+              loaded, at whatever width. Add a phrase to OUTPUTS and nothing
+              needs re-measuring. Without this the buttons underneath walk
+              up and down every few seconds, and a button that moves out
+              from under a thumb is worse than no animation at all. */}
+          <div className="grid mb-7 sm:mb-9 lg:mb-8">
+            {OUTPUTS.map((phrase) => (
+              <p
+                key={phrase}
+                aria-hidden="true"
+                className="invisible col-start-1 row-start-1 pointer-events-none text-[15.5px] sm:text-[17.5px]"
+                style={{ color: "var(--text-3)" }}
+              >
+                Ask for <span style={{ fontWeight: 500 }}>{phrase}|</span>
+              </p>
+            ))}
+            <p
+              className="col-start-1 row-start-1 text-[15.5px] sm:text-[17.5px]"
+              style={{ color: "var(--text-3)" }}
+            >
+              Ask for{" "}
+              <Typewriter phrases={OUTPUTS} style={{ color: "var(--h-a)", fontWeight: 500 }} />
+            </p>
+          </div>
 
           {/* Two actions, and the order matters.
 
@@ -633,7 +685,20 @@ export default function Landing() {
           {/* items-stretch, so the two buttons are the same height because they
               are in the same row rather than because two paddings were tuned
               to agree. Change either one and they still match. */}
-          <div className="flex flex-col sm:flex-row items-stretch justify-center lg:justify-start gap-3 mb-5 sm:mb-7">
+          {/* mb-3.5 on a phone, not mb-5. Anthony read the hero on a phone
+              on 2026-09-15: "it's as if there's no space between the last
+              line and the bottom of the hero."
+
+              The three trust points stack on a phone now, which made them
+              three lines tall instead of one, and nothing under them
+              absorbed that. So the last one finished flush against the
+              bottom edge. Tightening the gap ABOVE them is the right half
+              to change: it groups them with the buttons they belong to,
+              which is what he asked for, and it hands the space back to
+              the bottom of the section where the breathing room was
+              missing. From sm up they are one row again and the old gap
+              stands. */}
+          <div className="flex flex-col sm:flex-row items-stretch justify-center lg:justify-start gap-3 mb-3.5 sm:mb-7">
             <PrimaryButton
               onClick={() => navigate("/contact")}
               className="flex items-center justify-center gap-2 px-6 py-3.5 text-[15px]"
@@ -650,25 +715,48 @@ export default function Landing() {
             </GlassButton>
           </div>
 
-          {/* One line, always. The separators are their own children rather
-              than living inside each item, and nothing wraps, so a divider
-              can never end up stranded at the start of a second row. */}
+          {/* IT WRAPS NOW, it does not stack and it does not get cut down.
+
+              Three states this has been through, and the third is the one
+              that holds:
+
+                1. One row with the phrases shortened to fit. That broke
+                   them. "Nothing leaves" is a sentence with its object
+                   removed.
+                2. Full phrases stacked one per line on a phone. Nothing
+                   was broken, but three lines is 66px, and that was most
+                   of what pushed the whole row under the fold on a 375px
+                   phone.
+                3. Full phrases, wrapping. Two fit on the first line of a
+                   390px phone and the third takes the second line, so it
+                   costs one line instead of three and every word survives.
+
+              THE DIVIDERS ONLY EXIST WHERE NOTHING WRAPS, which is from
+              sm up. Above 640px all three phrases fit on one row with room
+              to spare, so a divider there can never be stranded and it
+              does the job dividers do.
+
+              Below sm they are gone, and the gap separates the phrases
+              instead. I tried keeping them, tied to the phrase in front so
+              they could not land at the start of a wrapped line. That
+              worked, and it still looked wrong: the last phrase on line
+              one trailed a divider pointing into empty space at the right
+              edge, above a centred line two. A divider is there to sit
+              between two things. When there is nothing after it on that
+              line, the honest answer is not to draw it. */}
           <div
-            className="flex items-center justify-center lg:justify-start gap-2.5 sm:gap-3 text-[11.5px] sm:text-[12.5px]"
+            className="flex flex-wrap items-center justify-center lg:justify-start gap-x-2.5 gap-y-1 text-[12px] sm:text-[12.5px]"
             style={{ color: "var(--text-3)" }}
           >
             {TRUST_POINTS.map((point, i) => (
-              <Fragment key={point.full}>
-                {i > 0 && (
-                  <span aria-hidden="true" style={{ opacity: 0.35 }}>
+              <span key={point} className="whitespace-nowrap">
+                {point}
+                {i < TRUST_POINTS.length - 1 && (
+                  <span aria-hidden="true" className="hidden sm:inline ml-2.5" style={{ opacity: 0.35 }}>
                     |
                   </span>
                 )}
-                <span className="whitespace-nowrap">
-                  <span className="sm:hidden">{point.short}</span>
-                  <span className="hidden sm:inline">{point.full}</span>
-                </span>
-              </Fragment>
+              </span>
             ))}
           </div>
             </div>
@@ -701,83 +789,6 @@ export default function Landing() {
           </div>
         </div>
         <IntegrationStrip />
-      </section>
-
-      {/* ====================================================================
-          4. THE READ BACK
-          The one thing worth showing rather than describing, and the
-          reason the product can be trusted with somebody's afternoon. The
-          panel on the right is the real component from the chat screen,
-          same rows, same words, not a drawing of one.
-          ==================================================================== */}
-
-      <section className="relative z-10 px-5 sm:px-8 pb-20 sm:pb-28">
-        <Reveal className="max-w-5xl mx-auto grid gap-10 lg:grid-cols-2 lg:gap-16 items-center">
-          <Reveal>
-            <Eyebrow>Before it spends your time</Eyebrow>
-            <h2
-              className="text-[28px] sm:text-[38px] font-medium leading-[1.12] tracking-[-0.025em] mt-4"
-              style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
-            >
-              It tells you what it understood <GradientText>before it builds anything</GradientText>
-            </h2>
-            <p className="text-[16px] leading-relaxed mt-5" style={{ color: "var(--text-2)" }}>
-              Every brief comes back to you first: what it is making, who it is for, which of your
-              own sources it will use, and what it is assuming. You confirm, or you say what is
-              wrong.
-            </p>
-            <p className="text-[16px] leading-relaxed mt-4" style={{ color: "var(--text-2)" }}>
-              The back and forth happens here, in conversation, instead of after somebody has read a
-              finished document that was never going to be right. What you confirm becomes the
-              brief. Nothing outside it reaches the finished file.
-            </p>
-          </Reveal>
-
-          <Reveal delay={90}>
-            <GlassPanel className="p-5 sm:p-6">
-              <p className="text-[15.5px] mb-4" style={{ color: "var(--text-1)" }}>
-                Here is what I have got. Let me know if anything needs to change.
-              </p>
-              <div className="mb-5">
-                {[
-                  ["Project", "Renewal one pager for Meridian Health"],
-                  ["Template", "Client One Pager"],
-                  ["Audience", "Their operations director"],
-                  ["Sources", "Brand Guide, Q2 Renewals Summary"],
-                ].map(([label, value]) => (
-                  <div
-                    key={label}
-                    className="flex gap-4 py-2 border-b"
-                    style={{ borderColor: "var(--border)" }}
-                  >
-                    <span
-                      className="w-20 shrink-0 text-[11px] font-semibold uppercase tracking-wide pt-0.5"
-                      style={{ color: "var(--text-3)" }}
-                    >
-                      {label}
-                    </span>
-                    <span className="text-[14.5px]" style={{ color: "var(--text-1)" }}>
-                      {value}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              {/* Presentational. The real one spends money, and a button on
-                  a landing page that looks like it does and does not is
-                  worse than no button. */}
-              <div
-                aria-hidden="true"
-                className="px-5 py-2.5 rounded-[12px] text-[14px] font-semibold text-white w-fit"
-                style={{ background: GRADIENTS.action }}
-              >
-                Generate
-              </div>
-            </GlassPanel>
-            <p className="text-[12.5px] mt-3" style={{ color: "var(--text-3)" }}>
-              An example brief. This is the screen your staff see.
-            </p>
-          </Reveal>
-        </Reveal>
       </section>
 
       {/* ====================================================================
@@ -926,6 +937,55 @@ export default function Landing() {
       </section>
 
       {/* ====================================================================
+          WHAT THIS CHANGES
+          The mechanism above, turned into the four things a buyer gets.
+          Added 2026-09-15 as part of moving the mechanism above the
+          integrations, which is where Anthony wanted it: a buyer needs to
+          know what happens when their staff uses this before they care
+          what it plugs into.
+          ==================================================================== */}
+
+      <section className="relative z-10 px-5 sm:px-8 pb-20 sm:pb-28">
+        <Reveal className="max-w-5xl mx-auto">
+          <SectionHead
+            eyebrow="What this changes"
+            title="Four things your company gets from that loop"
+            sub="Each one comes out of a step above rather than standing on its own."
+            center
+          />
+
+          {/* Two across from tablet up, never four. Four across puts each
+              of these in a column too narrow to say anything, and these
+              are sentences rather than labels. */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            {OUTCOMES.map((item) => (
+              <div
+                key={item.title}
+                className="sx-card rounded-[18px] border p-6 backdrop-blur-xl h-full"
+                style={{ backgroundColor: "var(--surface)" }}
+              >
+                <span
+                  className="w-10 h-10 rounded-[12px] flex items-center justify-center mb-4"
+                  style={{ backgroundColor: "var(--chip)" }}
+                >
+                  <item.icon size={18} style={{ color: BRAND.accentSoft }} />
+                </span>
+                <h3
+                  className="text-[16.5px] font-bold mb-2 leading-snug"
+                  style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
+                >
+                  {item.title}
+                </h3>
+                <p className="text-[14px] leading-relaxed" style={{ color: "var(--text-3)" }}>
+                  {item.body}
+                </p>
+              </div>
+            ))}
+          </div>
+        </Reveal>
+      </section>
+
+      {/* ====================================================================
           6. HOW IT WORKS
           ==================================================================== */}
 
@@ -938,7 +998,7 @@ export default function Landing() {
             How it works
           </h2>
           <p className="text-[15px] text-center mb-11 max-w-lg mx-auto" style={{ color: "var(--text-3)" }}>
-Five steps. All your staff ever do is talk.
+Six steps. All your staff ever do is talk.
           </p>
 
           {/* Five steps into a two column grid leaves one on its own, so the
@@ -985,6 +1045,83 @@ Five steps. All your staff ever do is talk.
               </div>
             ))}
           </div>
+        </Reveal>
+      </section>
+
+      {/* ====================================================================
+          4. THE READ BACK
+          The one thing worth showing rather than describing, and the
+          reason the product can be trusted with somebody's afternoon. The
+          panel on the right is the real component from the chat screen,
+          same rows, same words, not a drawing of one.
+          ==================================================================== */}
+
+      <section className="relative z-10 px-5 sm:px-8 pb-20 sm:pb-28">
+        <Reveal className="max-w-5xl mx-auto grid gap-10 lg:grid-cols-2 lg:gap-16 items-center">
+          <Reveal>
+            <Eyebrow>Before it spends your time</Eyebrow>
+            <h2
+              className="text-[28px] sm:text-[38px] font-medium leading-[1.12] tracking-[-0.025em] mt-4"
+              style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
+            >
+              It tells you what it understood <GradientText>before it builds anything</GradientText>
+            </h2>
+            <p className="text-[16px] leading-relaxed mt-5" style={{ color: "var(--text-2)" }}>
+              Every brief comes back to you first: what it is making, who it is for, which of your
+              own sources it will use, and what it is assuming. You confirm, or you say what is
+              wrong.
+            </p>
+            <p className="text-[16px] leading-relaxed mt-4" style={{ color: "var(--text-2)" }}>
+              The back and forth happens here, in conversation, instead of after somebody has read a
+              finished document that was never going to be right. What you confirm becomes the
+              brief. Nothing outside it reaches the finished file.
+            </p>
+          </Reveal>
+
+          <Reveal delay={90}>
+            <GlassPanel className="p-5 sm:p-6">
+              <p className="text-[15.5px] mb-4" style={{ color: "var(--text-1)" }}>
+                Here is what I have got. Let me know if anything needs to change.
+              </p>
+              <div className="mb-5">
+                {[
+                  ["Project", "Renewal one pager for Meridian Health"],
+                  ["Template", "Client One Pager"],
+                  ["Audience", "Their operations director"],
+                  ["Sources", "Brand Guide, Q2 Renewals Summary"],
+                ].map(([label, value]) => (
+                  <div
+                    key={label}
+                    className="flex gap-4 py-2 border-b"
+                    style={{ borderColor: "var(--border)" }}
+                  >
+                    <span
+                      className="w-20 shrink-0 text-[11px] font-semibold uppercase tracking-wide pt-0.5"
+                      style={{ color: "var(--text-3)" }}
+                    >
+                      {label}
+                    </span>
+                    <span className="text-[14.5px]" style={{ color: "var(--text-1)" }}>
+                      {value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              {/* Presentational. The real one spends money, and a button on
+                  a landing page that looks like it does and does not is
+                  worse than no button. */}
+              <div
+                aria-hidden="true"
+                className="px-5 py-2.5 rounded-[12px] text-[14px] font-semibold text-white w-fit"
+                style={{ background: GRADIENTS.action }}
+              >
+                Generate
+              </div>
+            </GlassPanel>
+            <p className="text-[12.5px] mt-3" style={{ color: "var(--text-3)" }}>
+              An example brief. This is the screen your staff see.
+            </p>
+          </Reveal>
         </Reveal>
       </section>
 

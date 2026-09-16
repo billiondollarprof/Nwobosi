@@ -51,11 +51,29 @@ function isJustDenoNoise(line) {
   return false;
 }
 
+/* Every function's entry point, PLUS every file in _shared.
+
+   _shared was added on 2026-09-15 and here is why. A shared module only
+   got type checked if some function already imported it, because the walk
+   below only ever looked for <dir>/index.ts. So a shared module written
+   before its first caller existed was checked by nothing at all, and the
+   first time anybody found out it was broken was at runtime, on the live
+   project. _shared/canva.ts sat in exactly that state for an hour.
+
+   A shared module is the worst place to leave unchecked, because when it
+   does break it breaks every function that imports it rather than one. */
 const functions = existsSync(ROOT)
-  ? readdirSync(ROOT, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => join(ROOT, entry.name, "index.ts"))
-      .filter((path) => existsSync(path))
+  ? [
+      ...readdirSync(ROOT, { withFileTypes: true })
+        .filter((entry) => entry.isDirectory() && entry.name !== "_shared")
+        .map((entry) => join(ROOT, entry.name, "index.ts"))
+        .filter((path) => existsSync(path)),
+      ...(existsSync(join(ROOT, "_shared"))
+        ? readdirSync(join(ROOT, "_shared"))
+            .filter((name) => name.endsWith(".ts"))
+            .map((name) => join(ROOT, "_shared", name))
+        : []),
+    ]
   : [];
 
 if (!functions.length) {
@@ -70,8 +88,14 @@ for (const file of functions) {
   try {
     execFileSync(
       "npx",
+      /* allowImportingTsExtensions, added 2026-09-14 when the first shared
+         module between two functions appeared. Deno REQUIRES the .ts on a
+         relative import; tsc refuses it by default with TS5097. Without
+         this flag the checker fails correct code, which is the fastest way
+         to teach somebody to stop running the checker. */
       ["tsc", "--noEmit", "--target", "es2022", "--lib", "es2022,dom",
-       "--module", "esnext", "--moduleResolution", "bundler", "--skipLibCheck", file],
+       "--module", "esnext", "--moduleResolution", "bundler", "--skipLibCheck",
+       "--allowImportingTsExtensions", file],
       { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
     );
   } catch (err) {

@@ -59,7 +59,28 @@ export const FUNCTIONS = {
   inviteStaff: "invite-staff",
   sendContact: "send-contact",
   readBeforePublish: "read-before-publish",
+  describeSource: "describe-source",
+  canvaDesign: "canva-design",
+  supportReply: "support-reply",
+  canvaConnect: "canva-connect",
 };
+
+/* WHERE A COMPANY'S LOGOS AND BRAND IMAGES LIVE.
+
+   Private, so nothing here is reachable without signing in. The first
+   folder inside it is always the company id, and every storage policy is
+   built on that, so an object path that does not start with the right
+   company is refused by the database rather than by this file. */
+export const BRAND_ASSETS_BUCKET = "brand-assets";
+
+/* The long edge a brand asset is kept at.
+
+   Larger than the 1568 a chat upload is cut to, because these are used to
+   BUILD things rather than to be looked at once. A logo that goes into a
+   deck or a Canva design at 1568 across is soft the moment somebody puts
+   it on a title slide. 2400 is generous for any real use and still small
+   enough that nobody waits for it. */
+export const BRAND_ASSET_EDGE = 2400;
 
 export const OAUTH_REDIRECT_URI =
   "https://cbunsqzkhidwjtxdsmxd.supabase.co/functions/v1/oauth-callback";
@@ -185,11 +206,38 @@ export const LEVEL_ORDER = ["conversational", "standard", "deeper", "deepest"];
 
 export const DEFAULT_LEVEL = "standard";
 
-/* What an admin may actually hand out here. The two above exist and the
-   server will run them, but this deployment does not offer them, and a
-   selector listing a choice the server refuses is a promise the product
-   cannot keep. */
-export const OFFERED_LEVELS = ["conversational", "standard"];
+/* WHAT AN ADMIN ACTUALLY PICKS FROM, and it is three of the four.
+
+   It was conversational and standard only, which Anthony set that way for
+   a competition where the cost of the top two mattered. He lifted that on
+   2026-09-16: "let the other four be part of the access. But by default,
+   it's always on standard for staffs."
+
+   CONVERSATIONAL IS NOT IN THE LIST, and that is deliberate rather than a
+   leftover. Anthony: "we already know that conversational is standard for
+   customer care. Nobody needs to select that." It is the level the support
+   assistant runs at on its own, so it is a fact about support rather than
+   a choice anybody makes about a staff member. Leaving it in the picker
+   would be offering somebody a setting whose only correct value is already
+   decided for them, which is the kind of knob this product does not show.
+
+   It stays in CAPABILITY_LEVELS and in LEVEL_ORDER, because support really
+   does run at it and a row already holding it still has to read properly. */
+export const OFFERED_LEVELS = ["standard", "deeper", "deepest"];
+
+/* SHOWN IN THE LIST, GREYED, NEVER PICKABLE.
+
+   Anthony, 2026-09-16: "I didn't think removing conversational was okay.
+   You can keep it there, label it in green, support. And it's not
+   pickable. It's just there... It just makes the walkthrough make more
+   sense because I have to do explanation."
+
+   So it is in the ladder where somebody expects to see it, marked as the
+   support level and locked. Taking it out entirely left a gap an admin
+   has to be told about; leaving it selectable would offer a setting whose
+   only right answer is already decided. Present and locked says both
+   things at once, and it gives him something to point at. */
+export const SUPPORT_LEVEL = "conversational";
 
 /* READING A ROW WRITTEN BEFORE THE RENAME.
 
@@ -326,22 +374,51 @@ export const WORKFLOW_TOOLS = [
     label: "Canva",
     icon: CanvaIconGlyph,
     hint: "Design and brand assets",
-    state: "registered",
+    /* CONNECTABLE BY THE PERSON LOOKING AT IT, since 2026-09-16.
+
+       It was "registered", meaning set up on our side and connected by an
+       admin for the whole company. Anthony moved it to the person, because
+       Canva is where somebody works rather than something the company
+       knows, and because a design made on the admin's account cannot be
+       opened by the staff member who asked for it. */
+    state: "connectable",
+    /* The admin's Connectors tab does not show this one any more. Canva
+       belongs to the person doing the work, not to the company, so it is
+       connected from the chat and the design lands in that person's own
+       Canva where they can open it and change it.
+
+       REWRITTEN 2026-09-16. The old note said an admin connects one account
+       for everybody, and then reported that the design part was not built
+       yet. Both halves are now wrong: Canva is per person, and the design
+       pipeline is live. The second half was also a progress report on a
+       client facing screen, which CLAUDE.md says does not go there. Where
+       the build has got to lives in CURRENT.md. */
     note:
-      "The Canva app is registered and its keys are in place, so the door is built. What is not " +
-      "built yet is the part that sends a design through it, so nothing here produces a Canva " +
-      "file today. That is the next piece of work, not a maybe.",
+      "Connect your own Canva and the assistant builds the design straight into it, " +
+      "on your brand, ready for you to open and change.",
   },
   {
+    /* THE LONG NOTE THAT WAS HERE IS GONE, 2026-09-15.
+
+       It explained that Drive was registered with Google, that the keys
+       were in place, and that the sign in was the remaining piece. All of
+       that was true and none of it was any of a customer's business.
+       Anthony: "it's explaining too much... it's client-facing. A
+       client-facing doesn't have to be explaining too much and doesn't
+       need to even be mentioning some technicalities like that."
+
+       He is right, and the reason is not only tone. A progress report on
+       a public surface reads as half finished work, and a buyer prices it
+       down before deciding whether they want it. Where a thing has got to
+       internally belongs in CURRENT.md.
+
+       So Drive now says what every other one says. It gets picked back up
+       after the video walkthrough. */
     id: "drive",
     label: "Google Drive",
     icon: DriveIconGlyph,
     hint: "Point the assistant at a file, and send finished work back",
     state: "registered",
-    note:
-      "Registered with Google and its keys are in place. The sign in that would let you connect " +
-      "your own Drive is the remaining piece. Until then, hand over a file here and download " +
-      "whatever gets made.",
   },
   {
     id: "email",
@@ -369,11 +446,16 @@ export const WORKFLOW_TOOLS = [
 /* Sits behind the info control under the tool list. Answers the question
    a sharp person in the room is already forming: are these real, or is
    this a picture of a product? */
+/* ONE SENTENCE, AND IT SAYS NOTHING ABOUT WHERE THE BUILD HAS GOT TO.
+
+   This used to explain the difference between "registered" and "example",
+   which meant a customer had to learn our internal vocabulary to read
+   their own screen, and what they learned was which parts are unfinished.
+   Neither of those helps them. Rewritten 2026-09-15 alongside the Drive
+   note, for the same reason. */
 export const WORKFLOW_PLAN_NOTE =
-  "Your deployment connects the tools your people actually work in, these or others, scoped to " +
-  "exactly what your team approves. Where one says registered, the account and keys are already " +
-  "in place and the remaining work is the wiring. Where it says example, the shape is drawn and " +
-  "the build is scoped. Tell us what your workflow runs on and it gets wired for you.";
+  "Your deployment connects the tools your people already work in, these or others, " +
+  "scoped to exactly what your team approves.";
 
 export const REGISTERED_CONNECTOR_NOTE =
   "Set up on our side. Not doing work in this demo yet.";

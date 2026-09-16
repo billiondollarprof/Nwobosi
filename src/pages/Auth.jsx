@@ -217,6 +217,7 @@ export default function Auth() {
               error={error}
               onEmail={setEmail}
               onSubmit={sendCode}
+              onSetUpCompany={() => navigate("/setup")}
             />
           )}
 
@@ -270,7 +271,7 @@ export default function Auth() {
    2. LOGIN SECTION
    ========================================================================== */
 
-function LoginSection({ email, busy, error, onEmail, onSubmit }) {
+function LoginSection({ email, busy, error, onEmail, onSubmit, onSetUpCompany }) {
   return (
     <form onSubmit={onSubmit}>
       <h1 className="text-[22px] font-bold mb-1" style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}>
@@ -305,6 +306,33 @@ function LoginSection({ email, busy, error, onEmail, onSubmit }) {
         {busy ? "Sending" : "Email me a code"}
       </PrimaryButton>
 
+      {/* THE WAY OUT FOR SOMEBODY WHOSE COMPANY IS NOT HERE YET.
+
+          Everything above this line assumes an invitation already exists,
+          because that is how a person joins a company that is already set
+          up. The first person at a company has no invitation to be waiting
+          for, and until now this screen had nothing to say to them: they
+          typed an email, got told there was no account, and that was the
+          end of the road.
+
+          It sits under the button rather than beside it, and it is a text
+          link rather than a second button, because the great majority of
+          people arriving here are staff who were invited. The line has to
+          be findable by the few without getting in the way of the many.
+
+          It goes to /setup, which is where a company starts with an access
+          code. Not a public sign up: there is still a code in the way. */}
+      <p className="text-[12.5px] mt-5 text-center" style={{ color: "var(--text-3)" }}>
+        Company not set up yet?{" "}
+        <button
+          type="button"
+          onClick={onSetUpCompany}
+          className="underline underline-offset-2 transition-opacity hover:opacity-70"
+          style={{ color: "var(--text-2)" }}
+        >
+          Set it up here
+        </button>
+      </p>
     </form>
   );
 }

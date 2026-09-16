@@ -24,7 +24,6 @@ import {
   Trash2,
   UploadCloud,
   Users,
-  Gauge,
   AlertCircle,
   AlertTriangle,
   X,
@@ -58,6 +57,8 @@ import {
   loadMe,
   listSources,
   addTextSource,
+  addImageSource,
+  setSupportAccess,
   removeSource,
   setSourceVisibility,
   listContradictions,
@@ -67,7 +68,9 @@ import {
   signOutCompletely,
 } from "../shared/session.js";
 import { adminSessionExpired } from "../shared/adminClock.js";
-import { readFileAsText, canBecomeText } from "../shared/readFile.js";
+import { readFileAsText, canBecomeText, fileKind } from "../shared/readFile.js";
+import { shrinkImage } from "../shared/shrinkImage.js";
+import { describeSource } from "../shared/describeSource.js";
 import { fetchLinkSource } from "../shared/linkApi.js";
 import { readBeforePublish, loadSourceText } from "../shared/publishCheck.js";
 import { findByName, findByAddress, whenAdded } from "../shared/duplicates.js";
@@ -84,6 +87,8 @@ import {
   OFFERED_LEVELS,
   DEFAULT_LEVEL,
   levelOf,
+  BRAND_ASSET_EDGE,
+  SUPPORT_LEVEL,
 } from "../shared/config.js";
 
 /* --------------------------------------------------------------------------
@@ -99,8 +104,23 @@ import {
 const TABS = [
   { id: "knowledge", label: "Knowledge", icon: BookOpen },
   { id: "connectors", label: "Connectors", icon: Link2 },
+  /* ONE TAB, NOT TWO, since 2026-09-15.
+
+     Anthony: "the subsection access is supposed to be merged with usage
+     since some things are repeated there... The explanation of the
+     capability can be at the bottom of the access section."
+
+     The overlap was real. Usage opened with Company defaults, which set
+     the daily limit and the capability ceiling for everybody, and the
+     people list in Access set those same two things per person. So to
+     answer one question, what is this person allowed to do, an admin had
+     to hold two screens in their head.
+
+     Now it reads in the order somebody actually works. Who is asking to
+     get in, invite them, set the default for everyone, tune the people
+     who need tuning, see what they used, and last the explanation of what
+     the levels mean, which is reference rather than a control. */
   { id: "access", label: "Access", icon: Users },
-  { id: "usage", label: "Usage", icon: Gauge },
 ];
 
 /* ==========================================================================
@@ -277,7 +297,6 @@ export default function Admin() {
           {tab === "knowledge" && <KnowledgeSection me={me} loading={loadingMe} />}
           {tab === "connectors" && <ConnectorsSection />}
           {tab === "access" && <AccessSection me={me} />}
-          {tab === "usage" && <UsageSection me={me} />}
         </div>
       </div>
     </PageShell>
@@ -409,7 +428,7 @@ function Disagreements({ items, onResolve, busyId }) {
   );
 }
 
-function KnowledgeSection({ me, loading: loadingMe }) {
+export function KnowledgeSection({ me, loading: loadingMe }) {
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -420,6 +439,12 @@ function KnowledgeSection({ me, loading: loadingMe }) {
      source is worth opening. A file called final_v3.txt with no
      description is a file the assistant will never choose. */
   const [staged, setStaged] = useState(null);
+
+  /* True while the model is reading a file to name it. It drives one line
+     under the two fields and nothing else: no disabled button, no spinner
+     over the form. Somebody who knows what to call it types straight over
+     the top, and waiting is never made into their problem. */
+  const [naming, setNaming] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const [linkUrl, setLinkUrl] = useState("");
@@ -583,10 +608,23 @@ function KnowledgeSection({ me, loading: loadingMe }) {
     await stageFile(chosen[0]);
   }
 
+  /* Reads whatever was handed over and gets it ready to be named.
+
+     TWO KINDS OF THING ARRIVE HERE AND THEY SPLIT EARLY. A document
+     becomes text, gets chunked, and the file itself is thrown away. A
+     picture stays a picture: the whole point of a logo is the picture, so
+     it is shrunk, kept, and uploaded when the admin saves.
+
+     Everything after the split is the same, which is why the split is at
+     the top rather than sprinkled through. */
   async function stageFile(file) {
+    if (fileKind(file.name) === "image") {
+      await stageImage(file);
+      return;
+    }
 
     if (!canBecomeText(file.name)) {
-      show(`${file.name} is not a kind of file this can read. PDF, Word, plain text, Markdown, CSV or JSON.`);
+      show(`${file.name} is not a kind of file this can read. PDF, Word, plain text, Markdown, CSV or JSON, or a picture.`);
       return;
     }
     if (file.size > MAX_SOURCE_UPLOAD_KB * 1024) {
@@ -619,6 +657,94 @@ function KnowledgeSection({ me, loading: loadingMe }) {
       description: "",
       text: result.text,
       truncated: result.truncated,
+    });
+
+    nameItFor({ name: file.name, text: result.text });
+  }
+
+  /* ------------------------------------------------------------------
+     A PICTURE
+
+     Shrunk here, in the browser, before it goes anywhere. A five megabyte
+     phone photo becomes a couple of hundred kilobytes and nothing that
+     uses it can tell the difference. It is also converted to WebP on the
+     way, which halves it again. See shrinkImage for the trap in that.
+
+     BRAND_ASSET_EDGE rather than the 1568 the chat uses. A brand asset is
+     used to BUILD things, so it ends up on a title slide or in a printed
+     deck, and 1568 across is soft the moment it does.
+     ------------------------------------------------------------------ */
+  async function stageImage(file) {
+    if (file.size > MAX_SOURCE_UPLOAD_KB * 1024) {
+      show(
+        `${file.name} is ${(file.size / 1024 / 1024).toFixed(1)} MB, over the ` +
+          `${Math.round(MAX_SOURCE_UPLOAD_KB / 1024)} MB limit.`
+      );
+      return;
+    }
+
+    setReading(file.name);
+    let picture;
+    try {
+      picture = await shrinkImage(file, { maxEdge: BRAND_ASSET_EDGE });
+    } catch {
+      setReading("");
+      show(`${file.name} could not be opened as a picture. Try a PNG, a JPG or a WebP.`);
+      return;
+    }
+    setReading("");
+
+    setStagedVisible(false);
+    /* A picture has nothing to read before publishing, so the gate has
+       nothing to wait on. Cleared rather than left holding the last
+       document's answer, which would attach one file's reading to a
+       different file. */
+    stagedReading.current = null;
+
+    setStaged({
+      fileName: file.name,
+      name: file.name.replace(/\.[^.]+$/, ""),
+      description: "",
+      text: "",
+      truncated: false,
+      picture,
+      preview: URL.createObjectURL(picture.blob),
+    });
+
+    nameItFor({ name: file.name, image: { media_type: picture.media_type, data: picture.data } });
+  }
+
+  /* ------------------------------------------------------------------
+     NAMING IT, SO THE ADMIN DOES NOT HAVE TO
+
+     Anthony, 2026-09-15: "is it not better that when admin is uploading
+     the work, admin doesn't need to write the title or description?"
+
+     Fired and not awaited, on purpose. The form is already on screen and
+     usable, so somebody who knows exactly what they want to call it can
+     type over the top without waiting. The answer lands in the fields
+     when it lands, or it does not land and they type, which is what they
+     did before this existed.
+
+     IT ONLY FILLS A FIELD THE ADMIN HAS NOT TOUCHED. The check below
+     compares against the file name it staged with, so if they started
+     typing while it was thinking, their words win. Nothing is more
+     annoying than a form that overwrites you.
+     ------------------------------------------------------------------ */
+  async function nameItFor({ name, text, image }) {
+    setNaming(true);
+    const suggestion = await describeSource({ name, text, image });
+    setNaming(false);
+    if (!suggestion.title) return;
+
+    const untouched = name.replace(/\.[^.]+$/, "");
+    setStaged((current) => {
+      if (!current || current.fileName !== name) return current;
+      return {
+        ...current,
+        name: current.name === untouched ? suggestion.title : current.name,
+        description: current.description === "" ? suggestion.description : current.description,
+      };
     });
   }
 
@@ -665,15 +791,29 @@ function KnowledgeSection({ me, loading: loadingMe }) {
     }
 
     setSaving(true);
-    const result = await addTextSource({
-      companyId: me.company.id,
-      userId: me.user.id,
-      name: staged.name.trim(),
-      description: staged.description.trim(),
-      text: staged.text,
-      kind: "file",
-      customerVisible: stagedVisible,
-    });
+    /* A picture goes to the bucket and a document becomes rows of text.
+       Both come back in the same shape, so everything after this line
+       does not care which it was. */
+    const result = staged.picture
+      ? await addImageSource({
+          companyId: me.company.id,
+          userId: me.user.id,
+          name: staged.name.trim(),
+          description: staged.description.trim(),
+          blob: staged.picture.blob,
+          extension: staged.picture.extension,
+          mediaType: staged.picture.media_type,
+          customerVisible: stagedVisible,
+        })
+      : await addTextSource({
+          companyId: me.company.id,
+          userId: me.user.id,
+          name: staged.name.trim(),
+          description: staged.description.trim(),
+          text: staged.text,
+          kind: "file",
+          customerVisible: stagedVisible,
+        });
     setSaving(false);
 
     if (!result.ok) {
@@ -682,7 +822,15 @@ function KnowledgeSection({ me, loading: loadingMe }) {
     }
 
     setItems((prev) => [result.source, ...prev]);
-    setJustAdded(`${result.source.name}, ${result.chunks} ${result.chunks === 1 ? "piece" : "pieces"} of text`);
+    setJustAdded(
+      staged.picture
+        ? `${result.source.name}, ready to use in designs and documents`
+        : `${result.source.name}, ${result.chunks} ${result.chunks === 1 ? "piece" : "pieces"} of text`
+    );
+    /* The preview holds a blob URL, and a blob URL that is never revoked
+       holds the whole picture in memory for as long as the tab is open.
+       Uploading four logos in a row without this leaks all four. */
+    if (staged.preview) URL.revokeObjectURL(staged.preview);
     setStaged(null);
 
     /* The audience choice does NOT carry over to the next file in the
@@ -907,12 +1055,20 @@ function KnowledgeSection({ me, loading: loadingMe }) {
 
   return (
     <div className="space-y-5" style={{ animation: "sx-rise 0.3s ease" }}>
+      {/* PICTURES WERE MISSING UNTIL 2026-09-15, which meant a company
+          could put its brand guidelines in and not its own logo.
+
+          The extensions are listed out rather than written as "image/*",
+          so that what this picker offers and what the brand-assets bucket
+          accepts are two lists a person can read against each other. A
+          wildcard here and a fixed list in the bucket is how somebody
+          ends up choosing a file that is refused after they picked it. */}
       <input
         ref={fileInputRef}
         type="file"
         className="hidden"
         multiple
-        accept=".pdf,.docx,.txt,.md,.markdown,.csv,.tsv,.json,.log,.rtf,.xml,.html"
+        accept=".pdf,.docx,.txt,.md,.markdown,.csv,.tsv,.json,.log,.rtf,.xml,.html,.png,.jpg,.jpeg,.webp"
         onChange={pickFiles}
       />
 
@@ -938,9 +1094,33 @@ function KnowledgeSection({ me, loading: loadingMe }) {
         />
       </div>
 
+      {/* THE TWO WAYS IN, SIDE BY SIDE ON A BIG SCREEN.
+
+          Until 2026-09-14 the whole admin had exactly one breakpoint, sm:
+          at 640px. So a tablet and a 1280px desktop got the identical phone
+          layout, stretched. Measured: 1817px of page on a tablet and 1797px
+          on a desktop, the same column, just wider panels. "Add a link" was
+          242px tall spanning 1024px, which is a strip of empty space where
+          a person expects density.
+
+          md: at 768, which is where a tablet starts. lg: was tried first
+          and left the tablet exactly as it was, 1817px of the same single
+          column, which is the width Anthony asked about by name. At 768 the
+          container is 720px, so each panel is about 350px. That is narrow
+          but it is a real column, and the form inside stacks at the same
+          breakpoint so nothing is squeezed. */}
+      <div className="grid gap-5 md:grid-cols-2 md:items-start">
+
       {/* Upload */}
       <GlassPanel className="p-6">
-        <SectionHeading hint="Brand guidelines, templates, past work, anything the assistant should write from. Give each one a clear name and a line saying what it holds, because that is how it decides which to open.">
+        {/* THE OLD LINE TOLD THEM TO DO A JOB THAT IS NOW DONE FOR THEM.
+
+            It read "Give each one a clear name and a line saying what it
+            holds, because that is how it decides which to open." True
+            until 2026-09-15, and now it is an instruction to do work the
+            screen has already done, which makes the product look like it
+            has not noticed what it does. */}
+        <SectionHeading hint="Brand guidelines, templates, logos, past work, anything the assistant should write from. Drop it in and it gets read and named for you. Change the name or the line underneath if you want to.">
           Add company knowledge
         </SectionHeading>
 
@@ -1072,10 +1252,50 @@ function KnowledgeSection({ me, loading: loadingMe }) {
                   {queue.length + 1} files chosen. This one first.{" "}
                 </span>
               )}
-              Read {staged.fileName}
-              {staged.truncated ? ", the first part of it, which was as much as fits" : ""}. Name it and
-              say what it holds.
+              {staged.picture
+                ? `Read ${staged.fileName}, and it is ready to use in designs and documents.`
+                : `Read ${staged.fileName}${
+                    staged.truncated ? ", the first part of it, which was as much as fits" : ""
+                  }.`}{" "}
+              {naming ? "Naming it now." : "Change either line if you want to."}
             </p>
+
+            {/* THE PICTURE ITSELF, because a name is not enough to tell two
+                logos apart and an admin uploading four of them should be
+                able to see which one they are looking at.
+
+                Sized off the shrunk copy rather than the original, so what
+                is on screen is what was actually kept. Contained rather
+                than cropped: a logo cropped to fill a box is a logo with
+                its edges cut off, which is exactly the thing a brand guide
+                exists to prevent. The chequer behind it is there so a
+                transparent PNG reads as transparent instead of as a white
+                rectangle. */}
+            {staged.preview && (
+              <div
+                className="rounded-[12px] border p-3 flex items-center justify-center"
+                style={{
+                  borderColor: "var(--border)",
+                  backgroundColor: "var(--surface-2)",
+                  /* A chequer, so a transparent PNG reads as transparent
+                     rather than as a white rectangle somebody has to guess
+                     about. Drawn from a fixed low-opacity white rather
+                     than from a theme token: --chip is nearly the same
+                     value as the surface behind it in both themes, so the
+                     squares came out invisible and the whole point of
+                     them went with it. */
+                  backgroundImage:
+                    "repeating-conic-gradient(rgba(255,255,255,0.10) 0% 25%, transparent 0% 50%)",
+                  backgroundSize: "18px 18px",
+                }}
+              >
+                <img
+                  src={staged.preview}
+                  alt={`${staged.fileName}, as it will be kept`}
+                  className="max-h-[160px] w-auto max-w-full object-contain"
+                />
+              </div>
+            )}
             <Field label="Name" required>
               <TextInput
                 value={staged.name}
@@ -1121,6 +1341,11 @@ function KnowledgeSection({ me, loading: loadingMe }) {
               </PrimaryButton>
               <GhostButton
                 onClick={() => {
+                  /* Same reason as the save path: a blob URL that is never
+                     revoked holds the whole picture until the tab closes,
+                     and cancelling is the easiest way to do it four times
+                     in a row. */
+                  if (staged.preview) URL.revokeObjectURL(staged.preview);
                   setStaged(null);
                   setQueue([]);
                   stagedReading.current = null;
@@ -1131,8 +1356,12 @@ function KnowledgeSection({ me, loading: loadingMe }) {
             </div>
           </div>
         ) : (
+          /* p-8 everywhere made this a 230px tall dashed box spanning the
+             full width of a desktop, to say "or choose a file". The padding
+             now comes down as the screen grows, because the thing it is
+             asking for does not get bigger with the window. */
           <div
-            className="rounded-[14px] border border-dashed p-8 text-center transition-colors"
+            className="rounded-[14px] border border-dashed p-8 md:p-6 text-center transition-colors"
             style={{ borderColor: "var(--border-2)", backgroundColor: "var(--surface-2)" }}
           >
             <div className="flex justify-center mb-3">
@@ -1147,7 +1376,7 @@ function KnowledgeSection({ me, loading: loadingMe }) {
               Or choose a file
             </p>
             <p className="text-[13px] mb-4" style={{ color: "var(--text-3)" }}>
-              PDF, Word, plain text, Markdown, CSV or JSON, up to{" "}
+              PDF, Word, plain text, Markdown, CSV, JSON, or a picture, up to{" "}
               {Math.round(MAX_SOURCE_UPLOAD_KB / 1024)} MB
             </p>
             {reading ? (
@@ -1190,7 +1419,11 @@ function KnowledgeSection({ me, loading: loadingMe }) {
           Add a link
         </SectionHeading>
 
-        <form onSubmit={addLink} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+        {/* Three across on a phone turned tablet, stacked again once this
+            panel is sharing the row at 1024 and up. The widths are the
+            reason, not a preference: three columns inside 470px squeezes
+            the address field to nothing. */}
+        <form onSubmit={addLink} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end md:grid-cols-1 md:items-stretch">
           <Field label="Address" required>
             <TextInput
               value={linkUrl}
@@ -1230,7 +1463,12 @@ function KnowledgeSection({ me, loading: loadingMe }) {
             <PrimaryButton
               type="submit"
               disabled={saving || !linkUrl.trim()}
-              className="flex items-center gap-2 w-full sm:w-auto justify-center"
+              /* Full width on a phone, sized to its text when the form is
+                 three across, and full width again once the form stacks in
+                 the narrow column at 768 and up. Left to sm:w-auto it sat
+                 small and alone at the bottom of a 350px column with space
+                 all round it, which reads as an unfinished form. */
+              className="flex items-center gap-2 w-full sm:w-auto md:w-full justify-center"
             >
               {saving ? <Spinner size={14} color="#fff" /> : <Plus size={15} />}
               {saving ? "Reading it" : "Add"}
@@ -1245,6 +1483,8 @@ function KnowledgeSection({ me, loading: loadingMe }) {
           </p>
         )}
       </GlassPanel>
+
+      </div>
 
       <Disagreements items={clashes} onResolve={markSorted} busyId={clashBusy} />
 
@@ -1404,7 +1644,10 @@ function ConnectorsSection() {
         </SectionHeading>
 
         <div className="space-y-2">
-          {WORKFLOW_TOOLS.map((tool) => (
+          {/* Canva is filtered out here because it has its own panel below,
+              with a real button. Listing it twice, once as "Set up" and once
+              as connected, is two answers to the same question. */}
+          {WORKFLOW_TOOLS.filter((tool) => tool.id !== "canva").map((tool) => (
             <div
               key={tool.id}
               className="flex items-center gap-3 rounded-[12px] px-3.5 py-3 border"
@@ -1428,12 +1671,19 @@ function ConnectorsSection() {
 
               {/* No toggle. It used to flip to "Connected" while nothing
                   happened behind it, which is a button that lies to the one
-                  person who most needs to know what is real. */}
-              {tool.state === "registered" ? (
-                <StatusPill tone="pending">Set up</StatusPill>
-              ) : (
-                <StatusPill tone="neutral">Example</StatusPill>
-              )}
+                  person who most needs to know what is real.
+
+                  EVERY ONE OF THESE SAYS THE SAME THING, 2026-09-15. It
+                  used to split them into "Set up" and "Example" off an
+                  internal state field, which told a customer which parts
+                  of our build are further along. That is our business, not
+                  theirs, and a row of tiles graded by how finished they
+                  are reads as a product in progress.
+
+                  Canva is not in this list. It has its own panel with a
+                  real Connect button, so it is the one that says
+                  Connected, and it says it because it is. */}
+              <StatusPill tone="neutral">Coming soon</StatusPill>
             </div>
           ))}
 
@@ -1443,25 +1693,23 @@ function ConnectorsSection() {
         </div>
       </GlassPanel>
 
-      <GlassPanel className="p-6">
-        <div className="flex gap-3">
-          <div
-            className="w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0"
-            style={{ backgroundColor: "rgba(20,32,160,0.12)" }}
-          >
-            <Sparkles size={17} style={{ color: BRAND.accentSoft }} />
-          </div>
-          <div>
-            <p className="text-[14px] font-medium mb-1" style={{ color: "var(--text-1)" }}>
-              Canva is connected per person
-            </p>
-            <p className="text-[13px] leading-relaxed" style={{ color: "var(--text-3)" }}>
-              There is nothing to manage centrally. The assistant asks a staff member to connect Canva at
-              the exact moment a design task needs it, and a free account works.
-            </p>
-          </div>
-        </div>
-      </GlassPanel>
+      {/* CANVA IS NOT HERE ANY MORE, removed 2026-09-16.
+
+          There was a Design panel on this screen with a Connect button on
+          it, and an admin connected one Canva account for everybody.
+          Anthony took it out and he is right about why:
+
+            "Admin is not creating any design. And what is even the
+             function of admin connecting Canva in the first place? Admin
+             only connects knowledge bases... But Canva, it's not knowledge
+             base. It's a place for work."
+
+          This tab is for what the company knows. Canva is where a person
+          does their work, so it sits with the other connectors in the
+          chat, and whoever has the design job connects their own. That
+          also fixes the thing that made the old shape wrong: a design made
+          on the admin's account cannot be opened by the staff member who
+          asked for it. */}
     </div>
   );
 }
@@ -1472,9 +1720,33 @@ function ConnectorsSection() {
    list. Nobody gets in without an invite or an approved request.
    ========================================================================== */
 
-function AccessSection({ me }) {
+/* Exported for scripts/__harness, which renders this one section on its
+   own so the layout can be checked at every width without a signed in
+   workspace. Nothing else imports it. */
+export function AccessSection({ me }) {
   const [requests, setRequests] = useState([]);
   const [staff, setStaff] = useState([]);
+
+  /* Real work, or nothing. A usage panel showing invented spend is the
+     one number an admin would act on, so it is the last place to put a
+     placeholder. */
+  const [history, setHistory] = useState([]);
+
+  useEffect(() => {
+    if (!me?.company?.id) return;
+    let alive = true;
+    (async () => {
+      const rows = await listWork(me.company.id);
+      if (!alive) return;
+      setHistory(rows);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [me?.company?.id]);
+
+  const [defaultLimit, setDefaultLimit] = useState(5);
+  const [defaultCeiling, setDefaultCeiling] = useState(DEFAULT_LEVEL);
 
   /* The real people on this company, read under the admin's own
      identity so row level security decides who is visible. Email is not
@@ -1494,6 +1766,7 @@ function AccessSection({ me }) {
           email: "",
           role: r.role ?? "Not set",
           ceiling: levelOf(r.model_ceiling),
+          canSupport: r.can_support === true,
           limit: r.daily_limit ?? 5,
           used: 0,
         }))
@@ -1510,6 +1783,11 @@ function AccessSection({ me }) {
   const [inviteLimit, setInviteLimit] = useState(5);
   const [inviting, setInviting] = useState(false);
   const [inviteError, setInviteError] = useState("");
+
+  /* Its own message, not the invite form's. A support toggle that failed
+     has nothing to do with inviting somebody, and putting the words in
+     that panel sends an admin to look at the wrong control. */
+  const [staffNote, setStaffNote] = useState("");
   const [invited, setInvited] = useState(null);
 
   /* Every required box filled. The button reads this rather than waiting
@@ -1527,6 +1805,7 @@ function AccessSection({ me }) {
         email: req.email,
         role: "Not set",
         ceiling: DEFAULT_LEVEL,
+        canSupport: false,
         limit: 5,
         used: 0,
       },
@@ -1588,6 +1867,20 @@ function AccessSection({ me }) {
 
   function revoke(id) {
     setStaff((prev) => prev.filter((s) => s.id !== id));
+  }
+
+  /* Optimistic, then corrected if the write fails. A toggle that waits for
+     a round trip before it moves feels broken, and this one is reversible
+     in one tap, so showing the change immediately costs nothing. */
+  async function toggleSupport(person) {
+    const next = !person.canSupport;
+    setStaff((prev) => prev.map((x) => (x.id === person.id ? { ...x, canSupport: next } : x)));
+    const result = await setSupportAccess(person.id, next);
+    if (!result.ok) {
+      setStaff((prev) => prev.map((x) => (x.id === person.id ? { ...x, canSupport: !next } : x)));
+      setStaffNote(result.reason);
+      setTimeout(() => setStaffNote(""), 6000);
+    }
   }
 
   function setCeiling(id, ceiling) {
@@ -1692,17 +1985,15 @@ function AccessSection({ me }) {
             label="How far they can go"
             hint="The most this person's work is allowed to reach. Deeper and Deepest are held back in this demo to keep costs down. Your own deployment decides what to offer."
           >
-            <SelectInput value={inviteCeiling} onChange={(e) => setInviteCeiling(e.target.value)}>
-              {/* Only what this deployment actually allows. The two above
-                  were listed once, and choosing one would have been accepted
-                  by a screen and refused by the server, which is a promise
-                  the product cannot keep. */}
-              {OFFERED_LEVELS.map((key) => (
-                <option key={key} value={key}>
-                  {CAPABILITY_LEVELS[key].label}
-                </option>
-              ))}
-            </SelectInput>
+            {/* OFFERED_LEVELS, not every level. The two this deployment
+                holds back were listed once, and choosing one would have
+                been accepted by the screen and refused by the server,
+                which is a promise the product cannot keep. */}
+            <LevelSelect
+              value={inviteCeiling}
+              onChange={(e) => setInviteCeiling(e.target.value)}
+              options={OFFERED_LEVELS}
+            />
           </Field>
 
           <div className="sm:col-span-2">
@@ -1732,10 +2023,41 @@ function AccessSection({ me }) {
       </GlassPanel>
 
       {/* Staff list */}
+      {/* Company defaults */}
       <GlassPanel className="p-6">
-        <SectionHeading hint="Change anyone's model ceiling or their daily limit at any time, or revoke their access. You cannot revoke yourself.">
+        <SectionHeading hint="Applies to every new staff member automatically. Anyone without a custom setting falls back to this.">
+          Company defaults
+        </SectionHeading>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Outputs per day" hint="Raise or lower it for everyone at once.">
+            <TextInput
+              type="number"
+              min="1"
+              value={defaultLimit}
+              onChange={(e) => setDefaultLimit(e.target.value)}
+            />
+          </Field>
+          <Field label="How far anyone can go by default" hint="Applies to a person with no setting of their own.">
+            <LevelSelect
+              value={defaultCeiling}
+              onChange={(e) => setDefaultCeiling(e.target.value)}
+              options={LEVEL_ORDER}
+            />
+          </Field>
+        </div>
+      </GlassPanel>
+
+      <GlassPanel className="p-6">
+        <SectionHeading hint="Change anyone's ceiling or daily limit, give them the support queue, or revoke their access. You cannot revoke yourself.">
           Staff
         </SectionHeading>
+
+        {staffNote && (
+          <p className="text-[12.5px] mb-3" role="alert" style={{ color: "var(--caution)" }}>
+            {staffNote}
+          </p>
+        )}
 
         <div className="space-y-2">
           {staff.map((person) => (
@@ -1760,20 +2082,51 @@ function AccessSection({ me }) {
                 </p>
               </div>
 
-              <div className="shrink-0 w-[132px]">
-                <SelectInput
+              {/* 132px was measured against "Standard" and never against
+                  "Conversational", which is the longest label in the list
+                  and the one that got cut to "Conversatior" on a tablet.
+
+                  A select shows its own arrow inside that width, so the
+                  text has about 18px less than the box suggests, which is
+                  why it looked fine in the markup and wrong on screen.
+                  156px fits the longest label with the arrow, checked at
+                  768 and 1024. */}
+              <div className="shrink-0 w-[156px]">
+                <LevelSelect
                   value={person.ceiling}
                   onChange={(e) => setCeiling(person.id, e.target.value)}
+                  options={OFFERED_LEVELS}
+                  compact
                   className="py-1.5 text-[12.5px]"
-                  aria-label={`How far ${person.name} can go`}
-                >
-                  {OFFERED_LEVELS.map((key) => (
-                    <option key={key} value={key}>
-                      {CAPABILITY_LEVELS[key].label}
-                    </option>
-                  ))}
-                </SelectInput>
+                  ariaLabel={`How far ${person.name} can go`}
+                />
               </div>
+
+              {/* SUPPORT, as a toggle on the person.
+
+                  It reads "Support" either way and fills in when it is on,
+                  so the control says what it is rather than what pressing
+                  it would do. A button labelled by its action is the thing
+                  an admin has to think about twice.
+
+                  Off for everybody until somebody turns it on, admins
+                  included, because running the company and answering its
+                  customers are two different jobs. */}
+              <button
+                onClick={() => toggleSupport(person)}
+                className="shrink-0 rounded-full px-3 py-1.5 text-[12.5px] font-medium border transition-colors hover:opacity-80"
+                style={
+                  person.canSupport
+                    ? { borderColor: BRAND.green, color: BRAND.green, backgroundColor: "rgba(22,176,74,0.10)" }
+                    : { borderColor: "var(--border-2)", color: "var(--text-3)" }
+                }
+                aria-pressed={person.canSupport}
+                title={person.canSupport
+                  ? `${person.name} can answer support. Tap to take it away.`
+                  : `Let ${person.name} answer support.`}
+              >
+                Support
+              </button>
 
               <div className="shrink-0 w-[92px]">
                 <UsageMeter used={person.used} limit={person.limit} />
@@ -1795,98 +2148,6 @@ function AccessSection({ me }) {
           ))}
         </div>
       </GlassPanel>
-    </div>
-  );
-}
-
-/* ==========================================================================
-   5. PERMISSIONS AND USAGE
-   Company defaults, the model ladder, and what each person has spent.
-   ========================================================================== */
-
-function UsageSection({ me }) {
-  /* Real work, or nothing. A usage panel showing invented spend is the
-     one number an admin would act on, so it is the last place to put a
-     placeholder. */
-  const [history, setHistory] = useState([]);
-
-  useEffect(() => {
-    if (!me?.company?.id) return;
-    let alive = true;
-    (async () => {
-      const rows = await listWork(me.company.id);
-      if (!alive) return;
-      setHistory(rows);
-    })();
-    return () => {
-      alive = false;
-    };
-  }, [me?.company?.id]);
-
-  const [defaultLimit, setDefaultLimit] = useState(5);
-  const [defaultCeiling, setDefaultCeiling] = useState(DEFAULT_LEVEL);
-
-  return (
-    <div className="space-y-5" style={{ animation: "sx-rise 0.3s ease" }}>
-      {/* Company defaults */}
-      <GlassPanel className="p-6">
-        <SectionHeading hint="Applies to every new staff member automatically. Anyone without a custom setting falls back to this.">
-          Company defaults
-        </SectionHeading>
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Outputs per day" hint="Raise or lower it for everyone at once.">
-            <TextInput
-              type="number"
-              min="1"
-              value={defaultLimit}
-              onChange={(e) => setDefaultLimit(e.target.value)}
-            />
-          </Field>
-          <Field label="How far anyone can go by default" hint="Applies to a person with no setting of their own.">
-            <SelectInput value={defaultCeiling} onChange={(e) => setDefaultCeiling(e.target.value)}>
-              {LEVEL_ORDER.map((key) => (
-                <option key={key} value={key}>
-                  {CAPABILITY_LEVELS[key].label}
-                </option>
-              ))}
-            </SelectInput>
-          </Field>
-        </div>
-      </GlassPanel>
-
-      {/* ------------------------------------------------------------------
-          THE LADDER
-
-          These are levels, not products. What actually runs behind each one
-          is decided on the server and is deliberately not on this screen,
-          because a deployment may be moved to another provider and a screen
-          naming one would have to be redesigned to do it.
-
-          The old version of this panel listed four vendor model names with
-          their price per million tokens beside each. Both are gone: the
-          names for the reason above, the prices because a rate card in
-          tokens is exactly the plumbing an admin should never have to read.
-
-          Tap to open rather than hover to reveal. Half the people who open
-          this are on a phone, and a phone has no hover.
-          ------------------------------------------------------------------ */}
-      <GlassPanel className="p-6">
-        <SectionHeading hint="Work only ever reaches as far as it needs to. A quick question never costs what a full report costs.">
-          What the assistant can be allowed to do
-        </SectionHeading>
-
-        <div className="space-y-2">
-          {LEVEL_ORDER.map((key) => (
-            <LevelRow
-              key={key}
-              level={CAPABILITY_LEVELS[key]}
-              isDefault={key === defaultCeiling}
-            />
-          ))}
-        </div>
-      </GlassPanel>
-
       {/* History */}
       <GlassPanel className="p-6">
         <SectionHeading hint="What each person worked on, and what it drew down.">
@@ -1927,7 +2188,91 @@ function UsageSection({ me }) {
           ))}
         </div>
       </GlassPanel>
+
     </div>
+  );
+}
+
+/* ==========================================================================
+   CHOOSING HOW FAR SOMEBODY CAN GO
+
+   WHY THE DESCRIPTION LIVES HERE AND NOT IN A PANEL OF ITS OWN
+
+   There used to be a panel at the bottom of this screen called "What the
+   assistant can be allowed to do", listing all four levels with what each
+   one is for. Anthony, 2026-09-15: "that place is pointless, because that
+   capability description can just be part of the selector... when admin
+   clicks it, he sees the line completely as he's selecting, so he knows
+   what he's selecting."
+
+   He is right, and the reason is about when a person needs the answer. An
+   admin picking a level needs to know what Deeper means AT THE MOMENT THEY
+   PICK IT. A reference block further down the page is read by nobody,
+   because by the time you scroll to it you have already chosen, and a
+   description you read after choosing has not helped you choose.
+
+   So the meaning travels with the control. Pick a level and the line under
+   it changes to say what that level is for.
+
+   TWO LENGTHS, because two places need different amounts of room.
+   A form has a column to itself and gets the full sentence. A row in the
+   staff list has three other controls beside it, so it gets the short
+   line, which is still the answer to "what is this for".
+   ========================================================================== */
+
+function LevelSelect({ value, onChange, options, compact = false, ariaLabel, className = "" }) {
+  const level = CAPABILITY_LEVELS[value];
+
+  return (
+    <>
+      <SelectInput value={value} onChange={onChange} aria-label={ariaLabel} className={className}>
+        {/* THE SUPPORT LEVEL SITS AT THE TOP, GREEN AND LOCKED.
+
+            It is not a choice anybody makes. Support runs at it on its
+            own, so an admin selecting it for a staff member would be
+            answering a question that is already answered. But taking it
+            out of the ladder altogether left a gap, and a gap is a thing
+            somebody has to be told about instead of shown.
+
+            disabled, so it cannot be picked by mouse, keyboard or a
+            screen reader. The green is set inline because option styling
+            through a class is ignored by most browsers. */}
+        <option
+          value={SUPPORT_LEVEL}
+          disabled
+          style={{ color: BRAND.green }}
+        >
+          {CAPABILITY_LEVELS[SUPPORT_LEVEL].label} — support
+        </option>
+        {options.map((key) => (
+          <option key={key} value={key}>
+            {CAPABILITY_LEVELS[key].label}
+          </option>
+        ))}
+      </SelectInput>
+
+      {/* aria-live, so somebody using a screen reader hears the meaning
+          change when they change the choice. Without it the description
+          updates silently and only a person looking at it benefits. */}
+      {/* Said in words as well as shown in the list, for the person who
+          never opens the dropdown. Only where there is room for it. */}
+      {!compact && (
+        <p className="text-[11.5px] mt-1.5 flex items-center gap-1.5" style={{ color: BRAND.green }}>
+          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: BRAND.green }} />
+          Support answers customers at Conversational. Nobody sets that.
+        </p>
+      )}
+
+      {level && (
+        <p
+          className={compact ? "text-[11.5px] mt-1 leading-snug" : "text-[12px] mt-1.5 leading-relaxed"}
+          style={{ color: "var(--text-3)" }}
+          aria-live="polite"
+        >
+          {compact ? level.use : level.detail}
+        </p>
+      )}
+    </>
   );
 }
 
@@ -2010,58 +2355,6 @@ function StatTile({ label, value, tone = "neutral", hint }) {
    screen reader announces the state rather than reading a lone icon.
    -------------------------------------------------------------------------- */
 
-function LevelRow({ level, isDefault }) {
-  const [open, setOpen] = useState(false);
-  const detailId = `level-detail-${level.label.toLowerCase()}`;
-
-  return (
-    <div
-      className="rounded-[12px] px-3.5 py-3 border"
-      style={{ backgroundColor: "var(--surface-2)", borderColor: "var(--border)" }}
-    >
-      {/* items-start, not items-center. Centring looked right until 320px,
-          where "Almost all office work" wraps to two lines and a vertically
-          centred pill lands in the middle of them. Aligned to the top, the
-          pill and the button sit beside the name where they belong. */}
-      <div className="flex items-start gap-3">
-        <div className="flex-1 min-w-0">
-          <p className="text-[14px] font-medium" style={{ color: "var(--text-1)" }}>
-            {level.label}
-          </p>
-          <p className="text-[12.5px]" style={{ color: "var(--text-3)" }}>
-            {level.use}
-          </p>
-        </div>
-
-        {isDefault && (
-          <span className="shrink-0">
-            <StatusPill tone="accent">Default</StatusPill>
-          </span>
-        )}
-
-        <button
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          aria-expanded={open}
-          aria-controls={detailId}
-          aria-label={`What ${level.label} is for`}
-          className="shrink-0 p-1.5 rounded-[8px] transition-opacity hover:opacity-70"
-        >
-          <Info size={15} style={{ color: open ? "var(--text-1)" : "var(--text-3)" }} />
-        </button>
-      </div>
-
-      <p
-        id={detailId}
-        hidden={!open}
-        className="text-[12.5px] leading-relaxed mt-2.5 pt-2.5 border-t"
-        style={{ color: "var(--text-2)", borderColor: "var(--border)" }}
-      >
-        {level.detail}
-      </p>
-    </div>
-  );
-}
 
 function UsageMeter({ used, limit }) {
   const pct = limit > 0 ? Math.min((used / limit) * 100, 100) : 0;

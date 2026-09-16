@@ -529,19 +529,34 @@ body {
 /* The mark is the crown of a centred hero up to a laptop, and one element
    in a two column composition above it. Different jobs, different sizes,
    and one variable so the field rings stay in proportion to it either way. */
-/* The floor is 104, not 120. On a 568px tall phone the sentence and the
-   button need the room more than the mark does, and at the old floor the
-   trust row sat eight pixels under the fold. */
+/* RE-TUNED 2026-09-15, because the hero it was tuned against no longer
+   exists.
+
+   These numbers were set when the headline was two lines, the phone got a
+   short one sentence subtext, and the three trust points sat on a single
+   row. Since then the headline went to three lines, the subtext became
+   Anthony's full sentence at five lines on a phone, and the trust points
+   stack rather than being cut into fragments. That is about 150px of new
+   content, and nothing gave any of it back, so the trust row went under
+   the fold on four of the nine phone sizes measured.
+
+   The mark is what gives. It is the one thing in the hero that says
+   nothing a reader needs, so on a phone it yields to the words. From a
+   laptop up it is a column of its own and keeps its full size.
+
+   The floor stays at 96 rather than dropping further. Below that the
+   field rings around it collapse into the mark and it stops reading as an
+   object with space around it. */
 .sx-seal-slot {
-  --seal: clamp(104px, min(21vh, 44vw), 260px);
+  --seal: clamp(96px, min(16vh, 34vw), 260px);
 }
 
 /* A 568px tall phone has to fit a mark, three lines of headline, a
    sentence, a button and the trust row. Something gives, and it is the
    mark. Scoped by height so a normal phone keeps the full size. */
-@media (max-height: 620px) {
+@media (max-height: 700px) {
   .sx-seal-slot {
-    --seal: clamp(88px, min(16vh, 38vw), 200px);
+    --seal: clamp(80px, min(13vh, 30vw), 160px);
   }
 }
 

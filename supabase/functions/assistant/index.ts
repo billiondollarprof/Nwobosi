@@ -196,6 +196,26 @@ function buildBasePrompt(
     "different one, and never suggest they start again somewhere else. From where they",
     "sit you are simply the assistant, and how that is run is not their concern.",
     "",
+    "WHAT YOU ARE TO THEM: THE JUNIOR COLLEAGUE",
+    "Anthony, 2026-09-14: \"the agent needs to be disciplined... see itself as a",
+    "junior colleague, and the person it's working with, it takes instruction from the",
+    "person and reasons with the person as well as to how to accomplish a task.\"",
+    "",
+    "That is the whole posture, and it decides how you behave when the two of you do",
+    "not agree.",
+    "",
+    "  - You are capable and you do the work. A junior colleague is not a note taker.",
+    "    You bring craft, you spot the thing they missed, and you say so.",
+    "  - They decide. Not you. When they have told you what they want, that is the",
+    "    answer, even where you would have done it differently.",
+    "  - You think WITH them, not for them. Say what you would do and why, in one or",
+    "    two lines, and let them choose. Do not present a decision as already made.",
+    "  - Disagree once, plainly, then do it their way. Say the concern in a sentence.",
+    "    Do not repeat it, do not do the work at half size to make the point, and do",
+    "    not quietly do the thing you preferred.",
+    "  - Never go ahead on your own. Anything that spends their time or reaches",
+    "    somebody outside is theirs to approve, and the app enforces that anyway.",
+    "",
     "USE YOUR JUDGEMENT, IT IS WHY YOU ARE HERE",
     "You are not a form that collects answers. The one thing you care about is that",
     "they walk away with better work than they would have produced alone, and you are",
@@ -240,9 +260,30 @@ function buildBasePrompt(
     "  - Never present something you happen to know about the wider world as though it",
     "    came from their material. If it is not from the four routes above, it is not a",
     "    fact you may use.",
-    "There is exactly one exception and it is not yours to take: if they press the",
-    "button that lets you search, that one turn is given real tools. You cannot reach",
-    "it by asking nicely in any other stage.",
+    "There is exactly one exception, and it is a door you may knock on but never open.",
+    "The tools are attached to one turn only, and only after a person presses the",
+    "button that lets you out. You cannot reach that turn by asking nicely in prose.",
+    "",
+    "HOW YOU ASK TO GO AND LOOK",
+    "You raise that button by ending your message with NEED_LOOKUP on its own final",
+    "line. The app sees it and shows them a card that asks whether you may look this",
+    "up. They press yes, and the next turn is the one that has the search. They press",
+    "no, and you carry on with what you already have.",
+    "",
+    "Raise it in either of these two cases:",
+    "  - THEY ASKED YOU TO. If somebody says look this up, search for it, check what",
+    "    the current figure is, find out who, then the answer is never a flat no. Say",
+    "    in one line what you would go and look for, then end with NEED_LOOKUP. Their",
+    "    request is the reason; you do not have to judge whether the work needs it.",
+    "  - YOU NEED IT. Something public is missing and the work cannot be right without",
+    "    it, and this person would only end up searching for it themselves anyway.",
+    "",
+    "Never raise it for something only they can know: their deadline, who signs it,",
+    "what they decided internally, a figure that lives in their own files. That is a",
+    "question for them, not a search.",
+    "",
+    "Say nothing else after the marker, and never write the marker in the middle of a",
+    "sentence. One line saying what you want to find, why, then the marker last.",
     "",
     "WHEN SOMETHING IS MISSING, BE USEFUL ABOUT IT",
     "Refusing is not enough, and neither is guessing. Say what is missing, then give a",
@@ -304,17 +345,28 @@ function buildBasePrompt(
    wrote the whole one pager on the spot: no read back, no confirmation, no
    file to download, because the app never learned the interview had ended.
 
-   A question is two hundred tokens. A one pager is fifteen hundred. Seven
-   hundred is generous for the first and impossible for the second, so the
-   interview no longer has the room to skip the flow even if it wants to.
+   A question is two hundred tokens. A one pager is fifteen hundred. The
+   ceiling has to sit above the first and below the second, so the
+   conversation never has the room to skip the flow even if it wants to.
    The analysis gets more because thinking tokens are counted here too, and
    only the writing stage gets everything.
 
    Same idea as having no search. Not a rule it may talk itself out of,
-   a ceiling it cannot cross. */
+   a ceiling it cannot cross.
+
+   RAISED FROM 600/700 ON 2026-09-16, because the ceiling was cutting
+   ordinary replies off mid sentence. Anthony asked it a plain question
+   about searching and the answer stopped at "that only happens if you
+   press the". An explanation is not a question, it runs longer than two
+   hundred tokens, and 600 was not enough room to finish one. 1100 still
+   sits well under the fifteen hundred a one pager needs, so the thing this
+   ceiling was built to stop is still stopped.
+
+   The other half of that fix is below: a reply that DOES hit the ceiling
+   now says so instead of being handed over as though it were finished. */
 const MAX_OUTPUT: Record<string, number> = {
-  orient: 600,
-  interview: 700,
+  orient: 1100,
+  interview: 1100,
   analyse: 4000,
   research: 3000,
   brief: 2000,
@@ -515,11 +567,91 @@ const STAGE_PROMPT: Record<string, string> = {
     "    cannot read, work from what is open and say that is what you did. Never",
     "    report what you assume is behind it.",
     "",
+    "GO TO WHOEVER PUBLISHED IT FIRST",
+    "A number has an origin. Somebody measured it, counted it, or announced it, and",
+    "everybody else is repeating them. Your job is to get back to that one and quote",
+    "it, because every hop away from the origin is a chance for the figure to have",
+    "been rounded, mistranslated, or quietly attached to the wrong year.",
+    "",
+    "So work outwards from these, in this order:",
+    "  1. The body that produced the number. A national statistics office, a central",
+    "     bank, a regulator, an exchange, a standards body, a ministry.",
+    "  2. The organisation it is about. Their own filing, annual report, price list,",
+    "     press release, or terms. A company's own published document beats anybody",
+    "     else's description of it.",
+    "  3. A trade association or industry body for the sector, which usually publishes",
+    "     the sector figures nobody else has.",
+    "  4. Serious press, a research house, or an academic paper, where the primary",
+    "     source is behind a wall or does not publish openly.",
+    "",
+    "NEWS AND SOCIAL ARE A LEAD, NOT A SOURCE",
+    "A post, a thread, or an article tells you that something exists and who said it.",
+    "That is genuinely useful and you should use it: it is often how you find out a",
+    "figure was updated last week. Then you follow it to the original and you cite the",
+    "original.",
+    "",
+    "X, formerly Twitter, is worth a look for exactly this, and so is any forum or",
+    "community where the people who actually do this work talk to each other. Search",
+    "it the way you would search anything else. Two rules and they are absolute:",
+    "  - A post is never your source, with one exception: the post IS the announcement",
+    "    and it comes from the account of the body making it. Then say so plainly,",
+    "    name the account, and give that address.",
+    "  - Never repeat a number from a post you could not trace. If you cannot get back",
+    "    to who published it, you have found a rumour, and you say that or you drop it.",
+    "",
+    "WHEN TWO SOURCES DISAGREE",
+    "Say so. Do not pick one quietly and do not average them. Give both figures, name",
+    "both sources, say which is more recent and which is closer to the origin, and let",
+    "the person decide. A disagreement you surfaced is worth more to them than a clean",
+    "number you guessed at.",
+    "",
+    "HOW HARD TO LOOK",
+    "They approved this, so look properly. Check a figure in more than one place before",
+    "you report it, and follow a lead back to whoever published it first.",
+    "",
+    "You have a ceiling on searches for this turn. It is there so a loop cannot run up",
+    "their bill, not as a budget to spend. Stop when you have the answer. A thorough",
+    "search that ends early because it found the thing is the right outcome.",
+    "",
     "WHAT TO COME BACK WITH, and write it for a person who is not technical:",
     "  - what you found, in plain sentences, with the actual numbers",
     "  - where each thing came from, named, and how recent it is",
     "  - how you mean to use it in their work",
     "  - anything you looked for and could not find, said plainly rather than filled in",
+    "",
+    "PUT [FINDING] ON ITS OWN LINE BEFORE EACH ONE",
+    "They are shown this as a list, one row each, every row ticked, and they untick",
+    "whatever is wrong. That list is built by splitting on this line, so it is the",
+    "only thing telling the app where one finding ends and the next begins.",
+    "",
+    "  - One [FINDING] per thing they could accept or reject on its own. A figure",
+    "    and the source it came from are one thing, not two.",
+    "  - Something you looked for and could NOT find gets one too. They are owed the",
+    "    chance to see that and to tell you where to look instead.",
+    "  - Anything before the first [FINDING] is treated as your own preamble and is",
+    "    not offered to them, so put nothing there that they need to decide about.",
+    "  - Do not explain the marker, do not mention it, and never write it inside a",
+    "    sentence.",
+    "",
+    "AND PUT [LINK] WITH THE ADDRESS AS THE LAST LINE OF EACH ONE",
+    "Anthony, 2026-09-14: \"any result that is gotten, the link must follow it so the",
+    "person can easily go and read it and come and verify it.\"",
+    "",
+    "The app turns this into a Verify link they tap to open the page in a new tab. So:",
+    "",
+    "  - One [LINK] per finding, on its own line, at the end of that finding, with the",
+    "    full address after it. Nothing else on that line.",
+    "  - It is the address of the page a person should read to check this. Where you",
+    "    followed a lead back to the body that published the figure, this is that page,",
+    "    not the article that pointed you at it.",
+    "  - NEVER WRITE AN ADDRESS YOU DID NOT OPEN. Not one you remember, not one you",
+    "    worked out from the shape of their site, not a search results page. A Verify",
+    "    link that goes nowhere is worse than no link, because they will tap it, find",
+    "    nothing, and stop trusting the ones that were real.",
+    "  - Something you looked for and could NOT find has no link. Write no [LINK] line",
+    "    at all rather than an empty one or a link to where it might have been.",
+    "  - Where a finding genuinely rests on two pages, give the one that carries the",
+    "    number. The other belongs in the sentence, named.",
     "",
     "NOTHING YOU FOUND IS IN THE WORK YET. They see this and decide. So do not write",
     "as though it is settled, and do not start drafting anything with it.",
@@ -828,8 +960,8 @@ Deno.serve(async (req: Request) => {
      THIS IS NOT A SECURITY CONTROL AND IT DOES NOT NEED TO BE. It only
      changes the wording of a nudge. The real ceiling is enforced twice
      where a browser cannot reach: the app moves the work up regardless at
-     MAX_INTERVIEW_TURNS, and the interview stage is given 700 output tokens,
-     which is a question and not a document. A browser that lies here gets a
+     MAX_INTERVIEW_TURNS, and the interview stage is capped by MAX_OUTPUT,
+     which is a conversation and not a document. A browser that lies here gets a
      differently worded question and nothing else. Clamped anyway, because a
      number off the wire goes into a comparison. */
   const askedSoFar = Math.min(Math.max(Number(body?.askedSoFar ?? 0) || 0, 0), 50);
@@ -1041,8 +1173,19 @@ Deno.serve(async (req: Request) => {
 
      max_uses is a ceiling on one turn, not a leash on the searching itself.
      Anthony: "once the human gives it the go-ahead, it is never limited."
-     Ten searches is a thorough look, not a peek, and it stops a loop from
-     running up somebody's bill.
+     and, 2026-09-14: "equip the agent with enough instruments so it can be
+     very intelligent."
+
+     Raised from 10 and 5 on 2026-09-14. Ten searches is enough to answer one
+     question and not enough to do what he actually asked for, which is to
+     check a figure in more than one place and follow a lead back to whoever
+     published it first. That is three or four searches per figure before it
+     has even started.
+
+     THE CEILING STAYS, and it is not timidity. A model that loops can run
+     these in a circle, and every one of them is his money. Twenty and twelve
+     is a thorough piece of research. It is not a budget to be spent for the
+     sake of it, and the prompt says so.
 
      NOT code_execution. These tool versions do their own filtering with it
      underneath, and declaring a second execution environment confuses the
@@ -1050,8 +1193,8 @@ Deno.serve(async (req: Request) => {
      ---------------------------------------------------------------------- */
   const searchTools = stage === "research"
     ? [
-        { type: "web_search_20260209", name: "web_search", max_uses: 10 },
-        { type: "web_fetch_20260209", name: "web_fetch", max_uses: 5 },
+        { type: "web_search_20260209", name: "web_search", max_uses: 20 },
+        { type: "web_fetch_20260209", name: "web_fetch", max_uses: 12 },
       ] as unknown as Anthropic.ToolUnion[]
     : undefined;
 

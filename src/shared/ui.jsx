@@ -8,6 +8,7 @@ import { forwardRef, useEffect, useRef, useState } from "react";
 import { Sun, Moon } from "lucide-react";
 import { useTheme } from "./theme.jsx";
 import { BRAND, GRADIENTS, FONTS } from "./tokens";
+import { thinkingWord } from "./thinkingWords.js";
 
 /* --------------------------------------------------------------------------
    SECTION: Ambient glow
@@ -386,20 +387,70 @@ export function TypewriterText({ text, speed = 18 }) {
   );
 }
 
-export function TypingDots() {
+/* --------------------------------------------------------------------------
+   SECTION: Saying what it is doing while it does it
+
+   REPLACES TypingDots, which was three grey dots and is now deleted.
+
+   Anthony, 2026-09-10: "if it's still thinking or analyzing, there's no way
+   a person knows... so a person can know it's still working and wait for
+   it." He is describing the difference between waiting and giving up. Three
+   dots cannot tell anybody whether it has been reading for two seconds or
+   has been dead for two minutes, so the only safe reading of them is to
+   press the button again.
+
+   The motion stays, because motion is what says "alive" at a glance. It is
+   now the ellipsis on the end of a sentence that says what kind of alive.
+   Where the words come from and why they never overclaim is in
+   src/shared/thinkingWords.js.
+
+   THE CLOCK STARTS WHEN THE STAGE CHANGES, not when this mounts, so a turn
+   that moves straight from the interview into the analysis starts its words
+   again rather than carrying on from wherever the last one had got to.
+   -------------------------------------------------------------------------- */
+
+export function Thinking({ stage = "orient", stalled = false }) {
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    setElapsed(0);
+    const started = Date.now();
+    /* Ticks faster than the words change so the line never sits a beat
+       longer than it should. Cheap: one setState of a number. */
+    const id = setInterval(() => setElapsed(Date.now() - started), 1000);
+    return () => clearInterval(id);
+  }, [stage]);
+
+  const word = thinkingWord(stage, elapsed, { stalled });
+
   return (
-    <div className="flex items-center gap-1.5" style={{ animation: "sx-rise 0.35s ease" }}>
-      {[0, 1, 2].map((i) => (
-        <span
-          key={i}
-          className="w-1.5 h-1.5 rounded-full"
-          style={{
-            backgroundColor: "var(--text-3)",
-            animation: "sx-dot 1.1s ease infinite",
-            animationDelay: `${i * 0.15}s`,
-          }}
-        />
-      ))}
+    /* aria-live so somebody using a screen reader hears the line change
+       rather than sitting in silence. polite, not assertive, because it
+       must not cut across them mid sentence. */
+    <div
+      className="flex items-baseline text-[13px]"
+      style={{ color: "var(--text-3)", animation: "sx-rise 0.35s ease" }}
+      aria-live="polite"
+    >
+      <span>{word}</span>
+
+      {/* THE DOTS BELONG TO THE WORD, not beside it.
+
+          An earlier version put a row of dots to the left and the word to
+          the right, and it read as two separate things both saying "wait". One
+          animated ellipsis on the end of the sentence is what a person
+          already understands, and it is what Anthony asked for: "analyzing
+          ..., getting ready...".
+
+          aria-hidden because "dot dot dot" read out three times a second is
+          not information, it is noise. The word above already said it. */}
+      <span aria-hidden="true" className="inline-flex">
+        {[0, 1, 2].map((i) => (
+          <span key={i} style={{ animation: "sx-dot 1.4s ease infinite", animationDelay: `${i * 0.18}s` }}>
+            .
+          </span>
+        ))}
+      </span>
     </div>
   );
 }

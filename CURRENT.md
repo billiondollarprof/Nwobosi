@@ -7,6 +7,185 @@ being built toward.
 
 ---
 
+## ANTHONY'S OPEN REQUESTS
+
+**Read this before anything else in this file, and add to it the moment he
+asks for something.**
+
+Why this section exists: on 2026-09-15 Anthony asked whether his requests
+were being recorded or thrown away. They were being listed back to him in
+chat every time, and they were never written down anywhere that survives a
+session. He was right. A request that lives only in a conversation is gone
+the moment that conversation ends, and he then has to remember it and ask
+again, which makes remembering his own product his job instead of Claude's.
+
+So: when he asks for something and it is not built in that same turn, it
+goes here, in his words, with the date. It comes off the list when it is
+built and checked, not when it is planned.
+
+### Open
+
+1. **ONE THING IS WAITING ON HIM AND NOTHING ELSE IS: the assistant
+   function has to be redeployed.** The fix for the cut off replies and
+   for the search refusal is written, type checked and pushed to
+   `testing`, and it is NOT live. The deployed `assistant` is still v14.
+   Until it is deployed, the chat still stops mid sentence and still
+   refuses to search when asked. Three steps are in the reply of
+   2026-09-16 and they take about two minutes.
+
+   Why Claude did not deploy it itself: deploying through the tools means
+   retyping all 73,000 characters of the function by hand, and a single
+   slipped character in a file that handles every Claude call and the
+   company's money is not worth the two minutes it saves. The repo copy is
+   correct and checked. Deploying it from the console cannot go wrong.
+
+2. **Per person connectors**, item 4 of the agreed order. Email, Slack,
+   Notion, each staff member connecting their own. Not started.
+
+3. **Style memory.** When a staff member downloads work they liked, save
+   that style for THAT PERSON so the next similar job does not start from
+   nothing. Per staff member only, never a company standard, and staff A
+   never gets a suggestion from staff B's work. Spec written in
+   STYLE-MEMORY.md. Not built.
+
+### Logged on 2026-09-16, and he said not to build them today
+
+He asked for these to be written down rather than built, to save credits
+before the video. They are real and they are his decisions, not ideas.
+
+4. **The WhatsApp quick reply clash.** The same number that runs the
+   support assistant is also the number the automated follow up templates
+   go out on, and those templates carry quick reply buttons. So when a
+   customer taps a quick reply, it lands in the same thread, and the
+   assistant answers it as though it were a question. Worse, the assistant
+   is trained for the business and not for the business's guests, so what
+   it says back can be wrong for that person. His own fallback, decided:
+   a separate phone number, after the video.
+
+5. **Where a support reply goes, WhatsApp or Gmail.** A toggle, chosen per
+   thread by the person answering. WhatsApp only accepts a free form reply
+   inside 24 hours of the customer's last message, and he wants the cap
+   set at 12 hours rather than 24, so nobody writes a long answer and then
+   watches it bounce. Outside the window it goes by email.
+
+6. **The old message response area in the admin comes out.** Support now
+   has its own route and its own queue, so two places to answer the same
+   customer is one place too many.
+
+7. **The slow send.** He saw a send take longer than it should. Possibly
+   his network, possibly not. Watch it and see whether it repeats.
+
+### Done, 2026-09-16
+
+- **Support as a seat, not a page.** Built and checked. The flag is on the
+  staff row, the admin sets it, one door for everybody at /workspace, and
+  `WorkSwitch` puts a toggle between their own work and the queue. It
+  renders nothing at all for somebody without the flag.
+- **The support queue shows the flagged question, not the whole thread.**
+  His words: "why not the actual message that was flagged instead of the
+  entire conversation?" The `escalations` table already held it, because
+  an escalation is raised per question and the row keeps the customer's
+  own words. So that one sentence is what the screen shows, open ones
+  first with an amber edge, and the rest of the conversation is behind
+  "Read the whole conversation (9)". Where a thread has no escalation row
+  the last customer message stands in, so the panel is never blank.
+  Clicked through: hidden by default, nine messages appear on click, gone
+  again on hide, and a thread with no email still gets no reply box.
+- **A cut off reply says so.** The function already sent `stop_reason` and
+  nothing in the browser read it, so a reply chopped at the ceiling was
+  handed over looking finished. Chat.jsx reads it now, says "That ran out
+  of room and stopped here" under the reply in plain grey, and stops short
+  of reading half a sentence for a handshake marker. Looked at in both
+  themes at 390 and 1280.
+- **Asking it to search works from any stage.** `NEED_LOOKUP` was only
+  acted on inside the analyse branch, so asking for a search in ordinary
+  conversation could only ever produce a refusal. It is honoured
+  everywhere now, and the stage that raised the card is carried on the
+  card, so a search asked for in conversation comes back to conversation
+  instead of pushing somebody into the document pipeline.
+  THE MODEL SIDE OF THIS IS NOT LIVE. See open request 1.
+- **The chat connector labels match the admin.** Both say "Coming soon"
+  now. The chat used to say "Set up" and "Example" off an internal state
+  field whilst the admin said "Coming soon" for all of them, which is two
+  screens giving different answers about the same tool. Canva keeps a live
+  label because it is the one a person really connects.
+- **A way to look at a signed in screen.** `vite.harness.config.js` plus
+  `scripts/__harness`. It renders a page on its own with a fake Supabase
+  behind it, so a screen that reads the database can be screenshotted and
+  clicked without a workspace. `scripts/__harness/shoot.cjs` does the four
+  shots. This is how the support change above was actually checked, rather
+  than by reading the markup.
+
+- **Support replies really send.** support-reply v1. A person types an
+  answer in the queue, it goes to the customer by email and into the
+  thread. Three checks the browser cannot do: support access, the thread
+  belongs to their company, and there is somewhere to send. WhatsApp is
+  not wired, and a thread with no email gets no box at all plus the
+  reason.
+- **A design is looked at before it is handed over.** canva-design v2. The
+  export is fetched by the model, judged against what was asked for, and
+  the verdict comes back with the design. It checks and reports; it does
+  not reach back into Canva and move things, because placing elements
+  needs editing the free plan does not give us.
+- **Conversational is back in the ladder**, green, labelled support, and
+  locked.
+
+- **Canva moved from the admin to the person.** integration_tokens is keyed
+  (staff_id, provider) now. The Design panel is gone from the admin, and
+  Canva is a connector a staff member connects from the chat like any
+  other. This is what fixes Open in Canva: the design is in the account
+  they are already signed into.
+- **Support is a seat.** staff.can_support, an admin toggle on the staff
+  row, a Support queue screen reading the existing support_threads and
+  support_messages, and a switch between it and their own work at the same
+  /workspace address.
+- **All three levels are offered:** standard, deeper, deepest, default
+  standard. Conversational is what support runs at on its own, so nobody
+  picks it.
+- **Section order:** integrations, the problem, what this changes, how it
+  works, the read back. Sold before told how.
+- **The fourth outcome card** rewritten so it reads once.
+
+### Done, 2026-09-15
+
+- **The landing page below the fold is rearranged.** How it works, then
+  the read back, then four outcomes, then the problem and the research,
+  then integrations. A buyer now learns what happens when their staff uses
+  this before they learn what it plugs into.
+- **A sixth step**, "It keeps what you accepted", per staff member and
+  never a company standard.
+- **The capability explainer is inside the selector.** Anthony: "that
+  place is pointless, because that capability description can just be part
+  of the selector." The panel is deleted. Pick a level and the line under
+  it says what that level is for, full sentence in the two forms and the
+  short line in the staff row, where there is no space for more.
+
+- **Access and usage merged into one tab.** Company defaults, the people
+  list, recent work, then the capability explanation last, in the order an
+  admin actually works. The Usage tab is gone.
+- **Tablet and desktop checked**, at 768x1024, 1024x768 and 1440x900, both
+  themes. It found a real bug: the level dropdown was 132px, measured
+  against "Standard" and never against "Conversational", so it read
+  "Conversatior" on a tablet. Now 156px, and every label is measured
+  against its own box at all four widths.
+
+### Decided, so nobody reopens them
+
+- **Headline:** "Private AI that already knows your company. / Zero data
+  leakage." His choice, 2026-09-15, over "Your data never leaves your
+  cloud". The accent sits on the closing line because it is the anchor.
+- **Subtext:** his sentence, used as he wrote it. Do not trim it for
+  phones.
+- **The rotating line:** three words a switch, his length.
+- **Hallucination claim:** "Nothing enters your work that you did not
+  approve." His decision over "near zero hallucination".
+- **Connector labels:** every one says Coming soon, Drive included. Drive
+  gets picked up after the video walkthrough.
+- **Bedrock:** never named on a public page. It belongs in a per customer
+  deployment doc, because a customer may want Azure.
+
+---
+
 ## What this repository is, before anything else
 
 **StellaXafe is not SaaS.** There is no plan, no seat, no self serve tier,
@@ -252,6 +431,100 @@ Three things that were broken and are now fixed:
 portability, not house style: the same product may be installed on a
 different provider tomorrow. The admin sees four capability levels
 (conversational, standard, deeper, deepest), each with an info icon.
+
+## THE REPO IS AHEAD OF THE DEPLOYMENT, on purpose
+
+**As of 2026-09-14 `supabase/functions/assistant/index.ts` is NOT what is
+live.** The deployment is still v11, sha `80723d2a31b1ec38`. The repo has
+14 extra lines in the research prompt, asking it to put `[FINDING]` on its
+own line before each thing it found.
+
+**Why it was not deployed.** The only way to deploy from a session is the
+MCP tool, which takes the whole file inline. That means retyping 1,700
+lines of a live function by hand, and this file is full of the damage that
+kind of move has already done here. The gain is cosmetic: without the
+marker, the model's opening line shows up as one extra row in the pick
+list. Not worth the risk taken unasked.
+
+**What to do about it.** Either deploy it deliberately, with a diff against
+the deployed source straight after to prove it landed byte for byte, or
+drop the 14 lines. Do not leave it sitting here for long: a repo that is
+quietly ahead of the deployment is the thing that caused every edge
+function rule in this file.
+
+**The app copes with both.** `src/shared/findings.js` prefers the marker and
+falls back to splitting on blank lines. The fallback is not a stopgap: the
+model can miss an instruction on any turn, and a person must still get a
+list they can tick.
+
+## Picking which findings get used
+
+Added 2026-09-14. Anthony: "the permission to use the data is supposed to
+offer a third option should the person agrees with some of the search
+results but not all, so they get to say which."
+
+**The list opens with everything ticked and you untick what is wrong.** His
+call, and it is the right one: "most of the data might always be accurate,
+so the person has less things to type."
+
+**One screen, no middle step.** A first version put a "Let me choose" button
+in front of the list. He cut it: "it will list the search results as
+selected, then you unselect the wrong ones and click continue." A button
+whose only job is to reveal the thing the person came to look at buys
+nothing.
+
+Unticking everything is saying no, so the button says "Use none of it" and
+does that. One finding is not a list, so that case is plain yes and no.
+
+An unticked finding is still never stored. Only a count.
+
+## The turn that never came back
+
+Added 2026-09-14. Anthony sent a message and got silence. Not an error, not
+a spinner that gave up. It had happened before.
+
+**The cause was one `break`.** The stream reader called `onDone` only when
+the server sent an explicit done event. Any other ending, the edge worker
+killed at its limit, the connection dropped, the gateway hanging up, ended
+with the browser still holding `typing = true`. The screen said it was
+working. Nothing was.
+
+Two fixes, and they are deliberately different in kind:
+
+1. **A terminal event is compulsory.** Every path that ends a turn goes
+   through `finish()`, which fires once. A stream that ends without a done
+   or an error gets one invented. This cannot false alarm, because it only
+   speaks when the stream is already over.
+2. **A watchdog**, for the other shape of the same failure, where the
+   stream stays open and nothing arrives. This one can false alarm, so it
+   is slow: 25 seconds to say it is slow, 120 to give up, 300 for research
+   because that stage genuinely says nothing for minutes while it searches.
+
+The watchdog holds one read promise and races it repeatedly. Calling
+`reader.read()` again each round is the obvious way to write it and it
+loses chunks, because concurrent reads queue and a race keeps only the
+first.
+
+## Saying what it is doing while it does it
+
+Added 2026-09-14. Anthony: "if it's still thinking or analyzing, there's no
+way a person knows... so a person can know it's still working and wait for
+it."
+
+Three grey dots cannot say whether it has been reading for two seconds or
+has been dead for two minutes, so the only safe reading of them is to press
+the button again. `src/shared/thinkingWords.js` holds the words: three per
+stage, advancing every 7 seconds, the last repeating.
+
+**It is a progress line, not a progress bar.** Nothing counts down and
+nothing claims to be nearly finished, because nothing here knows that. What
+is known is which stage is running and how long it has run.
+
+**The build card's green ticks are gone.** It used to show "Applied brand
+kit and template" and "Structured layout", both hard coded, neither
+connected to anything the product does. There is no brand kit. Nothing
+applies a template. They were on screen while the model was still writing
+the first line, and they were about to be in a demo video.
 
 ## Coming back the next day
 

@@ -8,15 +8,20 @@
     "build": "vite build && node scripts/preview-guard.mjs",
     "preview": "vite preview",
     "images": "node scripts/optimise-images.mjs",
-    "icons": "node scripts/make-icons.mjs"
+    "icons": "node scripts/make-icons.mjs",
+    "lint": "eslint src --no-warn-ignored",
+    "test": "node scripts/tests/canva-token.test.mjs && node scripts/tests/canva-design.test.mjs",
+    "check": "npm run lint && node scripts/check-functions.mjs && npm test && npm run build"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.4",
     "docx": "^9.7.1",
+    "exceljs": "^4.4.0",
     "jspdf": "^4.2.1",
     "lucide-react": "^0.460.0",
     "mammoth": "^1.12.1",
     "pdfjs-dist": "^6.2.108",
+    "pptxgenjs": "^4.0.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.28.0"
@@ -24,6 +29,9 @@
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
+    "eslint": "^10.10.0",
+    "globals": "^17.12.0",
+    "playwright": "^1.63.0",
     "postcss": "^8.4.49",
     "sharp": "^0.35.4",
     "tailwindcss": "^3.4.17",

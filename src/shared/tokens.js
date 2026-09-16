@@ -147,7 +147,19 @@ export const THEME_VARS = {
     "--border-2": "rgba(208, 213, 232, 0.9)",
     "--text-1": "#0A0F2E",
     "--text-2": "#424668",
-    "--text-3": "#7880A8",
+    /* LIFTED 2026-09-15, same fix the dark theme got and the light theme
+       never did.
+
+       It was #7880A8, which is 3.60 to 1 on this ground (#F6F7FC, not
+       white). AA wants 4.5 for text at normal size, so the rotating line
+       in the hero and the three trust points under the buttons were both
+       under the bar. Anthony read the page on a phone and said the light
+       mode needed more visibility, and the numbers agreed with him.
+
+       #646D98 is 4.69 to 1. It keeps the blue cast so nothing looks like
+       a different family, and it stays well clear of text-2 at 8.51 to 1,
+       so the two ranks still read as two ranks. */
+    "--text-3": "#646D98",
     "--caution": "#9A5B00",
     "--all-clear": "#0C7A31",
     "--audience-open": "#1420A0",
