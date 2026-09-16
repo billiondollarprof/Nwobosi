@@ -217,7 +217,6 @@ Deno.serve(async (req: Request) => {
 
   const title = String(body?.title ?? "Untitled design").trim().slice(0, 120) || "Untitled design";
   const imageBase64 = String(body?.imageBase64 ?? "");
-  const imageMime = String(body?.imageMime ?? "image/png");
   const designType = String(body?.designType ?? "presentation");
 
   if (!imageBase64) {
