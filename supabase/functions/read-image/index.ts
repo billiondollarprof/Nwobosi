@@ -43,8 +43,6 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk@0.68.0";
 
-import { toBase64 } from "../_shared/base64.ts";
-
 /* --------------------------------------------------------------------------
    1. WHAT READS THE PICTURE
 
@@ -132,6 +130,33 @@ const CORS = {
   "Access-Control-Max-Age": "86400",
   Vary: "Origin",
 };
+
+/* BASE64 FOR SOMETHING PICTURE SIZED, AND IT IS NOT ONE LINE.
+
+   The obvious version is btoa(String.fromCharCode(...bytes)). It works on
+   every small test file and throws on every real photograph, because
+   spreading a two megabyte array passes two million arguments to one call
+   and blows the stack. A brand asset is capped at 2400px on its long edge,
+   which is comfortably past that.
+
+   Chunked at 32k it just works and produces byte for byte the same string.
+   scripts/tests/read-image.test.mjs imports THIS function and proves both
+   halves: that the one line version really does throw, and that this one
+   matches Node's own base64 exactly. So if somebody ever simplifies it
+   back, the test catches them.
+
+   Exported for that test and for nothing else. It lives in this file
+   rather than in _shared, deliberately: it is eight lines used in one
+   place, and a second file is one more thing to get wrong when this
+   function is deployed by hand. */
+export function toBase64(bytes: Uint8Array) {
+  let binary = "";
+  const step = 0x8000;
+  for (let i = 0; i < bytes.length; i += step) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + step));
+  }
+  return btoa(binary);
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {

@@ -270,9 +270,14 @@ FOUR THINGS IN IT WORTH KNOWING:
   because the picture still works in a design when the reading failed. A
   row stuck on "being read" is worse than one with no text.
 - The reading failing never fails the upload. It has its own try.
-- Base64 lives in `_shared/base64.ts` with its own test. The obvious one
-  line version throws on anything picture sized, and the test proves both
-  that it throws and that the shipped one matches Node byte for byte.
+- Base64 is INSIDE read-image/index.ts, exported only so the test can
+  import the real thing. It was briefly in `_shared/base64.ts` and Anthony
+  asked the right question: why make him manage a second file in the
+  console to save eight lines. He is right. read-image is ONE file with no
+  local imports, so it is one paste and one deploy.
+  The obvious one line version throws on anything picture sized, and
+  scripts/tests/read-image.test.mjs proves both that it throws and that
+  the shipped one matches Node byte for byte.
 
 NEEDS A DEPLOY. It is new, so it is a NEW deploy, not a redeploy.
 
