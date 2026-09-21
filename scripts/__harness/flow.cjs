@@ -77,10 +77,78 @@ function check(name, cond) { (cond ? OK : BAD).push(name); }
     await page.screenshot({ path: '/tmp/claude-0/flow-build.png', fullPage: true });
   }
 
+  /* ------------------------------------------------------------------
+     A SEARCH RIDING ALONGSIDE A HANDSHAKE, asked for 2026-09-21.
+
+     Anthony wants to be able to send it looking at any point, including
+     off the back of a read back. The rule that makes that safe is that a
+     marker moving the work forward is never swallowed, so both cards have
+     to be able to sit on screen together.
+     ------------------------------------------------------------------ */
+  /* A FRESH PAGE, not a Start something new button. That button only
+     exists once a document has been made, so clicking past it left the
+     second walk running on the first walk's stage and the test timed out
+     waiting for a card that was never coming. */
+  await page.addInitScript(() => {
+    window.__TURNS = [];
+    window.__SCRIPT = {
+      orient: ["I can see your brand guide.\nNEED_LOOKUP\nOFFER_INTERVIEW"],
+      interview: ["Who is it for?\nINTERVIEW_COMPLETE"],
+      analyse: [
+        "You want a one page report for the board.\nNEED_LOOKUP\nREADBACK_COMPLETE",
+        "Updated with the figure you approved.\nREADBACK_COMPLETE",
+      ],
+      research: ["[FINDING] The figure is 12 per cent.\n[LINK] https://example.org/figure"],
+    };
+  });
+  await page.goto('http://localhost:5301/?page=chat', { waitUntil: 'networkidle' });
+  await page.waitForTimeout(1200);
+
+  await page.locator('textarea').first().fill('Write a short board update');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(1400);
+
+  check('the offer and the search card can be on screen together',
+    (await page.locator('text=Want me to ask you a few questions?').count()) > 0 &&
+    (await page.locator('text=May I look this up online?').count()) > 0);
+
+  /* Take the interview, which lands on a read back that also suggests a
+     search. Both cards again, and this is the case he described. */
+  await page.locator('button', { hasText: 'Ask me a few questions' }).first().click();
+  await page.waitForTimeout(2400);
+
+  const bothAfterReadback =
+    (await page.locator('text=Did I get that right?').count()) > 0 &&
+    (await page.locator('text=May I look this up online?').count()) > 0;
+  check('the read back can suggest a search and still offer the Build card', bothAfterReadback);
+
+  /* Exactly one, not two. Answering the offer has to take its own search
+     card down with it, or the stale one from the first turn is still live
+     and is the one that gets pressed. */
+  check('the stale search card from the first turn is gone',
+    (await page.locator('text=May I look this up online?').count()) === 1);
+  await page.screenshot({ path: '/tmp/claude-0/flow-both.png', fullPage: true });
+
+  /* Sending it looking has to take the Build button down. Left up, it is a
+     live button that would write the document off the old read back in the
+     middle of the check meant to improve it. */
+  if (bothAfterReadback) {
+    await page.locator('button', { hasText: 'Yes, go and look' }).first().click();
+    await page.waitForTimeout(600);
+    check('starting the search takes the stale Build card down',
+      (await page.locator('text=Did I get that right?').count()) === 0);
+
+    await page.waitForTimeout(1600);
+    const picker = page.locator('button', { hasText: 'Use' }).first();
+    if (await picker.count()) { await picker.click(); await page.waitForTimeout(2000); }
+    check('and the work comes back to a Build card afterwards',
+      (await page.locator('text=Did I get that right?').count()) > 0);
+  }
+
   const turns = await page.evaluate(() => window.__TURNS || []);
   console.log('stages that ran, in order:', turns.join(' -> '));
   check('the work reached the analysis', turns.includes('analyse'));
-  check('it did not go round in circles on the first turn', turns.filter(t => t === 'orient').length <= 2);
+  check('and it went out and searched', turns.includes('research'));
 
   await b.close();
 

@@ -868,15 +868,30 @@ export default function Chat() {
            request to go and look. The search can wait a turn. The work
            cannot wait forever. */
 
+        /* A SEARCH REQUEST MAY RIDE ALONGSIDE A HANDSHAKE. IT MAY NEVER
+           REPLACE ONE.
+
+           Anthony, 2026-09-21: "the search option should happen at any
+           time. If I want... the model can even suggest a research after a
+           read back."
+
+           So both cards can be on screen at once. He reads what it
+           understood, and he either presses build or sends it to check one
+           thing first. The handshake is never swallowed, which is the rule
+           that stops the dead end of the 16th coming back. */
+        const alsoAskedToLook = raw.includes(MARKER.needLookup);
+
         if (stage === "orient") {
-          /* The offer wins, every time, even if it also asked to search. */
           if (raw.includes(MARKER.offerInterview)) {
             setFlowStage("offered");
-            const withOffer = updateMessages((prev) => [
+            const withCards = updateMessages((prev) => [
               ...prev,
               { id: nextId(), role: "assistant", type: "offer" },
+              ...(alsoAskedToLook
+                ? [{ id: nextId(), role: "assistant", type: "lookup", from: "orient" }]
+                : []),
             ]);
-            persist(withOffer, "offered");
+            persist(withCards, "offered");
             return;
           }
 
@@ -884,7 +899,7 @@ export default function Chat() {
              ONCE per piece of work, and once only, because this stage has no
              other way out. Two turns of asking to search would be a person
              stuck on the first screen with no route to a document. */
-          if (raw.includes(MARKER.needLookup) && orientLookupsRef.current < 1) {
+          if (alsoAskedToLook && orientLookupsRef.current < 1) {
             orientLookupsRef.current += 1;
             updateMessages((prev) => [
               ...prev,
@@ -950,7 +965,7 @@ export default function Chat() {
              first turn, because this stage always ends: either it says it is
              done, or handleUserReply moves it up at MAX_INTERVIEW_TURNS
              whatever the model thinks. */
-          if (raw.includes(MARKER.needLookup)) {
+          if (alsoAskedToLook) {
             updateMessages((prev) => [
               ...prev,
               { id: nextId(), role: "assistant", type: "lookup", from: "interview" },
@@ -963,13 +978,23 @@ export default function Chat() {
         }
 
         if (stage === "analyse") {
-          /* GATE ONE, where it has always lived and where it is safest. This
-             stage reads, and it ends in one of three places every time: it
-             asks to search, it asks them for something, or it reads back. */
-          if (raw.includes(MARKER.needLookup)) {
+          /* THE READ BACK, and it is the only thing that earns the Build
+             card. Checked FIRST now, so a search request can never take it
+             away. If it wants to check something as well, both cards go up
+             and he chooses: build it now, or let it check first.
+
+             The search card goes above the build card, because that is the
+             order the decision is made in. */
+          if (raw.includes(MARKER.readbackDone)) {
+            /* Nothing is outstanding any more, so the note must not still
+               claim there is. A stale "waiting on you" is worse than none. */
+            missingRef.current = "";
             updateMessages((prev) => [
               ...prev,
-              { id: nextId(), role: "assistant", type: "lookup", from: "analyse" },
+              ...(alsoAskedToLook
+                ? [{ id: nextId(), role: "assistant", type: "lookup", from: "analyse" }]
+                : []),
+              { id: nextId(), role: "assistant", type: "build" },
             ]);
             return;
           }
@@ -978,7 +1003,13 @@ export default function Chat() {
              person is a conversation, so it drops back to the cheap model
              for the back and forth rather than charging Sonnet rates to
              collect a file name. It comes back up the moment that
-             conversation says it is done. */
+             conversation says it is done.
+
+             It may want both at once, and that is a real situation: one
+             thing only he can answer, one thing it could go and find. The
+             card is marked as coming from the interview, so the search
+             hands him back to the conversation rather than to the
+             analysis. */
           if (raw.includes(MARKER.needInput)) {
             /* A fresh, specific ask, so it gets its own allowance rather
                than inheriting one the first interview already spent. */
@@ -988,16 +1019,21 @@ export default function Chat() {
                thread to work it out. */
             missingRef.current = clean;
             setFlowStage("interview");
+            if (alsoAskedToLook) {
+              updateMessages((prev) => [
+                ...prev,
+                { id: nextId(), role: "assistant", type: "lookup", from: "interview" },
+              ]);
+            }
             return;
           }
 
-          /* Nothing missing. This is the read back, and it is the only
-             thing that earns the Build card. */
-          if (raw.includes(MARKER.readbackDone)) {
-            /* Nothing is outstanding any more, so the note must not still
-               claim there is. A stale "waiting on you" is worse than none. */
-            missingRef.current = "";
-            updateMessages((prev) => [...prev, { id: nextId(), role: "assistant", type: "build" }]);
+          /* Nothing to hand back yet, it just wants to go and look. */
+          if (alsoAskedToLook) {
+            updateMessages((prev) => [
+              ...prev,
+              { id: nextId(), role: "assistant", type: "lookup", from: "analyse" },
+            ]);
           }
         }
       },
@@ -1400,9 +1436,20 @@ export default function Chat() {
      the job, not on the person.
      ------------------------------------------------------------------------ */
 
+  /* ANSWERING THE OFFER TAKES THE SEARCH CARD WITH IT.
+
+     A search request can now sit next to the offer, so both cards can be
+     on screen at once. Clearing only the offer left a live "May I look
+     this up online?" button behind, still pointing at the first turn.
+     Pressing it an hour later would have dragged somebody in the middle of
+     an interview back to the very first stage.
+
+     The flow walk caught this: the stages read orient, interview, analyse,
+     research, and then ORIENT again, because the stale card was the one
+     that got pressed. Nothing else would have caught it. */
   function answerOffer(line, stage) {
     if (typing || generating) return;
-    const kept = messages.filter((m) => m.type !== "offer");
+    const kept = clearActionCards(messages);
     updateMessages(kept);
     addMessage({ role: "user", type: "text", content: line });
     interviewTurnsRef.current = 0;
@@ -1467,10 +1514,28 @@ export default function Chat() {
     return from === "orient" || from === "interview" ? from : "analyse";
   }
 
+  /* EVERY BUTTON THE LAST TURN PUT UP COMES DOWN.
+
+     Since a search can now sit next to an offer or a Build card, answering
+     the search has to clear the others. Two reasons, and both of them are
+     things a person would hit within a minute of using it.
+
+     A Build card left on screen during a search is a live button that
+     would start writing the document off the old read back, halfway
+     through the very check that was meant to improve it. And the turn that
+     comes back after the search puts its own offer or Build card up, so
+     leaving the old one there gives two of the same card with no way to
+     tell which is current. */
+  function clearActionCards(list) {
+    return list.filter(
+      (m) => m.type !== "lookup" && m.type !== "offer" && m.type !== "build" && m.type !== "useFinding",
+    );
+  }
+
   function allowLookup(from) {
     if (typing || generating) return;
     lookupFromRef.current = from || "analyse";
-    const kept = messages.filter((m) => m.type !== "lookup");
+    const kept = clearActionCards(messages);
     updateMessages(kept);
     addMessage({ role: "user", type: "text", content: "Yes, go and look." });
     setFlowStage(lookupReturnStage());
@@ -1481,7 +1546,7 @@ export default function Chat() {
     if (typing || generating) return;
     lookupFromRef.current = from || "analyse";
     declinedRef.current += 1;
-    const kept = messages.filter((m) => m.type !== "lookup");
+    const kept = clearActionCards(messages);
     updateMessages(kept);
     addMessage({ role: "user", type: "text", content: "No, work with what you have." });
     const back = lookupReturnStage();

@@ -115,7 +115,29 @@ Four separate things in that, and they are not the same job:
 4. The company material is checked first and reported, and the web is
    only proposed when the answer genuinely is not in there.
 
-Read back to him and waiting on his confirmation before building.
+**Confirmed by him the same day and BUILT.** He chose the no-new-control
+route: "your recommendation is good. the model already raised card anyway
+so that is a better way because it is the same behavior."
+
+What was built:
+
+- 1, 2 and 4 in full. The rule that makes it safe is that a marker moving
+  the work forward is never swallowed, but a search request may ride
+  alongside one. So both cards can be on screen at once and he chooses.
+- 3 at the read back, which is the point he named. The read back can now
+  carry a search suggestion and still put the Build card up.
+
+WHAT WAS NOT BUILT, AND WHY. He also said "or after writing prompt". The
+brief stage is the wrong place for that gate and it is not a scoping
+dodge: the brief is machinery and is never shown on screen, so a card
+there would read "May I look this up online?" with nothing above it
+saying what it wants to find. A gate nobody can answer sensibly is worse
+than no gate. The read back is one step earlier and shows its reasoning,
+so that is where it went. Say if you want it in the writing turn as well
+and it becomes its own piece of work.
+
+The prompt half needs the function redeployed. The client half works
+without it.
 
 ### Logged on 2026-09-16, and he said not to build them today
 
