@@ -270,6 +270,15 @@ export async function addImageSource({
       asset_mime: mediaType,
       /* BEING READ, NOT READY, since 2026-09-21.
 
+         "pending" IS THE WORD, AND GETTING IT WRONG BROKE UPLOADS.
+         This said "processing" for a few hours on 2026-09-21. The column
+         only accepts pending, ready and failed, so every insert was
+         rejected and adding any picture failed with "Could not save that",
+         right after it had been analysed. Anthony hit it within the hour.
+         There are three status values in this product and they are the
+         three the rest of this file already uses. Check, never invent.
+
+
          It used to go straight to ready, because there was no text to pull
          apart and no second step to wait for. There is now: read-image
          looks at the picture and stores what it says, so a screenshot is a
@@ -280,7 +289,7 @@ export async function addImageSource({
          read-image sets it back to ready on every path out of itself,
          including the ones where the reading failed, because the picture
          still works in a design either way. */
-      status: "processing",
+      status: "pending",
       added_by: userId,
       customer_visible: customerVisible === true,
     })
