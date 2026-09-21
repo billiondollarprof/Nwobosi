@@ -182,6 +182,27 @@ press is the worst thing this product can do.
 
 ---
 
+## THE SYSTEM NEVER GOES SILENT, AND IT SAYS WHEN IT IS WORKING
+
+Anthony, 2026-09-21: "I was trying to create a particular document, but it
+was not working... this AI system kept me silent. It just showed something
+like thinking and then went quiet."
+
+**Every turn ends visibly.** A turn that produced nothing is not an error
+as far as the machinery is concerned, which is exactly why it used to
+vanish: nothing threw, so nothing was said. Three places could do it and
+all three now speak, and the two that stop a build put the Build card back
+so there is always a button.
+
+**And the working line is the platform's navy**, not the faintest grey in
+the palette. His words: "reading, thinking is too faint. I think you
+should use the platform's color." The moment that line matters most is the
+moment somebody is wondering whether the thing has died, so it has to be
+seen. `--working` in tokens.js, navy in the light theme and the lifted
+navy on dark, where the real navy reads as almost black.
+
+---
+
 ## "SOMETHING IS WRONG" OPENS A BOX. IT DOES NOT GUESS.
 
 Anthony, 2026-09-21, correcting a first attempt that had the model suggest
@@ -449,9 +470,13 @@ Honest state, so nobody reading this thinks it is all done.
    with it, it should name what was missing and what it decided to do.
 9. **The read back does not offer the three routes** in a line: more
    detail, point out what is wrong, send me looking.
-10. **The two joins can still fail silently.** read back to prompt, and
-    prompt to document. Both need a button that says build when the
-    automatic path does not carry.
+10. ~~The two joins can still fail silently.~~ **DONE 2026-09-21**, and
+    there were THREE silent paths, not two. An ordinary turn that produced
+    nothing made no bubble at all. An empty plan built a document with no
+    fence, because the server only logs a warning for that. And a document
+    that came back empty left a spinner that had already stopped. All
+    three now say what happened, and the two that stop a build put the
+    Build card back, so there is always something to press.
 11. **Style cannot be taken from an uploaded document**, and previous work
     is not remembered. STYLE-MEMORY.md is specced, not built.
 12. **Connected tools are not raised at the read back**, because no

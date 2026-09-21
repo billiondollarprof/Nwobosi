@@ -331,6 +331,83 @@ function check(name, cond) { (cond ? OK : BAD).push(name); }
   check('THE GUARD: a read back with no marker still offers the Build card',
     (await page.locator('text=Did I get that right?').count()) > 0);
 
+  /* ------------------------------------------------------------------
+     THE SYSTEM MUST NEVER GO SILENT.
+
+     Anthony, 2026-09-21: "I was trying to create a particular document,
+     but it was not working... this AI system kept me silent. It just
+     showed something like thinking and then went quiet."
+
+     Three places could do that, and none of them errored: the turn ran and
+     produced nothing, so the bubble was never created, the spinner was
+     never taken down, or a document was built from an empty plan with no
+     fence at all. All three now say what happened, and the two that stop a
+     build put the Build card back so there is always something to press.
+     ------------------------------------------------------------------ */
+
+  /* One: an ordinary turn that comes back empty. */
+  await page.addInitScript(() => {
+    window.__TURNS = [];
+    window.__SCRIPT = { orient: [""] };
+  });
+  await page.goto('http://localhost:5301/?page=chat', { waitUntil: 'networkidle' });
+  await page.waitForTimeout(1200);
+  await page.locator('textarea').first().fill('Write me something');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(1400);
+  check('an empty reply says so instead of going quiet',
+    (await page.locator('text=Nothing came back that time').count()) > 0);
+
+  /* Two: the plan comes back empty, so nothing may be built from it. */
+  await page.addInitScript(() => {
+    window.__TURNS = [];
+    window.__SCRIPT = {
+      orient: ["I can see your site.\nOFFER_INTERVIEW"],
+      analyse: ["A one page FAQ.\nFORMAT: docx\nREADBACK_COMPLETE"],
+      brief: [""],
+    };
+  });
+  await page.goto('http://localhost:5301/?page=chat', { waitUntil: 'networkidle' });
+  await page.waitForTimeout(1200);
+  await page.locator('textarea').first().fill('Make me a one page FAQ');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(1400);
+  await page.locator('button', { hasText: 'Just get on with it' }).first().click();
+  await page.waitForTimeout(2200);
+  await page.locator('button', { hasText: 'Go ahead, build it' }).first().click();
+  await page.waitForTimeout(2200);
+
+  check('an empty plan does NOT silently build a document',
+    (await page.locator('text=came back empty, so nothing was built').count()) > 0);
+  check('and the Build card comes back so there is something to press',
+    (await page.locator('text=Did I get that right?').count()) > 0);
+
+  /* Three: the plan is fine but the document comes back empty. */
+  await page.addInitScript(() => {
+    window.__TURNS = [];
+    window.__SCRIPT = {
+      orient: ["I can see your site.\nOFFER_INTERVIEW"],
+      analyse: ["A one page FAQ.\nFORMAT: docx\nREADBACK_COMPLETE"],
+      brief: ["Write a one page FAQ."],
+      generate: [""],
+    };
+  });
+  await page.goto('http://localhost:5301/?page=chat', { waitUntil: 'networkidle' });
+  await page.waitForTimeout(1200);
+  await page.locator('textarea').first().fill('Make me a one page FAQ');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(1400);
+  await page.locator('button', { hasText: 'Just get on with it' }).first().click();
+  await page.waitForTimeout(2200);
+  await page.locator('button', { hasText: 'Go ahead, build it' }).first().click();
+  await page.waitForTimeout(2600);
+
+  check('an empty document says so rather than leaving a stopped spinner',
+    (await page.locator('text=no document was written').count()) > 0);
+  check('the spinner is taken down', (await page.locator('text=Building your document').count()) === 0);
+  check('and the Build card is back', (await page.locator('text=Did I get that right?').count()) > 0);
+  await page.screenshot({ path: '/tmp/claude-0/flow-silent.png', fullPage: true });
+
   const turns = await page.evaluate(() => window.__TURNS || []);
   console.log('stages, search walk:   ', searchTurns.join(' -> '));
   console.log('stages, no marker walk:', turns.join(' -> '));

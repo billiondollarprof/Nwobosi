@@ -19,11 +19,16 @@ export function sendTurn({ stage = "orient", onMeta, onText, onDone }) {
   const reply = queue.length > 1 ? queue.shift() : (queue[0] ?? "(nothing scripted)");
   const stopReason = window.__STOP_REASON || "end_turn";
 
+  /* window.__HANG holds the turn open so the thinking line can be looked
+     at. Without it the stub answers in 30ms and the state nobody can see
+     is the state nobody can screenshot. */
+  const wait = window.__HANG ? 60000 : 30;
+
   setTimeout(() => {
     onMeta?.({ tier: "standard", stage });
     onText?.(reply);
     onDone?.({ stopReason });
-  }, 30);
+  }, wait);
 
   return () => {};
 }

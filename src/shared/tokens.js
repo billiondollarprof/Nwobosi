@@ -70,6 +70,21 @@ export const THEME_VARS = {
        is unchanged, all of it is just further off the floor. */
     "--text-2": "#A6A6B2",
     "--text-3": "#8A8A95",
+
+    /* THE COLOUR OF THE SYSTEM DOING SOMETHING.
+
+       Anthony, 2026-09-21: "reading, thinking is too faint. I think you
+       should use the platform's color, which is the navy blue, when the
+       system is running and thinking and trying to generate stuff."
+
+       He is right, and being faint was the wrong call twice over. A line
+       nobody can see is a line that does not reassure anybody, and the
+       moment it matters most is the moment somebody is wondering whether
+       the thing has died.
+
+       navyLift rather than the brand navy, because #1420A0 reads as almost
+       black on this ground. The light theme below uses the real navy. */
+    "--working": "#2E42E0",
     /* Caution and all clear, as text on their own tinted panels. Both are
        theme aware because the brand amber and green were picked to sit on
        a near black ground, and on a white card they turn into pale text
@@ -160,6 +175,9 @@ export const THEME_VARS = {
        a different family, and it stays well clear of text-2 at 8.51 to 1,
        so the two ranks still read as two ranks. */
     "--text-3": "#646D98",
+
+    /* The brand navy itself here, which is what it was made for. */
+    "--working": "#1420A0",
     "--caution": "#9A5B00",
     "--all-clear": "#0C7A31",
     "--audience-open": "#1420A0",

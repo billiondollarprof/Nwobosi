@@ -825,6 +825,38 @@ export default function Chat() {
            reached, so the reply now carries a flag and says so on screen. */
         const cutOff = stopReason === "max_tokens";
 
+        /* NOTHING CAME BACK, AND THE SCREEN USED TO SAY NOTHING ABOUT IT.
+
+           Anthony, 2026-09-21: "I was trying to create a particular
+           document, but it was not working. Then I came back and tried to
+           use that same chat to create a new document, and then this AI
+           system kept me silent. It just showed something like thinking
+           and then went quiet."
+
+           That is this, exactly. The reply bubble is only created when the
+           FIRST chunk of text arrives. No text means no bubble, so onDone
+           turned the thinking line off and left an empty space where an
+           answer should be. No error, because nothing errored: the turn
+           ran, it just produced nothing.
+
+           A turn that produces nothing is now said out loud. Which of the
+           two sentences depends on what the server told us, because "it
+           ran out of room" and "it came back empty" are different problems
+           and a person can act on the difference. */
+        if (!clean.trim()) {
+          const why = cutOff
+            ? "That ran out of room before it could say anything. Ask me again, and shorter if you can."
+            : stopReason === "end_without_done"
+            ? "That stopped before it finished. Nothing was changed, so try again."
+            : "Nothing came back that time. Nothing has changed, so try again, or say it a different way.";
+
+          updateMessages((prev) => [
+            ...prev,
+            { id: nextId(), role: "assistant", type: "error", content: why },
+          ]);
+          return;
+        }
+
         /* Built from the ref rather than inside a state updater. An
            updater has to be pure, and React deliberately calls it twice
            in development to catch exactly this: a save fired from inside
@@ -1394,9 +1426,42 @@ export default function Chat() {
         ]);
       },
 
-      /* Straight on. Nothing is built without a brief, so the only thing
-         between the two is this line. */
-      onDone: () => buildFromBrief(brief.trim()),
+      /* THE FIRST JOIN, AND IT USED TO BE ONE UNGUARDED LINE.
+
+         Anthony, 2026-09-21: "I am noticing breakage. Even the breakage of
+         moving from read-back to prompt is been breaking."
+
+         This read `onDone: () => buildFromBrief(brief.trim())` with
+         nothing checking the brief was not empty. An empty brief did not
+         stop anything: the server logs a warning and writes the document
+         anyway, with no fence. So the guardrail this whole product turns
+         on could be silently absent and nobody was told.
+
+         Now an empty brief stops, says so, and PUTS THE BUILD CARD BACK,
+         which is his rule: where the automatic path does not carry,
+         there has to be a button that says build. */
+      onDone: ({ stopReason } = {}) => {
+        if (!brief.trim()) {
+          setGenerating(false);
+          setStalled(false);
+          abortTurnRef.current = null;
+          updateMessages((prev) => [
+            ...prev.filter((m) => m.type !== "generating"),
+            {
+              id: nextId(),
+              role: "assistant",
+              type: "error",
+              content:
+                stopReason === "max_tokens"
+                  ? "The plan for this ran out of room, so nothing was built. Press build again."
+                  : "The plan for this came back empty, so nothing was built. Press build again.",
+            },
+            { id: nextId(), role: "assistant", type: "build" },
+          ]);
+          return;
+        }
+        buildFromBrief(brief.trim());
+      },
     });
   }
 
@@ -1453,10 +1518,43 @@ export default function Chat() {
         );
       },
 
-      onDone: () => {
+      onDone: ({ stopReason } = {}) => {
         setGenerating(false);
         setStalled(false);
         abortTurnRef.current = null;
+
+        /* THE SECOND JOIN, AND IT USED TO LEAVE A SPINNER THAT HAD STOPPED.
+
+           The result card is only created when the first chunk of the
+           document arrives. No text meant no card, the "generating" card
+           was never taken down, and this line quietly turned generating
+           off. So somebody sat looking at a spinner that had already
+           finished, with nothing to press.
+
+           That is the other half of what Anthony described: "it just
+           showed something like thinking and then went quiet."
+
+           Now it says what happened, takes the spinner down, and puts the
+           Build card back, so there is always something to press. The
+           brief is not lost either: briefRef still holds it, so pressing
+           build again does not start the conversation over. */
+        if (!finished.trim()) {
+          updateMessages((prev) => [
+            ...prev.filter((m) => m.type !== "generating"),
+            {
+              id: nextId(),
+              role: "assistant",
+              type: "error",
+              content:
+                stopReason === "max_tokens"
+                  ? "The document ran out of room before anything was written. Press build again, and it will start fresh."
+                  : "Nothing came back, so no document was written. Press build again.",
+            },
+            { id: nextId(), role: "assistant", type: "build" },
+          ]);
+          return;
+        }
+
         setDailyUsed((n) => Math.min(n + 1, DAILY_LIMIT));
 
         /* Into the library, so it is somewhere other than this one

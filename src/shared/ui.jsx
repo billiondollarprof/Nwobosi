@@ -428,8 +428,13 @@ export function Thinking({ stage = "orient", stalled = false }) {
        rather than sitting in silence. polite, not assertive, because it
        must not cut across them mid sentence. */
     <div
-      className="flex items-baseline text-[13px]"
-      style={{ color: "var(--text-3)", animation: "sx-rise 0.35s ease" }}
+      className="flex items-baseline text-[13px] font-medium"
+      /* THE PLATFORM'S OWN NAVY, not the faintest grey in the palette.
+         Anthony, 2026-09-21: "reading, thinking is too faint... use the
+         platform's color, which is the navy blue, when the system is
+         running." The moment this line matters most is the moment somebody
+         is wondering whether the thing has died, so it has to be seen. */
+      style={{ color: "var(--working)", animation: "sx-rise 0.35s ease" }}
       aria-live="polite"
     >
       <span>{word}</span>
