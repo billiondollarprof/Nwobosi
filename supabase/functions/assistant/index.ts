@@ -56,17 +56,44 @@ import Anthropic from "npm:@anthropic-ai/sdk@0.68.0";
    vendor was in the client, and moving a deployment to another provider
    meant editing the product rather than editing a config.
 
-   Now there are four levels named for what they are FOR, and MODEL_ID
-   below is the only place in the entire codebase that names a real model.
-   Moving to another provider is that one table. Nothing else moves, and
-   no screen changes at all.
+   Now the levels are named for what they are FOR, and MODEL_ID below is
+   the only place in the entire codebase that names a real model. Moving to
+   another provider is that one table. Nothing else moves, and no screen
+   changes at all.
 
-   A level is not a promise that the model exists here. Which levels a
-   deployment actually offers is a separate decision, and asking for one
-   that is not enabled lands back on the default rather than failing.
+   THE LADDER CAME DOWN FROM FOUR RUNGS TO TWO ON 2026-09-21. Anthony:
+
+     "that place that we did deeper and whatever, we don't even need it,
+      because this is for offices. We just need the conversational model,
+      and we should call it standard model, or you call it working model,
+      or whatever."
+
+   There used to be deeper and deepest above standard. They are gone,
+   because an office writes proposals, reports, emails and decks, and
+   standard does that work well. A rung above it cost real money per turn
+   and changed nothing anybody would notice on the page.
+
+   A COMPANY THAT NEEDS A HEAVIER BRAIN STILL GETS ONE, and this is where
+   it is given. Anthony, same day: "those ones are defined during when we
+   are deploying it for the company. If we are using Claude, we know that
+   the standard model is usually Sonnet. But if we are deploying it for the
+   company and I say, oh, they should be able to use even one more higher
+   model, like Opus. No problem."
+
+   So it is one line of MODEL_ID, set when that company is deployed, and it
+   lifts everybody in the company at once. It is never a per person setting
+   and never a screen, because the right answer is the same for all of them
+   on every job they do.
+
+   WHAT DID NOT CHANGE. The database enum still carries the two retired
+   labels. Dropping a value from a Postgres enum means rebuilding the type
+   and rewriting two tables, which is a real risk to take for a label
+   nothing reads. A row still holding deeper reads as standard through
+   levelOf in src/shared/config.js, and this function never reads the
+   column at all. See STAFF_TIER below.
    -------------------------------------------------------------------------- */
 
-const LADDER = ["conversational", "standard", "deeper", "deepest"] as const;
+const LADDER = ["conversational", "standard"] as const;
 type Tier = (typeof LADDER)[number];
 
 /* THE MAPPING. The only vendor names in the product, and they are on the
@@ -75,8 +102,6 @@ type Tier = (typeof LADDER)[number];
 const MODEL_ID: Record<Tier, string> = {
   conversational: "claude-haiku-4-5",
   standard: "claude-sonnet-5",
-  deeper: "claude-opus-5",
-  deepest: "claude-fable-5",
 };
 
 /* Dollars per million tokens, per level. Used to turn real usage into a
@@ -90,8 +115,6 @@ const MODEL_ID: Record<Tier, string> = {
 const PRICE: Record<Tier, { input: number; output: number }> = {
   conversational: { input: 1, output: 5 },
   standard: { input: 2, output: 10 },
-  deeper: { input: 5, output: 25 },
-  deepest: { input: 10, output: 50 },
 };
 
 /* ONE LEVEL FOR THE STAFF SIDE, AND IT IS STANDARD
@@ -103,12 +126,16 @@ const PRICE: Record<Tier, { input: number; output: number }> = {
    reason for, with no screen anywhere that would tell you. One good model
    everywhere is predictable, and predictable is the thing a person trusts.
 
-   The ladder, the price table and the metering all stay. It is only the
-   automatic selection that stops. The ceiling column stays on the row too,
-   unread for now, because the enterprise version of this is routing that
-   asks: the prompt stage says a step needs more than standard, and the
-   person allows it or does not. See DIRECTION.md, "Which model runs which
-   part". */
+   Since the ladder came down to two rungs this is also the only staff level
+   there is, so the line below is now a statement of fact rather than a
+   choice being declined. The price table and the metering both stay, and
+   they stay per level, because support really does run at a different one
+   and its cost has to come off the same budget correctly.
+
+   The ceiling column stays on the row, unread by this function, because
+   the enterprise version of this is routing that asks: the prompt stage
+   says a step needs more than standard, and the person allows it or does
+   not. See DIRECTION.md, "Which model runs which part". */
 const STAFF_TIER: Tier = "standard";
 
 /* Which levels take adaptive thinking. The small fast model behind
@@ -117,8 +144,6 @@ const STAFF_TIER: Tier = "standard";
 const ADAPTIVE_THINKING: Record<Tier, boolean> = {
   conversational: false,
   standard: true,
-  deeper: true,
-  deepest: true,
 };
 
 /* NO ROUNDING UP. Anthony, 2026-09-10: "why do you suppose to be rounding up

@@ -61,24 +61,29 @@ built and checked, not when it is planned.
    checked against the broken code first: it fails there with
    "orient -> orient" and nothing after it.
 
-1. **The assistant function is worth redeploying, though it is no longer
-   what is blocking you.** The fix for the cut off replies and
-   for the search refusal is written, type checked and pushed to
-   `testing`, and it is NOT live. The deployed `assistant` is still v14.
-   Until it is deployed, the chat still stops mid sentence and still
-   refuses to search when asked. Three steps are in the reply of
-   2026-09-16 and they take about two minutes.
+1. **TWO FUNCTIONS ARE WAITING ON A REDEPLOY, and one of them is broken
+   right now.** Both are REDEPLOYS, not new functions.
 
-   The site fix above stands on its own, so a document can be made without
-   this. What the redeploy adds is the root cause: the prompt stops telling
-   the first turn to volunteer a search, so it stops happening rather than
-   being caught.
+   **`invite-staff`, and this one is urgent.** Inviting a member of staff
+   has been failing since 2026-09-10 and nobody knew. The function checks
+   the level against `["haiku-4-5", "sonnet-5"]`, which are vendor model
+   names. The enum stopped holding those the day it was renamed to
+   capability levels, and the admin screen started sending `standard` the
+   same day, so every invitation comes back "That model is not available on
+   this plan." The function was last touched four days before the rename,
+   which is why it never heard about it. The repo copy is fixed. Until it
+   is deployed, no admin can invite anybody.
 
-   Why Claude did not deploy it itself: deploying through the tools means
-   retyping all 73,000 characters of the function by hand, and a single
-   slipped character in a file that handles every Claude call and the
-   company's money is not worth the two minutes it saves. The repo copy is
-   correct and checked. Deploying it from the console cannot go wrong.
+   **`assistant`, deployed v17, and the repo is ahead of it.** What the
+   redeploy carries: the read back paragraph (it owns the gaps, says which
+   file it is thinking of and why, and offers the three routes), the
+   handling for what somebody typed into "Something is wrong", the FORMAT
+   line that decides the file before the build, and the ladder coming down
+   to two rungs. None of it is live.
+
+   Why Claude did not deploy either itself: the Supabase tools are not
+   reachable from this session at all, so there is nothing to deploy
+   through. Both repo copies are type checked and both are in `testing`.
 
 2. **Per person connectors**, item 4 of the agreed order. Email, Slack,
    Notion, each staff member connecting their own. Not started.
@@ -467,6 +472,84 @@ Seventeen tests, and more of them are refusals than acceptances.
 Walked end to end: build a document, type "make it a word document", and
 the pipeline does NOT run again.
 
+### Built 2026-09-21: the ladder comes down to two rungs
+
+Anthony: "that place that we did deeper and whatever, we don't even need
+it, because this is for offices. We just need the conversational model,
+and we should call it standard model, or you call it working model, or
+whatever."
+
+And on how a company gets more: "those ones are defined during when we are
+deploying it for the company. If we are using Claude, we know that the
+standard model is usually Sonnet. But if we are deploying it for the
+company and I say, oh, they should be able to use even one more higher
+model, like Opus. No problem."
+
+WHAT THERE IS NOW. Two levels. `conversational`, which is what support
+answers customers at, and `standard`, which is what every member of staff
+runs at on every job. `deeper` and `deepest` are gone.
+
+WHERE A HEAVIER BRAIN COMES FROM. One line of `MODEL_ID` in
+`supabase/functions/assistant/index.ts`, set when that company is deployed.
+It lifts everybody in the company at once. It is never a per person setting
+and it never appears on a screen, because the right answer is the same for
+all of them on every job they do.
+
+THE PICKER IS GONE FROM ALL THREE PLACES IT APPEARED: the invite form, the
+company defaults, and every row of the staff list. A dropdown with one
+thing in it is a label pretending to be a control.
+
+AND THE STAFF ROW ONE WAS NEVER REAL. `setCeiling` moved a value in React
+state and no request ever left the browser. An admin could set somebody to
+Deeper, watch the screen agree, reload the page and find it back where it
+started. So did the company default one. Both are now a statement under
+Company defaults that says what everybody runs at, with the green support
+line kept underneath it, because an admin being walked through the screen
+asks where support sits.
+
+THE DATABASE ENUM WAS LEFT ALONE, AND NO SQL RAN. Dropping a value from a
+Postgres enum (the list of words a column is allowed to hold) means
+rebuilding the type and rewriting two tables, with a moment in the middle
+where either can fail. That is a real risk for two labels nothing reads.
+So the type keeps `deeper` and `deepest`, unused. A row still holding one
+reads as `standard` through `levelOf`, and the assistant never reads the
+column at all.
+
+What that means for a person: somebody who was set to Deeper now runs at
+Standard, like everybody else. There is no rung above it any more.
+
+**AND IT UNCOVERED AN ELEVEN DAY BREAK.** `invite-staff` was checking the
+level against `["haiku-4-5", "sonnet-5"]`, vendor model names the enum
+stopped holding on 2026-09-10. The admin screen started sending `standard`
+that same day. So every invitation since has answered "That model is not
+available on this plan", and if anything had got past the check carrying
+`sonnet-5` the insert would have failed anyway, because the enum no longer
+has that label. The function was last touched four days before the rename,
+which is why it never heard about it.
+
+Nothing could have caught it. Lint does not cross a file boundary. The type
+checker does not know a string in a browser file has to match a string in a
+Deno file. A screenshot of the invite form looks right up to the moment you
+press the button.
+
+`scripts/tests/levels.test.mjs` now does. Twenty five checks that hold four
+files to the same list of levels: `src/shared/config.js`, the assistant's
+four tables, `invite-staff`'s allowed list, and the level support runs at.
+It also refuses any vendor model name anywhere under `src/`, which is the
+whole reason the levels exist. Both bugs were put back and it failed on
+both before being kept.
+
+WHAT WAS CHECKED. The People section of the admin screen was rendered and
+looked at, phone and desktop, both themes, through a new `?page=access`
+route on the harness. Element edges measured at 320, 360, 390 and 430, all
+clean. Clicked: the support toggle still flips, Revoke still removes a row,
+Send invite is still refused until the three boxes are filled and enabled
+once they are, and there is one `select` left on the whole screen, which is
+outputs a day.
+
+NEEDS TWO REDEPLOYS, both REDEPLOYS and not new: `invite-staff` and
+`assistant`.
+
 ### Logged on 2026-09-16, and he said not to build them today
 
 He asked for these to be written down rather than built, to save credits
@@ -547,7 +630,8 @@ before the video. They are real and they are his decisions, not ideas.
   not reach back into Canva and move things, because placing elements
   needs editing the free plan does not give us.
 - **Conversational is back in the ladder**, green, labelled support, and
-  locked.
+  locked. *(Overtaken 2026-09-21 along with the picker itself. The green
+  support line survives, as a line of text under Company defaults.)*
 
 - **Canva moved from the admin to the person.** integration_tokens is keyed
   (staff_id, provider) now. The Design panel is gone from the admin, and
@@ -560,7 +644,9 @@ before the video. They are real and they are his decisions, not ideas.
   /workspace address.
 - **All three levels are offered:** standard, deeper, deepest, default
   standard. Conversational is what support runs at on its own, so nobody
-  picks it.
+  picks it. *(Overtaken 2026-09-21. The ladder is two rungs now,
+  conversational for support and standard for everything else, and there
+  is no picker at all. See the 2026-09-21 entry.)*
 - **Section order:** integrations, the problem, what this changes, how it
   works, the read back. Sold before told how.
 - **The fourth outcome card** rewritten so it reads once.

@@ -151,30 +151,41 @@ export const MAX_FILES_PER_MESSAGE = 4;
 /* --------------------------------------------------------------------------
    SECTION: Capability levels
 
-   WHY THESE ARE LEVELS AND NOT MODEL NAMES
-   This table used to read "Haiku 4.5", "Sonnet 5", "Opus 5", "Fable 5",
-   with each one's price per million tokens beside it. Anthony, 2026-09-10:
+   TWO RUNGS, AND ONLY ONE OF THEM IS ABOUT STAFF WORK
 
-     "The name should not be shown because tomorrow we might be installing
-      the same thing for a company using OpenAI. So I want to keep the same
-      architecture, the same design, but just changing the model brain."
+   Anthony, 2026-09-20: "that place that we did deeper and whatever, we
+   don't even need it, because this is for offices. We just need the
+   conversational model, and we should call it standard model, or you call
+   it working model, or whatever."
 
-   That is the reason, and it is architectural rather than cosmetic. This
-   file ships inside the browser bundle. Every vendor name in here was a
-   vendor name in the client, so swapping the brain meant editing the
-   product rather than editing a config.
+   There were four: conversational, standard, deeper, deepest. Deeper and
+   deepest are gone, and the reason is what this product is for. An office
+   writes proposals, reports, emails and decks. Standard does that work and
+   does it well, so a rung above it was a knob that cost money and never
+   changed an outcome anybody would notice.
 
-   So: four levels, named for what they are FOR. Which actual model sits
-   behind a level is decided on the server and appears on no screen and in
-   no bundle. Moving a deployment to another provider is then a mapping on
-   the server, and nothing here changes at all.
+   WHICH MODEL SITS BEHIND STANDARD IS A DEPLOYMENT DECISION, NOT A SETTING.
+   Anthony, same day: "those ones are defined during when we are deploying
+   it for the company. If we are using Claude, we know that the standard
+   model is usually Sonnet. But if we are deploying it for the company and
+   I say, oh, they should be able to use even one more higher model, like
+   Opus. No problem."
+
+   So a company that wants a heavier brain gets one, and it gets it by a
+   change to MODEL_ID in supabase/functions/assistant/index.ts when that
+   company is set up. Nobody picks it on a screen, because the right answer
+   is the same for everybody in that company on every job they do.
+
+   WHY LEVELS AND NOT MODEL NAMES, which has not changed since 2026-09-10.
+   Anthony: "The name should not be shown because tomorrow we might be
+   installing the same thing for a company using OpenAI." This file ships
+   inside the browser bundle, so a vendor name in here is a vendor name in
+   the client. There are none, and the mapping lives on the server.
 
    THE MAPPING TODAY, kept here as a comment and nowhere else, because a
    comment cannot be rendered onto a screen by accident:
-     conversational  the small fast model
-     standard        the everyday working model
-     deeper          the heavier reasoning model
-     deepest         the most capable model available
+     conversational  the small fast model, support only
+     standard        the everyday working model, everything staff do
 
    NO PRICES EITHER. The old table printed dollars per million tokens to an
    admin, which is both a token count and a vendor's rate card. Cost reaches
@@ -190,82 +201,51 @@ export const CAPABILITY_LEVELS = {
   },
   standard: {
     label: "Standard",
-    use: "Almost all office work",
+    use: "All office work",
     detail:
-      "Reports, proposals, emails, summaries, spreadsheets, decks. Around nine jobs in ten land here and it handles them well.",
-  },
-  deeper: {
-    label: "Deeper",
-    use: "Work that needs thinking",
-    detail:
-      "Research, analysis, strategy, new ideas. For work where the answer is not already sitting in the company's material.",
-  },
-  deepest: {
-    label: "Deepest",
-    use: "The hardest work",
-    detail:
-      "For work where being right matters more than what it costs. Rare. Most companies never need it.",
+      "Reports, proposals, emails, summaries, spreadsheets, decks. Everything a member of staff asks for runs here.",
   },
 };
 
-/* Order matters. This is the ladder an admin raises somebody up. */
-export const LEVEL_ORDER = ["conversational", "standard", "deeper", "deepest"];
+/* Order matters where both are listed together: support first, then the
+   level the work runs at. */
+export const LEVEL_ORDER = ["conversational", "standard"];
 
+/* What every member of staff runs at, and there is no second option. */
 export const DEFAULT_LEVEL = "standard";
 
-/* WHAT AN ADMIN ACTUALLY PICKS FROM, and it is three of the four.
-
-   It was conversational and standard only, which Anthony set that way for
-   a competition where the cost of the top two mattered. He lifted that on
-   2026-09-16: "let the other four be part of the access. But by default,
-   it's always on standard for staffs."
-
-   CONVERSATIONAL IS NOT IN THE LIST, and that is deliberate rather than a
-   leftover. Anthony: "we already know that conversational is standard for
-   customer care. Nobody needs to select that." It is the level the support
-   assistant runs at on its own, so it is a fact about support rather than
-   a choice anybody makes about a staff member. Leaving it in the picker
-   would be offering somebody a setting whose only correct value is already
-   decided for them, which is the kind of knob this product does not show.
-
-   It stays in CAPABILITY_LEVELS and in LEVEL_ORDER, because support really
-   does run at it and a row already holding it still has to read properly. */
-export const OFFERED_LEVELS = ["standard", "deeper", "deepest"];
-
-/* SHOWN IN THE LIST, GREYED, NEVER PICKABLE.
-
-   Anthony, 2026-09-16: "I didn't think removing conversational was okay.
-   You can keep it there, label it in green, support. And it's not
-   pickable. It's just there... It just makes the walkthrough make more
-   sense because I have to do explanation."
-
-   So it is in the ladder where somebody expects to see it, marked as the
-   support level and locked. Taking it out entirely left a gap an admin
-   has to be told about; leaving it selectable would offer a setting whose
-   only right answer is already decided. Present and locked says both
-   things at once, and it gives him something to point at. */
+/* The level support answers customers at. It is a fact about support, not
+   a choice anybody makes, so it is named here and never offered. */
 export const SUPPORT_LEVEL = "conversational";
 
-/* READING A ROW WRITTEN BEFORE THE RENAME.
+/* READING A ROW WRITTEN BEFORE TODAY.
 
-   model_ceiling used to hold a vendor's model name. Those values are being
-   renamed in the database to the level names above. This maps an old value
-   to its level so a row, a cached session, or a deployment that has not run
-   the rename yet still reads correctly instead of showing an empty box.
+   model_ceiling has held three different vocabularies now. First a vendor's
+   model names, then four levels, now two. A row written under either of the
+   older ones still has to read properly, so every retired value maps to the
+   level it becomes.
 
-   Anything already a level passes straight through. Anything unrecognised
-   comes back as the default, because a ceiling nobody can read is not a
-   reason to show somebody a broken screen. */
-const RENAMED_FROM = {
+   DEEPER AND DEEPEST COME BACK AS STANDARD, and that is the real behaviour
+   change, not a display trick. A person who was set to deeper now runs at
+   standard like everybody else, because there is no rung above standard any
+   more. Their company gets a heavier brain by the deployment choosing one,
+   which lifts standard itself for all of them at once.
+
+   Anything already a live level passes straight through. Anything
+   unrecognised comes back as the default, because a ceiling nobody can read
+   is not a reason to show somebody a broken screen. */
+const RETIRED = {
   "haiku-4-5": "conversational",
   "sonnet-5": "standard",
-  "opus-5": "deeper",
-  "fable-5": "deepest",
+  "opus-5": "standard",
+  "fable-5": "standard",
+  deeper: "standard",
+  deepest: "standard",
 };
 
 export function levelOf(stored) {
   if (stored && Object.hasOwn(CAPABILITY_LEVELS, stored)) return stored;
-  return RENAMED_FROM[stored] ?? DEFAULT_LEVEL;
+  return RETIRED[stored] ?? DEFAULT_LEVEL;
 }
 
 /* --------------------------------------------------------------------------

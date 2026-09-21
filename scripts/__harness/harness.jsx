@@ -4,8 +4,9 @@
 
    Which page it shows comes off the query string:
 
-     /            the support queue and a cut off reply
-     /?page=chat  the chat, with a scripted assistant behind it
+     /              the support queue and a cut off reply
+     /?page=chat    the chat, with a scripted assistant behind it
+     /?page=access  the People part of the admin screen
 
    The chat one is the important one. vite.harness.config.js swaps the
    assistant module for a stub that replies with whatever the test puts in
@@ -18,6 +19,7 @@ import { MemoryRouter } from "react-router-dom";
 import { ThemeProvider } from "../../src/shared/theme.jsx";
 import Support from "../../src/pages/Support.jsx";
 import Chat, { ChatBubble } from "../../src/pages/Chat.jsx";
+import { AccessSection } from "../../src/pages/Admin.jsx";
 import RefreshOrKeep from "../../src/shared/RefreshOrKeep.jsx";
 import "../../src/index.css";
 
@@ -90,12 +92,33 @@ function ReplacePreview() {
   );
 }
 
+/* The People part of the admin screen. It reads the staff list out of
+   fake-session.js, so the invite form, the company defaults and the staff
+   rows can all be looked at and clicked without a workspace. */
+function AccessPreview() {
+  return (
+    <div className="min-h-screen p-4" style={{ backgroundColor: "var(--bg)" }}>
+      <div className="max-w-3xl mx-auto">
+        <AccessSection me={me} />
+      </div>
+    </div>
+  );
+}
+
 const page = new URLSearchParams(window.location.search).get("page");
 
 /* WorkSwitch and the chat both call useNavigate, so the tree needs a
    router even here. */
 createRoot(document.getElementById("root")).render(
   <MemoryRouter>
-    <ThemeProvider>{page === "chat" ? <Chat /> : page === "replace" ? <ReplacePreview /> : <Pieces />}</ThemeProvider>
+    <ThemeProvider>{page === "chat" ? (
+        <Chat />
+      ) : page === "replace" ? (
+        <ReplacePreview />
+      ) : page === "access" ? (
+        <AccessPreview />
+      ) : (
+        <Pieces />
+      )}</ThemeProvider>
   </MemoryRouter>,
 );

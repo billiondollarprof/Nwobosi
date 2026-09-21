@@ -85,8 +85,6 @@ import {
   WORKFLOW_PLAN_NOTE,
   CAPABILITY_LEVELS,
   SKILL_LABELS,
-  LEVEL_ORDER,
-  OFFERED_LEVELS,
   DEFAULT_LEVEL,
   levelOf,
   BRAND_ASSET_EDGE,
@@ -2068,7 +2066,6 @@ export function AccessSection({ me }) {
   }, [me?.company?.id]);
 
   const [defaultLimit, setDefaultLimit] = useState(5);
-  const [defaultCeiling, setDefaultCeiling] = useState(DEFAULT_LEVEL);
 
   /* The real people on this company, read under the admin's own
      identity so row level security decides who is visible. Email is not
@@ -2087,6 +2084,13 @@ export function AccessSection({ me }) {
           name: r.name ?? "Unnamed",
           email: "",
           role: r.role ?? "Not set",
+          /* READ, MAPPED, AND NOT SHOWN ANYWHERE ON THIS SCREEN.
+             The column still exists and a row can still be holding a
+             retired value like deeper, so it comes through levelOf
+             rather than raw. Nothing renders it today: the per person
+             picker is gone, see the staff row below. It is kept read
+             so that the day anything does show it, it shows a level
+             this version of the product understands. */
           ceiling: levelOf(r.model_ceiling),
           canSupport: r.can_support === true,
           limit: r.daily_limit ?? 5,
@@ -2101,7 +2105,6 @@ export function AccessSection({ me }) {
   const [inviteName, setInviteName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("");
-  const [inviteCeiling, setInviteCeiling] = useState(DEFAULT_LEVEL);
   const [inviteLimit, setInviteLimit] = useState(5);
   const [inviting, setInviting] = useState(false);
   const [inviteError, setInviteError] = useState("");
@@ -2150,7 +2153,7 @@ export function AccessSection({ me }) {
       name: inviteName.trim(),
       email: inviteEmail.trim(),
       role: inviteRole.trim(),
-      ceiling: inviteCeiling,
+      ceiling: DEFAULT_LEVEL,
       dailyLimit: Number(inviteLimit) || 5,
     });
 
@@ -2172,6 +2175,13 @@ export function AccessSection({ me }) {
           name: r.name ?? "Unnamed",
           email: "",
           role: r.role ?? "Not set",
+          /* READ, MAPPED, AND NOT SHOWN ANYWHERE ON THIS SCREEN.
+             The column still exists and a row can still be holding a
+             retired value like deeper, so it comes through levelOf
+             rather than raw. Nothing renders it today: the per person
+             picker is gone, see the staff row below. It is kept read
+             so that the day anything does show it, it shows a level
+             this version of the product understands. */
           ceiling: levelOf(r.model_ceiling),
           limit: r.daily_limit ?? 5,
           used: 0,
@@ -2183,7 +2193,6 @@ export function AccessSection({ me }) {
     setInviteName("");
     setInviteEmail("");
     setInviteRole("");
-    setInviteCeiling(DEFAULT_LEVEL);
     setInviteLimit(5);
   }
 
@@ -2203,10 +2212,6 @@ export function AccessSection({ me }) {
       setStaffNote(result.reason);
       setTimeout(() => setStaffNote(""), 6000);
     }
-  }
-
-  function setCeiling(id, ceiling) {
-    setStaff((prev) => prev.map((s) => (s.id === id ? { ...s, ceiling } : s)));
   }
 
   return (
@@ -2303,21 +2308,6 @@ export function AccessSection({ me }) {
               ))}
             </SelectInput>
           </Field>
-          <Field
-            label="How far they can go"
-            hint="The most this person's work is allowed to reach. Deeper and Deepest are held back in this demo to keep costs down. Your own deployment decides what to offer."
-          >
-            {/* OFFERED_LEVELS, not every level. The two this deployment
-                holds back were listed once, and choosing one would have
-                been accepted by the screen and refused by the server,
-                which is a promise the product cannot keep. */}
-            <LevelSelect
-              value={inviteCeiling}
-              onChange={(e) => setInviteCeiling(e.target.value)}
-              options={OFFERED_LEVELS}
-            />
-          </Field>
-
           <div className="sm:col-span-2">
             <PrimaryButton
               type="submit"
@@ -2347,7 +2337,7 @@ export function AccessSection({ me }) {
       {/* Staff list */}
       {/* Company defaults */}
       <GlassPanel className="p-6">
-        <SectionHeading hint="Applies to every new staff member automatically. Anyone without a custom setting falls back to this.">
+        <SectionHeading hint="What a new staff member starts on, and what everybody's work runs at.">
           Company defaults
         </SectionHeading>
 
@@ -2360,18 +2350,50 @@ export function AccessSection({ me }) {
               onChange={(e) => setDefaultLimit(e.target.value)}
             />
           </Field>
-          <Field label="How far anyone can go by default" hint="Applies to a person with no setting of their own.">
-            <LevelSelect
-              value={defaultCeiling}
-              onChange={(e) => setDefaultCeiling(e.target.value)}
-              options={LEVEL_ORDER}
-            />
-          </Field>
+          {/* A STATEMENT, NOT A PICKER, SINCE 2026-09-21.
+
+              There is one level staff work runs at, so a dropdown here
+              would be a box with one thing in it. That is not a choice, it
+              is a label pretending to be a control, and an admin who opens
+              it learns nothing and closes it again.
+
+              A company that needs a heavier brain still gets one. It is
+              decided when that company is deployed, by the mapping in
+              supabase/functions/assistant/index.ts, and it lifts everybody
+              in the company at once. Nobody sets it per person, because the
+              right answer is the same for all of them on every job.
+
+              The support line stays, green, because an admin being walked
+              through this screen asks where support sits and the answer
+              should be on the screen rather than in somebody's mouth. */}
+          <div className="mb-4">
+            <span
+              className="block text-[12px] font-semibold uppercase tracking-wide mb-1.5"
+              style={{ color: "var(--text-3)" }}
+            >
+              How far work reaches
+            </span>
+            <p className="text-[13px] leading-relaxed" style={{ color: "var(--text-1)" }}>
+              {CAPABILITY_LEVELS[DEFAULT_LEVEL].label}, for everybody.{" "}
+              {CAPABILITY_LEVELS[DEFAULT_LEVEL].detail}
+            </p>
+            <p
+              className="text-[11.5px] mt-1.5 flex items-center gap-1.5"
+              style={{ color: BRAND.green }}
+            >
+              <span
+                className="w-1.5 h-1.5 rounded-full shrink-0"
+                style={{ backgroundColor: BRAND.green }}
+              />
+              Support answers customers at {CAPABILITY_LEVELS[SUPPORT_LEVEL].label}. Nobody sets
+              that.
+            </p>
+          </div>
         </div>
       </GlassPanel>
 
       <GlassPanel className="p-6">
-        <SectionHeading hint="Change anyone's ceiling or daily limit, give them the support queue, or revoke their access. You cannot revoke yourself.">
+        <SectionHeading hint="Put somebody on the support queue, or take their access away. You cannot take away your own.">
           Staff
         </SectionHeading>
 
@@ -2404,25 +2426,19 @@ export function AccessSection({ me }) {
                 </p>
               </div>
 
-              {/* 132px was measured against "Standard" and never against
-                  "Conversational", which is the longest label in the list
-                  and the one that got cut to "Conversatior" on a tablet.
+              {/* THE PER PERSON LEVEL PICKER WAS HERE AND IT IS GONE.
 
-                  A select shows its own arrow inside that width, so the
-                  text has about 18px less than the box suggests, which is
-                  why it looked fine in the markup and wrong on screen.
-                  156px fits the longest label with the arrow, checked at
-                  768 and 1024. */}
-              <div className="shrink-0 w-[156px]">
-                <LevelSelect
-                  value={person.ceiling}
-                  onChange={(e) => setCeiling(person.id, e.target.value)}
-                  options={OFFERED_LEVELS}
-                  compact
-                  className="py-1.5 text-[12.5px]"
-                  ariaLabel={`How far ${person.name} can go`}
-                />
-              </div>
+                  Two reasons, and the second one is worse than the first.
+
+                  One: there is a single level now, so the box held one
+                  thing. Two: it never wrote anything. onChange moved a
+                  value in React state and no request ever left the browser,
+                  so an admin could set somebody to Deeper, watch the screen
+                  agree, reload the page and find it back where it started.
+
+                  Both problems have the same fix, which is not showing a
+                  control for something nobody decides. How far work reaches
+                  is said once in Company defaults, above. */}
 
               {/* SUPPORT, as a toggle on the person.
 
@@ -2512,89 +2528,6 @@ export function AccessSection({ me }) {
       </GlassPanel>
 
     </div>
-  );
-}
-
-/* ==========================================================================
-   CHOOSING HOW FAR SOMEBODY CAN GO
-
-   WHY THE DESCRIPTION LIVES HERE AND NOT IN A PANEL OF ITS OWN
-
-   There used to be a panel at the bottom of this screen called "What the
-   assistant can be allowed to do", listing all four levels with what each
-   one is for. Anthony, 2026-09-15: "that place is pointless, because that
-   capability description can just be part of the selector... when admin
-   clicks it, he sees the line completely as he's selecting, so he knows
-   what he's selecting."
-
-   He is right, and the reason is about when a person needs the answer. An
-   admin picking a level needs to know what Deeper means AT THE MOMENT THEY
-   PICK IT. A reference block further down the page is read by nobody,
-   because by the time you scroll to it you have already chosen, and a
-   description you read after choosing has not helped you choose.
-
-   So the meaning travels with the control. Pick a level and the line under
-   it changes to say what that level is for.
-
-   TWO LENGTHS, because two places need different amounts of room.
-   A form has a column to itself and gets the full sentence. A row in the
-   staff list has three other controls beside it, so it gets the short
-   line, which is still the answer to "what is this for".
-   ========================================================================== */
-
-function LevelSelect({ value, onChange, options, compact = false, ariaLabel, className = "" }) {
-  const level = CAPABILITY_LEVELS[value];
-
-  return (
-    <>
-      <SelectInput value={value} onChange={onChange} aria-label={ariaLabel} className={className}>
-        {/* THE SUPPORT LEVEL SITS AT THE TOP, GREEN AND LOCKED.
-
-            It is not a choice anybody makes. Support runs at it on its
-            own, so an admin selecting it for a staff member would be
-            answering a question that is already answered. But taking it
-            out of the ladder altogether left a gap, and a gap is a thing
-            somebody has to be told about instead of shown.
-
-            disabled, so it cannot be picked by mouse, keyboard or a
-            screen reader. The green is set inline because option styling
-            through a class is ignored by most browsers. */}
-        <option
-          value={SUPPORT_LEVEL}
-          disabled
-          style={{ color: BRAND.green }}
-        >
-          {CAPABILITY_LEVELS[SUPPORT_LEVEL].label} — support
-        </option>
-        {options.map((key) => (
-          <option key={key} value={key}>
-            {CAPABILITY_LEVELS[key].label}
-          </option>
-        ))}
-      </SelectInput>
-
-      {/* aria-live, so somebody using a screen reader hears the meaning
-          change when they change the choice. Without it the description
-          updates silently and only a person looking at it benefits. */}
-      {/* Said in words as well as shown in the list, for the person who
-          never opens the dropdown. Only where there is room for it. */}
-      {!compact && (
-        <p className="text-[11.5px] mt-1.5 flex items-center gap-1.5" style={{ color: BRAND.green }}>
-          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: BRAND.green }} />
-          Support answers customers at Conversational. Nobody sets that.
-        </p>
-      )}
-
-      {level && (
-        <p
-          className={compact ? "text-[11.5px] mt-1 leading-snug" : "text-[12px] mt-1.5 leading-relaxed"}
-          style={{ color: "var(--text-3)" }}
-          aria-live="polite"
-        >
-          {compact ? level.use : level.detail}
-        </p>
-      )}
-    </>
   );
 }
 

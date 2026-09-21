@@ -31,9 +31,24 @@ function json(body: unknown, status = 200) {
   });
 }
 
-/* A staff member may never be given a model their company's own default
-   does not reach. Fable and Opus are deliberately not offered. */
-const ALLOWED_CEILINGS = ["haiku-4-5", "sonnet-5"];
+/* THIS LIST WAS WRONG AND IT WAS BREAKING EVERY INVITATION. Fixed
+   2026-09-21.
+
+   It read ["haiku-4-5", "sonnet-5"], which are vendor model names. The
+   enum behind staff.model_ceiling stopped holding those on 2026-09-10,
+   when it was renamed to capability levels, and the admin screen started
+   sending a level the same day. This function was last touched four days
+   before that, so it never heard about it.
+
+   That broke inviting a member of staff twice over. First the screen sent
+   "standard" and this check refused it as not available. Second, if
+   anything had got past the check carrying "sonnet-5", the insert below
+   would have failed anyway, because the enum no longer has that label.
+
+   It is levels now, which is what the column actually holds. Two of them,
+   because the ladder came down from four rungs to two on 2026-09-21. See
+   the header of supabase/functions/assistant/index.ts. */
+const ALLOWED_CEILINGS = ["conversational", "standard"];
 
 /* Where the invitation link points. Deliberately read here and never from
    the request: an admin inviting their own staff could otherwise have the
@@ -80,14 +95,14 @@ Deno.serve(async (req) => {
   const name = String(body?.name ?? "").trim();
   const email = String(body?.email ?? "").trim().toLowerCase();
   const role = String(body?.role ?? "").trim();
-  const ceiling = String(body?.ceiling ?? "sonnet-5");
+  const ceiling = String(body?.ceiling ?? "standard");
   const dailyLimit = Math.min(Math.max(Number(body?.dailyLimit) || 5, 1), 100);
 
   if (!name) return json({ ok: false, reason: "Their name is needed." }, 400);
   if (!email || !email.includes("@")) return json({ ok: false, reason: "A real work email is needed." }, 400);
   if (!role) return json({ ok: false, reason: "Their job role is needed." }, 400);
   if (!ALLOWED_CEILINGS.includes(ceiling)) {
-    return json({ ok: false, reason: "That model is not available on this plan." }, 400);
+    return json({ ok: false, reason: "That is not a level this deployment offers." }, 400);
   }
 
   /* Who is asking, read under their own identity so the database decides

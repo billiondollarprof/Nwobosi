@@ -419,9 +419,30 @@ the right tool. A company that wants Opus at the top gets Opus at the top.
 That is a deployment setting, not a product change, and no screen ever
 names either one.
 
-This touches: `LADDER`, `MODEL_ID`, `PRICE` and `ADAPTIVE_THINKING` in the
-assistant function, the database enum behind `model_ceiling`, and the
-admin's level selector. It is a real piece of work and it is not started.
+**BUILT 2026-09-21.** `LADDER`, `MODEL_ID`, `PRICE` and `ADAPTIVE_THINKING`
+in the assistant function are two rungs. `CAPABILITY_LEVELS` and
+`LEVEL_ORDER` in `src/shared/config.js` are two rungs. The admin's level
+selector is gone from all three places it appeared, and a statement stands
+where the company default one was.
+
+**THE DATABASE ENUM WAS LEFT ALONE, ON PURPOSE.** Dropping a value from a
+Postgres enum (the list of words a column is allowed to hold) means
+rebuilding the type and rewriting two tables, and there is a moment in the
+middle where either can fail. That is a real risk to take for two labels
+nothing reads any more. So `deeper` and `deepest` stay in the type and go
+unused. A row still holding one reads as `standard` through `levelOf`, and
+the assistant never reads the column at all.
+
+**Somebody set to deeper now runs at standard**, because there is no rung
+above standard any more. Their company gets a heavier brain by the
+deployment choosing one, and that lifts everybody in the company at once.
+
+**AND IT UNCOVERED A LIVE BREAK.** `invite-staff` was still checking the
+ceiling against `["haiku-4-5", "sonnet-5"]`, which are vendor model names
+the enum stopped holding on 2026-09-10. So from that day, inviting a member
+of staff answered "That model is not available on this plan" every time.
+Eleven days. It is fixed, and `scripts/tests/levels.test.mjs` now refuses
+any two of these files disagreeing about what the levels are.
 
 ---
 
@@ -461,7 +482,12 @@ Honest state, so nobody reading this thinks it is all done.
    them. Today every deployment truthfully answers "none is connected
    here", because no storage connector is wired up. When one is, only that
    file changes.
-5. **The ladder is still four rungs.** It should be two.
+5. ~~The ladder is still four rungs.~~ **DONE 2026-09-21.** Two rungs,
+   conversational for support and standard for everything staff do. No
+   picker anywhere, because a company that needs a heavier brain gets one
+   at deployment. The database enum keeps the two retired labels and
+   nothing reads them. Fixed an eleven day break in `invite-staff` on the
+   way past. Needs the `assistant` and `invite-staff` redeploy.
 6. **Design is wired to Canva by name**, rather than to whichever design
    platform a deployment connected.
 7. ~~The read back does not SAY which file it is thinking of.~~ **DONE
