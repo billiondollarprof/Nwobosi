@@ -69,6 +69,119 @@ but", not silence. A plain yes.
 
 ---
 
+## THE THREE WAYS YOU GIVE IT SOMETHING, AND WHY THERE IS NO FOURTH
+
+Anthony, 2026-09-21: "at this point in time we all assume that the
+assistant already knows what is in the knowledge base. So you can't point
+it to knowledge base since you don't even know what's there."
+
+That is the right way round and it decides the whole interview. The staff
+member is never asked which company file to use, because they do not know
+what is in there and it is not their job to. Working that out is the
+assistant's job and it is one of the reasons they are better off with it.
+
+So there are exactly three things a person can hand over, and the
+interview should offer all three rather than just waiting:
+
+1. **Type or paste it.**
+2. **Upload a file**, at any point, during the interview or at the read
+   back.
+3. **Send it looking**, when the thing is public and they do not have it:
+   a figure, a competitor's pricing, a standard. Either it offers, or they
+   tell it to go. Either way they approve before it goes and approve each
+   finding before it enters the work, and every finding carries the link
+   so they can check it themselves. If it is wrong they drop it and go and
+   find the right one.
+
+**Searching is available during the interview AND at the read back.** Not
+one stage. Both.
+
+---
+
+## HOW THE INTERVIEW ENDS, AND WHAT THE READ BACK MUST CONTAIN
+
+Two ways out, and they are not the same:
+
+- **You gave it everything it asked for.**
+- **You told it to get on with what it has.** Anthony: "you can assure the
+  agent yourself that they can continue with what is available."
+
+**In the second case the read back has to own the gaps.** His words: "they
+can just read back what they have and then show you those areas that they
+pointed gap that you did not provide, what they have decided to do with
+it."
+
+So the read back is not only what it understood. Where something is
+missing it says what is missing AND what it has decided to do about it, so
+that decision is visible before it becomes a document rather than
+afterwards.
+
+**And it says which file it is thinking of making.** Anthony: "it's
+thinking it's PDF, but if it's otherwise, you should note it, or it's
+thinking it's Word document, .docx. But if it's otherwise, you note."
+Said out loud, as a thought with an invitation to correct it, not a silent
+decision.
+
+**Then it offers the three routes, in one line.** More detail, point out
+what is wrong, or send me looking. Anthony: "you're free to provide more
+details. If something is wrong, point it out for a change. And you can
+also point, if you would love me to search for anything."
+
+---
+
+## IT RAISES WHAT IS CONNECTED, AT THE READ BACK
+
+Anthony: "during the read-back, the agent can also ask you if it detects
+that it's connected to places where it can easily get information, maybe
+from your Gmail, your drives, your storage, Slack. It can also ask you if
+they could get that information from those places, if it's connected."
+
+So where a real connector exists and could answer a gap, it offers.
+Where nothing is connected, it knows, and it either says so plainly or
+stays quiet. What it never does is offer to look somewhere it cannot
+reach.
+
+---
+
+## STYLE COMES FROM SOMETHING REAL, NOT FROM A DESCRIPTION
+
+Anthony: "the agent can even ask you if you have a document that you would
+love them to follow the same style. You can also upload it so they can use
+that style when they are writing prompt."
+
+Two sources, and both are things that already exist rather than adjectives
+somebody has to invent:
+
+- **A document they upload**, during the interview or at the read back,
+  whose style is then carried into the prompt.
+- **Work it made before.** "They can remember it and point back to it.
+  That's why I said we create a log or something." See STYLE-MEMORY.md,
+  which is specced and not built.
+
+---
+
+## THE BREAKAGE HE HAS SEEN, AND THE RULE THAT FIXES IT
+
+Anthony: "I am noticing breakage. Even the breakage of moving from
+read-back to prompt is been breaking."
+
+Two joins carry the whole flow and both have failed in front of him:
+
+- read back → prompt
+- prompt → document
+
+**Neither join may ever be silent.** Where it cannot carry on by itself,
+it must put a button on screen that says build, and pressing it carries
+on. His words: "if it cannot automatically build... it can make it to
+spawn this thing that you click and say build, and it builds in that
+format that it has asked you during interview."
+
+That is the same rule as everywhere else in this file: no exit is never
+acceptable, and a person staring at a stopped conversation with nothing to
+press is the worst thing this product can do.
+
+---
+
 ## "SOMETHING IS WRONG" OPENS A BOX. IT DOES NOT GUESS.
 
 Anthony, 2026-09-21, correcting a first attempt that had the model suggest
@@ -330,3 +443,16 @@ Honest state, so nobody reading this thinks it is all done.
 5. **The ladder is still four rungs.** It should be two.
 6. **Design is wired to Canva by name**, rather than to whichever design
    platform a deployment connected.
+7. **The read back does not SAY which file it is thinking of.** It decides
+   silently. It should say it as a thought and invite a correction.
+8. **The read back does not own the gaps.** Where somebody said get on
+   with it, it should name what was missing and what it decided to do.
+9. **The read back does not offer the three routes** in a line: more
+   detail, point out what is wrong, send me looking.
+10. **The two joins can still fail silently.** read back to prompt, and
+    prompt to document. Both need a button that says build when the
+    automatic path does not carry.
+11. **Style cannot be taken from an uploaded document**, and previous work
+    is not remembered. STYLE-MEMORY.md is specced, not built.
+12. **Connected tools are not raised at the read back**, because no
+    connector that could answer a gap exists yet.
