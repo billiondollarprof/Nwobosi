@@ -52,8 +52,15 @@ if (!alreadyUp) {
   }
 }
 
-const run = spawn("node", ["scripts/__harness/flow.cjs"], { stdio: "inherit" });
+/* Both walks, against the one server. flow.cjs covers the chat's stages;
+   sources.cjs covers the knowledge base, where a delete that reports
+   success and removes nothing is invisible from the screen. */
+let worst = 0;
+for (const walk of ["scripts/__harness/flow.cjs", "scripts/__harness/sources.cjs"]) {
+  const run = spawn("node", [walk], { stdio: "inherit" });
+  const code = await new Promise((resolve) => run.on("close", resolve));
+  if (code) worst = code;
+}
 
-const code = await new Promise((resolve) => run.on("close", resolve));
 if (server) server.kill();
-process.exit(code ?? 1);
+process.exit(worst);

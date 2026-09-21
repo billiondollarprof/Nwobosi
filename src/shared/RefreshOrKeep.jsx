@@ -32,6 +32,18 @@
    Two readings of one page weeks apart are how a knowledge base ends up
    telling a customer last month's price. Somebody may still want both, to
    compare. They get told what it means rather than being stopped.
+
+   IT ALSO SERVES A NAME CLASH NOW, since 2026-09-21
+   Anthony: "when the file still exists, if it sees that the contents are
+   similar... better still suggest a replacement." Uploading a file with a
+   name you already have used to get a red line telling you to pick a
+   different name, which is the product arguing with somebody about their
+   own files.
+
+   It is the same question with a different subject, so it is the same
+   dialog with different words. Every piece of copy is a prop with the link
+   wording as its default, so the link path is byte for byte what it was
+   and cannot regress while the file path gets its own sentences.
    ========================================================================== */
 
 import { useEffect, useRef } from "react";
@@ -39,7 +51,20 @@ import { RefreshCw } from "lucide-react";
 
 import { PrimaryButton, Spinner } from "./ui.jsx";
 
-export default function RefreshOrKeep({ address, addedWhen, busy = false, onCancel, onReplace, onKeepBoth }) {
+export default function RefreshOrKeep({
+  address,
+  addedWhen,
+  busy = false,
+  onCancel,
+  onReplace,
+  onKeepBoth,
+  /* The copy. Defaults are the link wording this dialog was written for. */
+  title = "You already have this page",
+  lead = null,
+  note = "Keeping both leaves two readings of the same page in the knowledge base, which is how a customer ends up being told last month's answer.",
+  replaceLabel = "Read it again and replace the old one",
+  busyLabel = "Reading it",
+}) {
   const cancelRef = useRef(null);
 
   useEffect(() => {
@@ -96,16 +121,19 @@ export default function RefreshOrKeep({ address, addedWhen, busy = false, onCanc
               className="text-[16px] font-semibold leading-snug"
               style={{ color: "var(--text-1)" }}
             >
-              You already have this page
+              {title}
             </h2>
             <p className="text-[13.5px] leading-relaxed mt-1.5" style={{ color: "var(--text-2)" }}>
-              <span className="break-words" style={{ color: "var(--text-1)" }}>{address}</span> was
-              read {addedWhen ? `on ${addedWhen}` : "before"}, and what it said then is what your
-              assistant knows. Reading it again picks up anything that has changed since.
+              {lead ?? (
+                <>
+                  <span className="break-words" style={{ color: "var(--text-1)" }}>{address}</span> was
+                  read {addedWhen ? `on ${addedWhen}` : "before"}, and what it said then is what your
+                  assistant knows. Reading it again picks up anything that has changed since.
+                </>
+              )}
             </p>
             <p className="text-[13px] leading-relaxed mt-2" style={{ color: "var(--text-3)" }}>
-              Keeping both leaves two readings of the same page in the knowledge base, which is
-              how a customer ends up being told last month's answer.
+              {note}
             </p>
           </div>
         </div>
@@ -117,7 +145,7 @@ export default function RefreshOrKeep({ address, addedWhen, busy = false, onCanc
             className="w-full flex items-center gap-2 justify-center"
           >
             {busy && <Spinner size={13} color="#fff" />}
-            {busy ? "Reading it" : "Read it again and replace the old one"}
+            {busy ? busyLabel : replaceLabel}
           </PrimaryButton>
 
           <button

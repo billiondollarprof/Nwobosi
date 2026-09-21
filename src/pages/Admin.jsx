@@ -748,6 +748,44 @@ export function KnowledgeSection({ me, loading: loadingMe }) {
     });
   }
 
+  /* A NAME ALREADY IN USE ASKS A QUESTION INSTEAD OF TELLING SOMEBODY OFF.
+
+     Anthony, 2026-09-21: "when the file still exists... better still
+     suggest a replacement."
+
+     A link that was already here has offered Replace or Keep both for a
+     while. A file only got a red line saying pick a different name, which
+     is the product arguing with somebody about their own files. Same
+     question, so the same dialog, with its own words.
+
+     `pending` holds what to do once they answer: a function that takes the
+     row being replaced, or null for keep both. The save runs the same way
+     either way, and the removal is the only difference.
+
+     THE ORDER IS ADD FIRST, REMOVE SECOND, and it is not an implementation
+     detail. Backwards, a save that fails takes the working copy with it and
+     leaves the company with nothing. */
+  const [nameClash, setNameClash] = useState(null);
+
+  function guardName(name, run) {
+    const existing = findByName(items, name);
+    if (existing) {
+      setNameClash({ existing, run });
+      return;
+    }
+    run(null);
+  }
+
+  /* Replacing removes the old row only once the new one is safely stored,
+     and says so plainly when the removal fails rather than pretending. */
+  async function dropReplaced(replacing) {
+    if (!replacing) return;
+    const removed = await removeSource(replacing.id);
+    if (!removed) {
+      show("Added the new one, but could not remove the old copy. Remove it from the list yourself.");
+    }
+  }
+
   async function savePasted(e) {
     e.preventDefault();
     if (!me?.company?.id) return;
@@ -757,6 +795,10 @@ export function KnowledgeSection({ me, loading: loadingMe }) {
       return;
     }
 
+    guardName(pasteName.trim(), (replacing) => runSavePasted(replacing));
+  }
+
+  async function runSavePasted(replacing) {
     setSaving(true);
     const result = await addTextSource({
       companyId: me.company.id,
@@ -774,7 +816,13 @@ export function KnowledgeSection({ me, loading: loadingMe }) {
       return;
     }
 
-    setItems((prev) => [result.source, ...prev]);
+    await dropReplaced(replacing);
+    setNameClash(null);
+
+    /* Read back from the database rather than adding to the list by hand.
+       A replacement changes two rows, and a list stitched together locally
+       is exactly how a deleted file kept its name in the first place. */
+    setItems(await listSources(me.company.id));
     setJustAdded(`${result.source.name}, ${result.chunks} ${result.chunks === 1 ? "piece" : "pieces"} of text`);
     setPasteName("");
     setPasteNote("");
@@ -790,6 +838,10 @@ export function KnowledgeSection({ me, loading: loadingMe }) {
       return;
     }
 
+    guardName(staged.name.trim(), (replacing) => runSaveStaged(replacing));
+  }
+
+  async function runSaveStaged(replacing) {
     setSaving(true);
     /* A picture goes to the bucket and a document becomes rows of text.
        Both come back in the same shape, so everything after this line
@@ -821,7 +873,10 @@ export function KnowledgeSection({ me, loading: loadingMe }) {
       return;
     }
 
-    setItems((prev) => [result.source, ...prev]);
+    await dropReplaced(replacing);
+    setNameClash(null);
+
+    setItems(await listSources(me.company.id));
     setJustAdded(
       staged.picture
         ? `${result.source.name}, ready to use in designs and documents`
@@ -1168,10 +1223,13 @@ export function KnowledgeSection({ me, loading: loadingMe }) {
                     onChange={(e) => setPasteName(e.target.value)}
                     placeholder="Brand voice guide"
                   />
+                  {/* Says the name is taken and stops there. It no longer
+                      tells anybody to pick a different name, because the
+                      dialog on save now offers to replace instead. */}
                   <AlreadyThere
                     match={findByName(items, pasteName)}
                     what="You already have something called this"
-                    advice="Give this one a different name, or you will end up with two."
+                    advice="Save it and you will be asked whether to replace the old one."
                   />
                 </Field>
                 <Field label="What it holds" required>
@@ -1305,7 +1363,7 @@ export function KnowledgeSection({ me, loading: loadingMe }) {
               <AlreadyThere
                 match={findByName(items, staged.name)}
                 what="You already have something called this"
-                advice="Give this one a different name, or you will end up with two."
+                advice="Save it and you will be asked whether to replace the old one."
               />
             </Field>
             <Field label="What it holds" required>
@@ -1605,6 +1663,31 @@ export function KnowledgeSection({ me, loading: loadingMe }) {
           onCancel={() => setRefresh(null)}
           onReplace={() => readLink({ replacing: refresh })}
           onKeepBoth={() => readLink({ replacing: null })}
+        />
+      )}
+
+      {/* THE SAME NAME, ON A FILE OR ON PASTED TEXT. Same dialog as the
+          link above, its own words. Replace swaps the old one out once the
+          new one is safely in; keep both leaves two. */}
+      {nameClash && (
+        <RefreshOrKeep
+          busy={saving}
+          title="You already have something called this"
+          lead={
+            <>
+              <span className="break-words" style={{ color: "var(--text-1)" }}>
+                {nameClash.existing.name}
+              </span>{" "}
+              was added {whenAdded(nameClash.existing) ? `on ${whenAdded(nameClash.existing)}` : "before"}.
+              Replacing it swaps what your assistant reads for the new one.
+            </>
+          }
+          note="Keeping both leaves two files under the same name, and nobody looking at the list later can tell which one the answer came from."
+          replaceLabel="Replace the old one"
+          busyLabel="Saving"
+          onCancel={() => setNameClash(null)}
+          onReplace={() => nameClash.run(nameClash.existing)}
+          onKeepBoth={() => nameClash.run(null)}
         />
       )}
 

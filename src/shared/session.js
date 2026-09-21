@@ -384,14 +384,52 @@ export async function resolveContradiction(id) {
   return !error;
 }
 
+/* A DELETE THAT MATCHES NOTHING IS NOT AN ERROR, AND THAT IS THE TRAP.
+
+   Anthony, 2026-09-21: "I noticed the system still remembers deleted file
+   name... it's telling you that you already have this name."
+
+   This used to read `return !error`, and no error is not the same thing as
+   a row being gone. When RLS (a database rule deciding which rows you may
+   touch) filters a delete, Postgres deletes nothing and reports success,
+   because from its side the statement ran fine and matched no rows. So
+   this returned true, the screen took the file out of the list, and the
+   row sat there in the database. The name stayed taken, the file came back
+   on the next page load, and nothing anywhere said a word about it.
+
+   `.select("id")` makes the statement hand back what it actually removed.
+   An empty array means nothing was deleted, and that is now a failure, so
+   the screen says "could not remove that" instead of lying.
+
+   This does not fix a policy that blocks the delete. It makes a blocked
+   delete visible, which is the difference between a bug somebody can see
+   and a bug that quietly rots the knowledge base. */
 export async function removeSource(id) {
   /* Chunks first. A source row with orphaned chunks behind it is
      recoverable; chunks with no source to explain them are litter the
      assistant could still be handed. */
   await supabase.from("knowledge_chunks").delete().eq("source_id", id);
-  const { error } = await supabase.from("knowledge_sources").delete().eq("id", id);
-  if (error) console.error("could not remove source", error);
-  return !error;
+
+  const { data, error } = await supabase
+    .from("knowledge_sources")
+    .delete()
+    .eq("id", id)
+    .select("id");
+
+  if (error) {
+    console.error("could not remove source", error);
+    return false;
+  }
+
+  if (!data || data.length === 0) {
+    console.error(
+      "the delete for source", id, "removed nothing. The row is still there, " +
+      "most likely because a row level security policy filtered it out.",
+    );
+    return false;
+  }
+
+  return true;
 }
 
 /* --------------------------------------------------------------------------

@@ -34,6 +34,19 @@ const ROWS = {
       closed_at: null,
     },
   ],
+  knowledge_sources: [
+    {
+      id: "k1",
+      name: "Brand voice guide",
+      description: "How we sound",
+      kind: "file",
+      status: "ready",
+      location: null,
+      customer_visible: false,
+      created_at: new Date(Date.now() - 86400000).toISOString(),
+    },
+  ],
+  knowledge_chunks: [],
   support_messages: Array.from({ length: 9 }).map((_, i) => ({
     id: `m${i}`,
     thread_id: "t1",
@@ -46,14 +59,52 @@ const ROWS = {
   })),
 };
 
+/* DELETES ARE REAL IN HERE, and they have to be, because the bug being
+   tested is a delete that looked like it worked and did not. A stub that
+   always says yes would pass the broken code as happily as the fixed one.
+
+   window.__BLOCK_DELETE = true makes a delete match nothing and report no
+   error, which is exactly what a row level security policy does. */
 function builder(table) {
+  const filters = [];
   const api = {
     select: () => api,
-    eq: () => api,
+    eq: (col, val) => { filters.push([col, val]); return api; },
     order: () => api,
     limit: () => Promise.resolve({ data: ROWS[table] ?? [], error: null }),
+    insert: (row) => ({
+      select: () => ({
+        single: () => {
+          const made = { id: `new-${Date.now()}`, created_at: new Date().toISOString(), ...row };
+          (ROWS[table] = ROWS[table] ?? []).unshift(made);
+          return Promise.resolve({ data: made, error: null });
+        },
+      }),
+    }),
+    delete: () => {
+      const run = () => {
+        if (window.__BLOCK_DELETE) return { data: [], error: null };
+        const before = ROWS[table] ?? [];
+        const hit = before.filter((r) => filters.every(([c, v]) => r[c] === v));
+        ROWS[table] = before.filter((r) => !hit.includes(r));
+        return { data: hit.map((r) => ({ id: r.id })), error: null };
+      };
+      const del = {
+        eq: (col, val) => { filters.push([col, val]); return del; },
+        select: () => Promise.resolve(run()),
+        then: (resolve) => Promise.resolve(run()).then(resolve),
+      };
+      return del;
+    },
   };
   return api;
+}
+
+/* The list the admin screen reads. Kept here so a test can see what the
+   database actually holds after a delete, rather than what the screen
+   decided to draw. */
+export function __rows(table) {
+  return ROWS[table] ?? [];
 }
 
 /* Everything the pages actually reach for. Anything missing here shows up

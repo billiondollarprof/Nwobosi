@@ -18,11 +18,23 @@ export default defineConfig({
          pattern left the "../" in front and produced "..//home/user/...".
          Matching the whole specifier replaces the whole thing. */
       {
-        find: /^.*\/shared\/supabase\.js$/,
+        /* No "/shared/" in the pattern, deliberately. session.js reaches
+           for its neighbour as "./supabase.js", so a pattern insisting on
+           the folder name missed it, the real client loaded, and the page
+           died on "supabaseUrl is required". This catches both spellings
+           and still cannot match the "@supabase/supabase-js" package. */
+        find: /^.*supabase\.js$/,
         replacement: path.resolve(process.cwd(), "scripts/__harness/fake-supabase.js"),
       },
+      /* ANCHORED TO THE EXACT SPECIFIER THE PAGES USE, and it has to be.
+         The loose pattern also caught the harness's own
+         "../../src/shared/session.js", so the harness handed the tests the
+         FAKE module and window.__session had no removeSource on it. The
+         pages all write "../shared/session.js" from src/pages, and nothing
+         else does, so matching that exactly swaps the pages and leaves the
+         harness with the real thing. */
       {
-        find: /^.*\/shared\/session\.js$/,
+        find: /^\.\.\/shared\/session\.js$/,
         replacement: path.resolve(process.cwd(), "scripts/__harness/fake-session.js"),
       },
       /* The fake re-exports toApiMessages from the real module, so this one

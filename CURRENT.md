@@ -177,7 +177,36 @@ WHAT THE AUDIT FOUND, 2026-09-21:
   pasted text get only a red warning that says "give this one a different
   name". That is the gap he is describing.
 
-Not built. Waiting on the reload test and on his go-ahead.
+BUILT 2026-09-21, after he raised it a second time.
+
+1. **A delete now proves it worked.** `removeSource` read `return !error`,
+   and no error is not the same as a row being gone. A delete filtered by
+   RLS removes nothing and reports success, so the screen dropped the file
+   and the database kept it. It now asks for the deleted rows back with
+   `.select("id")` and treats an empty result as a failure, so the screen
+   says "could not remove that" instead of lying.
+
+   THIS DOES NOT MAKE A BLOCKED DELETE SUCCEED. It makes it visible. If the
+   policy is the cause, Anthony will now SEE the refusal instead of the
+   file vanishing and coming back, and then the policy gets fixed with SQL
+   he approves first.
+
+2. **A name already in use offers Replace.** Same dialog links have had for
+   a while, its own words: Replace the old one, Keep both, Cancel. Files
+   and pasted text both go through it. The new one is saved first and the
+   old row removed only once that worked, so a failed save never takes the
+   working copy with it. The list is then re-read from the database rather
+   than stitched together locally, which is the habit that let a removed
+   row linger in the first place.
+
+3. **Same content under a different name** is still not built. It needs a
+   fingerprint of the content on the row, which is a schema change. Worth
+   knowing: the precedence he asked for already exists in the prompt, which
+   says that where two company sources disagree, the newer one wins.
+
+Covered by `npm run check` now, which runs `scripts/__harness/sources.cjs`.
+Three checks, and they were verified against the old code first: with
+`return !error` the blocked delete reports success and the walk fails.
 
 ### Logged on 2026-09-16, and he said not to build them today
 
