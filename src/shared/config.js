@@ -426,6 +426,12 @@ export const WORKFLOW_TOOLS = [
     icon: DriveIconGlyph,
     hint: "Point the assistant at a file, and send finished work back",
     state: "registered",
+    /* SOMEWHERE A FINISHED FILE CAN BE PUT, as opposed to somewhere facts
+       are read from. src/shared/storage.js works off this, so a deployment
+       on Dropbox or SharePoint marks that one instead and nothing else in
+       the product changes. A design tool is not storage and neither is an
+       inbox. */
+    kind: "storage",
   },
   {
     id: "email",

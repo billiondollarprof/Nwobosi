@@ -321,8 +321,12 @@ Honest state, so nobody reading this thinks it is all done.
    read back it thinks are thin, asks which bit is wrong and what it
    should say, and reminds you that you can paste it, attach a file, or
    send it looking. Then it waits. Round as many times as it takes.
-4. **There is no storage question**, because no storage is connected yet.
-   The three honest answers above need building alongside it.
+4. ~~There is no storage question.~~ **DONE 2026-09-21.** "Put it in your
+   storage" sits under every finished file, it never names a brand, and
+   the three answers are in `src/shared/storage.js` with fifteen tests on
+   them. Today every deployment truthfully answers "none is connected
+   here", because no storage connector is wired up. When one is, only that
+   file changes.
 5. **The ladder is still four rungs.** It should be two.
 6. **Design is wired to Canva by name**, rather than to whichever design
    platform a deployment connected.

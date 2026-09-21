@@ -263,6 +263,19 @@ function check(name, cond) { (cond ? OK : BAD).push(name); }
   check('the format was named on the Build button too',
     (await page.locator('text=build it as a Word document').count()) >= 0);
 
+  /* PUTTING IT IN THE COMPANY'S STORAGE, and the honest answer when there
+     is none. Anthony, 2026-09-21: "if no cloud storage is connected, it
+     will say so." Never "Google Drive": whatever they connected. */
+  check('the storage question is asked, without naming a brand',
+    (await page.locator('text=Put it in your storage').count()) > 0);
+  check('and it does not say Google Drive',
+    (await page.locator('text=Google Drive').count()) === 0);
+
+  await page.locator('button', { hasText: 'Put it in your storage' }).first().click();
+  await page.waitForTimeout(900);
+  check('pressing it says plainly that none is connected here',
+    (await page.locator('text=No storage is connected here').count()) > 0);
+
   /* The words are still there for somebody who cannot open the file. */
   await page.locator('button', { hasText: 'Show it here' }).first().click();
   await page.waitForTimeout(500);

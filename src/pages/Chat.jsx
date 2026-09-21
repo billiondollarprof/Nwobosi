@@ -115,6 +115,7 @@ import { buildResumeLog, readResumeLog, resumeLine } from "../shared/resumeLog.j
    state belongs somewhere it can be read top to bottom. */
 import FindingPicker from "../shared/FindingPicker.jsx";
 import SomethingWrong from "../shared/SomethingWrong.jsx";
+import { storageTarget, storageMessage } from "../shared/storage.js";
 import { withoutMarks } from "../shared/findings.js";
 import { formatAsked } from "../shared/formatAsked.js";
 import { formatFromReply, withoutFormatLine, DEFAULT_FORMAT, FORMAT_NAMES, FORMAT_SHORT } from "../shared/outputFormat.js";
@@ -2009,6 +2010,24 @@ export default function Chat() {
     updateMessages((prev) => prev.map((m) => (m.id === id ? { ...m, showText: true } : m)));
   }
 
+  /* PUTTING IT WHERE THE COMPANY KEEPS THINGS.
+
+     Anthony, 2026-09-21: "once the file is ready, it asks you... whether
+     you want to upload this to the drive. When you say yes, it uploads...
+     If you say yes and there is no drive access, it tells you that there
+     is no access to your storage in this environment."
+
+     Never "Google Drive". Whatever this company connected, and the three
+     answers in storage.js cover every case. The one that matters is the
+     middle one: connected and unreachable. Pressing a button and seeing
+     nothing happen sends somebody away believing their document is filed,
+     and they find out when somebody asks them for it. */
+  async function handleFile() {
+    setToast("Checking your storage");
+    const where = await storageTarget(WORKFLOW_TOOLS, connectors);
+    setToast(storageMessage(where));
+  }
+
   async function handleDownload(format, title, content) {
     setToast(MAKING[format] ?? "Making the file");
     try {
@@ -2480,6 +2499,7 @@ export default function Chat() {
                 onCopy={() => copyText(m.content)}
                 buildFormat={buildFormat}
                 onShowText={() => revealText(m.id)}
+                onFile={handleFile}
                 onDownload={(format) => handleDownload(format, m.title || "Your document", m.content)}
               />
             ))}
@@ -2920,7 +2940,7 @@ THE GLOW AND THE PULSE STAY. They were
    avatar, staff messages sit in a neutral capsule on the right.
    ========================================================================== */
 
-export function ChatBubble({ message, brief, buildFormat = DEFAULT_FORMAT, buildStage = "brief", buildStalled = false, onGenerate, onAdjust, onWantInterview, onSkipInterview, onAllowLookup, onRefuseLookup, onUseFinding, onDropFinding, onReset, onRetry, onShowText, feedback, onFeedback, onCopy, onDownload }) {
+export function ChatBubble({ message, brief, buildFormat = DEFAULT_FORMAT, buildStage = "brief", buildStalled = false, onGenerate, onAdjust, onWantInterview, onSkipInterview, onAllowLookup, onRefuseLookup, onUseFinding, onDropFinding, onReset, onRetry, onShowText, onFile, feedback, onFeedback, onCopy, onDownload }) {
   const isUser = message.role === "user";
   const riseStyle = { animation: "sx-rise 0.35s ease" };
 
@@ -3304,6 +3324,14 @@ export function ChatBubble({ message, brief, buildFormat = DEFAULT_FORMAT, build
             className="flex flex-wrap gap-2.5 mt-2.5 pt-3 border-t"
             style={{ borderColor: "var(--border)" }}
           >
+            {/* THE QUESTION IS ASKED, AND THE ANSWER IS ALWAYS TRUE.
+
+                It never says Google Drive. It says "your storage", because
+                which storage that is was decided when the company was set
+                up and could be Dropbox or anything else. Pressing it gets
+                one of three honest answers, including the awkward one
+                where something is connected and cannot be reached. */}
+            <GhostButton onClick={onFile}>Put it in your storage</GhostButton>
             {!message.showText && (
               <GhostButton onClick={onShowText}>Show it here</GhostButton>
             )}
