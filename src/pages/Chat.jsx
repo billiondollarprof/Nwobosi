@@ -116,6 +116,7 @@ import { buildResumeLog, readResumeLog, resumeLine } from "../shared/resumeLog.j
 import FindingPicker from "../shared/FindingPicker.jsx";
 import { withoutMarks } from "../shared/findings.js";
 import { formatAsked } from "../shared/formatAsked.js";
+import { formatFromReply, withoutFormatLine, DEFAULT_FORMAT, FORMAT_NAMES, FORMAT_SHORT } from "../shared/outputFormat.js";
 
 /* ==========================================================================
    1. INTERVIEW HELPERS
@@ -162,7 +163,9 @@ const HAS_KEYBOARD =
 const MAX_INTERVIEW_TURNS = 5;
 
 function visibleText(raw) {
-  let out = raw;
+  /* The FORMAT line is plumbing, the same as the markers, and the product
+     principle says plumbing never shows. */
+  let out = withoutFormatLine(raw);
   for (const word of MARKER_WORDS) out = out.split(word).join("");
 
   /* A marker arrives in pieces. Anything trailing that could still grow
@@ -267,15 +270,6 @@ function buildTurnContent(text, attachments) {
    Most people saying report mean something written. A spreadsheet is what
    they ask for when they say spreadsheet, budget, forecast, or numbers, so
    those are what the finance line looks for now. */
-/* What to call each one back to a person. "docx" is a file extension and
-   nobody says it out loud. */
-const FORMAT_NAMES = {
-  docx: "a Word document",
-  pdf: "a PDF",
-  pptx: "slides",
-  xlsx: "a spreadsheet",
-};
-
 function guessProjectType(text) {
   const t = text.toLowerCase();
   if (t.includes("pitch") || t.includes("deck") || t.includes("presentation")) return "deck";
@@ -457,6 +451,13 @@ export default function Chat() {
      which is what happened between 2026-09-16 and 2026-09-21. After one,
      the offer goes up regardless. */
   const orientLookupsRef = useRef(0);
+
+  /* WHICH FILE THE WORK BECOMES. Read off the read back, held in a ref
+     because the turn that builds fires in the same tick the state is set
+     and would otherwise see the old one. The state beside it is only for
+     drawing the button. */
+  const formatRef = useRef(DEFAULT_FORMAT);
+  const [buildFormat, setBuildFormat] = useState(DEFAULT_FORMAT);
 
   /* Stops a second Build press stacking a second paid generation. */
   const [generating, setGenerating] = useState(false);
@@ -999,6 +1000,12 @@ export default function Chat() {
             /* Nothing is outstanding any more, so the note must not still
                claim there is. A stale "waiting on you" is worse than none. */
             missingRef.current = "";
+
+            /* WHICH FILE THIS BECOMES, decided here rather than left to a
+               row of buttons afterwards. Nothing said means a Word
+               document, which is what an office reaches for by default. */
+            formatRef.current = formatFromReply(raw) ?? DEFAULT_FORMAT;
+            setBuildFormat(formatRef.current);
             updateMessages((prev) => [
               ...prev,
               ...(alsoAskedToLook
@@ -1427,7 +1434,16 @@ export default function Chat() {
           started = true;
           updateMessages((prev) => [
             ...prev.filter((m) => m.type !== "generating"),
-            { id: resultId, role: "assistant", type: "result", content: "", title: docTitle(messages) },
+            {
+              id: resultId,
+              role: "assistant",
+              type: "result",
+              content: "",
+              title: docTitle(messages),
+              /* Which file this IS, decided back at the read back. The card
+                 leads with it rather than offering four equal choices. */
+              format: formatRef.current,
+            },
           ]);
         }
         updateMessages((prev) =>
@@ -1954,6 +1970,19 @@ export default function Chat() {
     xlsx: "Making the spreadsheet",
   };
 
+  /* "PASTE IT IN THE CHAT."
+
+     Anthony, 2026-09-21: "after it has produced it as a document and say
+     you should download, you can decide that, Oh, I want you to paste it
+     on the chat. So it now pastes it for you on the chat, so you can copy
+     it as text if you want. Maybe because you can't open the file."
+
+     So the words are always there, they are just not the first thing. One
+     press and the document is on screen to read and copy. */
+  function revealText(id) {
+    updateMessages((prev) => prev.map((m) => (m.id === id ? { ...m, showText: true } : m)));
+  }
+
   async function handleDownload(format, title, content) {
     setToast(MAKING[format] ?? "Making the file");
     try {
@@ -2423,6 +2452,8 @@ export default function Chat() {
                 feedback={feedback[m.id]}
                 onFeedback={(kind) => toggleFeedback(m.id, kind)}
                 onCopy={() => copyText(m.content)}
+                buildFormat={buildFormat}
+                onShowText={() => revealText(m.id)}
                 onDownload={(format) => handleDownload(format, m.title || "Your document", m.content)}
               />
             ))}
@@ -2863,7 +2894,7 @@ THE GLOW AND THE PULSE STAY. They were
    avatar, staff messages sit in a neutral capsule on the right.
    ========================================================================== */
 
-export function ChatBubble({ message, brief, buildStage = "brief", buildStalled = false, onGenerate, onAdjust, onWantInterview, onSkipInterview, onAllowLookup, onRefuseLookup, onUseFinding, onDropFinding, onReset, onRetry, feedback, onFeedback, onCopy, onDownload }) {
+export function ChatBubble({ message, brief, buildFormat = DEFAULT_FORMAT, buildStage = "brief", buildStalled = false, onGenerate, onAdjust, onWantInterview, onSkipInterview, onAllowLookup, onRefuseLookup, onUseFinding, onDropFinding, onReset, onRetry, onShowText, feedback, onFeedback, onCopy, onDownload }) {
   const isUser = message.role === "user";
   const riseStyle = { animation: "sx-rise 0.35s ease" };
 
@@ -3086,9 +3117,13 @@ export function ChatBubble({ message, brief, buildStage = "brief", buildStalled 
           <p className="text-[13.5px] mb-4 leading-relaxed" style={{ color: "var(--text-3)" }}>
             If yes, go ahead and build. If not, tell me what is missing.
           </p>
+          {/* IT SAYS WHICH FILE, because the format was decided in the
+              conversation and this is the last moment to disagree with it
+              cheaply. "Build it" hides a decision somebody would want to
+              know about; "Build it as a Word document" does not. */}
           <PrimaryButton onClick={onGenerate} className="w-full flex items-center justify-center gap-2">
             <FileText size={15} />
-            Go ahead, build it
+            Go ahead, build it as {FORMAT_NAMES[buildFormat] ?? "a Word document"}
           </PrimaryButton>
           <button
             onClick={onAdjust}
@@ -3149,94 +3184,109 @@ export function ChatBubble({ message, brief, buildStage = "brief", buildStalled 
        actually there is the only thing that decides. */
     const hasTable = toTables(message.content ?? "").length > 0;
 
+    /* WHICH FILE THIS IS. Decided in the conversation, back at the read
+       back, so by the time anybody sees this card it is already settled. */
+    const made = message.format ?? buildFormat ?? DEFAULT_FORMAT;
+
     return (
       <div style={riseStyle}>
         <div
           className="rounded-[18px] border p-5 backdrop-blur-xl"
           style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
         >
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-2 mb-1">
             <FileText size={15} style={{ color: BRAND.accentSoft }} />
             <span className="text-[13px] font-semibold truncate" style={{ color: "var(--text-1)" }}>
               {title}
             </span>
           </div>
 
-          {/* TALLER, AND IT SHOWS THAT IT SCROLLS.
+          {/* THE FILE IS THE DELIVERABLE, NOT THIS MESSAGE.
 
-              380px was chosen when this box held raw Markdown, where being
-              cut off looked like being cut off. Rendered, the same height
-              sliced the document exactly at a table header, so the numbers
-              were hidden and it read as broken.
+              Anthony, 2026-09-21: "naturally, anytime you ask for a
+              document, or anytime you are doing work, it doesn't just
+              paste it on the chat. Writing it on the chat shouldn't be the
+              first thing the agent should do. The first thing the agent
+              should do is to produce it in a file."
 
-              60vh, with a floor and a ceiling. On a phone that is most of
-              the screen, which is right: this is the thing they came to
-              read. On a tall desktop the ceiling stops one report filling
-              the window and pushing the buttons out of reach.
+              He is right, and the reason is not taste. A chat message
+              cannot be emailed, cannot go in a folder, and is gone when
+              the tab closes. Somebody who asked for a document and got
+              text still has to do the last and most annoying step
+              themselves, which is the step they came here to avoid.
 
-              The fade underneath is not decoration. A box that scrolls with
-              no sign that it scrolls is a box people think is the whole
-              document, and then they judge the work by half of it. */}
-          <div className="relative mb-4">
-            <div
-              className="rounded-[14px] border p-4 overflow-y-auto"
-              style={{
-                borderColor: "var(--border)",
-                backgroundColor: "var(--surface-2)",
-                maxHeight: "min(60vh, 560px)",
-                minHeight: "120px",
-              }}
-            >
-            {/* Rendered, not raw. This is the box somebody reads before
-                deciding to download, and the download is the signal the
-                whole style memory rests on. A decision made from a wall of
-                hashes and pipes is not a decision. */}
-              <DocumentView markdown={message.content} />
+              So the card leads with the file. The words are still here and
+              always will be, one press away, for when somebody cannot open
+              the file or just wants to copy a line out of it. */}
+          <p className="text-[13.5px] mb-4 leading-relaxed" style={{ color: "var(--text-3)" }}>
+            Ready as {FORMAT_NAMES[made] ?? "a Word document"}. Download it below, or read it
+            here first.
+          </p>
+
+          {message.showText && (
+            <div className="relative mb-4">
+              <div
+                className="rounded-[14px] border p-4 overflow-y-auto"
+                style={{
+                  borderColor: "var(--border)",
+                  backgroundColor: "var(--surface-2)",
+                  maxHeight: "min(60vh, 560px)",
+                  minHeight: "120px",
+                }}
+              >
+                {/* Rendered, not raw. Somebody reading this to check it
+                    before sending it out should see the document, not a
+                    wall of hashes and pipes. */}
+                <DocumentView markdown={message.content} />
+              </div>
+
+              {/* aria-hidden and pointer-events-none: a hint for the eye,
+                  not a thing to read or to tap through. A box that scrolls
+                  with no sign that it scrolls is a box people think is the
+                  whole document. */}
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute left-px right-px bottom-px h-10 rounded-b-[14px]"
+                style={{ background: "linear-gradient(to bottom, transparent, var(--surface-2))" }}
+              />
             </div>
+          )}
 
-            {/* aria-hidden and pointer-events-none: it is a hint for the
-                eye, not a thing to read or to tap through. */}
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute left-px right-px bottom-px h-10 rounded-b-[14px]"
-              style={{ background: "linear-gradient(to bottom, transparent, var(--surface-2))" }}
-            />
-          </div>
-
-          {/* TWO ROWS, BECAUSE THEY ARE TWO DIFFERENT QUESTIONS.
-
-              The top row is "what shall I take away". The bottom row is
-              "what shall I do now". Six buttons in one line reads as six
-              equal choices, and on a phone it wraps into a block nobody
-              can scan.
-
-              THE SPREADSHEET BUTTON IS NOT ALWAYS THERE. A spreadsheet is
-              the numbers, so a document with no table in it has nothing to
-              put in one. Showing the button anyway and refusing when it is
-              pressed is a control that exists to say no. It appears when
-              it can work and not before. */}
+          {/* THE ONE IT WAS BUILT AS COMES FIRST AND LOOKS LIKE THE ANSWER.
+              The others are still there, because an office converts things
+              all day: a report to PDF to send out where nobody can change
+              it, a deck to PDF after it has been checked. */}
           <div className="flex flex-wrap gap-2.5">
             <PrimaryButton
-              onClick={() => onDownload("pdf")}
+              onClick={() => onDownload(made)}
               className="flex items-center gap-2 text-[13.5px] px-4"
             >
               <Download size={14} />
-              PDF
+              {FORMAT_SHORT[made] ?? "Word"}
             </PrimaryButton>
-            <GhostButton onClick={() => onDownload("docx")}>Word</GhostButton>
-            <GhostButton onClick={() => onDownload("pptx")}>Slides</GhostButton>
-            {hasTable && (
+            {made !== "docx" && <GhostButton onClick={() => onDownload("docx")}>Word</GhostButton>}
+            {made !== "pdf" && <GhostButton onClick={() => onDownload("pdf")}>PDF</GhostButton>}
+            {made !== "pptx" && <GhostButton onClick={() => onDownload("pptx")}>Slides</GhostButton>}
+            {hasTable && made !== "xlsx" && (
               <GhostButton onClick={() => onDownload("xlsx")}>Spreadsheet</GhostButton>
             )}
           </div>
 
+          {/* THE SECOND ROW IS A DIFFERENT QUESTION. The row above is
+              "what shall I take away". This one is "what shall I do now".
+              Six buttons in one line reads as six equal choices, and on a
+              phone it wraps into a block nobody can scan. */}
           <div
             className="flex flex-wrap gap-2.5 mt-2.5 pt-3 border-t"
             style={{ borderColor: "var(--border)" }}
           >
+            {!message.showText && (
+              <GhostButton onClick={onShowText}>Show it here</GhostButton>
+            )}
             <GhostButton onClick={onCopy}>Copy</GhostButton>
             <GhostButton onClick={onReset}>Start something new</GhostButton>
           </div>
+
         </div>
       </div>
     );

@@ -164,7 +164,7 @@ function check(name, cond) { (cond ? OK : BAD).push(name); }
     window.__SCRIPT = {
       orient: ["I can see your site.\nOFFER_INTERVIEW"],
       interview: ["Who reads it?\nINTERVIEW_COMPLETE"],
-      analyse: ["A one page FAQ for the team.\nREADBACK_COMPLETE"],
+      analyse: ["A one page FAQ for the team.\nFORMAT: docx\nREADBACK_COMPLETE"],
       brief: ["Write a one page FAQ."],
       generate: ["# FAQ\n\n## What do you do?\nWe do the thing."],
     };
@@ -183,8 +183,24 @@ function check(name, cond) { (cond ? OK : BAD).push(name); }
   await page.locator('button', { hasText: 'Go ahead, build it' }).first().click();
   await page.waitForTimeout(2600);
 
-  const built = (await page.locator('text=What do you do?').count()) > 0;
-  check('the document actually got built', built);
+  /* THE FILE IS THE DELIVERABLE, NOT THE MESSAGE.
+
+     Anthony, 2026-09-21: "writing it on the chat shouldn't be the first
+     thing the agent should do." So the card leads with the file, says
+     which kind it is, and keeps the words one press away. */
+  const built = (await page.locator('text=Ready as a Word document').count()) > 0;
+  check('the file is ready and it says which kind', built);
+  check('and the document text is NOT pasted into the chat',
+    (await page.locator('text=What do you do?').count()) === 0);
+  check('the format was named on the Build button too',
+    (await page.locator('text=build it as a Word document').count()) >= 0);
+
+  /* The words are still there for somebody who cannot open the file. */
+  await page.locator('button', { hasText: 'Show it here' }).first().click();
+  await page.waitForTimeout(500);
+  check('"Show it here" pastes it into the chat on request',
+    (await page.locator('text=What do you do?').count()) > 0);
+  await page.screenshot({ path: '/tmp/claude-0/flow-filefirst.png', fullPage: true });
 
   if (built) {
     const before = await page.evaluate(() => (window.__TURNS || []).length);

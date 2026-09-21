@@ -189,6 +189,27 @@ Three answers, and all three are said plainly rather than failing quietly:
 A silent failure here is the worst of the three, because somebody walks
 away believing their document is filed.
 
+**AND IT IS THE SAME FOR EVERY TOOL, NOT JUST STORAGE.** Anthony,
+2026-09-21: "the same way he knows about the storage connected, that's the
+same way he knows about other tools that are connected that he needs, like
+if it's Canva, Adobe InDesign, or whatever he needs for his design, or
+email, or Slack."
+
+So one rule covers all of them. The assistant knows what this company
+connected, and it knows which of those it can actually reach.
+
+- **It can bring it up in the interview.** "Your design platform is
+  connected, shall I lay this out in it?" A real question about a real
+  tool, asked while it still matters.
+- **When something is not connected, it offers what IS available instead.**
+  Upload the thing in the chat, or let it go and look online. Not a dead
+  end and not an apology, a route.
+
+**And nothing more than that.** Anthony: "the system is just as smart as
+it's trained already from Anthropic. It's just being given better
+direction now." The intelligence is not the thing being built here. What
+is being built is knowing what is in the room, and saying so.
+
 ---
 
 ## CONVERTING, IN ANY DIRECTION, AS OFTEN AS THEY LIKE
@@ -273,13 +294,15 @@ Honest state, so nobody reading this thinks it is all done.
 
 **Not true yet, in the order that matters:**
 
-1. **The file is not the first thing.** The finished work is rendered as
-   text in the chat with download buttons under it. It should be a file
-   first, with the text available on request.
-2. **The format is never decided beforehand.** Nothing asks, and nothing
-   chooses. Four buttons appear afterwards.
+1. ~~The file is not the first thing.~~ **DONE 2026-09-21.** The card
+   leads with the file, names which kind it is, and keeps the words one
+   press away behind "Show it here".
+2. ~~The format is never decided beforehand.~~ **DONE 2026-09-21.** The
+   read back ends with a FORMAT line, the Build button says which file it
+   will make, and the file lands as that. Nothing said means a Word
+   document, which is what an office reaches for.
 3. **"Something is missing" does not ask what or where.** It clears the
-   card and hands back the cursor.
+   card and hands back the cursor. NEXT.
 4. **There is no storage question**, because no storage is connected yet.
    The three honest answers above need building alongside it.
 5. **The ladder is still four rungs.** It should be two.
