@@ -235,16 +235,52 @@ source like any other, quoted and named, with no second system. The
 plumbing is already there, `describe-source` sends base64 images to a
 model today to get a title and a one line description.
 
-TWO DECISIONS FOR HIM BEFORE IT IS BUILT:
+DECIDED BY HIM, 2026-09-21. Both recommendations accepted, with one
+improvement that is better than what was proposed:
 
-1. Which model reads it. `describe-source` uses the cheap one, which is
-   right for "name this logo" and wrong for "transcribe this price table".
-   A wrong number read off a screenshot is exactly the failure this
-   product exists to prevent.
-2. Whether every image is read, or only ones with something to read. A
-   logo has no text worth storing.
+1. The capable model reads the picture, not the cheap one. The cheap one
+   keeps the naming job.
+2. Every image is read. There is no toggle, because a toggle is plumbing
+   and the admin never sees plumbing.
+3. HIS IMPROVEMENT, and it is the part that makes it feel intelligent.
+   A picture with no words in it does NOT come back with "nothing to
+   read". It says no text was found, and then describes what the picture
+   actually is, in a line. His words: "if it's an image of something, it
+   should try and describe it in a very short format. That's the
+   intelligence."
 
-Not built. Read back to him 2026-09-21, waiting on his answers.
+   He is right and the reason is worth writing down. "Nothing to read" is
+   the system talking about itself and it gives the assistant nothing. A
+   line saying what the picture IS gives it something true to work with,
+   so a logo becomes a fact about the company rather than a dead row.
+
+BUILT 2026-09-21. `read-image`, a NEW edge function, so it comes straight
+from the repo with nothing to overwrite.
+
+HOW IT WORKS. A picture is saved as "being read" rather than ready, the
+browser asks read-image to look at it, and what it says is stored as an
+ordinary chunk. From every other part of the product it is then a source
+like any other: quoted, named, and listed in which sources were used. No
+second system and no new screen.
+
+FOUR THINGS IN IT WORTH KNOWING:
+
+- Sonnet reads the picture, not Haiku. Haiku keeps the naming job.
+- Every path out sets the row back to READY, including the failures,
+  because the picture still works in a design when the reading failed. A
+  row stuck on "being read" is worse than one with no text.
+- The reading failing never fails the upload. It has its own try.
+- Base64 lives in `_shared/base64.ts` with its own test. The obvious one
+  line version throws on anything picture sized, and the test proves both
+  that it throws and that the shipped one matches Node byte for byte.
+
+NEEDS A DEPLOY. It is new, so it is a NEW deploy, not a redeploy.
+
+STILL TO DO: images uploaded BEFORE this was built have status ready and
+no chunks, so they stay unreadable. `readImageSource` is exported and
+takes a source id, so a "Read this picture" action on those rows is a
+small piece of work whenever he wants it. Until then, replacing the image
+reads it.
 
 ### Logged on 2026-09-16, and he said not to build them today
 

@@ -63,6 +63,10 @@ export const FUNCTIONS = {
   canvaDesign: "canva-design",
   supportReply: "support-reply",
   canvaConnect: "canva-connect",
+  /* Looks at a picture already in the bucket and stores what it says, so a
+     screenshot in the knowledge base is something the assistant can quote
+     rather than a name it can only mention. */
+  readImage: "read-image",
 };
 
 /* WHERE A COMPANY'S LOGOS AND BRAND IMAGES LIVE.

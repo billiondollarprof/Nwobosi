@@ -13,7 +13,7 @@
    ========================================================================== */
 
 import { supabase } from "./supabase.js";
-import { BRAND_ASSETS_BUCKET } from "./config.js";
+import { BRAND_ASSETS_BUCKET, FUNCTIONS } from "./config.js";
 import { clearAdminClock } from "./adminClock.js";
 
 /* --------------------------------------------------------------------------
@@ -268,10 +268,19 @@ export async function addImageSource({
       location: null,
       asset_path: path,
       asset_mime: mediaType,
-      /* Ready straight away. There is no text to pull apart and no second
-         step to wait for, so anything other than ready would be a status
-         that never changes. */
-      status: "ready",
+      /* BEING READ, NOT READY, since 2026-09-21.
+
+         It used to go straight to ready, because there was no text to pull
+         apart and no second step to wait for. There is now: read-image
+         looks at the picture and stores what it says, so a screenshot is a
+         source the assistant can quote instead of a name it can only
+         mention. Until that has run there IS something to wait for, and
+         the screen should say so rather than claim it is done.
+
+         read-image sets it back to ready on every path out of itself,
+         including the ones where the reading failed, because the picture
+         still works in a design either way. */
+      status: "processing",
       added_by: userId,
       customer_visible: customerVisible === true,
     })
@@ -291,7 +300,49 @@ export async function addImageSource({
     return { ok: false, reason: "Could not save that. Try again." };
   }
 
-  return { ok: true, source, chunks: 0 };
+  /* THE READING, AND ITS FAILURE IS NOT THE UPLOAD'S FAILURE.
+
+     The picture is saved and usable the moment the lines above finish.
+     Reading it is the extra that makes it answerable, so it gets its own
+     try and never turns a successful upload into an error on screen.
+     read-image is the one that puts the row back to ready, whatever
+     happens inside it, so nothing is left saying "being read" forever. */
+  let read = 0;
+  try {
+    const result = await readImageSource(source.id);
+    read = result.chunks ?? 0;
+  } catch (err) {
+    console.error("could not read the picture after uploading it", err);
+  }
+
+  return { ok: true, source: { ...source, status: "ready" }, chunks: read };
+}
+
+/* Asks the server to look at a picture already in the bucket and store
+   what it says. Separate from the upload above so it can be run again for
+   one that was added before any of this existed. */
+export async function readImageSource(sourceId) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return { ok: false, chunks: 0 };
+
+  const response = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${FUNCTIONS.readImage}`,
+    {
+      method: "POST",
+      headers: {
+        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${session.access_token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ sourceId }),
+    },
+  );
+
+  if (!response.ok) {
+    console.error("read-image refused", response.status);
+    return { ok: false, chunks: 0 };
+  }
+  return await response.json();
 }
 
 /* GIVING SOMEBODY THE SUPPORT QUEUE, OR TAKING IT BACK.
