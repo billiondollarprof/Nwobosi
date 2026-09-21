@@ -287,6 +287,36 @@ takes a source id, so a "Read this picture" action on those rows is a
 small piece of work whenever he wants it. Until then, replacing the image
 reads it.
 
+### Open, asked 2026-09-21 (fourth)
+
+**Bulk upload, with room for about ten at once.** His words: "it currently
+takes one image at once, is it possible to take multiple, say maybe 5 at
+once or give it room for 10 since this is an architecture that will be
+deployed for other companies."
+
+WHAT THE AUDIT FOUND. Picking several ALREADY WORKS and has for a while:
+
+- the file input carries `multiple`
+- `pickFiles` takes the whole list, stages the first and queues the rest
+- the screen says "N files chosen. This one first."
+- each one is auto named and auto described, images included, through
+  `nameItFor` calling describe-source
+- saving one pulls the next off the queue by itself
+
+So the upload is not the gap. The gap is that it walks you through them
+ONE AT A TIME, pre-filled, and you press Save once per file. Ten files is
+ten presses. For onboarding a new company with thirty files that is the
+wrong shape, and thirty is a normal first day.
+
+PROPOSED, NOT BUILT: a review list. Pick up to ten, they are all read and
+named in the background, shown as rows with the name and the line about
+what each holds editable in place, and ONE Save. Everything visible before
+anything is written, and one press instead of ten.
+
+Two things to settle with him first: a real cap, and how many are read at
+once, since each picture is a model call and firing ten together is how a
+rate limit and a bill both arrive at speed.
+
 ### Logged on 2026-09-16, and he said not to build them today
 
 He asked for these to be written down rather than built, to save credits
