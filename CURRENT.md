@@ -433,6 +433,40 @@ THE BUILD PATH ITSELF WAS NEVER BROKEN. Pressing Build writes the brief,
 then the document, then renders a result card with Word, PDF and Slides
 on it. It simply never ran.
 
+### Built 2026-09-21: say the format instead of pressing it
+
+Anthony: "even as it gave me this output, I can decide and say make it a
+word document or PDF file. that flexibility."
+
+He also asked whether the whole process should be rebuilt to get chatbot
+flexibility while keeping the near zero hallucination. THE ANSWER WAS NO,
+and it is worth keeping the reasoning. The rails ARE the product: sources
+only, no search without approval, the brief as a fence, a read back before
+a word is written. What was missing was not flexibility, it was ONE LANE.
+
+  1. Ordinary conversation. Already there, handled on the first turn.
+  2. A new piece of work. The interview, the read back, the build.
+  3. Something about work that ALREADY EXISTS. Missing.
+
+Lane 3 is the whole complaint. Saying "make it a word document" after a
+result had nowhere to go, so it was pushed back through the analysis as a
+brand new job.
+
+BUILT, AND SMALLER THAN IT SOUNDS. The capability was always there: the
+result card has carried Word, PDF, Slides and Spreadsheet all along.
+`src/shared/formatAsked.js` turns the sentence into that button press. No
+model call, so it is instant, free, and cannot be wrong about the contents.
+
+IT IS DELIBERATELY CAUTIOUS. A format word alone is never enough. It has
+to point at the thing that exists ("make IT a pdf") or be short enough
+that it cannot be anything else ("pdf please"). Refusing costs nothing
+because the message falls through to what the app already did. Saying yes
+wrongly would hand somebody a download when they asked for a report.
+Seventeen tests, and more of them are refusals than acceptances.
+
+Walked end to end: build a document, type "make it a word document", and
+the pipeline does NOT run again.
+
 ### Logged on 2026-09-16, and he said not to build them today
 
 He asked for these to be written down rather than built, to save credits

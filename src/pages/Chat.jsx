@@ -115,6 +115,7 @@ import { buildResumeLog, readResumeLog, resumeLine } from "../shared/resumeLog.j
    state belongs somewhere it can be read top to bottom. */
 import FindingPicker from "../shared/FindingPicker.jsx";
 import { withoutMarks } from "../shared/findings.js";
+import { formatAsked } from "../shared/formatAsked.js";
 
 /* ==========================================================================
    1. INTERVIEW HELPERS
@@ -266,6 +267,15 @@ function buildTurnContent(text, attachments) {
    Most people saying report mean something written. A spreadsheet is what
    they ask for when they say spreadsheet, budget, forecast, or numbers, so
    those are what the finance line looks for now. */
+/* What to call each one back to a person. "docx" is a file extension and
+   nobody says it out loud. */
+const FORMAT_NAMES = {
+  docx: "a Word document",
+  pdf: "a PDF",
+  pptx: "slides",
+  xlsx: "a spreadsheet",
+};
+
 function guessProjectType(text) {
   const t = text.toLowerCase();
   if (t.includes("pitch") || t.includes("deck") || t.includes("presentation")) return "deck";
@@ -1194,6 +1204,46 @@ export default function Chat() {
   }
 
   function handleUserReply(text, apiContent = text) {
+    /* ------------------------------------------------------------------
+       THE THIRD LANE: SOMETHING ABOUT THE WORK THAT ALREADY EXISTS.
+
+       Anthony, 2026-09-21: "even as it gave me this output, I can decide
+       and say make it a word document or PDF file. that flexibility."
+
+       The app had two lanes and needed three. Ordinary conversation is
+       handled on the first turn. A new piece of work goes through the
+       interview, the read back and the build. But a request about a
+       document that is ALREADY finished had nowhere to go, so it was
+       pushed back through the analysis as though it were a brand new job.
+       Asking for a Word copy started the whole pipeline again.
+
+       NOTHING IS GENERATED HERE, WHICH IS THE POINT. The result card has
+       carried Word, PDF, Slides and Spreadsheet all along and
+       handleDownload does the work. So this turns a sentence into that
+       button press: instant, free, and it cannot be wrong about the
+       contents because no model touches it.
+
+       It is deliberately cautious, and formatAsked says why. Refusing
+       costs nothing, the message simply carries on to the lane below.
+       ------------------------------------------------------------------ */
+    const finished = [...messages].reverse().find((m) => m.type === "result");
+    if (finished) {
+      const wanted = formatAsked(text);
+      if (wanted) {
+        handleDownload(wanted, finished.title || "Your document", finished.content);
+        updateMessages((prev) => [
+          ...prev,
+          {
+            id: nextId(),
+            role: "assistant",
+            type: "text",
+            content: `Here it is as ${FORMAT_NAMES[wanted]}. It is the same document, nothing has been rewritten.`,
+          },
+        ]);
+        return;
+      }
+    }
+
     /* Skill detection still runs locally. It is a badge, not a decision,
        and guessing it instantly beats waiting on a round trip to show it. */
     const guessed = SKILL_BY_TYPE[guessProjectType(text)];

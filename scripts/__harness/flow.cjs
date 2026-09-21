@@ -150,6 +150,56 @@ function check(name, cond) { (cond ? OK : BAD).push(name); }
   const searchTurns = await page.evaluate(() => window.__TURNS || []);
 
   /* ------------------------------------------------------------------
+     ASKING FOR THE FINISHED DOCUMENT IN ANOTHER FORMAT.
+
+     Anthony, 2026-09-21: "even as it gave me this output, I can decide and
+     say make it a word document or PDF file."
+
+     It used to push that back through the analysis as a new piece of work.
+     Now it reaches the download the result card has always had, and no
+     model is asked anything.
+     ------------------------------------------------------------------ */
+  await page.addInitScript(() => {
+    window.__TURNS = [];
+    window.__SCRIPT = {
+      orient: ["I can see your site.\nOFFER_INTERVIEW"],
+      interview: ["Who reads it?\nINTERVIEW_COMPLETE"],
+      analyse: ["A one page FAQ for the team.\nREADBACK_COMPLETE"],
+      brief: ["Write a one page FAQ."],
+      generate: ["# FAQ\n\n## What do you do?\nWe do the thing."],
+    };
+    /* The file builders reach for the DOM and a download; stubbed so the
+       walk can assert the ROUTING without a real .docx being written. */
+    window.__DOWNLOADS = [];
+  });
+  await page.goto('http://localhost:5301/?page=chat', { waitUntil: 'networkidle' });
+  await page.waitForTimeout(1200);
+
+  await page.locator('textarea').first().fill('Make me a one page FAQ');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(1400);
+  await page.locator('button', { hasText: 'Just get on with it' }).first().click();
+  await page.waitForTimeout(2200);
+  await page.locator('button', { hasText: 'Go ahead, build it' }).first().click();
+  await page.waitForTimeout(2600);
+
+  const built = (await page.locator('text=What do you do?').count()) > 0;
+  check('the document actually got built', built);
+
+  if (built) {
+    const before = await page.evaluate(() => (window.__TURNS || []).length);
+    await page.locator('textarea').first().fill('make it a word document');
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(1200);
+
+    check('asking for Word does NOT start the pipeline again',
+      (await page.evaluate(() => (window.__TURNS || []).length)) === before);
+    check('and it says so in plain words',
+      (await page.locator('text=as a Word document').count()) > 0);
+    await page.screenshot({ path: '/tmp/claude-0/flow-format.png', fullPage: true });
+  }
+
+  /* ------------------------------------------------------------------
      THE READ BACK THAT WROTE THE DOCUMENT INSTEAD OF HANDING OFF.
 
      Anthony, 2026-09-21: "after the recap, he started building... he just
