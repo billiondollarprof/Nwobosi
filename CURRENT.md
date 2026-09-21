@@ -89,6 +89,34 @@ built and checked, not when it is planned.
    never gets a suggestion from staff B's work. Spec written in
    STYLE-MEMORY.md. Not built.
 
+### Open, asked 2026-09-21
+
+**Search has to be available at any time, and he has to be able to start
+it himself.** His words:
+
+  "I think the search option should happen at any time. If I want. I can
+  say that the system should quickly research about a subject before I
+  even start what I want to build and I can at any Point during the
+  interview ask the model to research this one because I don't have the
+  answer, the model can even suggest a research after a read back or
+  after writing prompt. Also I can also tell the model to search for an
+  answer during interview if I don't know what to say, it can search
+  knowledge base again before searching the web. That flexibility is
+  necessary."
+
+Four separate things in that, and they are not the same job:
+
+1. He starts a search himself, from any point, including before he has
+   said what he wants built. Today only the model may raise it.
+2. He asks for one mid interview, when a question is asked and he does
+   not know the answer.
+3. The model may offer one AFTER the read back, and after the brief is
+   written. Today both of those points are closed.
+4. The company material is checked first and reported, and the web is
+   only proposed when the answer genuinely is not in there.
+
+Read back to him and waiting on his confirmation before building.
+
 ### Logged on 2026-09-16, and he said not to build them today
 
 He asked for these to be written down rather than built, to save credits
