@@ -256,13 +256,30 @@ function buildTurnContent(text, attachments) {
   ];
 }
 
+/* "REPORT" IS NOT A SPREADSHEET, fixed 2026-09-21.
+
+   It used to sit in the finance line, so "write me a one page report for
+   the board" put "Excel mode" in the header of a Word document. The badge
+   is only a badge, the Word button is always there and still works, but a
+   screen that labels itself wrongly is a screen nobody trusts.
+
+   Most people saying report mean something written. A spreadsheet is what
+   they ask for when they say spreadsheet, budget, forecast, or numbers, so
+   those are what the finance line looks for now. */
 function guessProjectType(text) {
   const t = text.toLowerCase();
   if (t.includes("pitch") || t.includes("deck") || t.includes("presentation")) return "deck";
-  if (t.includes("finance") || t.includes("report") || t.includes("numbers") || t.includes("revenue"))
+  if (
+    t.includes("spreadsheet") || t.includes("finance") || t.includes("budget") ||
+    t.includes("forecast") || t.includes("numbers") || t.includes("revenue")
+  )
     return "finance";
   if (t.includes("social") || t.includes("post") || t.includes("graphic")) return "social";
-  if (t.includes("proposal") || t.includes("one pager") || t.includes("one-pager")) return "proposal";
+  if (
+    t.includes("proposal") || t.includes("report") || t.includes("one pager") ||
+    t.includes("one-pager")
+  )
+    return "proposal";
   return "other";
 }
 
@@ -418,6 +435,18 @@ export default function Chat() {
      gets its own short conversation rather than inheriting a spent
      allowance. */
   const interviewTurnsRef = useRef(0);
+
+  /* HOW MANY TIMES THE FIRST TURN HAS ASKED TO GO AND LOOK, and it is
+     allowed exactly one.
+
+     The first turn is the only stage with no way out of its own. It leaves
+     by offering the interview, and nothing else moves it. So a turn that
+     ends by asking to search instead of offering has spent the turn and
+     left the person where they started. Once is a reasonable thing to ask
+     before agreeing the work. Twice is somebody stuck on the first screen,
+     which is what happened between 2026-09-16 and 2026-09-21. After one,
+     the offer goes up regardless. */
+  const orientLookupsRef = useRef(0);
 
   /* Stops a second Build press stacking a second paid generation. */
   const [generating, setGenerating] = useState(false);
@@ -792,10 +821,14 @@ export default function Chat() {
         );
         persist(next, stage);
 
-        /* A cut off reply has no ending, so it cannot carry a marker either.
-           Stopping here keeps the app from reading half a sentence as a read
-           back or as a finished interview. */
-        if (cutOff) return;
+        /* NO EARLY RETURN HERE, and that was a mistake on 2026-09-16.
+
+           A reply cut off at the ceiling cannot carry a final marker, so
+           the checks below simply do not match and the stage stays where it
+           is. Returning early did the same thing whilst also skipping the
+           interview counter, and it hid the fact that the real problem is
+           being stuck rather than being chopped. The note on screen is what
+           tells them; the flow carries on as normal. */
 
         /* THE OFFER. The first turn has read the request and the whole of
            the company's material, and has said what it already has. Now it
@@ -807,30 +840,36 @@ export default function Chat() {
 
            No marker means it was not a piece of work, just conversation.
            The stage stays where it is and it reads again next time. */
-        /* GATE ONE, AND IT IS NOT ONLY THE ANALYSIS THAT MAY RAISE IT.
+        /* GATE ONE, AND WHERE IT IS ALLOWED TO INTERRUPT.
 
            Anthony, 2026-09-16: "I tried to tell it to search for something,
            which is supposed to spin up this thing for me to select, for me
            to approve, and then it will search. It doesn't only spin up when
            it decides. It can also spin up for me to approve when I decide."
 
-           This used to sit inside the analyse branch below, so asking it to
-           look something up during an ordinary conversation could only ever
-           produce a refusal. The card is raised from whatever stage asked
-           for it, and the stage is remembered so the conversation comes back
-           to where it was instead of being pushed into the work pipeline.
+           So it may be raised from more than the analysis, and it is, below.
+           But it is raised INSIDE each stage and after that stage's own
+           handshake, never above all of them.
 
-           Nothing else changes. The search tool is still not attached to any
-           request until a person presses the button. */
-        if (raw.includes(MARKER.needLookup)) {
-          updateMessages((prev) => [
-            ...prev,
-            { id: nextId(), role: "assistant", type: "lookup", from: stage },
-          ]);
-          return;
-        }
+           WHY, AND THIS BROKE THE PRODUCT FOR FIVE DAYS. The check used to
+           sit here, above every stage, and return. At the same time the base
+           prompt gained a section on how to ask for a search, and the base
+           prompt is read by every stage including the first one. So the
+           opening turn started ending with a request to search instead of
+           with OFFER_INTERVIEW, this check fired, and the offer card was
+           never made. The stage stayed on "orient", and handleUserReply
+           leaves "orient" exactly where it is, so typing did not help
+           either. The interview never started, so there was no read back, no
+           brief, and no document. Anthony, 2026-09-21: "the agent can not
+           even produce a word document. It doesn't even get to the read back
+           stage."
+
+           The rule now: a marker that moves the work forward always beats a
+           request to go and look. The search can wait a turn. The work
+           cannot wait forever. */
 
         if (stage === "orient") {
+          /* The offer wins, every time, even if it also asked to search. */
           if (raw.includes(MARKER.offerInterview)) {
             setFlowStage("offered");
             const withOffer = updateMessages((prev) => [
@@ -838,7 +877,40 @@ export default function Chat() {
               { id: nextId(), role: "assistant", type: "offer" },
             ]);
             persist(withOffer, "offered");
+            return;
           }
+
+          /* It asked to go and look before it had offered anything. Allowed
+             ONCE per piece of work, and once only, because this stage has no
+             other way out. Two turns of asking to search would be a person
+             stuck on the first screen with no route to a document. */
+          if (raw.includes(MARKER.needLookup) && orientLookupsRef.current < 1) {
+            orientLookupsRef.current += 1;
+            updateMessages((prev) => [
+              ...prev,
+              { id: nextId(), role: "assistant", type: "lookup", from: "orient" },
+            ]);
+            return;
+          }
+
+          /* THE WAY OUT, and without it this stage is a trap.
+
+             We come back here after a search that was allowed or refused. If
+             that turn still has not offered, the offer goes up anyway. The
+             offer is only ever a question with two buttons, so putting it
+             there costs nothing and it guarantees a route forward. */
+          if (orientLookupsRef.current > 0) {
+            setFlowStage("offered");
+            const withOffer = updateMessages((prev) => [
+              ...prev,
+              { id: nextId(), role: "assistant", type: "offer" },
+            ]);
+            persist(withOffer, "offered");
+          }
+
+          /* No marker at all and no search behind us means it was not a
+             piece of work, just conversation. The stage stays where it is
+             and it reads again next time. */
           return;
         }
 
@@ -854,20 +926,54 @@ export default function Chat() {
           return;
         }
 
-        if (stage === "interview") interviewTurnsRef.current += 1;
+        if (stage === "interview") {
+          interviewTurnsRef.current += 1;
 
-        /* The conversation has what it came for. Move up a tier and go
-           straight into the check, without the staff member pressing
-           anything. From their side they answered a question and the next
-           thing they see is a read back. */
-        if (stage === "interview" && raw.includes(MARKER.interviewDone)) {
-          interviewTurnsRef.current = 0;
-          setFlowStage("analyse");
-          runTurn("analyse", [...history, { role: "assistant", content: clean }]);
+          /* The conversation has what it came for. Move up a tier and go
+             straight into the check, without the staff member pressing
+             anything. From their side they answered a question and the next
+             thing they see is a read back.
+
+             FIRST, above the search, for the reason written at the top of
+             this block: finishing the interview is what gets them a
+             document, and a request to look something up must never take
+             that turn away from them. */
+          if (raw.includes(MARKER.interviewDone)) {
+            interviewTurnsRef.current = 0;
+            setFlowStage("analyse");
+            runTurn("analyse", [...history, { role: "assistant", content: clean }]);
+            return;
+          }
+
+          /* Asked to go and look in the middle of the conversation, which is
+             usually because the person asked it to. Safe here, unlike the
+             first turn, because this stage always ends: either it says it is
+             done, or handleUserReply moves it up at MAX_INTERVIEW_TURNS
+             whatever the model thinks. */
+          if (raw.includes(MARKER.needLookup)) {
+            updateMessages((prev) => [
+              ...prev,
+              { id: nextId(), role: "assistant", type: "lookup", from: "interview" },
+            ]);
+            return;
+          }
+
+          /* An ordinary question. Wait for them to answer it. */
           return;
         }
 
         if (stage === "analyse") {
+          /* GATE ONE, where it has always lived and where it is safest. This
+             stage reads, and it ends in one of three places every time: it
+             asks to search, it asks them for something, or it reads back. */
+          if (raw.includes(MARKER.needLookup)) {
+            updateMessages((prev) => [
+              ...prev,
+              { id: nextId(), role: "assistant", type: "lookup", from: "analyse" },
+            ]);
+            return;
+          }
+
           /* It read the sources and found a hole. Anything that needs a
              person is a conversation, so it drops back to the cheap model
              for the back and forth rather than charging Sonnet rates to
@@ -1350,8 +1456,15 @@ export default function Chat() {
      default is "analyse". */
   const lookupFromRef = useRef("analyse");
 
+  /* Back to the stage that asked, so a search during the interview returns
+     to the interview and one during the analysis returns to the analysis.
+     Both of those stages end on their own, so neither can trap anybody: the
+     interview is moved up at MAX_INTERVIEW_TURNS whatever the model thinks,
+     and the analysis always ends in a read back, a question, or a search.
+     The first turn is the one that needed a guard, and it has one above. */
   function lookupReturnStage() {
-    return lookupFromRef.current === "orient" ? "orient" : "analyse";
+    const from = lookupFromRef.current;
+    return from === "orient" || from === "interview" ? from : "analyse";
   }
 
   function allowLookup(from) {
@@ -1443,6 +1556,7 @@ export default function Chat() {
     abortTurnRef.current = null;
     conversationIdRef.current = null;
     lookupFromRef.current = "analyse";
+    orientLookupsRef.current = 0;
     setTyping(false);
     setActiveTier(null);
     updateMessages([]);
