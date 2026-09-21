@@ -339,6 +339,34 @@ customers is a decision per file backed by a check that reads its
 contents, and folding ten of those into one button is its own job. The
 slow part was the analysing and that is what is now parallel.
 
+### Open, asked 2026-09-21 (fifth)
+
+**Images picked together should become one source.** His words: "if the
+images are uploaded in group or at once it means they have the same
+message so the system should treat it as one file."
+
+The case he means is real and common: somebody screenshots a five page
+price list, picks all five, and today gets five sources each with its own
+name and its own line, when it is one document.
+
+THE CLASH, AND IT IS NOT A MATTER OF TASTE. Several pictures at once is
+ALSO how somebody adds five logos, which is what the image carrier was
+built for on 2026-09-15. Each brand asset needs to stay its own row with
+its own asset_path, because a design reaches for one logo, not for a pile
+of five. Merging those would quietly break the Canva path.
+
+So "picked together" cannot on its own mean "one source". Something has to
+tell the two apart.
+
+PROPOSED: let the model say which it is. It is already reading every one
+of them, so it can see whether it is holding five pages of one document or
+five unrelated marks, and it proposes: "These look like five pages of one
+price list. Save as one source?" with a way to split them. That matches
+what he asked for on the no-text case, where he wanted judgement rather
+than a flat answer.
+
+Read back to him 2026-09-21, waiting on his confirmation.
+
 ### Logged on 2026-09-16, and he said not to build them today
 
 He asked for these to be written down rather than built, to save credits
