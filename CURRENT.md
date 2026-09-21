@@ -139,6 +139,46 @@ and it becomes its own piece of work.
 The prompt half needs the function redeployed. The client half works
 without it.
 
+### Open, asked 2026-09-21 (second)
+
+**A deleted file still holds its name, and a same name upload should offer
+to replace rather than just warn.** His words:
+
+  "I noticed the system still remembers deleted file name... it's telling
+  you that you already have this name. Which means it has saved the
+  knowledge base, does not log the fact that that file has been removed,
+  or that the file is being replaced. I would have expected that when you
+  have removed the file, it sees it as fresh file. And then when the file
+  still exists, if it sees that the contents are similar, then... it's
+  going to prioritize the most recent content, or better still suggest a
+  replacement."
+
+WHAT THE AUDIT FOUND, 2026-09-21:
+
+- `removeSource` in session.js is a HARD delete. Chunks first, then the
+  source row. There is no soft delete and no `deleted_at` column, so
+  nothing is being hidden rather than removed.
+- `listSources` reads straight from the database every time with no
+  filter, so it cannot be showing a stale cache.
+- `findByName` runs against `items`, which is the same list drawn on
+  screen. So a row that is genuinely gone cannot trigger the warning.
+- Therefore the row is probably still in the database. The likeliest
+  reason a Supabase delete looks like it worked and did not is RLS: a
+  DELETE that matches no rows because the policy filtered them returns NO
+  ERROR, so `removeSource` returns true and the screen removes it anyway.
+  The table predates the repo's migrations, so its delete policy is only
+  in Supabase and could not be read from here.
+- THE TEST THAT SETTLES IT: delete a file, then reload the page. If it
+  comes back, it is the policy. If it stays gone, the cause is something
+  else and the guess above is wrong.
+
+- A Replace / Keep both dialog ALREADY EXISTS, but only for links, and it
+  is triggered by matching the ADDRESS, not the name. Uploaded files and
+  pasted text get only a red warning that says "give this one a different
+  name". That is the gap he is describing.
+
+Not built. Waiting on the reload test and on his go-ahead.
+
 ### Logged on 2026-09-16, and he said not to build them today
 
 He asked for these to be written down rather than built, to save credits
