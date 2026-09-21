@@ -56,7 +56,25 @@ function builder(table) {
   return api;
 }
 
+/* Everything the pages actually reach for. Anything missing here shows up
+   as a page error in the flow test rather than as a silent wrong answer,
+   which is how these came to be listed: the chat asks whether Canva is
+   connected on mount, and it asks who is signed in. */
 export const supabase = {
   from: (table) => builder(table),
-  auth: { getSession: async () => ({ data: { session: null } }) },
+  auth: {
+    getSession: async () => ({ data: { session: { access_token: "fake", user: { id: "s1" } } } }),
+    getUser: async () => ({ data: { user: { id: "s1", email: "anthony@example.com" } }, error: null }),
+    signOut: async () => ({ error: null }),
+    onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
+  },
+  functions: {
+    invoke: async () => ({ data: { connected: false }, error: null }),
+  },
+  storage: {
+    from: () => ({
+      upload: async () => ({ data: null, error: null }),
+      getPublicUrl: () => ({ data: { publicUrl: "" } }),
+    }),
+  },
 };

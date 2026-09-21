@@ -25,13 +25,54 @@ built and checked, not when it is planned.
 
 ### Open
 
-1. **ONE THING IS WAITING ON HIM AND NOTHING ELSE IS: the assistant
-   function has to be redeployed.** The fix for the cut off replies and
+0. **FIXED 2026-09-21, AND IT WAS MINE: the product could not make a
+   document at all between the 16th and the 21st.**
+
+   Anthony: "the agent can not even produce a word document. It doesn't
+   even get to the read back stage let alone writing a prompt."
+
+   What I did on the 16th. I moved the NEED_LOOKUP check to the top of
+   `onDone`, above every stage, where it returns. In the same change I put
+   a large section into the BASE prompt explaining how to ask for a search,
+   and the base prompt is read by every stage including the first one.
+
+   What that did. The opening turn started ending by asking to search
+   instead of ending with OFFER_INTERVIEW. The check at the top fired and
+   returned, so the offer card was never made and `flowStage` stayed on
+   "orient". `handleUserReply` leaves "orient" exactly where it is, so
+   typing did not rescue it either. Search, refuse, or type, you came back
+   to the same turn. No interview, no read back, no brief, no file. The
+   one path the whole product exists for.
+
+   Why nothing caught it. Lint was clean, the build was clean, and a
+   screenshot of a chat that has stalled looks exactly like a chat that is
+   waiting for you. There was no test that walked the flow.
+
+   The fix, three parts. A marker that moves the work forward now always
+   beats a request to go and look, checked inside each stage rather than
+   above all of them. The first turn may ask to search once and once only,
+   and after that the offer goes up regardless, because that stage has no
+   other way out. And the prompt now tells it not to spend a handshake turn
+   on a search request. The first two ship with the site; the third is a
+   redeploy, below.
+
+   There is now `npm run flow`, which drives the real chat page with a
+   scripted assistant behind it and walks orient to Build card. It was
+   checked against the broken code first: it fails there with
+   "orient -> orient" and nothing after it.
+
+1. **The assistant function is worth redeploying, though it is no longer
+   what is blocking you.** The fix for the cut off replies and
    for the search refusal is written, type checked and pushed to
    `testing`, and it is NOT live. The deployed `assistant` is still v14.
    Until it is deployed, the chat still stops mid sentence and still
    refuses to search when asked. Three steps are in the reply of
    2026-09-16 and they take about two minutes.
+
+   The site fix above stands on its own, so a document can be made without
+   this. What the redeploy adds is the root cause: the prompt stops telling
+   the first turn to volunteer a search, so it stops happening rather than
+   being caught.
 
    Why Claude did not deploy it itself: deploying through the tools means
    retyping all 73,000 characters of the function by hand, and a single
@@ -47,6 +88,56 @@ built and checked, not when it is planned.
    nothing. Per staff member only, never a company standard, and staff A
    never gets a suggestion from staff B's work. Spec written in
    STYLE-MEMORY.md. Not built.
+
+### Open, asked 2026-09-21
+
+**Search has to be available at any time, and he has to be able to start
+it himself.** His words:
+
+  "I think the search option should happen at any time. If I want. I can
+  say that the system should quickly research about a subject before I
+  even start what I want to build and I can at any Point during the
+  interview ask the model to research this one because I don't have the
+  answer, the model can even suggest a research after a read back or
+  after writing prompt. Also I can also tell the model to search for an
+  answer during interview if I don't know what to say, it can search
+  knowledge base again before searching the web. That flexibility is
+  necessary."
+
+Four separate things in that, and they are not the same job:
+
+1. He starts a search himself, from any point, including before he has
+   said what he wants built. Today only the model may raise it.
+2. He asks for one mid interview, when a question is asked and he does
+   not know the answer.
+3. The model may offer one AFTER the read back, and after the brief is
+   written. Today both of those points are closed.
+4. The company material is checked first and reported, and the web is
+   only proposed when the answer genuinely is not in there.
+
+**Confirmed by him the same day and BUILT.** He chose the no-new-control
+route: "your recommendation is good. the model already raised card anyway
+so that is a better way because it is the same behavior."
+
+What was built:
+
+- 1, 2 and 4 in full. The rule that makes it safe is that a marker moving
+  the work forward is never swallowed, but a search request may ride
+  alongside one. So both cards can be on screen at once and he chooses.
+- 3 at the read back, which is the point he named. The read back can now
+  carry a search suggestion and still put the Build card up.
+
+WHAT WAS NOT BUILT, AND WHY. He also said "or after writing prompt". The
+brief stage is the wrong place for that gate and it is not a scoping
+dodge: the brief is machinery and is never shown on screen, so a card
+there would read "May I look this up online?" with nothing above it
+saying what it wants to find. A gate nobody can answer sensibly is worse
+than no gate. The read back is one step earlier and shows its reasoning,
+so that is where it went. Say if you want it in the writing turn as well
+and it becomes its own piece of work.
+
+The prompt half needs the function redeployed. The client half works
+without it.
 
 ### Logged on 2026-09-16, and he said not to build them today
 

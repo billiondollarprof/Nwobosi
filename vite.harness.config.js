@@ -13,13 +13,24 @@ export default defineConfig({
        relative path ("../shared/supabase.js") and an absolute key never
        fires. */
     alias: [
+      /* ANCHORED AT BOTH ENDS ON PURPOSE. With a regular expression only
+         the matched part of the specifier is swapped, so an unanchored
+         pattern left the "../" in front and produced "..//home/user/...".
+         Matching the whole specifier replaces the whole thing. */
       {
-        /* ANCHORED AT BOTH ENDS ON PURPOSE. With a regular expression only
-           the matched part of the specifier is swapped, so an unanchored
-           pattern left the "../" in front and produced "..//home/user/...".
-           Matching the whole specifier replaces the whole thing. */
         find: /^.*\/shared\/supabase\.js$/,
         replacement: path.resolve(process.cwd(), "scripts/__harness/fake-supabase.js"),
+      },
+      {
+        find: /^.*\/shared\/session\.js$/,
+        replacement: path.resolve(process.cwd(), "scripts/__harness/fake-session.js"),
+      },
+      /* The fake re-exports toApiMessages from the real module, so this one
+         must not rewrite its own import. It uses an absolute src/ path for
+         exactly that reason. */
+      {
+        find: /^\.\.\/shared\/assistantApi\.js$/,
+        replacement: path.resolve(process.cwd(), "scripts/__harness/fake-assistantApi.js"),
       },
     ],
   },
