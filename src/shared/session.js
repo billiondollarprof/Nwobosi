@@ -13,7 +13,7 @@
    ========================================================================== */
 
 import { supabase } from "./supabase.js";
-import { BRAND_ASSETS_BUCKET } from "./config.js";
+import { BRAND_ASSETS_BUCKET, FUNCTIONS } from "./config.js";
 import { clearAdminClock } from "./adminClock.js";
 
 /* --------------------------------------------------------------------------
@@ -268,10 +268,19 @@ export async function addImageSource({
       location: null,
       asset_path: path,
       asset_mime: mediaType,
-      /* Ready straight away. There is no text to pull apart and no second
-         step to wait for, so anything other than ready would be a status
-         that never changes. */
-      status: "ready",
+      /* BEING READ, NOT READY, since 2026-09-21.
+
+         It used to go straight to ready, because there was no text to pull
+         apart and no second step to wait for. There is now: read-image
+         looks at the picture and stores what it says, so a screenshot is a
+         source the assistant can quote instead of a name it can only
+         mention. Until that has run there IS something to wait for, and
+         the screen should say so rather than claim it is done.
+
+         read-image sets it back to ready on every path out of itself,
+         including the ones where the reading failed, because the picture
+         still works in a design either way. */
+      status: "processing",
       added_by: userId,
       customer_visible: customerVisible === true,
     })
@@ -291,7 +300,49 @@ export async function addImageSource({
     return { ok: false, reason: "Could not save that. Try again." };
   }
 
-  return { ok: true, source, chunks: 0 };
+  /* THE READING, AND ITS FAILURE IS NOT THE UPLOAD'S FAILURE.
+
+     The picture is saved and usable the moment the lines above finish.
+     Reading it is the extra that makes it answerable, so it gets its own
+     try and never turns a successful upload into an error on screen.
+     read-image is the one that puts the row back to ready, whatever
+     happens inside it, so nothing is left saying "being read" forever. */
+  let read = 0;
+  try {
+    const result = await readImageSource(source.id);
+    read = result.chunks ?? 0;
+  } catch (err) {
+    console.error("could not read the picture after uploading it", err);
+  }
+
+  return { ok: true, source: { ...source, status: "ready" }, chunks: read };
+}
+
+/* Asks the server to look at a picture already in the bucket and store
+   what it says. Separate from the upload above so it can be run again for
+   one that was added before any of this existed. */
+export async function readImageSource(sourceId) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return { ok: false, chunks: 0 };
+
+  const response = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${FUNCTIONS.readImage}`,
+    {
+      method: "POST",
+      headers: {
+        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${session.access_token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ sourceId }),
+    },
+  );
+
+  if (!response.ok) {
+    console.error("read-image refused", response.status);
+    return { ok: false, chunks: 0 };
+  }
+  return await response.json();
 }
 
 /* GIVING SOMEBODY THE SUPPORT QUEUE, OR TAKING IT BACK.
@@ -384,14 +435,52 @@ export async function resolveContradiction(id) {
   return !error;
 }
 
+/* A DELETE THAT MATCHES NOTHING IS NOT AN ERROR, AND THAT IS THE TRAP.
+
+   Anthony, 2026-09-21: "I noticed the system still remembers deleted file
+   name... it's telling you that you already have this name."
+
+   This used to read `return !error`, and no error is not the same thing as
+   a row being gone. When RLS (a database rule deciding which rows you may
+   touch) filters a delete, Postgres deletes nothing and reports success,
+   because from its side the statement ran fine and matched no rows. So
+   this returned true, the screen took the file out of the list, and the
+   row sat there in the database. The name stayed taken, the file came back
+   on the next page load, and nothing anywhere said a word about it.
+
+   `.select("id")` makes the statement hand back what it actually removed.
+   An empty array means nothing was deleted, and that is now a failure, so
+   the screen says "could not remove that" instead of lying.
+
+   This does not fix a policy that blocks the delete. It makes a blocked
+   delete visible, which is the difference between a bug somebody can see
+   and a bug that quietly rots the knowledge base. */
 export async function removeSource(id) {
   /* Chunks first. A source row with orphaned chunks behind it is
      recoverable; chunks with no source to explain them are litter the
      assistant could still be handed. */
   await supabase.from("knowledge_chunks").delete().eq("source_id", id);
-  const { error } = await supabase.from("knowledge_sources").delete().eq("id", id);
-  if (error) console.error("could not remove source", error);
-  return !error;
+
+  const { data, error } = await supabase
+    .from("knowledge_sources")
+    .delete()
+    .eq("id", id)
+    .select("id");
+
+  if (error) {
+    console.error("could not remove source", error);
+    return false;
+  }
+
+  if (!data || data.length === 0) {
+    console.error(
+      "the delete for source", id, "removed nothing. The row is still there, " +
+      "most likely because a row level security policy filtered it out.",
+    );
+    return false;
+  }
+
+  return true;
 }
 
 /* --------------------------------------------------------------------------

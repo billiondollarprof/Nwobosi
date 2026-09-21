@@ -139,6 +139,154 @@ and it becomes its own piece of work.
 The prompt half needs the function redeployed. The client half works
 without it.
 
+### Open, asked 2026-09-21 (second)
+
+**A deleted file still holds its name, and a same name upload should offer
+to replace rather than just warn.** His words:
+
+  "I noticed the system still remembers deleted file name... it's telling
+  you that you already have this name. Which means it has saved the
+  knowledge base, does not log the fact that that file has been removed,
+  or that the file is being replaced. I would have expected that when you
+  have removed the file, it sees it as fresh file. And then when the file
+  still exists, if it sees that the contents are similar, then... it's
+  going to prioritize the most recent content, or better still suggest a
+  replacement."
+
+WHAT THE AUDIT FOUND, 2026-09-21:
+
+- `removeSource` in session.js is a HARD delete. Chunks first, then the
+  source row. There is no soft delete and no `deleted_at` column, so
+  nothing is being hidden rather than removed.
+- `listSources` reads straight from the database every time with no
+  filter, so it cannot be showing a stale cache.
+- `findByName` runs against `items`, which is the same list drawn on
+  screen. So a row that is genuinely gone cannot trigger the warning.
+- Therefore the row is probably still in the database. The likeliest
+  reason a Supabase delete looks like it worked and did not is RLS: a
+  DELETE that matches no rows because the policy filtered them returns NO
+  ERROR, so `removeSource` returns true and the screen removes it anyway.
+  The table predates the repo's migrations, so its delete policy is only
+  in Supabase and could not be read from here.
+- THE TEST THAT SETTLES IT: delete a file, then reload the page. If it
+  comes back, it is the policy. If it stays gone, the cause is something
+  else and the guess above is wrong.
+
+- A Replace / Keep both dialog ALREADY EXISTS, but only for links, and it
+  is triggered by matching the ADDRESS, not the name. Uploaded files and
+  pasted text get only a red warning that says "give this one a different
+  name". That is the gap he is describing.
+
+BUILT 2026-09-21, after he raised it a second time.
+
+1. **A delete now proves it worked.** `removeSource` read `return !error`,
+   and no error is not the same as a row being gone. A delete filtered by
+   RLS removes nothing and reports success, so the screen dropped the file
+   and the database kept it. It now asks for the deleted rows back with
+   `.select("id")` and treats an empty result as a failure, so the screen
+   says "could not remove that" instead of lying.
+
+   THIS DOES NOT MAKE A BLOCKED DELETE SUCCEED. It makes it visible. If the
+   policy is the cause, Anthony will now SEE the refusal instead of the
+   file vanishing and coming back, and then the policy gets fixed with SQL
+   he approves first.
+
+2. **A name already in use offers Replace.** Same dialog links have had for
+   a while, its own words: Replace the old one, Keep both, Cancel. Files
+   and pasted text both go through it. The new one is saved first and the
+   old row removed only once that worked, so a failed save never takes the
+   working copy with it. The list is then re-read from the database rather
+   than stitched together locally, which is the habit that let a removed
+   row linger in the first place.
+
+3. **Same content under a different name** is still not built. It needs a
+   fingerprint of the content on the row, which is a schema change. Worth
+   knowing: the precedence he asked for already exists in the prompt, which
+   says that where two company sources disagree, the newer one wins.
+
+Covered by `npm run check` now, which runs `scripts/__harness/sources.cjs`.
+Three checks, and they were verified against the old code first: with
+`return !error` the blocked delete reports success and the walk fails.
+
+### Open, asked 2026-09-21 (third)
+
+**The knowledge base cannot read images or screenshots.** Anthony noticed
+it. He is right, and the audit says it is a gap rather than a break.
+
+WHAT THE CODE ACTUALLY DOES:
+
+- `addImageSource` uploads the file to the brand assets bucket, writes a
+  `knowledge_sources` row with `kind: "image"` and `asset_path`, marks it
+  ready, and returns `chunks: 0`. Nothing extracts a word from it. The
+  comment says why: "There is no text to pull apart and no second step to
+  wait for."
+- `assistant/index.ts` never reads `asset_path` and never sends an image.
+  It builds the prompt from `knowledge_chunks`, which is text only.
+- So for a screenshot the assistant sees exactly two things: the NAME and
+  the one line description. Nothing of what is in the picture.
+
+WHY IT IS LIKE THIS. Images were built as a carrier for designs, logos and
+brand pictures to go into Canva, which is what he asked for on 2026-09-15.
+They were never meant to be readable knowledge. Now he expects both.
+
+THE SHAPE OF THE FIX, and it matches how a link already works: read the
+picture ONCE at upload and store what it says as chunks. Then it is a
+source like any other, quoted and named, with no second system. The
+plumbing is already there, `describe-source` sends base64 images to a
+model today to get a title and a one line description.
+
+DECIDED BY HIM, 2026-09-21. Both recommendations accepted, with one
+improvement that is better than what was proposed:
+
+1. The capable model reads the picture, not the cheap one. The cheap one
+   keeps the naming job.
+2. Every image is read. There is no toggle, because a toggle is plumbing
+   and the admin never sees plumbing.
+3. HIS IMPROVEMENT, and it is the part that makes it feel intelligent.
+   A picture with no words in it does NOT come back with "nothing to
+   read". It says no text was found, and then describes what the picture
+   actually is, in a line. His words: "if it's an image of something, it
+   should try and describe it in a very short format. That's the
+   intelligence."
+
+   He is right and the reason is worth writing down. "Nothing to read" is
+   the system talking about itself and it gives the assistant nothing. A
+   line saying what the picture IS gives it something true to work with,
+   so a logo becomes a fact about the company rather than a dead row.
+
+BUILT 2026-09-21. `read-image`, a NEW edge function, so it comes straight
+from the repo with nothing to overwrite.
+
+HOW IT WORKS. A picture is saved as "being read" rather than ready, the
+browser asks read-image to look at it, and what it says is stored as an
+ordinary chunk. From every other part of the product it is then a source
+like any other: quoted, named, and listed in which sources were used. No
+second system and no new screen.
+
+FOUR THINGS IN IT WORTH KNOWING:
+
+- Sonnet reads the picture, not Haiku. Haiku keeps the naming job.
+- Every path out sets the row back to READY, including the failures,
+  because the picture still works in a design when the reading failed. A
+  row stuck on "being read" is worse than one with no text.
+- The reading failing never fails the upload. It has its own try.
+- Base64 is INSIDE read-image/index.ts, exported only so the test can
+  import the real thing. It was briefly in `_shared/base64.ts` and Anthony
+  asked the right question: why make him manage a second file in the
+  console to save eight lines. He is right. read-image is ONE file with no
+  local imports, so it is one paste and one deploy.
+  The obvious one line version throws on anything picture sized, and
+  scripts/tests/read-image.test.mjs proves both that it throws and that
+  the shipped one matches Node byte for byte.
+
+NEEDS A DEPLOY. It is new, so it is a NEW deploy, not a redeploy.
+
+STILL TO DO: images uploaded BEFORE this was built have status ready and
+no chunks, so they stay unreadable. `readImageSource` is exported and
+takes a source id, so a "Read this picture" action on those rows is a
+small piece of work whenever he wants it. Until then, replacing the image
+reads it.
+
 ### Logged on 2026-09-16, and he said not to build them today
 
 He asked for these to be written down rather than built, to save credits
