@@ -145,9 +145,73 @@ function check(name, cond) { (cond ? OK : BAD).push(name); }
       (await page.locator('text=Did I get that right?').count()) > 0);
   }
 
-  /* Read before the next walk clears it, or the search assertion below
-     would be looking at a walk that never searched. */
+  /* CAPTURED HERE, RIGHT WHERE THE SEARCH WALK ENDS, and not further down.
+
+     It lived at the bottom twice and both times a new walk was added above
+     it, so it read the new walk's stages and the search check failed for
+     no reason. A reading taken next to the thing it measures cannot drift
+     when somebody adds a scenario. */
   const searchTurns = await page.evaluate(() => window.__TURNS || []);
+
+  /* ------------------------------------------------------------------
+     "SOMETHING IS MISSING" HAS TO ASK, NOT GO SILENT.
+
+     Anthony, 2026-09-21: "if I say something is missing, it should paste
+     that something is missing, and it should ask me what is missing, where
+     and where is missing."
+
+     It used to take the card away, move the stage and put the cursor in
+     the box, leaving the person who is least sure how to describe the
+     problem to start from nothing. Pressing it now runs a turn.
+
+     And the loop has no limit: round again, and again, until the read back
+     is right. His words: "it doesn't matter how many times I go over and
+     over and over the whole process until the final recap."
+     ------------------------------------------------------------------ */
+  await page.addInitScript(() => {
+    window.__TURNS = [];
+    window.__SCRIPT = {
+      orient: ["I can see your site.\nOFFER_INTERVIEW"],
+      interview: [
+        "Which part is thin, and what should it say?",
+        "Got it, I have that now.\nINTERVIEW_COMPLETE",
+      ],
+      analyse: [
+        "A one page FAQ.\nFORMAT: docx\nREADBACK_COMPLETE",
+        "A one page FAQ, now with refunds.\nFORMAT: docx\nREADBACK_COMPLETE",
+      ],
+    };
+  });
+  await page.goto('http://localhost:5301/?page=chat', { waitUntil: 'networkidle' });
+  await page.waitForTimeout(1200);
+
+  await page.locator('textarea').first().fill('Make me a one page FAQ');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(1400);
+  await page.locator('button', { hasText: 'Just get on with it' }).first().click();
+  await page.waitForTimeout(2200);
+
+  check('the first read back arrived', (await page.locator('text=Did I get that right?').count()) > 0);
+
+  const before = await page.evaluate(() => (window.__TURNS || []).length);
+  await page.locator('button', { hasText: 'Something is missing' }).first().click();
+  await page.waitForTimeout(1600);
+
+  check('THE FIX: pressing it runs a turn instead of going silent',
+    (await page.evaluate(() => (window.__TURNS || []).length)) > before);
+  check('and it asks which part rather than sitting there',
+    (await page.locator('text=Which part is thin').count()) > 0);
+  check('and it said out loud that something is missing',
+    (await page.locator('text=Something is missing.').count()) > 0);
+
+  /* Answer it, and the loop has to come back round to a fresh read back. */
+  await page.locator('textarea').first().fill('The refunds section is missing');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(2600);
+  check('answering it comes back round to a new read back',
+    (await page.locator('text=now with refunds').count()) > 0);
+  check('and the Build card is there again', (await page.locator('text=Did I get that right?').count()) > 0);
+  await page.screenshot({ path: '/tmp/claude-0/flow-missing.png', fullPage: true });
 
   /* ------------------------------------------------------------------
      ASKING FOR THE FINISHED DOCUMENT IN ANOTHER FORMAT.

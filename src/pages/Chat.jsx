@@ -1699,10 +1699,35 @@ export default function Chat() {
      card away, puts them back in conversation, and hands them the cursor.
      What they type next is the correction, and the loop carries it back up
      to the analysis by itself. */
+  /* "SOMETHING IS MISSING" IS A CONVERSATION, NOT A BLANK CURSOR.
+
+     Anthony, 2026-09-21: "if I say something is missing, it should paste
+     that something is missing, and it should ask me what is missing, where
+     and where is missing."
+
+     It used to take the card away, move the stage, and put the cursor in
+     the box. Silence. The person who just said something is wrong is left
+     to work out for themselves how to say what, and they are the one who
+     is less sure about it, because it is not their draft.
+
+     A colleague would not do that. They would say what they think they
+     got wrong, and ask you which part. So pressing this now RUNS A TURN:
+     it goes back to the conversation with "Something is missing" said out
+     loud, and the interview stage is told what to do with that.
+
+     Its own question allowance, because this is a fresh, specific ask and
+     should not inherit one an earlier interview already spent. */
   function handleAdjust() {
-    updateMessages((prev) => prev.filter((m) => m.type !== "build"));
+    if (typing || generating) return;
+
+    const said = "Something is missing.";
+    const kept = messages.filter((m) => m.type !== "build" && m.type !== "lookup");
+    updateMessages(kept);
+    addMessage({ role: "user", type: "text", content: said });
+
+    interviewTurnsRef.current = 0;
     setFlowStage("interview");
-    textareaRef.current?.focus();
+    runTurn("interview", toApiMessages([...kept, { role: "user", content: said }]));
   }
 
   function handleNewChat() {

@@ -301,8 +301,11 @@ Honest state, so nobody reading this thinks it is all done.
    read back ends with a FORMAT line, the Build button says which file it
    will make, and the file lands as that. Nothing said means a Word
    document, which is what an office reaches for.
-3. **"Something is missing" does not ask what or where.** It clears the
-   card and hands back the cursor. NEXT.
+3. ~~"Something is missing" does not ask what or where.~~ **DONE
+   2026-09-21.** Pressing it runs a turn. It says which parts of its own
+   read back it thinks are thin, asks which bit is wrong and what it
+   should say, and reminds you that you can paste it, attach a file, or
+   send it looking. Then it waits. Round as many times as it takes.
 4. **There is no storage question**, because no storage is connected yet.
    The three honest answers above need building alongside it.
 5. **The ladder is still four rungs.** It should be two.
