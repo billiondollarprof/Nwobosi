@@ -464,12 +464,20 @@ Honest state, so nobody reading this thinks it is all done.
 5. **The ladder is still four rungs.** It should be two.
 6. **Design is wired to Canva by name**, rather than to whichever design
    platform a deployment connected.
-7. **The read back does not SAY which file it is thinking of.** It decides
-   silently. It should say it as a thought and invite a correction.
-8. **The read back does not own the gaps.** Where somebody said get on
-   with it, it should name what was missing and what it decided to do.
-9. **The read back does not offer the three routes** in a line: more
-   detail, point out what is wrong, send me looking.
+7. ~~The read back does not SAY which file it is thinking of.~~ **DONE
+   2026-09-21.** One line: what it is thinking, the reason in a few words,
+   and that they should say if they would rather have something else. The
+   Build button still names it too, so the decision appears twice: once
+   with the reasoning, once at the moment it is still free to change.
+8. ~~The read back does not own the gaps.~~ **DONE 2026-09-21.** For each
+   thing it asked for and did not get: what was missing, and what it has
+   decided to do about it. Not a complaint and not an apology, the
+   decision it is about to make on their behalf, said while it is still
+   free to change.
+9. ~~The read back does not offer the three routes.~~ **DONE 2026-09-21.**
+   One line, and it earns its place because of the third one: searching is
+   the only one of the three with no button, so nobody would ever guess it
+   was available unless it said so.
 10. ~~The two joins can still fail silently.~~ **DONE 2026-09-21**, and
     there were THREE silent paths, not two. An ordinary turn that produced
     nothing made no bubble at all. An empty plan built a document with no
