@@ -74,6 +74,15 @@ built and checked, not when it is planned.
    which is why it never heard about it. The repo copy is fixed. Until it
    is deployed, no admin can invite anybody.
 
+   The same redeploy also carries the invitation email telling the truth
+   about how long the link lasts. It said "72 hours" in fixed text while
+   the real lifetime was read from `staff_invite_lifetime`, so changing
+   that setting would have quietly made the email wrong. It now reads the
+   real figure and says it the same way the admin screen does, "3 days"
+   rather than "72 hours", and it rounds DOWN, because a promise of more
+   time than the link has is the version that leaves somebody locked out.
+   `scripts/tests/invite-expiry.test.mjs`, 16 checks.
+
    **`assistant`, deployed v17, and the repo is ahead of it.** What the
    redeploy carries: the read back paragraph (it owns the gaps, says which
    file it is thinking of and why, and offers the three routes), the

@@ -167,9 +167,10 @@ Deno.serve(async (req) => {
 
   /* ----------------------------------------------------------------------
      THE INVITATION LINK
-     Single use and good for 72 hours. Long enough to survive a weekend,
-     short enough that a forwarded email or a mailbox somebody else gets
-     into stops being a way in.
+     Single use, and how long it lasts comes from the database rather than
+     from here. 72 hours by default, which is long enough to survive a
+     weekend and short enough that a forwarded email, or a mailbox somebody
+     else gets into, stops being a way in.
 
      The raw token goes into the link and nowhere else. Only its SHA-256 is
      stored, the same way a password would be, so a copy of the invites
@@ -180,7 +181,8 @@ Deno.serve(async (req) => {
   const tokenHash = await sha256(token);
 
   const { data: lifetime } = await asService.rpc("staff_invite_lifetime");
-  const expiresAt = new Date(Date.now() + hoursFrom(lifetime) * 3600_000).toISOString();
+  const lifetimeHours = hoursFrom(lifetime);
+  const expiresAt = new Date(Date.now() + lifetimeHours * 3600_000).toISOString();
 
   const { error: inviteError } = await asService.from("staff_invites").insert({
     company_id: admin.company_id,
@@ -214,7 +216,7 @@ Deno.serve(async (req) => {
      ---------------------------------------------------------------------- */
 
   const link = `${APP_URL}/join/${token}`;
-  const emailed = await sendInvite({ to: email, name, link });
+  const emailed = await sendInvite({ to: email, name, link, hours: lifetimeHours });
 
   console.log(
     `invite company=${admin.company_id} by=${user.id} ceiling=${ceiling} emailed=${emailed}`,
@@ -230,7 +232,9 @@ Deno.serve(async (req) => {
    message looks like marketing the more likely it is to be held.
    -------------------------------------------------------------------------- */
 
-async function sendInvite({ to, name, link }: { to: string; name: string; link: string }) {
+async function sendInvite(
+  { to, name, link, hours }: { to: string; name: string; link: string; hours: number },
+) {
   const key = Deno.env.get("RESEND_API_KEY");
   if (!key) {
     console.error("RESEND_API_KEY is not set, invitation not emailed");
@@ -242,7 +246,7 @@ async function sendInvite({ to, name, link }: { to: string; name: string; link: 
     `Hi ${first},\n\n` +
     `You have been added to your company's StellaXafe workspace.\n\n` +
     `Open it here:\n${link}\n\n` +
-    `This link works once and runs out in 72 hours. After that, sign in with this email address ` +
+    `This link works once and runs out in ${howLong(hours)}. After that, sign in with this email address ` +
     `and we will send you a code.\n\n` +
     `StellaXafe`;
 
@@ -276,6 +280,33 @@ async function sha256(value: string) {
   return Array.from(new Uint8Array(digest))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
+}
+
+/* HOW LONG THEY HAVE, SAID THE WAY A PERSON WOULD SAY IT.
+
+   This line used to read "72 hours", written into the sentence by hand,
+   while the real lifetime was read from the database three functions
+   above. So the day anybody changed that setting the email started telling
+   people a number that was not true, and nothing would have caught it.
+
+   The bands match timeLeft in src/shared/inviteApi.js on purpose, so the
+   admin reading "3 days" on their screen and the person reading the email
+   are told the same thing in the same words.
+
+   IT ROUNDS DOWN, WHICH IS THE ONE THING timeLeft DOES DIFFERENTLY. That
+   one is telling an admin roughly how long is left, so nearest is fine.
+   This one is a promise made to somebody who is not in the room, and a
+   promise of more time than the link actually has is the version that
+   leaves them locked out. */
+export function howLong(hours: number) {
+  const minutes = Math.floor(hours * 60);
+  if (minutes < 60) return `${minutes} minute${minutes === 1 ? "" : "s"}`;
+
+  const whole = Math.floor(minutes / 60);
+  if (whole < 48) return `${whole} hour${whole === 1 ? "" : "s"}`;
+
+  const days = Math.floor(whole / 24);
+  return `${days} day${days === 1 ? "" : "s"}`;
 }
 
 /* Postgres hands an interval back as "72:00:00" or as an object, depending
