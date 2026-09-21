@@ -208,6 +208,44 @@ Covered by `npm run check` now, which runs `scripts/__harness/sources.cjs`.
 Three checks, and they were verified against the old code first: with
 `return !error` the blocked delete reports success and the walk fails.
 
+### Open, asked 2026-09-21 (third)
+
+**The knowledge base cannot read images or screenshots.** Anthony noticed
+it. He is right, and the audit says it is a gap rather than a break.
+
+WHAT THE CODE ACTUALLY DOES:
+
+- `addImageSource` uploads the file to the brand assets bucket, writes a
+  `knowledge_sources` row with `kind: "image"` and `asset_path`, marks it
+  ready, and returns `chunks: 0`. Nothing extracts a word from it. The
+  comment says why: "There is no text to pull apart and no second step to
+  wait for."
+- `assistant/index.ts` never reads `asset_path` and never sends an image.
+  It builds the prompt from `knowledge_chunks`, which is text only.
+- So for a screenshot the assistant sees exactly two things: the NAME and
+  the one line description. Nothing of what is in the picture.
+
+WHY IT IS LIKE THIS. Images were built as a carrier for designs, logos and
+brand pictures to go into Canva, which is what he asked for on 2026-09-15.
+They were never meant to be readable knowledge. Now he expects both.
+
+THE SHAPE OF THE FIX, and it matches how a link already works: read the
+picture ONCE at upload and store what it says as chunks. Then it is a
+source like any other, quoted and named, with no second system. The
+plumbing is already there, `describe-source` sends base64 images to a
+model today to get a title and a one line description.
+
+TWO DECISIONS FOR HIM BEFORE IT IS BUILT:
+
+1. Which model reads it. `describe-source` uses the cheap one, which is
+   right for "name this logo" and wrong for "transcribe this price table".
+   A wrong number read off a screenshot is exactly the failure this
+   product exists to prevent.
+2. Whether every image is read, or only ones with something to read. A
+   logo has no text worth storing.
+
+Not built. Read back to him 2026-09-21, waiting on his answers.
+
 ### Logged on 2026-09-16, and he said not to build them today
 
 He asked for these to be written down rather than built, to save credits
