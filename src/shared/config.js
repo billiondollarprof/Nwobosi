@@ -67,6 +67,9 @@ export const FUNCTIONS = {
      screenshot in the knowledge base is something the assistant can quote
      rather than a name it can only mention. */
   readImage: "read-image",
+  /* Looks at everything picked at once and says which pictures are pages
+     of the same thing, and reads each group out while it is looking. */
+  groupImages: "group-images",
 };
 
 /* WHERE A COMPANY'S LOGOS AND BRAND IMAGES LIVE.

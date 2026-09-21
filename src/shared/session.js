@@ -246,6 +246,11 @@ export async function addImageSource({
   extension,
   mediaType,
   customerVisible = false,
+  /* What the picture says, where somebody has already looked. The batch
+     grouping reads every picture while it is deciding which belong
+     together, so passing that here stops the same picture being sent to a
+     model a second time. Empty means nobody has read it yet. */
+  knownReading = "",
 }) {
   const path = `${companyId}/${crypto.randomUUID()}.${extension}`;
 
@@ -318,13 +323,76 @@ export async function addImageSource({
      happens inside it, so nothing is left saying "being read" forever. */
   let read = 0;
   try {
-    const result = await readImageSource(source.id);
-    read = result.chunks ?? 0;
+    if (knownReading.trim()) {
+      /* Store what was already read and mark it done, rather than paying
+         to look at the same picture twice. */
+      const { error } = await supabase.from("knowledge_chunks").insert({
+        source_id: source.id,
+        company_id: companyId,
+        content: knownReading.trim(),
+      });
+      if (error) throw error;
+      await supabase.from("knowledge_sources").update({ status: "ready" }).eq("id", source.id);
+      read = 1;
+    } else {
+      const result = await readImageSource(source.id);
+      read = result.chunks ?? 0;
+    }
   } catch (err) {
     console.error("could not read the picture after uploading it", err);
+    /* Never leave it saying it is still being read. The picture is saved
+       and usable in a design whatever happened to the reading. */
+    await supabase.from("knowledge_sources").update({ status: "ready" }).eq("id", source.id);
   }
 
   return { ok: true, source: { ...source, status: "ready" }, chunks: read };
+}
+
+/* ASKS WHICH OF THE PICTURES ARE PAGES OF THE SAME THING.
+
+   Anthony, 2026-09-21: "let the model decide, build it, so even if it's
+   ten images and only 7 is one file while others have different contents
+   so it's able to tell them apart."
+
+   One call for the whole batch, because the question is about how the
+   pictures relate to each other and nothing looking at them one at a time
+   can answer it. It reads each group out at the same time, since it is
+   already looking.
+
+   NULL MEANS TREAT THEM SEPARATELY. Every failure lands there: no answer,
+   a refusal, a grouping that lost a picture. One entry per picture is what
+   happened before any of this existed, so it is never wrong, only tedious,
+   and it is the right thing to fall back to. */
+export async function groupImages(pictures) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return null;
+
+  try {
+    const response = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${FUNCTIONS.groupImages}`,
+      {
+        method: "POST",
+        headers: {
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          images: pictures.map((p) => ({ name: p.name, media_type: p.media_type, data: p.data })),
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      console.error("group-images refused", response.status);
+      return null;
+    }
+    const result = await response.json();
+    return Array.isArray(result?.groups) ? result.groups : null;
+  } catch (err) {
+    console.error("could not group the pictures", err);
+    return null;
+  }
 }
 
 /* Asks the server to look at a picture already in the bucket and store

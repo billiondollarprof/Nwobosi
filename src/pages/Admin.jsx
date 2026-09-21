@@ -60,6 +60,7 @@ import {
   addImageSource,
   setSupportAccess,
   removeSource,
+  groupImages,
   setSourceVisibility,
   listContradictions,
   resolveContradiction,
@@ -635,6 +636,7 @@ export function KnowledgeSection({ me, loading: loadingMe }) {
      second copy of it. */
   const preparedRef = useRef(new Map());
   const [preparing, setPreparing] = useState(0);
+  const [grouping, setGrouping] = useState(false);
 
   function keyFor(file) {
     return `${file.name}:${file.size}:${file.lastModified}`;
@@ -650,6 +652,34 @@ export function KnowledgeSection({ me, loading: loadingMe }) {
       chosen = chosen.slice(0, MAX_AT_ONCE);
     }
 
+    /* SEVERAL PICTURES AT ONCE ARE ASKED ABOUT TOGETHER.
+
+       Anthony, 2026-09-21: "let the model decide, build it, so even if
+       it's ten images and only 7 is one file while others have different
+       contents so it's able to tell them apart."
+
+       Picking ten at once is how somebody adds a ten page price list AND
+       how they add ten logos. Nothing about the picking says which, so the
+       pictures are looked at together and the answer comes back as groups:
+       seven pages as one thing, three logos as three things.
+
+       Documents are not part of this. A PDF already knows it is one
+       document, and two PDFs picked together are two documents. Only
+       pictures have the ambiguity. */
+    const pictures = chosen.filter((f) => fileKind(f.name) === "image");
+    const documents = chosen.filter((f) => fileKind(f.name) !== "image");
+
+    if (pictures.length > 1) {
+      setQueue([]);
+      const entries = await groupPictures(pictures);
+      /* Documents keep their own path and go after, so a batch of both
+         still works. */
+      prepareAll(documents);
+      setQueue([...entries.slice(1).map((entry) => ({ entry })), ...documents]);
+      await openEntry(entries[0]);
+      return;
+    }
+
     /* Start everything before opening anything. Not awaited: the first
        card should appear the moment its own file is ready, not when the
        whole batch is. */
@@ -657,6 +687,83 @@ export function KnowledgeSection({ me, loading: loadingMe }) {
 
     setQueue(chosen.slice(1));
     await stageFile(chosen[0]);
+  }
+
+  /* Shrinks every picture, asks which of them belong together, and hands
+     back one entry per THING rather than one per file.
+
+     Falls back to one entry per picture whenever the grouping cannot be
+     trusted, which the server decides and reports as null. That fallback
+     is the behaviour from before any of this existed, so it is never
+     wrong, only tedious. */
+  async function groupPictures(files) {
+    setPreparing(files.length);
+
+    const shrunk = [];
+    await inBatches(
+      files.map((file) => async () => {
+        try {
+          const picture = await shrinkImage(file, { maxEdge: BRAND_ASSET_EDGE });
+          shrunk.push({ file, picture });
+        } catch {
+          show(`${file.name} could not be opened as a picture. Try a PNG, a JPG or a WebP.`);
+        }
+      }),
+      PREPARE_AT_ONCE,
+      () => setPreparing((left) => Math.max(0, left - 1)),
+    );
+
+    if (!shrunk.length) return [];
+
+    setGrouping(true);
+    const groups = await groupImages(
+      shrunk.map((s) => ({ name: s.file.name, media_type: s.picture.media_type, data: s.picture.data })),
+    );
+    setGrouping(false);
+
+    /* No answer, or one that did not account for every picture, means one
+       entry each. */
+    if (!groups) {
+      return shrunk.map((s) => ({
+        fileName: s.file.name,
+        name: s.file.name.replace(/\.[^.]+$/, ""),
+        description: "",
+        pages: [s.picture],
+        reading: "",
+      }));
+    }
+
+    return groups.map((group) => {
+      const pages = group.members.map((i) => shrunk[i]).filter(Boolean);
+      return {
+        fileName: pages.length === 1
+          ? pages[0].file.name
+          : `${pages.length} pictures, read as one`,
+        name: group.title || pages[0]?.file.name.replace(/\.[^.]+$/, "") || "Untitled",
+        description: group.description || "",
+        pages: pages.map((p) => p.picture),
+        reading: String(group.reading ?? ""),
+      };
+    });
+  }
+
+  /* Opens the card for one grouped entry. The single picture case keeps
+     its preview; a group of pages shows the first one and says how many. */
+  async function openEntry(entry) {
+    if (!entry) return;
+    stagedReading.current = null;
+    setStagedVisible(false);
+    setStaged({
+      fileName: entry.fileName,
+      name: entry.name,
+      description: entry.description,
+      text: "",
+      truncated: false,
+      picture: entry.pages[0],
+      pages: entry.pages,
+      reading: entry.reading,
+      preview: entry.pages[0] ? URL.createObjectURL(entry.pages[0].blob) : null,
+    });
   }
 
   /* Runs the batch with a few in flight at a time. Nothing here throws:
@@ -802,11 +909,7 @@ export function KnowledgeSection({ me, loading: loadingMe }) {
     if (!result.ok) {
       show(result.reason);
       /* One bad file never strands the rest of the batch. */
-      const [next, ...rest] = queue;
-      if (next) {
-        setQueue(rest);
-        await stageFile(next);
-      }
+      await openNext();
       return;
     }
 
@@ -935,7 +1038,30 @@ export function KnowledgeSection({ me, loading: loadingMe }) {
     /* A picture goes to the bucket and a document becomes rows of text.
        Both come back in the same shape, so everything after this line
        does not care which it was. */
-    const result = staged.picture
+    /* SEVERAL PAGES BECOME ONE DOCUMENT, NOT ONE PICTURE.
+
+       A row holds one asset_path, so it cannot point at seven pictures.
+       That is not the loss it sounds like, because seven pages of a price
+       list are a DOCUMENT, and nobody drops page four of a price list into
+       a Canva design. What matters about it is the words, and the reading
+       already came back with the grouping.
+
+       So a group of several is saved as text, read as one piece across the
+       page breaks, which is how a table that runs over a page survives. A
+       single picture stays a picture, keeps its file, and stays usable in
+       a design. That split is the real difference between the two things,
+       and it falls out of the grouping rather than being a setting. */
+    const result = staged.pages && staged.pages.length > 1
+      ? await addTextSource({
+          companyId: me.company.id,
+          userId: me.user.id,
+          name: staged.name.trim(),
+          description: staged.description.trim(),
+          text: staged.reading,
+          kind: "file",
+          customerVisible: stagedVisible,
+        })
+      : staged.picture
       ? await addImageSource({
           companyId: me.company.id,
           userId: me.user.id,
@@ -945,6 +1071,9 @@ export function KnowledgeSection({ me, loading: loadingMe }) {
           extension: staged.picture.extension,
           mediaType: staged.picture.media_type,
           customerVisible: stagedVisible,
+          /* Already read, while it was being grouped. Passing it saves
+             looking at the same picture with a model twice. */
+          knownReading: staged.reading || "",
         })
       : await addTextSource({
           companyId: me.company.id,
@@ -985,11 +1114,23 @@ export function KnowledgeSection({ me, loading: loadingMe }) {
     /* Straight on to the next one they chose, so a batch feels like a
        batch rather than something that quietly dropped everything after
        the first file. */
+    await openNext();
+  }
+
+  /* THE QUEUE HOLDS TWO SHAPES NOW, so one place knows the difference.
+
+     A raw File is something still to be read, a document or a single
+     picture. A { entry } is a group of pictures that has already been read
+     and grouped, waiting its turn to be named and saved.
+
+     Written once rather than at each of the two places that drain the
+     queue, because that is where a second shape gets forgotten. */
+  async function openNext() {
     const [next, ...rest] = queue;
-    if (next) {
-      setQueue(rest);
-      await stageFile(next);
-    }
+    if (!next) return;
+    setQueue(rest);
+    if (next.entry) await openEntry(next.entry);
+    else await stageFile(next);
   }
 
   /* The link goes to an edge function rather than being fetched here,
@@ -1403,9 +1544,12 @@ export function KnowledgeSection({ me, loading: loadingMe }) {
                       because a count that is going down is the difference
                       between waiting and watching something work. */}
                   {preparing > 0 && <>Reading the others, {preparing} to go.{" "}</>}
+                  {grouping && <>Working out which belong together.{" "}</>}
                 </span>
               )}
-              {staged.picture
+              {staged.pages && staged.pages.length > 1
+                ? `Read ${staged.pages.length} pictures and they look like one thing, so they are filed as one. Split them by adding them separately.`
+                : staged.picture
                 ? `Read ${staged.fileName}, and it is ready to use in designs and documents.`
                 : `Read ${staged.fileName}${
                     staged.truncated ? ", the first part of it, which was as much as fits" : ""

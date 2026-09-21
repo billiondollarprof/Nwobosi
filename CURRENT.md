@@ -365,7 +365,37 @@ price list. Save as one source?" with a way to split them. That matches
 what he asked for on the no-text case, where he wanted judgement rather
 than a flat answer.
 
-Read back to him 2026-09-21, waiting on his confirmation.
+HIS CALL, 2026-09-21: "let the model decide, build it, so even if it's ten
+images and only 7 is one file while others have different contents so it's
+able to tell them apart."
+
+BUILT. `group-images`, a NEW edge function.
+
+- Every picture in the batch goes in ONE call, because the question is how
+  they relate to each other and nothing looking at them one at a time can
+  answer it. It reads each group out in the same call, since it is already
+  looking, which also means a table running across a page break is read as
+  one piece.
+- It is told to SPLIT when unsure. Merging two entries takes a person
+  seconds; finding page four of a contract buried in another entry takes
+  an afternoon, and they only find out when an answer is wrong.
+- The answer is CHECKED, not trusted. `groupsAreSound` refuses anything
+  that loses a picture, repeats one, or names a position that was not
+  sent. Fifteen tests, including his seven and three case. Anything that
+  does not add up falls back to one entry per picture, which is what
+  happened before any of this and is never wrong, only tedious.
+
+HOW A GROUP IS STORED, AND WHY IT IS NOT A LOSS. A row holds one
+asset_path, so one source cannot point at seven pictures. A group of
+several is therefore saved as a DOCUMENT: one source, the reading as its
+text, no asset. A single picture stays a picture, keeps its file and stays
+usable in a design. That is the real difference between the two things and
+it falls out of the grouping rather than being a setting.
+
+The originals of a grouped document are not kept, only what they said.
+Keeping them needs a second table, which is a schema change and his call.
+
+NEEDS A DEPLOY, and it is NEW: `group-images`.
 
 ### Logged on 2026-09-16, and he said not to build them today
 
