@@ -172,10 +172,7 @@ function check(name, cond) { (cond ? OK : BAD).push(name); }
     window.__TURNS = [];
     window.__SCRIPT = {
       orient: ["I can see your site.\nOFFER_INTERVIEW"],
-      interview: [
-        "Which part is thin, and what should it say?",
-        "Got it, I have that now.\nINTERVIEW_COMPLETE",
-      ],
+      interview: ["Got it, the refunds section goes in.\nINTERVIEW_COMPLETE"],
       analyse: [
         "A one page FAQ.\nFORMAT: docx\nREADBACK_COMPLETE",
         "A one page FAQ, now with refunds.\nFORMAT: docx\nREADBACK_COMPLETE",
@@ -193,22 +190,29 @@ function check(name, cond) { (cond ? OK : BAD).push(name); }
 
   check('the first read back arrived', (await page.locator('text=Did I get that right?').count()) > 0);
 
+  /* It opens a BOX, and asks nothing of any model until the person has
+     said what is wrong. Anthony corrected an earlier version that had the
+     model guess: "not the system trying to figure out what you think is
+     wrong for you. That is not correct." */
   const before = await page.evaluate(() => (window.__TURNS || []).length);
-  await page.locator('button', { hasText: 'Something is missing' }).first().click();
-  await page.waitForTimeout(1600);
+  await page.locator('button', { hasText: 'Something is wrong' }).first().click();
+  await page.waitForTimeout(400);
 
-  check('THE FIX: pressing it runs a turn instead of going silent',
-    (await page.evaluate(() => (window.__TURNS || []).length)) > before);
-  check('and it asks which part rather than sitting there',
-    (await page.locator('text=Which part is thin').count()) > 0);
-  check('and it said out loud that something is missing',
-    (await page.locator('text=Something is missing.').count()) > 0);
+  check('THE FIX: it opens a box instead of clearing the card',
+    (await page.locator('textarea[placeholder*="What is wrong"]').count()) > 0);
+  check('and the read back is still on screen above it',
+    (await page.locator('text=Did I get that right?').count()) > 0);
+  check('and NOTHING was asked of a model yet',
+    (await page.evaluate(() => (window.__TURNS || []).length)) === before);
 
-  /* Answer it, and the loop has to come back round to a fresh read back. */
-  await page.locator('textarea').first().fill('The refunds section is missing');
-  await page.keyboard.press('Enter');
+  await page.locator('textarea[placeholder*="What is wrong"]').first()
+    .fill('The refunds section is missing from the pricing part');
+  await page.locator('button', { hasText: 'Send' }).first().click();
   await page.waitForTimeout(2600);
-  check('answering it comes back round to a new read back',
+
+  check('what they typed goes into the chat as their own words',
+    (await page.locator('text=The refunds section is missing from the pricing part').count()) > 0);
+  check('and it comes back round to a new read back',
     (await page.locator('text=now with refunds').count()) > 0);
   check('and the Build card is there again', (await page.locator('text=Did I get that right?').count()) > 0);
   await page.screenshot({ path: '/tmp/claude-0/flow-missing.png', fullPage: true });

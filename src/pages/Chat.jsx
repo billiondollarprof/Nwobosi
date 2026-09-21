@@ -114,6 +114,7 @@ import { buildResumeLog, readResumeLog, resumeLine } from "../shared/resumeLog.j
    day it learned to keep some findings and not others, and a card with
    state belongs somewhere it can be read top to bottom. */
 import FindingPicker from "../shared/FindingPicker.jsx";
+import SomethingWrong from "../shared/SomethingWrong.jsx";
 import { withoutMarks } from "../shared/findings.js";
 import { formatAsked } from "../shared/formatAsked.js";
 import { formatFromReply, withoutFormatLine, DEFAULT_FORMAT, FORMAT_NAMES, FORMAT_SHORT } from "../shared/outputFormat.js";
@@ -1717,10 +1718,10 @@ export default function Chat() {
 
      Its own question allowance, because this is a fresh, specific ask and
      should not inherit one an earlier interview already spent. */
-  function handleAdjust() {
+  function handleAdjust(said) {
     if (typing || generating) return;
+    if (!said || !said.trim()) return;
 
-    const said = "Something is missing.";
     const kept = messages.filter((m) => m.type !== "build" && m.type !== "lookup");
     updateMessages(kept);
     addMessage({ role: "user", type: "text", content: said });
@@ -3140,7 +3141,7 @@ export function ChatBubble({ message, brief, buildFormat = DEFAULT_FORMAT, build
             Did I get that right?
           </p>
           <p className="text-[13.5px] mb-4 leading-relaxed" style={{ color: "var(--text-3)" }}>
-            If yes, go ahead and build. If not, tell me what is missing.
+            If yes, go ahead and build. If not, tell me what is wrong and where.
           </p>
           {/* IT SAYS WHICH FILE, because the format was decided in the
               conversation and this is the last moment to disagree with it
@@ -3150,13 +3151,11 @@ export function ChatBubble({ message, brief, buildFormat = DEFAULT_FORMAT, build
             <FileText size={15} />
             Go ahead, build it as {FORMAT_NAMES[buildFormat] ?? "a Word document"}
           </PrimaryButton>
-          <button
-            onClick={onAdjust}
-            className="w-full mt-2.5 rounded-[12px] border py-2.5 text-[13.5px] transition-opacity hover:opacity-80"
-            style={{ borderColor: "var(--border-2)", color: "var(--text-2)" }}
-          >
-            Something is missing
-          </button>
+          {/* NOT A BUTTON THAT CLEARS THE CARD. A box that opens where
+              the button was, so the read back being corrected is still on
+              screen above the correction. Nothing is asked of any model
+              until they have said what is wrong. */}
+          <SomethingWrong onSend={onAdjust} />
         </div>
       </div>
     );

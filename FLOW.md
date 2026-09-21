@@ -69,14 +69,29 @@ but", not silence. A plain yes.
 
 ---
 
-## "SOMETHING IS MISSING" IS A CONVERSATION, NOT A DEAD END
+## "SOMETHING IS WRONG" OPENS A BOX. IT DOES NOT GUESS.
 
-Anthony: "if I say something is missing, it should paste that something is
-missing, and it should ask me what is missing, where and where is missing."
+Anthony, 2026-09-21, correcting a first attempt that had the model suggest
+what it might have got wrong: "the system doesn't have to suggest anything
+for you. It just asks you where. So you point the system to where
+something is wrong... when you click on something is wrong, then a drop
+down for you to type in what is wrong... Not the system trying to figure
+out what you think is wrong for you. That is not correct."
 
-So pressing **Something is missing** does not just hand you back a blank
-cursor. It says what it thinks might be missing and asks you **what** and
-**where**. You tell it, it fixes that, and it gives you the recap again.
+So pressing it opens a box where the button was. You type what is wrong
+and where, press send, and it goes into the conversation as your own
+words. The read back you are correcting stays on screen above it.
+
+**No model is asked anything until you have said what is wrong.** The
+person pressing that button is the only one who knows. A model guessing at
+it spends a turn, spends money, and puts words in your mouth that you then
+have to argue with before you can say the thing you already knew.
+
+**"Wrong" rather than "missing", and Anthony asked which was safer.**
+Missing is only one kind of wrong. A figure that is there but incorrect is
+not missing, and neither is a sentence that misunderstood you. Wrong
+covers all three, and it is the natural answer to the question above it,
+which is "Did I get that right?".
 
 ---
 
