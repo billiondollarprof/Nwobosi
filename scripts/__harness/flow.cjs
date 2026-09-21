@@ -145,10 +145,50 @@ function check(name, cond) { (cond ? OK : BAD).push(name); }
       (await page.locator('text=Did I get that right?').count()) > 0);
   }
 
+  /* Read before the next walk clears it, or the search assertion below
+     would be looking at a walk that never searched. */
+  const searchTurns = await page.evaluate(() => window.__TURNS || []);
+
+  /* ------------------------------------------------------------------
+     THE READ BACK THAT WROTE THE DOCUMENT INSTEAD OF HANDING OFF.
+
+     Anthony, 2026-09-21: "after the recap, he started building... he just
+     wrote the text there. He did not build it into a document."
+
+     The analyse stage was the only one that never forbade writing the
+     work, so it wrote the FAQ into a chat bubble. A chat bubble is not a
+     file and never can be, and with no marker on the end there was no
+     button to make one either.
+
+     The prompt forbids it now, but a rule is something a model can talk
+     itself out of, so this checks the app does not depend on the rule.
+     ------------------------------------------------------------------ */
+  await page.addInitScript(() => {
+    window.__TURNS = [];
+    window.__SCRIPT = {
+      orient: ["I can see your site.\nOFFER_INTERVIEW"],
+      interview: ["Who reads it?\nINTERVIEW_COMPLETE"],
+      /* The whole document, and not one marker anywhere. */
+      analyse: ["# Frequently asked questions\n\n## What do you do?\nWe do the thing.\n\n## What does it cost?\nIt depends."],
+    };
+  });
+  await page.goto('http://localhost:5301/?page=chat', { waitUntil: 'networkidle' });
+  await page.waitForTimeout(1200);
+
+  await page.locator('textarea').first().fill('Make me a one page FAQ as a document');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(1400);
+  await page.locator('button', { hasText: 'Ask me a few questions' }).first().click();
+  await page.waitForTimeout(2400);
+
+  check('THE GUARD: a read back with no marker still offers the Build card',
+    (await page.locator('text=Did I get that right?').count()) > 0);
+
   const turns = await page.evaluate(() => window.__TURNS || []);
-  console.log('stages that ran, in order:', turns.join(' -> '));
+  console.log('stages, search walk:   ', searchTurns.join(' -> '));
+  console.log('stages, no marker walk:', turns.join(' -> '));
   check('the work reached the analysis', turns.includes('analyse'));
-  check('and it went out and searched', turns.includes('research'));
+  check('and the search walk did go out and search', searchTurns.includes('research'));
 
   await b.close();
 

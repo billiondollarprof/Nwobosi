@@ -397,6 +397,42 @@ Keeping them needs a second table, which is a schema change and his call.
 
 NEEDS A DEPLOY, and it is NEW: `group-images`.
 
+### Fixed 2026-09-21: asked for a document, got text in the chat
+
+Anthony: "after the recap, he started building... he just wrote the text
+there. He did not build it into a document. I still intentionally asked
+for document. He still gave me text."
+
+ONE GAP, BOTH SYMPTOMS. The analyse stage was the ONLY one of the three
+that never forbade writing the work. Orient says "DO NOT WRITE THE WORK
+HERE". The interview says it in capitals. The read back said nothing, and
+it has four thousand tokens of room.
+
+So it wrote the recap AND the FAQ in one turn. That is why it looked like
+it went from recap straight to building with no pause for him, and why
+what he got was text: the writing stage never ran, and only the writing
+stage is turned into a file. A chat bubble is not a document and never
+can be.
+
+TWO FIXES, BECAUSE A RULE IS NOT ENOUGH.
+
+1. The prompt now forbids it in the read back stage, and explains WHY
+   rather than just saying no: anything written there can never be
+   downloaded, and the person never gets to say yes, which is the whole
+   point of the step.
+
+2. THE APP NO LONGER DEPENDS ON THE RULE. Anthony's own standard: "the
+   rules are not just written just like writtens. They must be coded."
+   The analyse stage always ends in one of three places, so a turn that
+   ends in none of them has gone wrong. It now puts the Build card up
+   anyway, so there is always a button that turns the work into a real
+   file. Covered by the flow walk, which sends a whole document back with
+   no marker on it and requires the Build card to appear.
+
+THE BUILD PATH ITSELF WAS NEVER BROKEN. Pressing Build writes the brief,
+then the document, then renders a result card with Word, PDF and Slides
+on it. It simply never ran.
+
 ### Logged on 2026-09-16, and he said not to build them today
 
 He asked for these to be written down rather than built, to save credits

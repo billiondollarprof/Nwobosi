@@ -1034,7 +1034,30 @@ export default function Chat() {
               ...prev,
               { id: nextId(), role: "assistant", type: "lookup", from: "analyse" },
             ]);
+            return;
           }
+
+          /* THE WAY OUT, AND WITHOUT IT THEY ARE LOOKING AT TEXT WITH NO
+             BUTTON.
+
+             This stage always ends in one of three places: it reads back,
+             it asks them for something, or it asks to search. A turn that
+             did none of those has gone wrong, and the commonest way is
+             that it wrote the document here instead of handing off.
+
+             Anthony, 2026-09-21: "after the recap, he started building...
+             he just wrote the text there. He did not build it into a
+             document. I still intentionally asked for document. He still
+             gave me text."
+
+             That is exactly this. The work appeared in a chat bubble,
+             which is not a file and never can be, and there was no button
+             to turn it into one. The prompt now forbids writing here, but
+             a rule is something a model can talk itself out of, so the app
+             stops depending on it: no marker means the Build card goes up
+             anyway. Pressing it writes the brief and then the real
+             document, as a file. */
+          updateMessages((prev) => [...prev, { id: nextId(), role: "assistant", type: "build" }]);
         }
       },
 
