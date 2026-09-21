@@ -70,6 +70,7 @@ import {
 import { adminSessionExpired } from "../shared/adminClock.js";
 import { readFileAsText, canBecomeText, fileKind } from "../shared/readFile.js";
 import { shrinkImage } from "../shared/shrinkImage.js";
+import { inBatches } from "../shared/inBatches.js";
 import { describeSource } from "../shared/describeSource.js";
 import { fetchLinkSource } from "../shared/linkApi.js";
 import { readBeforePublish, loadSourceText } from "../shared/publishCheck.js";
@@ -444,7 +445,6 @@ export function KnowledgeSection({ me, loading: loadingMe }) {
      under the two fields and nothing else: no disabled button, no spinner
      over the form. Somebody who knows what to call it types straight over
      the top, and waiting is never made into their problem. */
-  const [naming, setNaming] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const [linkUrl, setLinkUrl] = useState("");
@@ -595,17 +595,93 @@ export function KnowledgeSection({ me, loading: loadingMe }) {
     setTimeout(() => setError(""), 9000);
   }
 
+  /* ------------------------------------------------------------------
+     A BATCH IS PREPARED ALL AT ONCE, NOT ONE AT A TIME
+
+     Anthony, 2026-09-21: "it takes multiple but analyzes one at a time."
+
+     He was right. Picking ten files worked, and then each one waited its
+     turn: opened, read, sent off to be named, and only when that finished
+     did the next one start. So the tenth file began its life after nine
+     round trips nobody was watching, and setting up a new company, which
+     is thirty files on a first day, was thirty waits in a row.
+
+     Now every file is read and named as soon as it is chosen, three at a
+     time, and the answers are kept. The card for each one then opens
+     instantly with its name and its line already written, because that
+     work finished while the admin was looking at the file before it.
+
+     THREE AT A TIME, NOT TEN. Each picture is a model call. Ten fired
+     together is how a rate limit and a bill arrive at the same moment,
+     and three is quick enough that nobody is waiting anyway.
+
+     WHAT DID NOT CHANGE, DELIBERATELY. They still confirm one file at a
+     time. Whether a file may be shown to customers is a decision per
+     file, backed by a check that reads its contents, and folding ten of
+     those into one button is a separate job with real weight to it.
+     Preparing is the slow part and it is the part that is now parallel.
+     ------------------------------------------------------------------ */
+
+  /* Ten, and the reason is money rather than tidiness. Each one is a model
+     call, so somebody dropping two hundred files in would spend a lot in
+     one go with nobody watching. */
+  const MAX_AT_ONCE = 10;
+  const PREPARE_AT_ONCE = 3;
+
+  /* Keyed on more than the name, because two folders can both hold a
+     "logo.png" and they are not the same picture. Holds the PROMISE, not
+     the result, so a card that opens before its file has finished being
+     read simply waits for the one already running instead of starting a
+     second copy of it. */
+  const preparedRef = useRef(new Map());
+  const [preparing, setPreparing] = useState(0);
+
+  function keyFor(file) {
+    return `${file.name}:${file.size}:${file.lastModified}`;
+  }
+
   async function pickFiles(e) {
-    const chosen = Array.from(e.target.files || []);
+    let chosen = Array.from(e.target.files || []);
     e.target.value = "";
     if (!chosen.length) return;
 
-    /* Several at once is normal, so take them all and work through them
-       one at a time. Each still gets its own name and description,
-       because those two lines are how the assistant decides which source
-       to open, and a batch cannot write them for you. */
+    if (chosen.length > MAX_AT_ONCE) {
+      show(`That is ${chosen.length} files. Taking the first ${MAX_AT_ONCE}, add the rest after.`);
+      chosen = chosen.slice(0, MAX_AT_ONCE);
+    }
+
+    /* Start everything before opening anything. Not awaited: the first
+       card should appear the moment its own file is ready, not when the
+       whole batch is. */
+    prepareAll(chosen);
+
     setQueue(chosen.slice(1));
     await stageFile(chosen[0]);
+  }
+
+  /* Runs the batch with a few in flight at a time. Nothing here throws:
+     prepareOne catches its own failures and hands back a reason, so one
+     unreadable file in a batch of ten never stops the other nine. */
+  function prepareAll(files) {
+    for (const file of files) {
+      if (!preparedRef.current.has(keyFor(file))) {
+        preparedRef.current.set(keyFor(file), null);
+      }
+    }
+
+    setPreparing(files.length);
+
+    const jobs = files.map((file) => () => {
+      const key = keyFor(file);
+      if (!preparedRef.current.get(key)) {
+        preparedRef.current.set(key, prepareOne(file));
+      }
+      return preparedRef.current.get(key);
+    });
+
+    inBatches(jobs, PREPARE_AT_ONCE, () => {
+      setPreparing((left) => Math.max(0, left - 1));
+    });
   }
 
   /* Reads whatever was handed over and gets it ready to be named.
@@ -617,101 +693,130 @@ export function KnowledgeSection({ me, loading: loadingMe }) {
 
      Everything after the split is the same, which is why the split is at
      the top rather than sprinkled through. */
-  async function stageFile(file) {
+  /* ONE FILE, READ AND NAMED, TOUCHING NO SCREEN STATE.
+
+     That last part is the whole trick. The old path set `staged` and then
+     called nameItFor, which writes back into `staged` and checks the file
+     name still matches so a slow answer cannot land on the wrong card.
+     That guard is exactly why the queued files could not be named ahead of
+     time: their answers arrived for a card that was not open and were
+     thrown away.
+
+     So this returns the finished object instead of setting anything, and
+     the card is filled from it when its turn comes. Nothing races, because
+     nothing is shared. */
+  async function prepareOne(file) {
     if (fileKind(file.name) === "image") {
-      await stageImage(file);
-      return;
+      if (file.size > MAX_SOURCE_UPLOAD_KB * 1024) {
+        return {
+          ok: false,
+          reason: `${file.name} is ${(file.size / 1024 / 1024).toFixed(1)} MB, over the ` +
+            `${Math.round(MAX_SOURCE_UPLOAD_KB / 1024)} MB limit.`,
+        };
+      }
+
+      let picture;
+      try {
+        picture = await shrinkImage(file, { maxEdge: BRAND_ASSET_EDGE });
+      } catch {
+        return { ok: false, reason: `${file.name} could not be opened as a picture. Try a PNG, a JPG or a WebP.` };
+      }
+
+      const named = await describeSource({
+        name: file.name,
+        image: { media_type: picture.media_type, data: picture.data },
+      });
+
+      return {
+        ok: true,
+        /* A picture has nothing to read before publishing, so the gate has
+           nothing to wait on. */
+        reading: null,
+        staged: {
+          fileName: file.name,
+          name: named.title || file.name.replace(/\.[^.]+$/, ""),
+          description: named.description || "",
+          text: "",
+          truncated: false,
+          picture,
+          /* NO PREVIEW MADE HERE, and that is on purpose.
+
+             A blob URL holds the whole picture in memory until it is
+             revoked, and the only place that revokes one is the save. Made
+             here, ten chosen pictures would make ten previews and free
+             only the ones that got saved, so a batch somebody changed
+             their mind about would sit in memory for as long as the tab
+             was open. It is made when the card opens instead, so there is
+             only ever one alive. */
+        },
+      };
     }
 
     if (!canBecomeText(file.name)) {
-      show(`${file.name} is not a kind of file this can read. PDF, Word, plain text, Markdown, CSV or JSON, or a picture.`);
-      return;
+      return {
+        ok: false,
+        reason: `${file.name} is not a kind of file this can read. PDF, Word, plain text, Markdown, CSV or JSON, or a picture.`,
+      };
     }
     if (file.size > MAX_SOURCE_UPLOAD_KB * 1024) {
-      show(
-        `${file.name} is ${(file.size / 1024 / 1024).toFixed(1)} MB, over the ` +
-          `${Math.round(MAX_SOURCE_UPLOAD_KB / 1024)} MB limit. Split it up, or paste the part that matters.`
-      );
-      return;
+      return {
+        ok: false,
+        reason: `${file.name} is ${(file.size / 1024 / 1024).toFixed(1)} MB, over the ` +
+          `${Math.round(MAX_SOURCE_UPLOAD_KB / 1024)} MB limit. Split it up, or paste the part that matters.`,
+      };
     }
 
-    /* A large PDF takes a moment to pull apart, and a dead button while
-       that happens reads as broken. */
-    setReading(file.name);
     const result = await readFileAsText(file, { maxChars: MAX_SOURCE_CHARS });
+    if (!result.ok) return { ok: false, reason: result.reason };
+
+    const named = await describeSource({ name: file.name, text: result.text });
+
+    return {
+      ok: true,
+      /* Started here rather than when the card opens, so the publish gate
+         has its answer ready too. */
+      reading: readBeforePublish({ text: result.text, name: file.name }),
+      staged: {
+        fileName: file.name,
+        name: named.title || file.name.replace(/\.[^.]+$/, ""),
+        description: named.description || "",
+        text: result.text,
+        truncated: result.truncated,
+      },
+    };
+  }
+
+  /* Opens the card for one file, using the reading that has already been
+     done for it. Where the batch has not reached this one yet it waits on
+     the run already in flight rather than starting a second. */
+  async function stageFile(file) {
+    const key = keyFor(file);
+    if (!preparedRef.current.get(key)) {
+      preparedRef.current.set(key, prepareOne(file));
+    }
+
+    setReading(file.name);
+    const result = await preparedRef.current.get(key);
     setReading("");
 
     if (!result.ok) {
       show(result.reason);
+      /* One bad file never strands the rest of the batch. */
+      const [next, ...rest] = queue;
+      if (next) {
+        setQueue(rest);
+        await stageFile(next);
+      }
       return;
     }
 
+    stagedReading.current = result.reading;
     setStagedVisible(false);
-    /* The admin is about to spend half a minute writing a name and a line
-       about what it holds. That is time the reading can use. */
-    stagedReading.current = readBeforePublish({ text: result.text, name: file.name });
-
-    setStaged({
-      fileName: file.name,
-      name: file.name.replace(/\.[^.]+$/, ""),
-      description: "",
-      text: result.text,
-      truncated: result.truncated,
-    });
-
-    nameItFor({ name: file.name, text: result.text });
-  }
-
-  /* ------------------------------------------------------------------
-     A PICTURE
-
-     Shrunk here, in the browser, before it goes anywhere. A five megabyte
-     phone photo becomes a couple of hundred kilobytes and nothing that
-     uses it can tell the difference. It is also converted to WebP on the
-     way, which halves it again. See shrinkImage for the trap in that.
-
-     BRAND_ASSET_EDGE rather than the 1568 the chat uses. A brand asset is
-     used to BUILD things, so it ends up on a title slide or in a printed
-     deck, and 1568 across is soft the moment it does.
-     ------------------------------------------------------------------ */
-  async function stageImage(file) {
-    if (file.size > MAX_SOURCE_UPLOAD_KB * 1024) {
-      show(
-        `${file.name} is ${(file.size / 1024 / 1024).toFixed(1)} MB, over the ` +
-          `${Math.round(MAX_SOURCE_UPLOAD_KB / 1024)} MB limit.`
-      );
-      return;
-    }
-
-    setReading(file.name);
-    let picture;
-    try {
-      picture = await shrinkImage(file, { maxEdge: BRAND_ASSET_EDGE });
-    } catch {
-      setReading("");
-      show(`${file.name} could not be opened as a picture. Try a PNG, a JPG or a WebP.`);
-      return;
-    }
-    setReading("");
-
-    setStagedVisible(false);
-    /* A picture has nothing to read before publishing, so the gate has
-       nothing to wait on. Cleared rather than left holding the last
-       document's answer, which would attach one file's reading to a
-       different file. */
-    stagedReading.current = null;
-
-    setStaged({
-      fileName: file.name,
-      name: file.name.replace(/\.[^.]+$/, ""),
-      description: "",
-      text: "",
-      truncated: false,
-      picture,
-      preview: URL.createObjectURL(picture.blob),
-    });
-
-    nameItFor({ name: file.name, image: { media_type: picture.media_type, data: picture.data } });
+    setStaged(
+      result.staged.picture
+        ? { ...result.staged, preview: URL.createObjectURL(result.staged.picture.blob) }
+        : result.staged,
+    );
   }
 
   /* ------------------------------------------------------------------
@@ -731,22 +836,6 @@ export function KnowledgeSection({ me, loading: loadingMe }) {
      typing while it was thinking, their words win. Nothing is more
      annoying than a form that overwrites you.
      ------------------------------------------------------------------ */
-  async function nameItFor({ name, text, image }) {
-    setNaming(true);
-    const suggestion = await describeSource({ name, text, image });
-    setNaming(false);
-    if (!suggestion.title) return;
-
-    const untouched = name.replace(/\.[^.]+$/, "");
-    setStaged((current) => {
-      if (!current || current.fileName !== name) return current;
-      return {
-        ...current,
-        name: current.name === untouched ? suggestion.title : current.name,
-        description: current.description === "" ? suggestion.description : current.description,
-      };
-    });
-  }
 
   /* A NAME ALREADY IN USE ASKS A QUESTION INSTEAD OF TELLING SOMEBODY OFF.
 
@@ -1308,6 +1397,12 @@ export function KnowledgeSection({ me, loading: loadingMe }) {
               {queue.length > 0 && (
                 <span style={{ color: "var(--text-2)" }}>
                   {queue.length + 1} files chosen. This one first.{" "}
+                  {/* The rest are being read at the same time as this one
+                      is being looked at, so by the time it is saved the
+                      next card opens already filled in. Said out loud,
+                      because a count that is going down is the difference
+                      between waiting and watching something work. */}
+                  {preparing > 0 && <>Reading the others, {preparing} to go.{" "}</>}
                 </span>
               )}
               {staged.picture
@@ -1315,7 +1410,7 @@ export function KnowledgeSection({ me, loading: loadingMe }) {
                 : `Read ${staged.fileName}${
                     staged.truncated ? ", the first part of it, which was as much as fits" : ""
                   }.`}{" "}
-              {naming ? "Naming it now." : "Change either line if you want to."}
+              Change either line if you want to.
             </p>
 
             {/* THE PICTURE ITSELF, because a name is not enough to tell two

@@ -308,14 +308,36 @@ ONE AT A TIME, pre-filled, and you press Save once per file. Ten files is
 ten presses. For onboarding a new company with thirty files that is the
 wrong shape, and thirty is a normal first day.
 
-PROPOSED, NOT BUILT: a review list. Pick up to ten, they are all read and
-named in the background, shown as rows with the name and the line about
-what each holds editable in place, and ONE Save. Everything visible before
-anything is written, and one press instead of ten.
+BUILT 2026-09-21, after he named the real gap: "it takes multiple but
+analyzes one at a time."
 
-Two things to settle with him first: a real cap, and how many are read at
-once, since each picture is a model call and firing ten together is how a
-rate limit and a bill both arrive at speed.
+Every file chosen is now read AND named as soon as it is picked, three at
+a time, and the answers are kept. So each card opens instantly with its
+name and its line already written, because that work finished while the
+admin was looking at the file before it. Capped at ten, because each one
+is a model call.
+
+The thing that made this hard was `nameItFor`: it wrote back into the
+staged card and checked the file name still matched, so a slow answer
+could not land on the wrong card. Which is exactly why a queued file could
+not be named ahead of time, its answer arrived for a card that was not
+open and was thrown away. `prepareOne` returns the finished object instead
+of setting state, so nothing races because nothing is shared.
+
+A LEAK CAUGHT BY READING THE DIFF BACK. The first version made the preview
+blob URL in prepareOne, so ten chosen pictures made ten previews and only
+the saved one was ever freed. It is made when the card opens now, so there
+is only ever one alive. One creation site, two release sites.
+
+The scheduler is `src/shared/inBatches.js` with nine checks of its own,
+because a scheduler that looks right and is not only shows up on somebody
+else's slow connection.
+
+NOT DONE, AND SAID OUT LOUD: they still confirm one file at a time, so ten
+files is still ten presses of Save. Whether a file may be shown to
+customers is a decision per file backed by a check that reads its
+contents, and folding ten of those into one button is its own job. The
+slow part was the analysing and that is what is now parallel.
 
 ### Logged on 2026-09-16, and he said not to build them today
 
