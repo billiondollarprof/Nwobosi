@@ -643,7 +643,11 @@ export const KEEP_RECENT = 3;
 export async function listConversations(staffId) {
   const { data, error } = await supabase
     .from("conversations")
-    .select("id, title, stage, updated_at")
+    /* `state` rides along so the page can tell, without a second fetch,
+       whether the most recent conversation was finished and downloaded. It
+       is a working note of a few hundred characters and this asks for three
+       rows, so it costs nothing. See src/shared/resumeWindow.js. */
+    .select("id, title, stage, updated_at, state")
     .eq("staff_id", staffId)
     .order("updated_at", { ascending: false })
     .limit(KEEP_RECENT);

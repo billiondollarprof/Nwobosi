@@ -52,11 +52,18 @@ if (!alreadyUp) {
   }
 }
 
-/* Both walks, against the one server. flow.cjs covers the chat's stages;
+/* All three walks, against the one server. flow.cjs covers the chat's stages;
    sources.cjs covers the knowledge base, where a delete that reports
    success and removes nothing is invisible from the screen. */
 let worst = 0;
-for (const walk of ["scripts/__harness/flow.cjs", "scripts/__harness/sources.cjs"]) {
+for (const walk of [
+  "scripts/__harness/flow.cjs",
+  "scripts/__harness/sources.cjs",
+  /* Added 2026-09-22. Whether the last chat comes back when the page loads,
+     or a new one opens. The rule has its own unit test; this proves the page
+     actually asks it and obeys the answer. */
+  "scripts/__harness/resume.cjs",
+]) {
   const run = spawn("node", [walk], { stdio: "inherit" });
   const code = await new Promise((resolve) => run.on("close", resolve));
   if (code) worst = code;

@@ -109,6 +109,7 @@ import {
    gets their approved findings and their spent question allowance back, not
    just the messages. The shape lives in that file, never inline here. */
 import { buildResumeLog, readResumeLog, resumeLine } from "../shared/resumeLog.js";
+import { shouldReopen } from "../shared/resumeWindow.js";
 
 /* Gate two, in its own file. It grew a list and local state of its own the
    day it learned to keep some findings and not others, and a card with
@@ -493,6 +494,19 @@ export default function Chat() {
   const declinedRef = useRef(0);
   const missingRef = useRef("");
 
+  /* TRUE ONCE THEY HAVE ACTUALLY TAKEN THE FILE AWAY.
+
+     Not "the document was built". Built and downloaded are two different
+     moments, and only the second one means the job is finished. Somebody
+     who built a document and did not download it still has something to
+     come back to.
+
+     It is a ref rather than state because handleDownload writes it and
+     nothing on screen reads it. It rides to the database inside the resume
+     log, so it survives a refresh, and it is what stops a finished
+     conversation reopening by itself. See src/shared/resumeWindow.js. */
+  const deliveredRef = useRef(false);
+
   /* Where the conversation is in the flow. This is the stage the next turn
      runs at.
 
@@ -608,15 +622,32 @@ export default function Chat() {
       /* Land back in the conversation they were last in, rather than on a
          blank page with their work one menu away. A refresh, a dead
          battery or a second phone should all feel like picking the thread
-         back up, which is the whole reason conversations are saved. */
+         back up, which is the whole reason conversations are saved.
+
+         BUT ONLY IF IT IS STILL THEIRS TO PICK UP, since 2026-09-22. This
+         used to reopen the most recent conversation however old it was, so
+         a chat last touched three weeks ago came straight back and the
+         first thing anybody did each morning was press New chat.
+
+         shouldReopen holds both rules and this page holds none of them.
+         Recent enough and not yet finished, it opens. Past the hour, or the
+         file was built and downloaded, a new chat opens instead and the old
+         one waits in Recent. Nothing is deleted and nothing is hidden. */
       let restored = false;
       const latest = recent[0];
       if (latest && !conversationIdRef.current) {
-        const row = await loadConversation(latest.id);
-        if (!alive) return;
-        if (row) {
-          restoreFrom(row);
-          restored = true;
+        const verdict = shouldReopen({
+          updatedAt: latest.updated_at,
+          delivered: readResumeLog(latest.state).delivered,
+        });
+
+        if (verdict.reopen) {
+          const row = await loadConversation(latest.id);
+          if (!alive) return;
+          if (row) {
+            restoreFrom(row);
+            restored = true;
+          }
         }
       }
 
@@ -1157,6 +1188,7 @@ export default function Chat() {
       findings: findingsRef.current,
       declined: declinedRef.current,
       missing: missingRef.current,
+      delivered: deliveredRef.current,
     });
 
     const id = await saveConversation({
@@ -1209,6 +1241,7 @@ export default function Chat() {
     interviewTurnsRef.current = log.asked;
     declinedRef.current = log.declined;
     missingRef.current = log.missing;
+    deliveredRef.current = log.delivered;
     briefRef.current = row.brief ?? "";
 
     const restored = (row.messages ?? []).map((m) => ({ id: nextId(), ...m }));
@@ -1852,6 +1885,7 @@ export default function Chat() {
     setFindings([]);
     declinedRef.current = 0;
     missingRef.current = "";
+    deliveredRef.current = false;
     briefRef.current = "";
 
     /* "orient", not "interview". The first turn reads the request against
@@ -2134,6 +2168,29 @@ export default function Chat() {
       else if (format === "xlsx") await downloadXlsx(title, content);
       else await downloadDocx(title, content);
       setToast("Saved to your downloads");
+
+      /* THE JOB IS FINISHED THE MOMENT THE FILE IS ON THEIR MACHINE.
+
+         Anthony, 2026-09-22: "when a piece work is already done, and
+         downloaded keep at recent and always open a new chat."
+
+         So this is recorded, and recording it is what stops this
+         conversation reopening by itself next time they come in. The next
+         thing they ask for is a different job.
+
+         AFTER THE DOWNLOAD SUCCEEDED, NEVER BEFORE. A file that failed to
+         build was never delivered, and marking it delivered would close a
+         conversation somebody still has to come back to.
+
+         In its own try, because this is bookkeeping running after the real
+         work is done. They already have their file. A save that fails must
+         never turn a finished download into an error on screen. */
+      try {
+        deliveredRef.current = true;
+        await persist(messagesRef.current, flowStage, undefined);
+      } catch (saveErr) {
+        console.error("could not record that the file was downloaded", saveErr);
+      }
     } catch (err) {
       if (err?.code === "no_tables") {
         setToast("There is no table in this one, so there is nothing to put in a spreadsheet.");

@@ -135,13 +135,54 @@ Deno.serve(async (req) => {
   });
 
   if (createError || !created?.user) {
-    const already = /already|exists|registered/i.test(createError?.message ?? "");
+    /* LOG THE REAL REASON. Fixed 2026-09-22.
+
+       This branch used to throw the error away. It matched three words in
+       the message, chose one of two sentences, and returned. So when
+       somebody hit "Could not create that account. Try again." there was
+       nothing to read, not on the screen and not in the logs either,
+       because nothing was ever written to them.
+
+       That is the same failure the support outage taught on 2026-09-09: a
+       thing went wrong, a person saw a shrug, and the cause existed only
+       for the microsecond before it was discarded. Anything that refuses
+       somebody says why, somewhere a person can read it. */
+    const status = (createError as { status?: number } | null)?.status;
+    const code = (createError as { code?: string } | null)?.code;
+    console.error(
+      `createUser refused email=${email} status=${status ?? "none"} ` +
+        `code=${code ?? "none"} message=${createError?.message ?? "no message"}`,
+    );
+
+    /* THE CODE FIRST, THE WORDS ONLY AS A FALLBACK.
+
+       It used to read the message alone, looking for already, exists or
+       registered. A message is wording, and wording changes between
+       versions of the auth service, so a duplicate whose sentence was
+       phrased differently fell through to "Could not create that account.
+       Try again." and sent somebody looking for a bug that was not there.
+
+       The code is the stable fact. The regex stays underneath it, because
+       an older deployment may send a message and no code at all. */
+    const already =
+      code === "email_exists" ||
+      code === "user_already_exists" ||
+      status === 422 ||
+      /already|exists|registered|duplicate/i.test(createError?.message ?? "");
+
+    /* Supabase refuses some addresses outright. Telling somebody to "try
+       again" for an address that will never be accepted is an instruction
+       to repeat a thing that cannot work. */
+    const badAddress = code === "email_address_invalid";
+
     return json(
       {
         ok: false,
         reason: already
           ? "Somebody already has an account with that email."
-          : "Could not create that account. Try again.",
+          : badAddress
+            ? "That email address was refused. Check it and try a different one."
+            : "Could not create that account. Try again.",
       },
       400,
     );

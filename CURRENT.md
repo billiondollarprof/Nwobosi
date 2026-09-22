@@ -559,6 +559,93 @@ outputs a day.
 NEEDS TWO REDEPLOYS, both REDEPLOYS and not new: `invite-staff` and
 `assistant`.
 
+### Built 2026-09-22: the last chat only comes back if it is still yours
+
+Anthony: "if I was working on this particular chat and I leave it, it
+should persist for like maybe 30 minutes or one hour... but if I come back
+the next day, that particular chat, it should just show me a new chat."
+And: "when a piece work is already done, and downloaded keep at recent and
+always open a new chat."
+
+WHAT IT WAS DOING. Opening the most recently updated conversation, always,
+however old it was. So a chat last touched three weeks ago came straight
+back, and the first thing anybody did each morning was press New chat.
+
+TWO RULES NOW, AND THE SECOND BEATS THE FIRST.
+1. Under an hour since the last message, it comes back. Past that, a new
+   chat opens. He chose an hour over 30 minutes.
+2. If the document was built AND downloaded, a new chat opens whatever the
+   clock says, because that job is finished.
+
+Built and downloaded are two different moments and only the second one
+counts. Somebody who built a document and did not download it still has
+something to come back to, so the download is what gets recorded, not the
+build.
+
+NOTHING IS DELETED AND NOTHING IS HIDDEN. Every conversation stays in
+Recent with its title, and clicking one opens it however old it is.
+
+WHERE IT LIVES. `src/shared/resumeWindow.js`, which imports nothing, holds
+both rules and the hour. `Chat.jsx` asks it and obeys; the page holds no
+rule of its own. `delivered` rides in the resume log, so it survives a
+refresh. The log stays at version 1 deliberately: bumping it blanks every
+existing log, and a missing `delivered` key already reads as false, which
+is the truth.
+
+NO SQL AND NO REDEPLOY. The assistant function never sees a conversation.
+
+CHECKED TWO WAYS. `scripts/tests/resume-window.test.mjs`, 27 checks on the
+rule itself with the clock as a number. And `scripts/__harness/resume.cjs`,
+9 checks that drive the real page at six different ages, because a correct
+rule the page never calls is worth nothing and that failure looks like
+nothing on screen. The old behaviour was put back and the page walk failed
+3 of 3 on the cases that matter.
+
+### Fixed 2026-09-22: two admin controls that never saved anything
+
+Both found by Anthony using the screen, which is the only way either would
+ever have been found.
+
+**The per person level picker on each staff row.** `setCeiling` moved a
+value in React state and no request ever left the browser.
+
+**The "Outputs per day" box under Company defaults.** Anthony: "I don't
+understand what job this panel is doing. if you even change the number,
+it's just there, no button to save the new number. I changed from 5 to 10
+but at refresh we're back to 5." Same fault: a `useState` with no save and
+no read.
+
+Both are gone rather than wired up. The level one had nothing left to
+choose once the ladder came down to two rungs. The outputs one needs a
+column on `companies` to live in, and there is not one, so building it is
+a schema change and Anthony's to approve. Showing a control for it now
+would be the same lie with a Save button on it.
+
+**The per person daily limit is real and untouched.** It is set on the
+invite form and written to `staff.daily_limit`.
+
+**THE LESSON, AND IT IS ALREADY IN CLAUDE.md.** "Use the thing you just
+built... Toggle the toggle." The ceiling picker was removed from that panel
+on the 21st without the box beside it ever being typed into and the page
+refreshed. A control that writes nothing cannot fail, so it never reports
+anything, and it looks exactly like one that works.
+
+### Fixed 2026-09-22: a refused invitation now says why, somewhere readable
+
+Anthony hit "Could not create that account. Try again." and there was
+nothing to read anywhere, because that branch caught the error and threw it
+away. Nothing was written to the logs at all.
+
+Two changes. The real status, code and message are now logged. And a
+duplicate is detected by the error CODE first (`email_exists`,
+`user_already_exists`, or status 422) rather than by matching three words
+in a message, because wording changes between versions of the auth service
+and a duplicate phrased differently fell through to the shrug. An address
+the auth service refuses outright gets its own line instead of being told
+to try again, which is an instruction to repeat a thing that cannot work.
+
+NEEDS THE `invite-staff` REDEPLOY.
+
 ### Logged on 2026-09-16, and he said not to build them today
 
 He asked for these to be written down rather than built, to save credits

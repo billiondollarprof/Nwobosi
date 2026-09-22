@@ -2065,7 +2065,6 @@ export function AccessSection({ me }) {
     };
   }, [me?.company?.id]);
 
-  const [defaultLimit, setDefaultLimit] = useState(5);
 
   /* The real people on this company, read under the admin's own
      identity so row level security decides who is visible. Email is not
@@ -2337,19 +2336,34 @@ export function AccessSection({ me }) {
       {/* Staff list */}
       {/* Company defaults */}
       <GlassPanel className="p-6">
-        <SectionHeading hint="What a new staff member starts on, and what everybody's work runs at.">
+        <SectionHeading hint="What everybody's work runs at. Outputs a day is set per person, on the invite above.">
           Company defaults
         </SectionHeading>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Outputs per day" hint="Raise or lower it for everyone at once.">
-            <TextInput
-              type="number"
-              min="1"
-              value={defaultLimit}
-              onChange={(e) => setDefaultLimit(e.target.value)}
-            />
-          </Field>
+        {/* THE "OUTPUTS PER DAY" BOX WAS HERE AND IT IS GONE. 2026-09-22.
+
+            Anthony: "I don't understand what job this panel is doing. if
+            you even change the number, it's just there, no button to save
+            the new number. I changed from 5 to 10 but at refresh we're
+            back to 5."
+
+            He was right and the box was a lie. It was a useState with no
+            save and no read, exactly like the level picker beside it, so
+            typing in it moved a number in the browser and nothing else
+            ever happened. There was never a request, so there was never a
+            failure to report, which is why it looked like it worked.
+
+            A REAL COMPANY WIDE DEFAULT NEEDS A COLUMN TO LIVE IN, and
+            companies has nowhere to put one today. Adding it is a schema
+            change, which is SQL, which is Anthony's to approve. Until he
+            does, showing a control for it would be repeating the same lie
+            with a Save button on it.
+
+            THE PER PERSON LIMIT IS REAL AND UNAFFECTED. It is set on the
+            invite form above, it is written to staff.daily_limit, and it
+            is what actually holds. Nobody has lost a setting here, because
+            this one never set anything. */}
+        <div className="grid gap-3">
           {/* A STATEMENT, NOT A PICKER, SINCE 2026-09-21.
 
               There is one level staff work runs at, so a dropdown here

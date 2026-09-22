@@ -55,6 +55,19 @@
 
 export const RESUME_LOG_VERSION = 1;
 
+/* STILL VERSION 1 AFTER `delivered` WAS ADDED ON 2026-09-22, and that is a
+   decision rather than an oversight.
+
+   Bumping the version makes readResumeLog treat every log already in the
+   database as empty, which would throw away real approved findings on every
+   conversation anybody has. The new field does not need that. A log written
+   before today simply has no `delivered` key, and a missing key reads as
+   false, which is exactly the truth: nobody recorded a download on that
+   conversation, so we do not know that one happened.
+
+   The version is for a change that makes an old log WRONG. Adding a field
+   whose absence means the right thing is not one of those. */
+
 /* Hard ceilings, so a runaway turn cannot write a transcript in here. These
    are generous for a working note and far below anything that would slow a
    row down. */
@@ -71,6 +84,7 @@ export function emptyResumeLog() {
     findings: [],
     declined: 0,
     missing: "",
+    delivered: false,
     at: null,
   };
 }
@@ -90,6 +104,7 @@ export function buildResumeLog({
   findings = [],
   declined = 0,
   missing = "",
+  delivered = false,
 } = {}) {
   return {
     v: RESUME_LOG_VERSION,
@@ -101,6 +116,14 @@ export function buildResumeLog({
       .map((f) => f.trim().slice(0, MAX_FINDING_CHARS)),
     declined: countOf(declined),
     missing: oneLine(missing).slice(0, MAX_MISSING),
+    /* WAS THE FINISHED FILE ACTUALLY DOWNLOADED. It decides whether this
+       conversation reopens by itself tomorrow, and the answer is no once
+       the work has been taken away. See src/shared/resumeWindow.js.
+
+       `=== true` rather than truthy, because this is written from a ref
+       that could hold anything, and "no" arriving as the string "false"
+       must not read as yes. */
+    delivered: delivered === true,
     at: new Date().toISOString(),
   };
 }
@@ -131,6 +154,9 @@ export function readResumeLog(raw) {
       : [],
     declined: countOf(raw.declined),
     missing: typeof raw.missing === "string" ? raw.missing.slice(0, MAX_MISSING) : "",
+    /* A log from before this field existed has no key here, so it reads as
+       false. That is correct: no download was ever recorded on it. */
+    delivered: raw.delivered === true,
     at: typeof raw.at === "string" ? raw.at : null,
   };
 }

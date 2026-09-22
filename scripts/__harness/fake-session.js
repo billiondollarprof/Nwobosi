@@ -15,8 +15,49 @@ export async function loadMe() {
 
 export async function listWork() { return []; }
 export async function saveWork() { return null; }
-export async function listConversations() { return []; }
-export async function loadConversation() { return null; }
+/* --------------------------------------------------------------------------
+   ONE OLD CONVERSATION, WITH ITS AGE SET BY THE TEST
+
+   Added 2026-09-22 for the resume window. The rule is "comes back inside
+   an hour, and never once the file was downloaded", and neither half can
+   be checked by hand without sitting and waiting, or without downloading
+   something and coming back tomorrow.
+
+   So the test sets window.__RESUME before the page loads and says how old
+   the conversation is and whether it was delivered. With nothing set these
+   answer empty, exactly as they did before, so the flow walk is untouched.
+   -------------------------------------------------------------------------- */
+
+export const RESUMED_LINE = "This is the board report you were working on.";
+
+function staged() {
+  const set = globalThis.__RESUME;
+  if (!set || !set.updatedAt) return null;
+  return {
+    id: "conv-old",
+    title: set.title ?? "Board report",
+    stage: set.stage ?? "analyse",
+    updated_at: set.updatedAt,
+    state: set.state ?? {},
+    brief: "",
+    messages: [
+      { role: "user", type: "text", content: "Write me a board report" },
+      { role: "assistant", type: "text", content: RESUMED_LINE },
+    ],
+  };
+}
+
+export async function listConversations() {
+  const row = staged();
+  if (!row) return [];
+  const { id, title, stage, updated_at, state } = row;
+  return [{ id, title, stage, updated_at, state }];
+}
+
+export async function loadConversation(id) {
+  const row = staged();
+  return row && row.id === id ? row : null;
+}
 export async function saveConversation() { return "conv-1"; }
 export async function signOutCompletely() {}
 
