@@ -6,9 +6,9 @@
    -----------------------------------------------
    The reply has to go two places and both of them matter. It goes into
    support_messages, so the thread reads as one conversation next time
-   anybody opens it. And it goes OUT, to the customer, by email. A browser
-   can do the first on its own and cannot do the second, because sending
-   needs a key that must never be in a bundle.
+   anybody opens it. And it goes OUT, to the customer, on WhatsApp or by
+   email. A browser can do the first on its own and cannot do the second,
+   because both sending paths need a key that must never be in a bundle.
 
    WHO IS ALLOWED
    --------------
@@ -28,9 +28,20 @@
    assistant already answered what it could before this thread reached a
    human at all, so anything happening here is the part that needed one.
 
-   WHATSAPP IS NOT WIRED YET, and it says so rather than pretending. A
-   thread with no email address comes back refused, with the reason, so
-   nobody types a real answer into a box that quietly drops it.
+   IT ANSWERS ON THE DOOR THEY KNOCKED ON, since 2026-09-22. A question
+   that came in on WhatsApp goes back out on WhatsApp, through the bridge
+   in the Amara project that carried it here in the first place. Email is
+   the fallback, not the default.
+
+   Before that it could only send email, so somebody who asked on WhatsApp
+   got the answer in an inbox they may never have given us, and a thread
+   with no email at all was refused outright, which threw away an answer a
+   member of staff had already written.
+
+   The one thing it still cannot beat is Meta's 24 hour window: a customer
+   has to have messaged within 24 hours for a plain reply to be allowed.
+   Past that it falls back to email and says so, rather than showing a
+   reply that never left the building. See sendWhatsApp at the bottom.
 
    READ TOP TO BOTTOM
      1. Plumbing
