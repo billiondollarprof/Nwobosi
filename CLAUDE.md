@@ -2,6 +2,13 @@
 
 This file tells Claude how to work on this project. The product is StellaXafe.
 
+**This is the one real rules file, and it is deliberately the only one.**
+`AGENTS.md` sits beside it as a short signpost, because that is the name
+most other coding agents look for. It points here and holds no rules of its
+own, so the two cannot drift apart. If another tool needs its own name, such
+as `GEMINI.md` or `COPILOT.md`, add another signpost like that one. Never
+copy this file.
+
 ## How to talk to the user
 
 - Use plain, simple, direct English.
