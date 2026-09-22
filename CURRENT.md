@@ -630,6 +630,29 @@ on the 21st without the box beside it ever being typed into and the page
 refreshed. A control that writes nothing cannot fail, so it never reports
 anything, and it looks exactly like one that works.
 
+### Built 2026-09-22: a person's daily limit can be changed after the invite
+
+Anthony: "is it possible that the per person one can be changed to increase
+after the invite?"
+
+It could not. The number was set once on the invite form and there was no
+way back to it, so somebody who needed more on a busy week had to be
+revoked and invited all over again.
+
+There is now a picker on each staff row, offering the same five options the
+invite form offers, with the usage meter under it, because how many they
+have used is the thing that tells you whether to raise it. `setDailyLimit`
+in `session.js` writes it.
+
+NO SQL. `staff.daily_limit` already exists and the invite already writes it.
+
+**AND setSupportAccess WAS CARRYING THE SAME SILENT FAILURE.** It updated
+without selecting anything back, so an update that row level security
+filtered out came back with no error and no rows, read as success, and
+changed nothing. The toggle moved on screen and the database did not. Both
+it and the new `setDailyLimit` now select the row back and treat an empty
+result as a failure, the same as `removeSource`.
+
 ### Fixed 2026-09-22: a refused invitation now says why, somewhere readable
 
 Anthony hit "Could not create that account. Try again." and there was

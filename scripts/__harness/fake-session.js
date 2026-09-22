@@ -96,6 +96,12 @@ export async function listStaff() {
 
 export async function setSupportAccess() { return { ok: true }; }
 
+/* Echoes the number back the way the real one does, so the preview shows
+   what was "stored" rather than what was picked. */
+export async function setDailyLimit(_id, limit) {
+  return { ok: true, limit: Math.min(Math.max(Math.floor(Number(limit) || 0), 1), 100) };
+}
+
 /* THE KNOWLEDGE SECTION, WHICH THIS PREVIEW DOES NOT RENDER.
 
    Admin.jsx pulls every one of these out of session.js in a single import,

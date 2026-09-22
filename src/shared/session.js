@@ -440,16 +440,68 @@ export async function readImageSource(sourceId) {
    ========================================================================== */
 
 export async function setSupportAccess(staffId, canSupport) {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("staff")
     .update({ can_support: canSupport === true })
-    .eq("id", staffId);
+    .eq("id", staffId)
+    .select("id");
 
   if (error) {
     console.error("could not change support access", error);
     return { ok: false, reason: "Could not change that. Try again." };
   }
+
+  /* SELECTED BACK, AND THAT IS THE WHOLE POINT. See removeSource for the
+     day this was learned: an update that row level security filters out
+     comes back with no error and no rows, so it reads as success and
+     changes nothing. The toggle moves on screen, the database does not,
+     and nobody finds out until a refresh. */
+  if (!data?.length) {
+    console.error("support access update matched no row", staffId);
+    return { ok: false, reason: "That did not save. You may not have permission." };
+  }
   return { ok: true };
+}
+
+/* --------------------------------------------------------------------------
+   HOW MANY FINISHED PIECES SOMEBODY MAY MAKE IN A DAY
+
+   Anthony, 2026-09-22: "is it possible that the per person one can be
+   changed to increase after the invite?"
+
+   It was not. The number was set once on the invite form and there was no
+   way to touch it again short of the database, so somebody who needed more
+   on a busy week had to be deleted and invited back.
+
+   Same shape as setSupportAccess above, including the select back, and for
+   the same reason.
+
+   CLAMPED HERE AS WELL AS IN THE PICKER. The picker offers a fixed list, but
+   a browser is not something this file is allowed to trust, and this writes
+   a number that decides what somebody is allowed to spend.
+   -------------------------------------------------------------------------- */
+
+export async function setDailyLimit(staffId, limit) {
+  const wanted = Math.min(Math.max(Math.floor(Number(limit) || 0), 1), 100);
+
+  const { data, error } = await supabase
+    .from("staff")
+    .update({ daily_limit: wanted })
+    .eq("id", staffId)
+    .select("id, daily_limit");
+
+  if (error) {
+    console.error("could not change the daily limit", error);
+    return { ok: false, reason: "Could not change that. Try again." };
+  }
+  if (!data?.length) {
+    console.error("daily limit update matched no row", staffId);
+    return { ok: false, reason: "That did not save. You may not have permission." };
+  }
+
+  /* The number the database actually holds, handed back so the screen shows
+     what was stored rather than what was asked for. */
+  return { ok: true, limit: data[0].daily_limit };
 }
 
 /* THE ONE SWITCH THAT DECIDES WHAT A STRANGER CAN BE TOLD

@@ -59,6 +59,7 @@ import {
   addTextSource,
   addImageSource,
   setSupportAccess,
+  setDailyLimit,
   removeSource,
   groupImages,
   setSourceVisibility,
@@ -2213,6 +2214,41 @@ export function AccessSection({ me }) {
     }
   }
 
+  /* CHANGE HOW MANY A PERSON MAY MAKE IN A DAY, AFTER THE INVITE.
+
+     Anthony, 2026-09-22: "is it possible that the per person one can be
+     changed to increase after the invite?"
+
+     It was not. The number was set once on the invite form and there was
+     no way back to it, so somebody who needed more on a busy week had to
+     be revoked and invited all over again.
+
+     Optimistic, then put back if the write fails, the same as the support
+     toggle above it. A select that waits for a round trip before it moves
+     feels broken, and this one is reversible in one tap.
+
+     THE NUMBER SHOWN AFTERWARDS IS THE ONE THE DATABASE RETURNED, not the
+     one that was picked. They are the same today. The day somebody puts a
+     rule on that column they will not be, and the screen should show what
+     was stored rather than what was asked for. */
+  async function changeDailyLimit(person, next) {
+    const wanted = Number(next) || person.limit;
+    if (wanted === person.limit) return;
+
+    setStaff((prev) => prev.map((x) => (x.id === person.id ? { ...x, limit: wanted } : x)));
+
+    const result = await setDailyLimit(person.id, wanted);
+
+    if (!result.ok) {
+      setStaff((prev) => prev.map((x) => (x.id === person.id ? { ...x, limit: person.limit } : x)));
+      setStaffNote(result.reason);
+      setTimeout(() => setStaffNote(""), 6000);
+      return;
+    }
+
+    setStaff((prev) => prev.map((x) => (x.id === person.id ? { ...x, limit: result.limit } : x)));
+  }
+
   return (
     <div className="space-y-5" style={{ animation: "sx-rise 0.3s ease" }}>
       {/* Access requests */}
@@ -2407,7 +2443,7 @@ export function AccessSection({ me }) {
       </GlassPanel>
 
       <GlassPanel className="p-6">
-        <SectionHeading hint="Put somebody on the support queue, or take their access away. You cannot take away your own.">
+        <SectionHeading hint="Change how many outputs somebody gets a day, put them on the support queue, or take their access away. You cannot take away your own.">
           Staff
         </SectionHeading>
 
@@ -2480,8 +2516,35 @@ export function AccessSection({ me }) {
                 Support
               </button>
 
-              <div className="shrink-0 w-[92px]">
-                <UsageMeter used={person.used} limit={person.limit} />
+              {/* OUTPUTS A DAY, AND IT CAN BE CHANGED HERE NOW.
+
+                  Anthony, 2026-09-22: "is it possible that the per person
+                  one can be changed to increase after the invite?"
+
+                  It could not. The number was set on the invite form and
+                  never again, so somebody who needed more on a busy week
+                  had to be revoked and invited back.
+
+                  The same five options the invite form offers, so an admin
+                  is picking from one list in both places. The meter stays
+                  underneath it, because how many they have used is the
+                  thing that tells you whether to raise it. */}
+              <div className="shrink-0 w-[112px]">
+                <SelectInput
+                  value={String(person.limit)}
+                  onChange={(e) => changeDailyLimit(person, e.target.value)}
+                  className="py-1.5 text-[12.5px]"
+                  aria-label={`Outputs a day for ${person.name}`}
+                >
+                  {[3, 5, 10, 20, 50].map((n) => (
+                    <option key={n} value={n}>
+                      {n} a day
+                    </option>
+                  ))}
+                </SelectInput>
+                <div className="mt-1.5">
+                  <UsageMeter used={person.used} limit={person.limit} />
+                </div>
               </div>
 
               {/* An admin cannot revoke themselves. Doing so would lock the
