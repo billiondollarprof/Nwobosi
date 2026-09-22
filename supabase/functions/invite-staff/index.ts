@@ -129,7 +129,7 @@ Deno.serve(async (req) => {
      made below, and after that it is the staff member's own email. */
   const { data: created, error: createError } = await asService.auth.admin.createUser({
     email,
-    password: `${crypto.randomUUID()}-${crypto.randomUUID()}`,
+    password: throwawayPassword(),
     email_confirm: true,
     user_metadata: { name },
   });
@@ -312,6 +312,36 @@ async function sendInvite(
     console.error("could not reach resend", err);
     return false;
   }
+}
+
+/* THE PASSWORD NOBODY EVER SEES, AND WHY IT HAS A CEILING. Fixed
+   2026-09-22.
+
+   This line was `${crypto.randomUUID()}-${crypto.randomUUID()}`. A UUID is
+   36 characters, so two of them plus the hyphen is 73. The auth service
+   refuses any password over 72, so EVERY invitation this function has ever
+   sent failed with a 400, whatever the email was.
+
+   72 is not an arbitrary Supabase number. Passwords are hashed with
+   bcrypt, and bcrypt itself will not read past 72 bytes, so anything
+   longer is rejected rather than silently cut.
+
+   Two UUIDs with their hyphens taken out is 64 characters, which is well
+   under the ceiling and still 244 bits of randomness for a value that is
+   generated, sent once, and never stored anywhere we can read. Same shape
+   as the invitation token above, deliberately, so there is one pattern in
+   this file and not two.
+
+   NEVER LENGTHEN THIS. If it ever needs to change, keep it under 72 and
+   keep the test in scripts/tests/invite-expiry.test.mjs passing, because
+   that test is the only thing standing between this and another silent
+   month of refused invitations.
+
+   No password rule is broken by this existing. Anthony's rule is that
+   nobody is ever given a password to remember. This one is thrown away in
+   the same breath it is made. */
+export function throwawayPassword() {
+  return `${crypto.randomUUID()}${crypto.randomUUID()}`.replaceAll("-", "");
 }
 
 /* Hex SHA-256. Deno has WebCrypto, so nothing needs importing. */

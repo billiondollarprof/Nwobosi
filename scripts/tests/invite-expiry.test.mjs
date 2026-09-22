@@ -45,7 +45,7 @@ writeFileSync(join(dir, "fn2.mjs"), code);
 
 globalThis.Deno = { serve: () => {}, env: { get: () => "" } };
 
-const { howLong } = await import(join(dir, "fn2.mjs"));
+const { howLong, throwawayPassword } = await import(join(dir, "fn2.mjs"));
 
 /* --------------------------------------------------------------------------
    1. THE WORDS, AT THE VALUES THAT ACTUALLY COME UP
@@ -94,6 +94,46 @@ check("the lifetime is read once and used for both",
   /const lifetimeHours = hoursFrom\(lifetime\);/.test(source) &&
   /Date\.now\(\) \+ lifetimeHours \* 3600_000/.test(source) &&
   /sendInvite\(\{ to: email, name, link, hours: lifetimeHours \}\)/.test(source));
+
+/* --------------------------------------------------------------------------
+   4. THE THROWAWAY PASSWORD HAS TO FIT
+
+   THE BUG THIS EXISTS FOR, AND IT BROKE EVERY SINGLE INVITATION.
+
+   The line read `${crypto.randomUUID()}-${crypto.randomUUID()}`. A UUID is
+   36 characters, so two of them plus the hyphen is 73. The auth service
+   refuses anything over 72, because bcrypt will not read past 72 bytes. So
+   createUser came back 400 every time, for every email, and the screen said
+   "Could not create that account. Try again."
+
+   Nothing caught it, and nothing could have. It is not a type error, the
+   function compiles, and the number 73 appears nowhere: it is two library
+   calls and a hyphen. The only way to see it is to count, or to read the
+   error, and the error was being thrown away.
+
+   So this counts. Every time.
+   -------------------------------------------------------------------------- */
+
+const BCRYPT_MAX = 72;
+
+const pw = throwawayPassword();
+check(`the password fits under ${BCRYPT_MAX}, it is ${pw.length}`, pw.length <= BCRYPT_MAX);
+check("and it is not so short it is guessable", pw.length >= 32);
+check("no hyphens, so the length is the whole story", !pw.includes("-"));
+
+/* Generated, not a constant somebody could have hard coded. */
+check("two calls give two different passwords", throwawayPassword() !== throwawayPassword());
+
+/* THE ONE THAT WOULD HAVE CAUGHT IT. The old version is built here and
+   measured, so the test proves the ceiling is real rather than assuming it. */
+const oldWay = `${crypto.randomUUID()}-${crypto.randomUUID()}`;
+check(`the old version really was too long, it was ${oldWay.length}`, oldWay.length > BCRYPT_MAX);
+
+/* A thousand of them, because UUID length is fixed but the code around it
+   is not, and an off by one here is another month of refused invitations. */
+let longest = 0;
+for (let i = 0; i < 1000; i += 1) longest = Math.max(longest, throwawayPassword().length);
+check(`a thousand of them and the longest was ${longest}`, longest <= BCRYPT_MAX);
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);
