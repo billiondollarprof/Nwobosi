@@ -177,7 +177,7 @@ Deno.serve(async (req: Request) => {
      receive it under the wrong company's name. */
   const { data: thread, error: threadError } = await admin
     .from("support_threads")
-    .select("id, company_id, customer_email, customer_name, channel")
+    .select("id, company_id, customer_email, customer_name, channel, customer_ref")
     .eq("id", threadId)
     .maybeSingle();
 
@@ -200,20 +200,54 @@ Deno.serve(async (req: Request) => {
 
   /* --- HOW IT GOES OUT ------------------------------------------------
 
-     Email if there is an address. WhatsApp is not wired yet, and saying so
-     is the whole point of this branch: a reply box that accepts a real
-     answer and then drops it is worse than a reply box that refuses. */
-  if (!thread.customer_email) {
-    return json({
-      ok: false,
-      reason: thread.channel === "whatsapp"
-        ? "This one came in on WhatsApp and replying from here is not built yet. Answer it in WhatsApp."
-        : "This person left no email address, so there is nowhere to send a reply.",
-    }, 400);
+     ANSWER ON THE DOOR THEY KNOCKED ON. Changed 2026-09-22.
+
+     Anthony: "only email when in escalation no direct back to Whatsapp."
+
+     He was right and it was the wrong shape. Somebody asks a question on
+     WhatsApp, waits, and the answer turns up in an email inbox they may
+     not have given us and may not check. Worse, when there was no email
+     at all this branch simply refused, so a member of staff wrote a real
+     answer and the box threw it away.
+
+     Now WhatsApp goes back to WhatsApp, through the same bridge the
+     question came in on. Email is the fallback, not the default, and the
+     staff member is told which one happened.
+
+     THE ORDER IS: try WhatsApp, then email. Never both, because a customer
+     receiving the same answer twice reads as a system that is confused. */
+  let wentBy: "whatsapp" | "email" | null = null;
+  let whyNotWhatsApp = "";
+
+  if (thread.channel === "whatsapp" && thread.customer_ref) {
+    const wa = await sendWhatsApp(String(thread.customer_ref), message);
+    if (wa.ok) {
+      wentBy = "whatsapp";
+    } else {
+      whyNotWhatsApp = wa.reason;
+      console.error(`whatsapp reply refused thread=${threadId} reason=${wa.reason}`);
+    }
   }
 
-  const sent = await sendEmail(String(thread.customer_email), companyName, message);
-  if (!sent.ok) return json({ ok: false, reason: sent.reason }, 502);
+  if (!wentBy) {
+    if (!thread.customer_email) {
+      /* Nowhere left to send it. Say which wall was hit, because "WhatsApp
+         would not take it and there is no email" and "this person never
+         left an email" send a member of staff to do two different things. */
+      return json({
+        ok: false,
+        reason: whyNotWhatsApp === "window_closed"
+          ? "WhatsApp only allows a reply within 24 hours of their last message, and that has passed. They left no email either, so message them on WhatsApp yourself and they can reply to reopen it."
+          : whyNotWhatsApp
+            ? "WhatsApp would not take that reply and this person left no email address. Try again, and tell StellaXafe if it keeps happening."
+            : "This person left no email address, so there is nowhere to send a reply.",
+      }, 400);
+    }
+
+    const sent = await sendEmail(String(thread.customer_email), companyName, message);
+    if (!sent.ok) return json({ ok: false, reason: sent.reason }, 502);
+    wentBy = "email";
+  }
 
   /* --- THE RECORD, AFTER THE SEND -------------------------------------
 
@@ -238,5 +272,62 @@ Deno.serve(async (req: Request) => {
     console.error("the reply was sent but not written to the thread", err);
   }
 
-  return json({ ok: true });
+  /* WHICH DOOR IT ACTUALLY WENT OUT OF, handed back so the screen can say
+     so. A member of staff who asked on WhatsApp and answered on WhatsApp
+     should see that, and one whose reply fell back to email must see THAT,
+     because it changes whether they chase it. */
+  return json({ ok: true, sentBy: wentBy, fellBack: wentBy === "email" && whyNotWhatsApp !== "" });
 });
+
+/* --------------------------------------------------------------------------
+   SENDING BACK DOWN THE WHATSAPP PATH
+
+   StellaXafe has no WhatsApp connection of its own and should not have one.
+   The number, the Meta token and the approval all belong to Amara, which is
+   the project that receives the question in the first place. So this posts
+   to a function over there and lets it do the sending.
+
+   THE SECRET IS THE WHOLE CHECK. There is no user to authenticate, because
+   there is no user: this function has already established that a real member
+   of staff, with support access, at the company that owns this thread, wrote
+   this reply. Amara only needs to know the caller is us.
+
+   NOT CONFIGURED IS NOT A CRASH. A deployment with no bridge set up falls
+   through to email exactly as before, because a company that never wired
+   WhatsApp should not see WhatsApp errors.
+   -------------------------------------------------------------------------- */
+
+async function sendWhatsApp(phone: string, message: string) {
+  const base = (Deno.env.get("AMARA_FUNCTIONS_URL") ?? "").replace(/\/+$/, "");
+  const secret = Deno.env.get("SUPPORT_BRIDGE_SECRET") ?? "";
+
+  if (!base || !secret) {
+    return { ok: false as const, reason: "not_configured" };
+  }
+
+  try {
+    const response = await fetch(`${base}/support-whatsapp-send`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-support-secret": secret,
+      },
+      body: JSON.stringify({ phone, body: message }),
+    });
+
+    let payload: Record<string, unknown> = {};
+    try {
+      payload = await response.json();
+    } catch {
+      /* Not JSON. Treated as a plain failure below rather than thrown, so a
+         bad gateway response falls back to email instead of losing the
+         reply somebody just wrote. */
+    }
+
+    if (response.ok && payload?.ok === true) return { ok: true as const };
+    return { ok: false as const, reason: String(payload?.reason ?? `http_${response.status}`) };
+  } catch (err) {
+    console.error("could not reach the WhatsApp bridge", err);
+    return { ok: false as const, reason: "unreachable" };
+  }
+}

@@ -260,8 +260,23 @@ export default function Support({ me }) {
        lose an answer somebody just wrote. */
     setDrafts((prev) => ({ ...prev, [thread.id]: "" }));
     setMessages(await listMessages(thread.id));
-    setReplyNote("Sent.");
-    setTimeout(() => setReplyNote(""), 4000);
+    /* SAY WHICH DOOR IT WENT OUT OF. 2026-09-22.
+
+       "Sent." was true and not enough. A customer who asked on WhatsApp
+       now gets the answer on WhatsApp, and the person answering should see
+       that rather than assume it.
+
+       The one that really matters is the fall back. WhatsApp only takes a
+       reply within 24 hours of the customer's last message, so a slow
+       answer goes out by email instead. That changes what the staff member
+       does next, so they are told, and told for longer. */
+    if (result.fellBack) {
+      setReplyNote("WhatsApp would not take it, so it went by email instead.");
+      setTimeout(() => setReplyNote(""), 8000);
+    } else {
+      setReplyNote(result.sentBy === "whatsapp" ? "Sent on WhatsApp." : "Sent by email.");
+      setTimeout(() => setReplyNote(""), 4000);
+    }
   }
 
   async function open(thread) {
