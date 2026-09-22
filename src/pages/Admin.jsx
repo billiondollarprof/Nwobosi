@@ -77,7 +77,7 @@ import { describeSource } from "../shared/describeSource.js";
 import { fetchLinkSource } from "../shared/linkApi.js";
 import { readBeforePublish, loadSourceText } from "../shared/publishCheck.js";
 import { findByName, findByAddress, whenAdded } from "../shared/duplicates.js";
-import { inviteStaff, timeLeft } from "../shared/inviteApi.js";
+import { inviteStaff, revokeStaff, timeLeft } from "../shared/inviteApi.js";
 import {
   PRODUCT,
   MAX_SOURCE_UPLOAD_KB,
@@ -2196,8 +2196,47 @@ export function AccessSection({ me }) {
     setInviteLimit(5);
   }
 
-  function revoke(id) {
-    setStaff((prev) => prev.filter((s) => s.id !== id));
+  /* WHO THE CONFIRMATION IS ASKING ABOUT. null means no dialog is open.
+
+     Anthony, 2026-09-22: "the revoke button is useless, no verification,
+     once clicked it pretends as though someone has been deleted but after
+     a refresh the account returns."
+
+     Two faults in one sentence and both are fixed here. The verification
+     is this dialog. The pretending is gone, because the row only leaves
+     the list after the server says it is done. */
+  const [revoking, setRevoking] = useState(null);
+  const [revokeBusy, setRevokeBusy] = useState(false);
+
+  async function confirmRevoke() {
+    if (!revoking || revokeBusy) return;
+    setRevokeBusy(true);
+
+    const result = await revokeStaff(revoking.id);
+
+    setRevokeBusy(false);
+
+    if (!result.ok) {
+      setRevoking(null);
+      setStaffNote(result.reason);
+      setTimeout(() => setStaffNote(""), 8000);
+      return;
+    }
+
+    /* NOT OPTIMISTIC, DELIBERATELY, and this is the one control on the
+       screen where that matters. The support toggle moves first because it
+       is reversible in one tap. This is not reversible at all, so the row
+       stays until the server has actually removed it. */
+    setStaff((prev) => prev.filter((x) => x.id !== revoking.id));
+    setRevoking(null);
+
+    /* The rare half done case: their access is gone but the account
+       itself survived. Said plainly rather than hidden, because somebody
+       has to know to chase it. */
+    if (result.accountRemains) {
+      setStaffNote(result.reason);
+      setTimeout(() => setStaffNote(""), 10000);
+    }
   }
 
   /* Optimistic, then corrected if the write fails. A toggle that waits for
@@ -2315,7 +2354,15 @@ export function AccessSection({ me }) {
           Invite a staff member
         </SectionHeading>
 
-        <form onSubmit={sendInvite} className="grid gap-3 sm:grid-cols-2">
+        {/* min-w-0 ON THE GRID, 2026-09-22. A grid item defaults to
+            min-width:auto, which means it refuses to shrink below the
+            natural width of its content. The invitation link is 64
+            characters of unbroken text, so it dragged the whole row wider
+            than the phone and the green panel ran off the right edge.
+
+            This is the same fault that clipped the Insights page. See the
+            header of scripts/overflow-audit.cjs. */}
+        <form onSubmit={sendInvite} className="grid gap-3 sm:grid-cols-2 min-w-0">
           <Field label="Full name" required>
             <TextInput value={inviteName} onChange={(e) => setInviteName(e.target.value)} placeholder="Their name" />
           </Field>
@@ -2343,7 +2390,7 @@ export function AccessSection({ me }) {
               ))}
             </SelectInput>
           </Field>
-          <div className="sm:col-span-2">
+          <div className="sm:col-span-2 min-w-0">
             <PrimaryButton
               type="submit"
               disabled={!inviteReady || inviting}
@@ -2552,7 +2599,7 @@ export function AccessSection({ me }) {
                   company, with no way to undo it from any screen. */}
               {person.id !== me?.user?.id && (
               <button
-                onClick={() => revoke(person.id)}
+                onClick={() => setRevoking(person)}
                 className="rounded-full px-3 py-1.5 text-[12.5px] font-medium border transition-colors hover:opacity-80 shrink-0"
                 style={{ borderColor: "var(--border-2)", color: BRAND.red }}
               >
@@ -2564,6 +2611,36 @@ export function AccessSection({ me }) {
         </div>
       </GlassPanel>
       {/* History */}
+      {/* ASKED BEFORE, NOT REPORTED AFTER.
+
+          Anthony, 2026-09-22: "no verification, once clicked it pretends as
+          though someone has been deleted."
+
+          Revoking cannot be undone, so it is the one thing on this screen
+          that stops and asks. The wording says what actually happens, both
+          halves of it: they lose access AND the account goes. An admin who
+          reads "Revoke" could reasonably think it was a pause. */}
+      {revoking && (
+        <RefreshOrKeep
+          busy={revokeBusy}
+          title={`Take away ${revoking.name}'s access?`}
+          lead={
+            <>
+              <span className="break-words" style={{ color: "var(--text-1)" }}>
+                {revoking.name}
+              </span>{" "}
+              loses access to everything your company has uploaded, and their
+              account is deleted.
+            </>
+          }
+          note="This cannot be undone. Inviting them again makes a new account, not this one, and their past work does not come back with it."
+          replaceLabel="Yes, take their access away"
+          busyLabel="Taking it away"
+          onReplace={confirmRevoke}
+          onCancel={() => !revokeBusy && setRevoking(null)}
+        />
+      )}
+
       <GlassPanel className="p-6">
         <SectionHeading hint="What each person worked on, and what it drew down.">
           Recent work
@@ -2740,21 +2817,25 @@ function InviteIssued({ invited }) {
 
   return (
     <div
-      className="rounded-[12px] px-3.5 py-3 mt-3 text-[13px] leading-relaxed"
+      className="rounded-[12px] px-3.5 py-3 mt-3 text-[13px] leading-relaxed min-w-0 max-w-full"
       style={{ backgroundColor: "rgba(22,176,74,0.1)", color: "var(--text-1)" }}
     >
       <span className="font-semibold" style={{ color: BRAND.green }}>
         {invited.name} is on your team.
       </span>
       <br />
-      {invited.emailed
-        ? `We emailed their invitation to ${invited.email}.`
-        : `We could not email ${invited.email}, so send them this link yourself.`}
+      {/* break-words, because an email address is one unbroken token and a
+          long one pushed this panel past the edge of a phone on its own. */}
+      <span className="block break-words">
+        {invited.emailed
+          ? `We emailed their invitation to ${invited.email}.`
+          : `We could not email ${invited.email}, so send them this link yourself.`}
+      </span>
 
       {link && (
         <>
           <div
-            className="flex items-center gap-2 mt-2.5 rounded-[10px] px-2.5 py-2 border"
+            className="flex items-center gap-2 mt-2.5 rounded-[10px] px-2.5 py-2 border min-w-0 max-w-full"
             style={{ backgroundColor: "var(--surface-solid)", borderColor: "var(--border)" }}
           >
             <code

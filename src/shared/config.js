@@ -57,6 +57,9 @@ export const FUNCTIONS = {
   assistant: "assistant",
   addLink: "add-link",
   inviteStaff: "invite-staff",
+  /* Takes somebody's access away for real. Needs the service key, so it
+     cannot be a write from the browser. */
+  revokeStaff: "revoke-staff",
   sendContact: "send-contact",
   readBeforePublish: "read-before-publish",
   describeSource: "describe-source",

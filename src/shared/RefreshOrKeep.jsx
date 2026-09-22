@@ -63,6 +63,7 @@ export default function RefreshOrKeep({
   lead = null,
   note = "Keeping both leaves two readings of the same page in the knowledge base, which is how a customer ends up being told last month's answer.",
   replaceLabel = "Read it again and replace the old one",
+  keepLabel = "Keep both",
   busyLabel = "Reading it",
 }) {
   const cancelRef = useRef(null);
@@ -148,15 +149,26 @@ export default function RefreshOrKeep({
             {busy ? busyLabel : replaceLabel}
           </PrimaryButton>
 
-          <button
-            type="button"
-            onClick={onKeepBoth}
-            disabled={busy}
-            className="w-full px-4 py-2.5 rounded-[12px] border text-[13.5px] transition-colors hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ borderColor: "var(--border-2)", color: "var(--text-2)" }}
-          >
-            Keep both
-          </button>
+          {/* ONLY WHEN THERE IS A THIRD ANSWER. 2026-09-22.
+
+              This dialog was written for a name clash, where there really
+              are three answers: replace, keep both, or cancel. Revoking
+              somebody has two, so the middle button is hidden when no
+              handler is given rather than sitting there doing nothing.
+
+              Both older uses pass onKeepBoth, so nothing they show
+              changes. */}
+          {onKeepBoth && (
+            <button
+              type="button"
+              onClick={onKeepBoth}
+              disabled={busy}
+              className="w-full px-4 py-2.5 rounded-[12px] border text-[13.5px] transition-colors hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ borderColor: "var(--border-2)", color: "var(--text-2)" }}
+            >
+              {keepLabel}
+            </button>
+          )}
 
           <button
             ref={cancelRef}

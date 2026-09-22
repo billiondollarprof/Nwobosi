@@ -93,7 +93,7 @@ check("no hard coded duration anywhere in the email text",
 check("the lifetime is read once and used for both",
   /const lifetimeHours = hoursFrom\(lifetime\);/.test(source) &&
   /Date\.now\(\) \+ lifetimeHours \* 3600_000/.test(source) &&
-  /sendInvite\(\{ to: email, name, link, hours: lifetimeHours \}\)/.test(source));
+  /sendInvite\(\{ to: email, name, link, hours: lifetimeHours[,}]/.test(source));
 
 /* --------------------------------------------------------------------------
    4. THE THROWAWAY PASSWORD HAS TO FIT

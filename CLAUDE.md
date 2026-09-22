@@ -225,6 +225,78 @@ So, every time, no exceptions:
    should never have to teach an admin what a switch does.
 5. Only then say it is done, and say what you actually checked.
 
+## START IT AND FINISH IT, IN THE SAME SESSION
+
+Anthony, 2026-09-22: "why are you unnecessarily eating up time and credit
+and not taking your time to audit and plan a fix?... You have at least 8
+things not yet done. You keep circling one thing without getting it right."
+
+He was right, and it had a shape. One thing got half fixed, the fix got
+explained at length, a new fault appeared in the same area, and the cycle
+went round again. Meanwhile eight real items sat untouched and his
+subscription ran down. **Four weeks in and he still has no demo video.**
+
+These rules exist so that cannot keep happening. They are not advice.
+
+### 1. One task at a time, and it is not done until it is used
+
+Pick one thing. Finish it completely: built, used by hand, checked, pushed,
+deployed if it needs deploying. Only then pick up the next one. A session
+that half finishes three things has finished nothing and has spent three
+times the money doing it.
+
+**Finished means Anthony can use it.** Not "the code is written". Not "the
+tests pass". Not "it is pushed". If it needs an edge function deployed and
+it is not deployed, it is not finished, and the reply says so in the first
+line rather than the last.
+
+### 2. Audit the whole area before changing one line of it
+
+The invitation broke four separate times in two days. Every time, one fault
+was fixed and the next one was found by Anthony pressing the button. That
+is the most expensive way to work, because every round costs a deploy, a
+test by him, and a reply from me.
+
+So before touching anything, read the whole path end to end and write down
+EVERY fault found, then fix them together. For the invite that would have
+been: the level list, the password length, the email wording, the panel
+overflow and the revoke button, all in one pass.
+
+**A fix that arrives alone, when three faults were sitting next to it, is
+not a fix. It is a round trip.**
+
+### 3. Never break what works while fixing what does not
+
+Read the diff before pushing and ask one question of every deletion: was
+anybody relying on this? Adding to a working function should delete
+nothing. Where something has to move, say so plainly in the reply.
+
+### 4. Every control gets used before the word "done"
+
+Click it. Change the value. **Refresh the page.** This project has shipped
+five controls that rendered perfectly and wrote nothing: the level picker,
+the outputs box, the support toggle, revoke, and the requests panel. Every
+one was found by Anthony, never by a test. A control that writes nothing
+cannot fail, so it never reports anything, and it looks exactly like one
+that works.
+
+### 5. Say less
+
+The answer first, in one or two lines. Then only what he has to do, as a
+numbered list. No narration of what was tried, no explaining the reasoning
+unless he asks, no repeating what is already in the commit message. **He is
+paying for every word.**
+
+Where a long explanation genuinely belongs somewhere, it belongs in the
+code comment or in `CURRENT.md`, not in the reply.
+
+### 6. The list is the job
+
+`CURRENT.md` holds what is open. Work down it. Do not start something new
+because it turned up while doing something else: write it down and carry
+on. Come back to the reply with the same task finished, not with a
+different one started.
+
 ## Model choice
 
 Claude cannot switch its own model. Only the user can, with `/model`. So Claude names the tier before starting anything substantial, in one short line, and the user decides.

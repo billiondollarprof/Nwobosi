@@ -120,3 +120,10 @@ export async function groupImages() { return { ok: true, groups: [] }; }
 export async function setSourceVisibility() { return { ok: true }; }
 export async function listContradictions() { return []; }
 export async function resolveContradiction() { return { ok: true }; }
+
+/* The revoke dialog's server call. Answers as a real removal so the
+   confirmation, the busy state and the row leaving the list can all be
+   walked without a workspace. */
+export async function revokeStaff(staffId) {
+  return { ok: true, name: staffId, accountRemains: false };
+}

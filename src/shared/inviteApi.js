@@ -57,6 +57,54 @@ export async function inviteStaff({ name, email, role, ceiling, dailyLimit }) {
   return { ...payload, link: payload.token ? inviteLink(payload.token) : null };
 }
 
+/* --------------------------------------------------------------------------
+   TAKING ACCESS AWAY
+
+   Anthony, 2026-09-22: "the revoke button is useless... after a refresh the
+   account returns. I deleted Francis duru twice but it's still there."
+
+   It was never a request. The old `revoke` filtered a row out of React
+   state and stopped there, so the screen agreed and the database never
+   heard about it.
+
+   Every check lives in the function, not here: who is asking, whether they
+   are an admin, whether the person is even on their company, and that
+   nobody can revoke themselves. This side only asks.
+   -------------------------------------------------------------------------- */
+
+export async function revokeStaff(staffId) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return { ok: false, reason: "Sign in again to do that." };
+
+  let response;
+  try {
+    response = await fetch(`${FUNCTIONS_BASE}/${FUNCTIONS.revokeStaff}`, {
+      method: "POST",
+      headers: {
+        apikey: PUBLISHABLE_KEY,
+        Authorization: `Bearer ${session.access_token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ staffId }),
+    });
+  } catch (err) {
+    console.error("revoke failed", err);
+    return { ok: false, reason: "Could not reach the server. Check your connection." };
+  }
+
+  let payload = null;
+  try {
+    payload = await response.json();
+  } catch {
+    /* not JSON, fall through */
+  }
+
+  if (!response.ok || !payload?.ok) {
+    return { ok: false, reason: payload?.reason ?? "Could not take their access away." };
+  }
+  return payload;
+}
+
 export function inviteLink(token) {
   return `${window.location.origin}/join/${token}`;
 }

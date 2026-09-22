@@ -44,6 +44,15 @@ export default defineConfig({
         find: /^\.\.\/shared\/assistantApi\.js$/,
         replacement: path.resolve(process.cwd(), "scripts/__harness/fake-assistantApi.js"),
       },
+      /* Inviting and revoking both reach an edge function through raw
+         fetch, which needs a project URL and a real session. Same anchoring
+         rule as the two above: the pages write "../shared/inviteApi.js" and
+         nothing else does, and the fake re-exports the real timeLeft using
+         an absolute path so it cannot rewrite its own import. */
+      {
+        find: /^\.\.\/shared\/inviteApi\.js$/,
+        replacement: path.resolve(process.cwd(), "scripts/__harness/fake-inviteApi.js"),
+      },
     ],
   },
   server: { host: true, port: 5301, strictPort: true },

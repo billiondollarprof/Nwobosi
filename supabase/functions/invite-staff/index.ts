@@ -123,6 +123,28 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
+  /* THE EMAIL SAYS WHOSE WORKSPACE IT IS. Fixed 2026-09-22.
+
+     Anthony: "why does the email say stellaxafe workspace instead of the
+     company's workspace, example; Amara workspace?"
+
+     He is right. Somebody at Amara who gets an email about a "StellaXafe
+     workspace" has to work out that StellaXafe is the thing their company
+     bought. They should not have to. The product wears their name, not
+     ours, everywhere a member of their staff reads it.
+
+     Read here rather than taken from the request, like everything else in
+     this function. Falls back to a neutral sentence if the name cannot be
+     read, because an invitation that arrives is worth more than one held
+     back over a missing word. */
+  const { data: company } = await asService
+    .from("companies")
+    .select("name")
+    .eq("id", admin.company_id)
+    .maybeSingle();
+
+  const companyName = String(company?.name ?? "").trim();
+
   /* The account is real from this moment, so the admin sees the person in
      their list straight away. Its password is random and immediately
      forgotten: nobody signs in with it. The way in is the invitation link
@@ -262,7 +284,7 @@ Deno.serve(async (req) => {
      ---------------------------------------------------------------------- */
 
   const link = `${APP_URL}/join/${token}`;
-  const emailed = await sendInvite({ to: email, name, link, hours: lifetimeHours });
+  const emailed = await sendInvite({ to: email, name, link, hours: lifetimeHours, companyName });
 
   console.log(
     `invite company=${admin.company_id} by=${user.id} ceiling=${ceiling} emailed=${emailed}`,
@@ -279,7 +301,8 @@ Deno.serve(async (req) => {
    -------------------------------------------------------------------------- */
 
 async function sendInvite(
-  { to, name, link, hours }: { to: string; name: string; link: string; hours: number },
+  { to, name, link, hours, companyName }:
+    { to: string; name: string; link: string; hours: number; companyName: string },
 ) {
   const key = Deno.env.get("RESEND_API_KEY");
   if (!key) {
@@ -288,9 +311,15 @@ async function sendInvite(
   }
 
   const first = name.split(/\s+/)[0] || "there";
+
+  /* "the Amara workspace" when the name is known, "your company's
+     workspace" when it is not. Never "the StellaXafe workspace": the
+     person reading this works at Amara and has probably never heard of us. */
+  const place = companyName ? `the ${companyName} workspace` : "your company's workspace";
+
   const text =
     `Hi ${first},\n\n` +
-    `You have been added to your company's StellaXafe workspace.\n\n` +
+    `You have been added to ${place}.\n\n` +
     `Open it here:\n${link}\n\n` +
     `This link works once and runs out in ${howLong(hours)}. After that, sign in with this email address ` +
     `and we will send you a code.\n\n` +
@@ -303,7 +332,7 @@ async function sendInvite(
       body: JSON.stringify({
         from: FROM,
         to: [to],
-        subject: "Your StellaXafe workspace",
+        subject: companyName ? `Your ${companyName} workspace` : "Your workspace",
         text,
       }),
     });

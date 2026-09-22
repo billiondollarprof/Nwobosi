@@ -122,7 +122,15 @@ of them looks like it works until somebody refreshes.
 
 **STILL OPEN, AND ONE OF THEM IS NOT MINOR:**
 
-1. **REVOKE DOES NOTHING, AND IT IS A SECURITY CONTROL.** `revoke(id)` in
+1. ~~**REVOKE DOES NOTHING**~~ **BUILT 2026-09-22.** `revoke-staff`, a NEW
+   edge function. It confirms first, saying plainly that they lose access
+   AND the account goes AND it cannot be undone. Then it checks the caller
+   is an admin, refuses anybody revoking themselves, refuses a person who
+   is not on the caller's company, deletes the staff row selecting it back,
+   then deletes the account. The row leaves the screen only after the
+   server says it is done, because this one is not reversible.
+
+   ORIGINAL FAULT, for the record: `revoke(id)` in
    Admin.jsx filters the person out of local state and that is all. There is
    no revoke function in `session.js` at all. So an admin presses Revoke,
    watches the person disappear from the list, believes they have cut off
