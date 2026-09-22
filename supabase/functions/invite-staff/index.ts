@@ -146,7 +146,12 @@ Deno.serve(async (req) => {
        That is the same failure the support outage taught on 2026-09-09: a
        thing went wrong, a person saw a shrug, and the cause existed only
        for the microsecond before it was discarded. Anything that refuses
-       somebody says why, somewhere a person can read it. */
+       somebody says why, somewhere a person can read it.
+
+       IT EARNED ITS PLACE WITHIN A DAY. On 2026-09-22 it printed
+       "Password cannot be longer than 72 characters", and a bug that had
+       been live for 16 days was found in one read of the logs. See
+       throwawayPassword below. */
     const status = (createError as { status?: number } | null)?.status;
     const code = (createError as { code?: string } | null)?.code;
     console.error(

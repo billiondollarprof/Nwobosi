@@ -103,6 +103,56 @@ built and checked, not when it is planned.
    never gets a suggestion from staff B's work. Spec written in
    STYLE-MEMORY.md. Not built.
 
+### Open, asked 2026-09-22: THE DEAD CONTROLS AUDIT
+
+Anthony, after catching two of these himself: "are there other minor things
+you forgot?"
+
+He was right to ask, and the answer is yes. There is a whole family of them
+on the admin screen: a control that moves in React state and never writes to
+the database. None of them can fail, because none of them try, so every one
+of them looks like it works until somebody refreshes.
+
+**FIXED 2026-09-22**, all in one day:
+- The per person level picker. `setCeiling` wrote nothing.
+- The "Outputs per day" box under Company defaults. `defaultLimit` wrote
+  nothing. Anthony: "I changed from 5 to 10 but at refresh we're back to 5."
+- `setSupportAccess` DID write, but without selecting the row back, so a
+  write blocked by row level security read as success.
+
+**STILL OPEN, AND ONE OF THEM IS NOT MINOR:**
+
+1. **REVOKE DOES NOTHING, AND IT IS A SECURITY CONTROL.** `revoke(id)` in
+   Admin.jsx filters the person out of local state and that is all. There is
+   no revoke function in `session.js` at all. So an admin presses Revoke,
+   watches the person disappear from the list, believes they have cut off
+   access, and that person still has a working account with full access to
+   the company's material. A refresh brings them back onto the screen.
+
+   This is the worst of the family, because the other ones lose a setting
+   and this one loses a boundary. It needs building properly and it needs
+   deciding: does Revoke suspend the account, or delete it? Anthony's call.
+
+2. **The Access requests panel can never have anything in it.** `requests`
+   is `useState([])` and nothing ever loads into it. So `approve` and
+   `decline` are unreachable, and the panel is a permanent "Nothing waiting
+   on you." Either wire it to a real table of requests raised from the login
+   screen, or take the panel off the screen until it is real.
+
+3. **A staff member cannot delete a chat.** Anthony, 2026-09-22: "Recent
+   chats cannot be deleted if a staff wants to? why?" There is no delete
+   function anywhere, not in `session.js` and not in `Chat.jsx`. Today the
+   only thing that removes a conversation is `KEEP_RECENT = 3`, which drops
+   the oldest automatically when a fourth is made. So somebody who asks the
+   assistant about something personal, or starts a piece of work they want
+   gone, has no way to remove it and no way to know it will age out.
+
+**THE RULE THIS TEACHES, and it is already in CLAUDE.md under "Nothing is
+finished until it has been walked through": use the thing. Every one of
+these would have been caught by typing into it and pressing refresh. None of
+them were caught by lint, the type checker, the build, or a screenshot,
+because a control that writes nothing renders perfectly.**
+
 ### Open, asked 2026-09-21
 
 **Search has to be available at any time, and he has to be able to start
