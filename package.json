@@ -10,7 +10,7 @@
     "images": "node scripts/optimise-images.mjs",
     "icons": "node scripts/make-icons.mjs",
     "lint": "eslint src --no-warn-ignored",
-    "test": "node scripts/tests/canva-token.test.mjs && node scripts/tests/canva-design.test.mjs && node scripts/tests/read-image.test.mjs && node scripts/tests/in-batches.test.mjs && node scripts/tests/source-status.test.mjs && node scripts/tests/group-images.test.mjs && node scripts/tests/format-asked.test.mjs && node scripts/tests/output-format.test.mjs && node scripts/tests/storage.test.mjs && node scripts/tests/levels.test.mjs && node scripts/tests/invite-expiry.test.mjs && node scripts/tests/resume-window.test.mjs && node scripts/tests/support-bridge.test.mjs",
+    "test": "node scripts/tests/canva-token.test.mjs && node scripts/tests/canva-design.test.mjs && node scripts/tests/read-image.test.mjs && node scripts/tests/in-batches.test.mjs && node scripts/tests/source-status.test.mjs && node scripts/tests/group-images.test.mjs && node scripts/tests/format-asked.test.mjs && node scripts/tests/output-format.test.mjs && node scripts/tests/storage.test.mjs && node scripts/tests/levels.test.mjs && node scripts/tests/invite-expiry.test.mjs && node scripts/tests/resume-window.test.mjs && node scripts/tests/support-bridge.test.mjs && node scripts/tests/support-handover.test.mjs",
     "check": "npm run lint && node scripts/check-functions.mjs && npm test && npm run flow && npm run build",
     "flow": "node scripts/__harness/run-flow.mjs"
   },

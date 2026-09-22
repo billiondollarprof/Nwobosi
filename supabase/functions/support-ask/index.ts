@@ -131,6 +131,69 @@ const HANDOVER_INBOX_LINE =
   "If it is something private they may send it to your email instead, so " +
   "keep an eye on your inbox as well.";
 
+/* ==========================================================================
+   TAKING THE APP'S OWN WORDS BACK OUT OF THE MODEL'S REPLY
+
+   THE BUG, seen on WhatsApp 2026-09-22. A customer asked about company
+   finances, it handed over, and the answer read:
+
+     Let me get someone to answer that properly. They will reply right here.
+
+     Let me get someone to answer that properly. They will reply right here.
+     Anything else I can help with in the meantime? ...
+
+   Said twice, which makes a careful product look careless in the one
+   screenshot somebody would put in a demo.
+
+   WHY IT HAPPENS, AND IT IS A LOOP RATHER THAN A TYPO. The whole reply,
+   INCLUDING the handover this file appends, is written into the thread by
+   support_message_add. That thread is the history handed to the model on
+   the next turn. So the model reads its own past message, sees the company
+   promise sitting there in what looks like its own voice, learns the
+   pattern, and writes it itself next time. Then this file appends it again.
+
+   The prompt now tells it not to, which is the real fix. This is the guard
+   underneath, because a prompt is a request and a model will drift back.
+
+   THE SAME APPLIES TO THE CLOSING QUESTION. The prompt asks it to end every
+   reply with an offer of more help, and the handover asks that too. On an
+   escalation turn that is two of them in three lines.
+
+   CONSERVATIVE ON PURPOSE. It removes only sentences this file itself
+   wrote. It never touches an answer the model composed, because a support
+   answer with a hole cut in it is worse than one that repeats itself. */
+function withoutOurLines(text: string | null): string {
+  if (!text) return "";
+
+  /* Each one is matched on its own so a model that reproduces half the
+     handover, or reworded the second half, still loses the half it copied. */
+  const ours = [
+    "Let me get someone to answer that properly. They will reply right here.",
+    "Anything else I can help with in the meantime?",
+    HANDOVER_INBOX_LINE,
+    EMAIL_INVITE,
+  ];
+
+  let out = text;
+  for (const line of ours) {
+    /* Escaped, because these sentences carry full stops and question marks
+       and a bare string in a regular expression would match far too much. */
+    const pattern = new RegExp(line.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
+    out = out.replace(pattern, "");
+  }
+
+  /* Tidy up after the cuts: runs of spaces, a space before punctuation, and
+     the blank paragraphs left where a whole sentence used to be. */
+  return out
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/ +([.,!?])/g, "$1")
+    .replace(/\n{3,}/g, "\n\n")
+    .split("\n")
+    .map((l) => l.trim())
+    .join("\n")
+    .trim();
+}
+
 /* Anthony's words, kept exactly. Said once, on the first message of a new
    conversation, and never again. It is an offer, not a question that needs
    answering, and nothing anywhere waits on the reply. */
@@ -234,6 +297,20 @@ function buildSystem(
   );
   lines.push(
     "\nEnd every reply by asking whether there is anything else you can help with.",
+  );
+  /* ADDED 2026-09-22, after it was seen saying the handover twice on
+     WhatsApp. The model had read its own earlier message, where this app had
+     appended the company's promise, and copied it as though it were its own
+     phrasing. Naming the sentence is the only wording that reliably stops
+     it, because "do not promise a colleague" is advice and this is a fact
+     about who writes what. */
+  lines.push(
+    "\nWhen you hand over, say only that you cannot answer it yourself. " +
+      "NEVER write \"Let me get someone to answer that properly\" or \"They will " +
+      "reply right here\" or anything close to them, and never promise a reply, " +
+      "a colleague, or an email. The app adds that promise itself, in the " +
+      "company's own words, immediately after your reply. Write it too and the " +
+      "person is told the same thing twice.",
   );
 
   /* ADDED 2026-09-09. HOW IT WRITES, WHICH IS NOT THE SAME AS WHAT IT KNOWS.
@@ -917,7 +994,13 @@ Deno.serve(async (req) => {
     const handover = customerEmail
       ? `${HANDOVER_LINE} ${HANDOVER_INBOX_LINE}`
       : HANDOVER_LINE;
-    reply = reply ? `${reply}\n\n${handover}` : handover;
+
+    /* STRIPPED BEFORE IT IS ADDED, never after. Taking our words out of the
+       model's half leaves its actual answer whole, and then exactly one
+       handover goes on the end. See withoutOurLines for why the model keeps
+       writing this sentence by itself. */
+    const answerOnly = withoutOurLines(reply);
+    reply = answerOnly ? `${answerOnly}\n\n${handover}` : handover;
   }
 
   if (!reply) reply = HANDOVER_LINE;
