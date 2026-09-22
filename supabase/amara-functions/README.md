@@ -27,6 +27,17 @@ staff -> StellaXafe support screen -> StellaXafe support-reply
       -> Amara support-whatsapp-send -> Meta -> WhatsApp
 ```
 
+## The number
+
+**+234 906 628 4656.** That is Amara's WhatsApp Business number, the one a
+customer messages and the one every reply goes out from.
+
+It is not written into any code and it must not be. The functions send
+through `WHATSAPP_PHONE_NUMBER_ID`, a secret already set in Amara, and that
+id is what Meta actually routes on. The number above is the human readable
+form of the same thing, kept here so nobody has to go hunting through Meta's
+dashboard to find out which number to test against.
+
 ## `support-whatsapp-send.ts`
 
 Deploy this **to the Amara project**, with **Verify JWT OFF**.
