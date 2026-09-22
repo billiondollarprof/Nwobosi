@@ -103,6 +103,51 @@ built and checked, not when it is planned.
    never gets a suggestion from staff B's work. Spec written in
    STYLE-MEMORY.md. Not built.
 
+### Built 2026-09-22: the support handover, reshaped
+
+Anthony, after seeing it on WhatsApp. Three faults in one message.
+
+**1. It said the handover twice.** A loop, not a typo. The whole reply,
+including the promise the function appends, is saved into the thread. That
+thread is the history handed to the model next turn, so the model reads the
+company's promise in what looks like its own voice and copies it. Then the
+function appends it again. Fixed by naming the sentence in the prompt, and
+by `withoutOurLines` stripping our own four sentences before appending.
+
+**2. It asked for an email on the first message.** Anthony: "somebody is
+just coming for the first time to message. You're asking them for their
+email." Nobody should hand over an address to ask a question. The ask moved
+into the handover, the first moment it is true that somebody might need to
+reach them. Nothing else changed: the model already spots an address in any
+message and stores it, so dropping it three turns later still works.
+
+**3. "Anything else" was glued to the promise.** It is its own last
+paragraph now. Three short paragraphs are read, one long one is skimmed.
+
+**THE SHAPE NOW**, escalation, no email on file:
+
+> I don't have access to Amara's financial information. That's something
+> you'd need to speak to someone in the business about.
+>
+> Let me get someone from the team to look at this properly. They will
+> reply right here.
+>
+> You can drop your email as well, just in case they need to reach you
+> directly.
+>
+> Anything else I can help with in the meantime?
+
+With an email already on file, the middle paragraph becomes "If it is
+something private they may send it to your inbox instead, so keep an eye
+there as well."
+
+**RETIRED WORDINGS STAY ON THE STRIP LIST.** Every thread already in the
+database carries the old sentences, and that history is what the model
+copies from. Taking a retired line off the list brings the duplicate
+straight back on any old thread.
+
+NEEDS THE `support-ask` REDEPLOY.
+
 ### Open, asked 2026-09-22: THE DEAD CONTROLS AUDIT
 
 Anthony, after catching two of these himself: "are there other minor things

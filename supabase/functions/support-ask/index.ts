@@ -120,16 +120,50 @@ const MAX_SOURCE_CHARS = 200000;
    one step too late to be in it. It is asked for at the start of the
    conversation instead, and by the time anything escalates it is already on
    file and travels with the question. */
-const HANDOVER_LINE =
-  "Let me get someone to answer that properly. They will reply right here. " +
-  "Anything else I can help with in the meantime?";
+const HANDOVER_OPEN =
+  "Let me get someone from the team to look at this properly. They will " +
+  "reply right here.";
+
+/* THE EMAIL IS ASKED FOR HERE, NOT ON THE FIRST MESSAGE. Changed 2026-09-22.
+
+   Anthony: "somebody is just coming for the first time to message. You're
+   asking them for their email... the moment it escalates, after escalating,
+   within that message of escalation, the model can ask them to drop their
+   email."
+
+   He is right and the old shape was backwards. Somebody arrives with a
+   question and the first thing the desk does is ask for their address,
+   which reads like a form standing between them and an answer. Nobody has
+   to hand over an address to ask a question.
+
+   The moment it actually matters is the moment a person is coming, because
+   that is the first point where somebody might genuinely need to reach them
+   off the thread. So it is asked then, as a by the way, and never before.
+
+   Nothing else had to change for it: the model already hands back an
+   address it spots in any message, and it is stored the moment it sees one.
+   So a person who drops it three messages later is still on file, and
+   support sees it exactly as before. */
+const HANDOVER_ASK_EMAIL =
+  "You can drop your email as well, just in case they need to reach you " +
+  "directly.";
 
 /* Added only when an address is actually on file. No address, no line,
    because promising somebody an inbox we cannot reach is worse than saying
    nothing. */
 const HANDOVER_INBOX_LINE =
-  "If it is something private they may send it to your email instead, so " +
-  "keep an eye on your inbox as well.";
+  "If it is something private they may send it to your inbox instead, so " +
+  "keep an eye there as well.";
+
+/* THE LAST PARAGRAPH, ALWAYS, AND ON ITS OWN LINE.
+
+   Anthony: "Anything else I can help with in the meantime is supposed to be
+   the last paragraph in that message."
+
+   It used to be glued to the end of the handover sentence, so the message
+   read as one long block where a promise, an ask and a question all ran
+   together. Three short paragraphs are read. One long one is skimmed. */
+const HANDOVER_CLOSE = "Anything else I can help with in the meantime?";
 
 /* ==========================================================================
    TAKING THE APP'S OWN WORDS BACK OUT OF THE MODEL'S REPLY
@@ -166,11 +200,22 @@ function withoutOurLines(text: string | null): string {
   if (!text) return "";
 
   /* Each one is matched on its own so a model that reproduces half the
-     handover, or reworded the second half, still loses the half it copied. */
+     handover, or reworded the second half, still loses the half it copied.
+
+     THE RETIRED WORDINGS STAY ON THIS LIST, and that is the important part.
+     Every conversation already on the database carries the old sentences in
+     its history, and that history is what the model reads and copies from.
+     Taking a retired line off this list would bring the duplicate straight
+     back on any thread that existed before the wording changed. */
   const ours = [
-    "Let me get someone to answer that properly. They will reply right here.",
-    "Anything else I can help with in the meantime?",
+    /* Live, as of 2026-09-22. */
+    HANDOVER_OPEN,
+    HANDOVER_ASK_EMAIL,
     HANDOVER_INBOX_LINE,
+    HANDOVER_CLOSE,
+    /* Retired, and still sitting in old threads. */
+    "Let me get someone to answer that properly. They will reply right here.",
+    "If it is something private they may send it to your email instead, so keep an eye on your inbox as well.",
     EMAIL_INVITE,
   ];
 
@@ -194,9 +239,17 @@ function withoutOurLines(text: string | null): string {
     .trim();
 }
 
-/* Anthony's words, kept exactly. Said once, on the first message of a new
-   conversation, and never again. It is an offer, not a question that needs
-   answering, and nothing anywhere waits on the reply. */
+/* RETIRED 2026-09-22, AND KEPT ON PURPOSE.
+
+   This used to be appended to the first message of every new conversation.
+   It is not appended anywhere any more, because asking a stranger for their
+   address before answering their question is a form standing in the way.
+   The ask moved into the handover. See HANDOVER_ASK_EMAIL.
+
+   The string stays because it is still sitting in the history of every
+   conversation that existed before today, and withoutOurLines has to be
+   able to recognise it there. Delete this and the model starts repeating it
+   back on old threads. */
 const EMAIL_INVITE =
   "You may share your email address here, as we may prefer to send any " +
   "sensitive information directly to your inbox.";
@@ -990,10 +1043,17 @@ Deno.serve(async (req) => {
       }
     }
 
-    /* The inbox sentence only when there is an inbox to point at. */
-    const handover = customerEmail
-      ? `${HANDOVER_LINE} ${HANDOVER_INBOX_LINE}`
-      : HANDOVER_LINE;
+    /* THREE PARAGRAPHS, IN THIS ORDER, ALWAYS.
+
+         1. Somebody is coming.
+         2. Either ask for their email, or say their inbox may be used.
+         3. Anything else in the meantime?
+
+       The middle one flips on whether an address is already on file. No
+       address means ask for it. An address on file means say plainly that
+       it might get used, rather than asking for something we already have. */
+    const middle = customerEmail ? HANDOVER_INBOX_LINE : HANDOVER_ASK_EMAIL;
+    const handover = `${HANDOVER_OPEN}\n\n${middle}\n\n${HANDOVER_CLOSE}`;
 
     /* STRIPPED BEFORE IT IS ADDED, never after. Taking our words out of the
        model's half leaves its actual answer whole, and then exactly one
@@ -1003,18 +1063,21 @@ Deno.serve(async (req) => {
     reply = answerOnly ? `${answerOnly}\n\n${handover}` : handover;
   }
 
-  if (!reply) reply = HANDOVER_LINE;
+  if (!reply) reply = HANDOVER_OPEN;
 
-  /* The invitation. Once, on the first message of a new conversation, and
-     only when we do not already have an address.
+  /* THE FIRST MESSAGE NO LONGER ASKS FOR AN EMAIL. Removed 2026-09-22.
 
-     history holds every message on this thread including the one just
-     recorded, so a length of one means this person has never written before.
-     Appended in code rather than asked of the model, so the wording is the
-     company's and cannot drift. */
-  if (history.length <= 1 && !customerEmail) {
-    reply = `${reply}\n\n${EMAIL_INVITE}`;
-  }
+     It used to append EMAIL_INVITE here, on message one of every new
+     conversation. Anthony took it apart: "somebody is just coming for the
+     first time to message. You're asking them for their email."
+
+     He is right. Nobody should have to hand over an address to ask a
+     question, and a desk that opens with a form reads as one that wants
+     your details more than your problem.
+
+     The ask moved into the handover, which is the first moment it is
+     actually true that somebody might need to reach them. See
+     HANDOVER_ASK_EMAIL above. */
 
   await admin.rpc("support_message_add", {
     p_thread_id: threadId,
