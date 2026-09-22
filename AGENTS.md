@@ -41,9 +41,23 @@ because getting one of them wrong is expensive.
   rendered perfectly and wrote nothing to the database, and every one of
   them was found by a person using the screen, never by a test.
 
-## If you are a different assistant
+## The signposts that exist, and why there are several
 
-Nothing here is Claude specific except the file name. If your tool looks for
-`GEMINI.md`, `COPILOT.md`, `.cursorrules` or anything else, add a stub like
-this one that points at `CLAUDE.md`. Do not copy `CLAUDE.md` into it. One
-real file, as many signposts as you need.
+It is the tool that decides which filename it opens, not the model. Each one
+looks for its own name and ignores the others, so there is one real rules
+file and a pointer for every tool that has been used here.
+
+| Tool | Opens |
+|---|---|
+| OpenAI Codex | `AGENTS.md` (this file) |
+| Claude Code | `CLAUDE.md` (the real one) |
+| Gemini CLI | `GEMINI.md` |
+| GitHub Copilot | `.github/copilot-instructions.md` |
+
+All of them say the same thing: read `CLAUDE.md`.
+
+If your tool looks for a name that is not on that list, such as
+`.cursorrules`, add another signpost like this one. **Never copy
+`CLAUDE.md` into it.** A copy drifts the moment either file is edited, and
+then one of them is lying to whoever reads it. One real file, as many
+signposts as you need.
