@@ -25,6 +25,48 @@ built and checked, not when it is planned.
 
 ### Open
 
+00000000. **2026-09-23, OPEN: images, per staff voice, shape memory, admin
+          summary only, company format styles, a legibility fix.**
+
+          1. Images. "if a slide will also contain images apart from the logo
+             that's already in the knowledge base, the assistant should ask
+             for the image and also asks if they will need a prompt to
+             generate the image from Midjourney or any image generating
+             platform or provide any stock photo if they don't have their own
+             photos. and it should ask this during the interview after it has
+             noticed certain slides that may need an image... It should also
+             have the capability to read image and know for sure which image
+             goes into which slide. even if asked to include an image into a
+             PDF or word intended document, it should take the image and asks
+             or suggest where the image fits."
+          2. Voice. "it's over a repeated time, not one off. at the beginning,
+             the assistant may just use my conversational method and also
+             learn a few things from the knowledge base... staffs maybe able
+             to set the tone in their very first chat, maybe the assistant can
+             ask them, and they can upload their previous works, maybe one or
+             two files and the assistant learns the method. if they use em
+             dashes or if they don't and if they sound formal always or
+             sometimes conversational. I think tone settings per staff is
+             great but it can also fall back to the knowledge base tone if the
+             staff ignores it."
+          3. Reuse. DECIDED: shape only. "you just record the shape so the
+             assistant doesn't have to think too much.. also for storage space
+             sake... except the assistant can quickly map into the storage to
+             learn Both layout and tone in addition to shape, then that's
+             good. we want the inference because of saving cost of thinking
+             new style."
+          4. DECIDED, REPLACES "admin sees everything": "admin can see, just
+             the short summery not the entire work."
+          5. "remember catching [caching] is the one way to save cost while
+             delivering the best."
+          6. Legibility: the grey sub text on the brand colour ("to hear
+             from...") is not legible. "even if a texts is supposed to be sub
+             it should be readable too while maintaining its sub position."
+          7. Formats: "this format I uploaded is not hard coded rather a
+             default, so the company can upload their own format style, the
+             assistant during its learning phase and the staff can also give
+             it a document to use similar style."
+
 0000000. **2026-09-23: top tier output BUILT (needs assistant v27
          redeploy); company voice and reuse of good work OPEN.**
 
