@@ -4,6 +4,62 @@ Log of each work session. Newest at the top. Keep entries short.
 
 ---
 
+## Session 11: 2026-09-23, DeepSeek (DSH)
+
+Ran out of credit partway. Nothing was left half done. Everything below is
+finished, pushed, and checked against the live project.
+
+**The three functions that were written but never deployed are live.**
+`convert-document` v1, `drive-connect` v1, `drive-upload` v1, straight from
+the repo, verify JWT off. The deployed source of each was pulled back and
+compared. They match.
+
+**The record had drifted, and that is worth knowing before trusting it
+again.** `PENDING-DEPLOYS.md` said live `assistant` was v26 with v27 waiting.
+Live was v31 at the time and the v27 prompt lines were already inside it.
+`oauth-callback` was v14 and already carried the Google Drive provider. Both
+were checked by pulling the deployed source, not by reading the docs.
+Redeploying `assistant` for v27 would have been wasted risk.
+
+**`testing` was merged into `main` on his instruction.** It had been 67
+commits ahead, including his corrected CV. The two branches have been level
+since. `main` and `testing` were both at 37de540 when the credit ran out.
+
+**The interview was spending the person's answer on thinking.** He reported
+it mid build: "The assistant keep saying this: That ran out of room before it
+could say anything." The cause was read out of his own conversation in the
+database rather than guessed at. It sat at `stage=interview`, his answer
+saved, no reply after it.
+
+`orient` and `interview` are capped at 1100 tokens on purpose, so the model
+cannot write the document during the interview instead of asking. But the
+thinking is counted inside that same 1100, so on a message carrying real
+answers the thinking took the whole allowance and nothing was left to write a
+question with.
+
+Fixed: those two stages no longer think, and the whole 1100 goes to the
+words. The ceiling is untouched, so the guardrail still holds. The reasoning
+stages keep their thinking and their 8000 and 16000. The safety net
+(`streamWithRoomToWrite`) was also re-asking with the thinking parameter
+merely left out; it now says disabled. Deployed as **assistant v33**, pulled
+back and checked.
+
+**NOT CONFIRMED, and the next person should know it.** Why the safety net
+missed it was reasoned from the code, because the token in use cannot read
+function logs (403, `analytics_logs_read`). If the message comes back, the
+log line starting with `usage stage=` settles it in seconds. He can read it
+in the dashboard: Edge Functions, assistant, Logs.
+
+**Left for next time, in his order:**
+
+1. The converter service on Google Cloud Run, then `CONVERTER_URL` and
+   `CONVERTER_SECRET` in Supabase. Steps are in `converter/README.md`. He
+   said to leave this, and to continue it later.
+2. Test the v33 interview fix by sending a message in the chat that failed.
+3. The walkthrough video. That is what all of this is for.
+
+---
+
 ## Session 10: 2026-09-10
 
 **The assistant flow, end to end, so the videos can be recorded**

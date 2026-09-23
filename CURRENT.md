@@ -63,9 +63,44 @@ built and checked, not when it is planned.
               Word to PDF takes 9, PDF to Word the exact way takes 13. This
               box is capped at 2 CPUs, so it is the box, not the code.
 
-              NEXT, AND HE HAS ASKED FOR IT: merge `testing` into `main`.
-              66 commits are waiting, including the corrected CV, and it has
-              not been done. Do it when he says.
+              `testing` WAS MERGED INTO `main` ON 2026-09-23, on his
+              instruction. 67 commits went out, his corrected CV included.
+              The two branches have been level since: both at 37de540 as the
+              credit ran out. Remember the rule: after anything lands on
+              main, merge main back into testing.
+
+              ALSO FIXED AND LIVE, assistant v33: THE INTERVIEW WAS SPENDING
+              THE PERSON'S ANSWER ON THINKING. He reported it mid build:
+              "The assistant keep saying this: That ran out of room before it
+              could say anything." The cause was read out of his own
+              conversation in the database, not guessed at: it sat at
+              `stage=interview`, his answer saved and no reply after it.
+              `orient` and `interview` are capped at 1100 tokens on purpose
+              so the model cannot write the document during the interview
+              instead of asking, but the thinking is counted inside that same
+              1100, so the thinking took the whole allowance and left nothing
+              to write a question with. Those two stages no longer think.
+              The ceiling is untouched, so the guardrail still holds. The
+              reasoning stages keep thinking and their 8000 and 16000.
+              `streamWithRoomToWrite` was re-asking with the thinking
+              parameter merely left out; it now says disabled.
+
+              NOT CONFIRMED: why the safety net missed it, because the token
+              in use cannot read function logs (403,
+              `analytics_logs_read`). If it comes back, the line starting
+              `usage stage=` settles it in seconds. He can read it himself:
+              dashboard, Edge Functions, assistant, Logs.
+
+              WHERE HE LEFT IT, IN HIS ORDER:
+              1. The converter service on Google Cloud Run, then
+                 `CONVERTER_URL` and `CONVERTER_SECRET`. He said to leave this
+                 and continue it later.
+              2. Send a message in the chat that failed, to check the v33
+                 interview fix.
+              3. THE WALKTHROUGH VIDEO.
+                 Four weeks in and he still has no demo video. Everything
+                 above is in service of it, and the credit ran out before it
+                 was recorded.
 
 00000000000. **2026-09-23, OPEN: convert a document, no interview.**
              Anthony, word for word: "someone can actually upload any
