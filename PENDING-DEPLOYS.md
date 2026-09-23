@@ -35,6 +35,10 @@ the deployed source). v27 adds prompt lines only, and deletes nothing:
   where cards, a stat, a table and takeaways go in documents
 - generate: "DESIGN IT, DO NOT JUST TYPE IT", the ::: layout blocks the
   file writers draw (label, cards, steps, stat, takeaway) and their rules
+- THE SEARCH GATE: the research stage is refused (403) unless the
+  person's last message is exactly "Yes, go and look.", so the web is
+  never reached without their yes, whatever the browser sends.
+  search-gate.test.mjs keeps the chat's words and the server's the same.
 
 ## Before that: nothing pending
 

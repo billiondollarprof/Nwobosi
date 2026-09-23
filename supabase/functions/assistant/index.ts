@@ -1235,6 +1235,29 @@ Deno.serve(async (req: Request) => {
     return out.length ? out : sent;
   })();
 
+  /* ----------------------------------------------------------------------
+     THE SEARCH GATE, ENFORCED HERE AND NOT ONLY IN THE CHAT
+
+     Anthony, 2026-09-23: "intelligent assistant and the check points are
+     hard wired, must take permission before searching the Internet."
+
+     The search tools are only attached on the research stage, and the chat
+     only asks for that stage after the person presses "Yes, go and look."
+     But that was the browser's word for it, and this function does not
+     trust a browser. So the research stage is refused unless the person's
+     own last message IS that yes. A request that skips the button, from a
+     bug, an old tab or somebody poking at the API, never reaches the web.
+     ---------------------------------------------------------------------- */
+  if (stage === "research") {
+    const last = messages[messages.length - 1] as { role?: string; content?: unknown } | undefined;
+    const saidYes = last?.role === "user" && typeof last.content === "string" &&
+      last.content.trim() === "Yes, go and look.";
+    if (!saidYes) {
+      console.warn("research asked for without the person's yes; refused");
+      return json({ ok: false, reason: "Searching needs your yes first. Press Yes, go and look." }, 403);
+    }
+  }
+
   /* Who they are and what they are allowed. Read from the database under
      their own identity, never from the request. */
   const { data: staff, error: staffError } = await asUser

@@ -25,6 +25,14 @@ built and checked, not when it is planned.
 
 ### Open
 
+000000000. **2026-09-23, OPEN: Canva design does not work.** Anthony asked
+           "is the canva for design currently functional?" Answer, checked:
+           connecting Canva works (a token row exists), but NOTHING in the
+           chat calls canva-design (FUNCTIONS.canvaDesign is defined and
+           unused), the logs show it has never run, and its own header says
+           it was written without ever reaching Canva. It also only uploads
+           a picture into a design; it does not lay a document out in Canva.
+
 00000000. **2026-09-23, OPEN: images, per staff voice, shape memory, admin
           summary only, company format styles, a legibility fix.**
 
