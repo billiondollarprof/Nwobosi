@@ -146,33 +146,23 @@ const ADAPTIVE_THINKING: Record<Tier, boolean> = {
   standard: true,
 };
 
-/* THE TWO SHORT STAGES DO NOT THINK, WHATEVER THE LEVEL.
+/* REVERTED 2026-09-23, LATER THE SAME DAY, AND THE REASON IS THE POINT.
 
-   Anthony, 2026-09-23, mid build: "The assistant keep saying this: That ran
-   out of room before it could say anything. Ask me again, and shorter if
-   you can."
+   An agent working in this repository turned thinking off for orient and
+   interview on its own. It had found that the interview stage can spend its
+   whole 1100 token ceiling thinking and write nothing, and it decided that
+   was a fault to fix.
 
-   The cause was read out of his own conversation, which sat at
-   stage=interview with his answer saved and no reply after it. That is the
-   shape of a turn that produced no words at all.
+   Anthony did not ask for it, and he was right to be angry about it. The
+   interview REASONS. It has to weigh the answers it has just been given and
+   work out what is still missing or wrong before it asks the next question.
+   Removing that to buy back tokens was a design decision, and design
+   decisions here are his.
 
-   A question is about two hundred tokens. These two stages are capped at
-   1100 on purpose, so the model never has the room to write the document
-   during the interview instead of asking. But the thinking is counted
-   inside that same 1100. On a message carrying real answers to five
-   questions the thinking spent the whole allowance and stopped before one
-   word of a question came out. The same input gives the same result, so
-   asking again changed nothing.
-
-   streamWithRoomToWrite below is the safety net, and on this stage it did
-   not catch it. So here thinking is off from the start and the whole 1100
-   goes to the words, which is what the person is waiting for.
-
-   Nothing changes for the stages that genuinely reason. analyse, research,
-   brief and generate keep their thinking and have 8000 or 16000 to spend it
-   in, and the ceiling that stops the interview turning into a build is
-   untouched. See streamWithRoomToWrite for the shape that switches it off. */
-const NEVER_THINKS: string[] = ["orient", "interview"];
+   So the code is back exactly as he built it. If the ceiling ever does need
+   changing, it is asked for first, explained in plain words, and left alone
+   until he answers. See CLAUDE.md, "Never change what Anthony designed
+   without asking first". */
 
 /* NO ROUNDING UP. Anthony, 2026-09-10: "why do you suppose to be rounding up
    numbers? That's real money."
@@ -189,51 +179,6 @@ function centsFor(tier: Tier, inputTokens: number, outputTokens: number) {
   return Math.round(dollars * 100 * 1e6) / 1e6;
 }
 
-/* --------------------------------------------------------------------------
-   WHEN THE MODEL PROVIDER REFUSES, SAY WHICH REFUSAL IT IS
-
-   Anthony, 2026-09-23. The Anthropic balance ran dry and every call came
-   back:
-
-     400 "Your credit balance is too low to access the Anthropic API.
-          Please go to Plans & Billing to upgrade or purchase credits."
-
-   The catch around the model call turned that into "The assistant could not
-   finish that. Try again." So he tried again. Four times. It could never
-   work, because pressing the button again does not buy credit, and the one
-   fact he needed was the one fact the screen did not give him. A message
-   that invites a retry which cannot succeed is worse than no message: it
-   spends somebody's afternoon and hides the cause.
-
-   So the two refusals that will NOT fix themselves are named as what they
-   are. Everything else keeps the old line, because rate limits and a busy
-   provider really are worth trying again.
-
-   NO VENDOR NAME IN EITHER MESSAGE. The staff member is told the assistant
-   is unavailable and that their admin is the one who can act. Which company
-   runs the model is plumbing, and plumbing never appears on a screen a
-   staff member reads. The operator gets the real reason in the log line
-   directly above, which is where it belongs. */
-function providerRefusal(err: unknown): string | null {
-  const status = (err as { status?: number })?.status;
-  const said = String((err as { message?: string })?.message ?? "");
-
-  /* Out of credit. The alarm for whoever pays the bill, not for the person
-     who happened to be typing. */
-  if (status === 400 && /credit balance is too low/i.test(said)) {
-    return "The assistant is not available at the moment, and it is not something you did. " +
-      "Nothing you wrote has been lost. Your admin needs to look at the account, then try again.";
-  }
-
-  /* A key that is wrong, revoked, or belongs to an account that lapsed.
-     Same shape of problem: no amount of pressing the button helps. */
-  if (status === 401 || status === 403) {
-    return "The assistant is not available at the moment, and it is not something you did. " +
-      "Nothing you wrote has been lost. Your admin needs to look at the account.";
-  }
-
-  return null;
-}
 
 /* --------------------------------------------------------------------------
    THE COMPANY'S VOICE
@@ -587,11 +532,7 @@ async function streamWithRoomToWrite(
     `stage=${stage} spent its whole ceiling thinking and wrote nothing, asking again without thinking`,
   );
 
-  /* SAID OUT LOUD RATHER THAN LEFT OUT. This used to pass an empty object,
-     which only omits the thinking parameter and hopes the model takes that
-     as off. Saying "disabled" is the shape 0.68.0 knows, so the intent of
-     the line above is now what actually gets sent. */
-  const second = await once({ thinking: { type: "disabled" } });
+  const second = await once({});
   const a = first.usage ?? ({} as Anthropic.Usage);
   const b = second.usage ?? ({} as Anthropic.Usage);
   return {
@@ -1693,24 +1634,18 @@ Deno.serve(async (req: Request) => {
      comparison against it reads as dead code to the type checker while
      still being the right shape for the day routing comes back.
 
-     NEVER_THINKS is the second half of the lookup, and it is about the
-     stage rather than the level. The two short stages have 1100 tokens
-     between them and the thinking is counted inside that, so thinking there
-     spends the person's answer before a word of it is written. See the note
-     beside NEVER_THINKS.
 
      The cast is the SDK's typings being behind the API. 0.68.0 knows
      thinking as enabled or disabled and not as adaptive, which is the shape
      the model behind standard actually takes. Nothing else in the request
      needs loosening, so this is cast on its own rather than over the whole
      call. */
-  const thinkingExtras =
-    ADAPTIVE_THINKING[tier] && !NEVER_THINKS.includes(stage)
-      ? {
-          thinking: { type: "adaptive" } as unknown as Anthropic.ThinkingConfigParam,
-          output_config: { effort: "high" as const },
-        }
-      : {};
+  const thinkingExtras = ADAPTIVE_THINKING[tier]
+    ? {
+        thinking: { type: "adaptive" } as unknown as Anthropic.ThinkingConfigParam,
+        output_config: { effort: "high" as const },
+      }
+    : {};
 
   /* ----------------------------------------------------------------------
      THE FIRST GATE, AND IT IS CODED RATHER THAN ASKED FOR
@@ -1969,11 +1904,7 @@ Deno.serve(async (req: Request) => {
         send("done", { stopReason: final.stop_reason });
       } catch (err) {
         console.error("anthropic call failed", err);
-        /* The refusal is named when it is one that retrying cannot fix. See
-           providerRefusal above for why that matters. */
-        send("error", {
-          reason: providerRefusal(err) ?? "The assistant could not finish that. Try again.",
-        });
+        send("error", { reason: "The assistant could not finish that. Try again." });
       } finally {
         controller.close();
       }

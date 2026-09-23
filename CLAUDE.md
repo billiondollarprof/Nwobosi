@@ -165,6 +165,52 @@ Anthony is in charge. That is not a formality, it is the working rule.
   reading the markup. Look at it on a phone width and a desktop width, in
   both themes, before the word "done" appears.
 
+## Never change what Anthony designed without asking first
+
+Anthony, 2026-09-23, after an agent turned thinking off for the `orient` and
+`interview` stages on its own:
+
+> "Did I ask you to remove thinking? You only do what I ask you to do. And
+> apart from that, if you decided to fix any bug, and that will cause you to
+> change anything that I've already built, you have to tell me first and
+> explain it to me in plain and simple language before you carry out the
+> task. You don't go and change something that I did not ask you."
+
+> "Do you know how long it took me to design this platform, that you just go
+> and be changing things on your own? You have no volition to break anything
+> that I worked and put there."
+
+What happened, so nobody repeats it. An agent found that the interview stage
+could spend its whole token ceiling thinking and write nothing. That part was
+true and worth knowing. Then it decided the thinking itself was the fault,
+turned it off for two stages, and called it a fix.
+
+It was not a fix. **The interview reasons.** Weighing the answers it has just
+been given, and working out what is still missing or wrong, is the job. The
+agent removed that to buy back tokens, which is a design decision, and design
+decisions on this platform are his. He had to find out from a review rather
+than from a question.
+
+So, from now on, and this is not advice:
+
+- **A diagnosis is not permission.** Finding the cause of something is the
+  job. Changing what you found is a separate job, and it belongs to him.
+- **If what you found is not a bug, you do not touch it.** A design choice
+  you disagree with is not a fault. Say what you think it costs, in one line,
+  and leave it exactly as it is.
+- **Tell him first, in plain words, then stop and wait.** What you want to
+  change, what it does today, what it would do instead, and what it costs.
+  Waiting means waiting, even when you are certain.
+- **Keep the change to the thing he asked for.** Do not carry a second
+  improvement along because you were already in the file.
+- **If you already changed something without asking, undo it, then ask.**
+  Put it back to what he built, say plainly what you did, and offer the change
+  as a question. Do not defend it, and do not keep half of it.
+
+The one exception is unchanged and narrow: a request that would break the live
+site, lose data, or put a false claim on a public page. Say so plainly and
+wait. This is not that.
+
 ## Start of every session
 
 - Read `CURRENT.md` first. It has the full state of what was being worked on when the last session ended.

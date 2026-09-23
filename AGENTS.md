@@ -23,11 +23,16 @@ that drift apart, there is one real file and this pointer.
 - **`ARCHITECTURE.md`** — how it is put together.
 - **`DIRECTION.md`** — where it is going.
 
-## Four rules worth knowing before you read anything else
+## Five rules worth knowing before you read anything else
 
 They are all explained properly in `CLAUDE.md`. They are repeated here only
 because getting one of them wrong is expensive.
 
+- **Never change what Anthony designed without asking first.** Finding the
+  cause of something is the job. Changing what you found is his decision, not
+  yours. If what you found is not a bug, say what you think in one line and
+  leave it exactly as it is. Tell him first, in plain words, then wait for his
+  answer.
 - **Every push to `main` is a publish.** The site is live and `main` deploys
   straight to it. Work goes through the `testing` branch. Do not merge to
   `main` without being asked.

@@ -81,17 +81,26 @@ built and checked, not when it is planned.
                one action that cannot work. It sent him round four times, and
                then he pasted three log lines that were all the same 44
                seconds, because nothing on the screen had told him what was
-               actually wrong. `providerRefusal` in the assistant now names
-               the two refusals that will never fix themselves, the empty
-               balance and a wrong or revoked key, and says plainly that it
-               is not the person's doing and that their admin has to act.
-               Rate limits and a busy provider keep the old "try again",
-               because there it is true. NO VENDOR NAME reaches the person:
-               plumbing never appears on a screen a staff member reads, and
-               the operator still gets the real reason in the log above it.
-               Test: `scripts/tests/provider-refusal.test.mjs` (9), which
-               matches the pattern against the real error text from his log
-               rather than an invented one.
+               actually wrong.
+
+               THE MESSAGE FIX WAS BUILT AND THEN REVERTED THE SAME DAY, BY
+               HIM, AND RIGHTLY. An agent had written `providerRefusal` into
+               the assistant to name the two refusals that cannot be retried,
+               without asking first. He had asked for the SEARCH to be fixed,
+               not for his error handling to be redesigned. So it came out
+               again, along with its test, and the assistant is back to his
+               own line. If the message is still wanted it is a question to
+               ask him, in plain words, with what it changes and what it
+               costs. See the section about this in CLAUDE.md.
+
+               The reasoning is still worth keeping for the day he says yes:
+               the empty balance and a wrong or revoked key are the two that
+               never fix themselves and should never say "try again". Rate
+               limits and a busy provider keep the old line, because there it
+               is true. And no vendor name ever reaches the person, because
+               which company runs the model is plumbing, and plumbing does not
+               go on a screen a staff member reads. The operator still gets
+               the real reason in the `anthropic call failed` line.
 
                FAULT TWO, THE SKIP. FIXED 2026-09-23. Pressing "Yes, go and
                look" takes the permission card away before the turn runs,
@@ -160,27 +169,53 @@ built and checked, not when it is planned.
               credit ran out. Remember the rule: after anything lands on
               main, merge main back into testing.
 
-              ALSO FIXED AND LIVE, assistant v33: THE INTERVIEW WAS SPENDING
-              THE PERSON'S ANSWER ON THINKING. He reported it mid build:
-              "The assistant keep saying this: That ran out of room before it
-              could say anything." The cause was read out of his own
-              conversation in the database, not guessed at: it sat at
-              `stage=interview`, his answer saved and no reply after it.
-              `orient` and `interview` are capped at 1100 tokens on purpose
-              so the model cannot write the document during the interview
-              instead of asking, but the thinking is counted inside that same
-              1100, so the thinking took the whole allowance and left nothing
-              to write a question with. Those two stages no longer think.
-              The ceiling is untouched, so the guardrail still holds. The
-              reasoning stages keep thinking and their 8000 and 16000.
-              `streamWithRoomToWrite` was re-asking with the thinking
-              parameter merely left out; it now says disabled.
+              AN AGENT TURNED THE THINKING OFF ON THE INTERVIEW, AND HE MADE
+              IT PUT IT BACK. THIS IS THE MOST IMPORTANT ENTRY IN THIS FILE,
+              SO READ IT TWICE.
 
-              NOT CONFIRMED: why the safety net missed it, because the token
-              in use cannot read function logs (403,
-              `analytics_logs_read`). If it comes back, the line starting
-              `usage stage=` settles it in seconds. He can read it himself:
-              dashboard, Edge Functions, assistant, Logs.
+              What happened. He reported: "The assistant keep saying this:
+              That ran out of room before it could say anything." The cause
+              was read out of his own conversation in the database, and that
+              part was sound: it sat at `stage=interview` with his answer
+              saved and no reply after it, which is the shape of a turn that
+              wrote nothing at all.
+
+              Then the agent stopped being a diagnostician and started being
+              a designer. `orient` and `interview` are capped at 1100 tokens
+              on purpose, so the model cannot write the document during the
+              interview instead of asking. The thinking is counted inside
+              that same 1100. The agent decided the thinking was the fault,
+              turned it off for those two stages, changed the retry's shape
+              with it, and called it a fix. Deployed as assistant v33.
+
+              IT WAS NOT HIS FIX TO MAKE. Anthony, 2026-09-23: "Did I ask you
+              to remove thinking?... Do you know how long it took me to
+              design this platform, that you just go and be changing things
+              on your own?" The interview REASONS. Weighing the answers it
+              has just been given, and working out what is still missing or
+              wrong, is the entire job of that step. Removing it to buy back
+              tokens is a design decision, and design decisions on this
+              platform are his.
+
+              REVERTED THE SAME DAY, and live as assistant v37. Thinking is
+              on for every stage again, exactly as he built it. The 1100
+              ceilings are untouched (they always were). The only thing left
+              in the file is a comment above `ADAPTIVE_THINKING` recording
+              why it was reverted, so the next agent does not "fix" it again.
+
+              THE RULE IS NOW WRITTEN DOWN, because it was not written down
+              before and that is partly why this happened: CLAUDE.md,
+              "Never change what Anthony designed without asking first", with
+              the same point repeated in `AGENTS.md`. In one line: a diagnosis
+              is not permission. If what you found is not a bug, say what you
+              think it costs in one line and leave it alone. Tell him first,
+              in plain words, then wait.
+
+              STILL WORTH KNOWING, for the day he decides what he wants: the
+              interview stage really can spend its whole 1100 thinking and
+              write nothing. The safety net (`streamWithRoomToWrite`) really
+              did not catch it on that turn. Either of those may deserve his
+              attention. Neither is now changed, and both are his call.
 
               WHERE HE LEFT IT, IN HIS ORDER:
               1. The converter service on Google Cloud Run, then
