@@ -25,6 +25,31 @@ built and checked, not when it is planned.
 
 ### Open
 
+00000. **2026-09-23, BUILT, NEEDS ONE SQL RUN (his approval): delete
+       chats, without deleting memory.** Hold a chat or press "Select",
+       tick several, delete, confirm. Deleting HIDES the row (hidden_at),
+       so what the chat holds is kept for the per person memory, which is
+       designed in DIRECTION.md but NOT BUILT. Found on the way: every save
+       used to hard delete all but the newest 3 chats; removed. The chat's
+       Library asked for the whole company's documents; now asks for the
+       person's own. Needs `20260923120000_conversation_hidden_at.sql` run,
+       and a read of the RLS policies on conversations and work_history to
+       confirm staff isolation. Until the column exists the list shows as
+       before and delete says "not switched on yet". Walk:
+       `scripts/__harness/delete-chats.cjs` (23).
+
+       Anthony: "make deleting a chat possible, you can delete a chat at a
+       time by pressing and holding it in the side bar and you can also
+       select multiple chats and delete at the same time. But deleting a
+       chat doesn't delete it's memory. I believe we created memory files
+       per company per staff. That is in a RLS, that no two staffs gets
+       reminded what another staff is doing in the same company and no two
+       company have the same memory. We talked about having sessions.md and
+       even logs of memory."
+
+       Also "do it while I do the test": the redeploy guide for a new
+       company (item 0000, still open part).
+
 0000. **2026-09-23, BUILT, NEEDS ASSISTANT REDEPLOY (v26): the agent must
       be able to pick up where it left off, and be as smart as a normal chat
       inside the guardrails.** The chat side ships with the site push. A to

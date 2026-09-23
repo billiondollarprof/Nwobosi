@@ -624,11 +624,20 @@ export async function removeSource(id) {
    company's thinking without anybody asking for that.
    -------------------------------------------------------------------------- */
 
-export async function listWork(companyId) {
-  const { data, error } = await supabase
+/* `staffId` narrows it to one person's own documents, which is what the
+   chat's Library shows. Anthony, 2026-09-23: "no two staffs gets reminded
+   what another staff is doing in the same company." Before this the chat
+   asked for the whole company's documents and relied on row level security
+   alone to narrow it. The admin screen still asks for the whole company,
+   on purpose, by leaving staffId out. */
+export async function listWork(companyId, staffId) {
+  let query = supabase
     .from("work_history")
     .select("id, title, skill, summary, created_at")
-    .eq("company_id", companyId)
+    .eq("company_id", companyId);
+  if (staffId) query = query.eq("staff_id", staffId);
+
+  const { data, error } = await query
     .order("created_at", { ascending: false })
     .limit(50);
 
@@ -684,13 +693,34 @@ export async function listStaff(companyId) {
    and it used to live only in a browser tab. Close the tab, change phone,
    run out of battery, and four questions of work were gone.
 
-   Only the last few are kept. A staff member wants to pick up where they
-   left off, not browse a year of their own talking, and storing every
-   conversation forever is storing a company's thinking without anybody
-   asking for that.
+   NOTHING HERE DELETES A CONVERSATION ANY MORE, since 2026-09-23.
+
+   It used to keep only the newest three and delete the rest every time a
+   new one was saved. Anthony then set the rule: "deleting a chat doesn't
+   delete its memory." A conversation row IS the memory for now. Its
+   resume log, its brief and its messages are what the per person memory
+   in DIRECTION.md ("Memory, instead of keeping the file") will be built
+   from. Deleting rows would have thrown that away before it existed.
+
+   So a person deleting a chat HIDES it (hidden_at is set). It leaves their
+   list and nobody sees it in the app again, but the row stays, under the
+   same row level security as before: their own rows, their own company.
+
+   THE COLUMN MAY NOT EXIST YET. hidden_at is added by the migration
+   20260923120000_conversation_hidden_at.sql, which Anthony runs by hand.
+   Until then the list falls back to showing everything, and hiding says
+   plainly that it could not, rather than breaking the sidebar.
    -------------------------------------------------------------------------- */
 
-export const KEEP_RECENT = 3;
+/* How many chats the sidebar lists. A list to pick up from, not an archive
+   to browse, so it stops at twenty. Older ones are still kept. */
+export const SHOW_RECENT = 20;
+
+/* True when the error is the database saying hidden_at does not exist yet.
+   42703 is Postgres for "no such column". */
+function noHiddenColumn(error) {
+  return Boolean(error) && (error.code === "42703" || /hidden_at/.test(error.message ?? ""));
+}
 
 export async function listConversations(staffId) {
   const { data, error } = await supabase
@@ -701,14 +731,64 @@ export async function listConversations(staffId) {
        rows, so it costs nothing. See src/shared/resumeWindow.js. */
     .select("id, title, stage, updated_at, state")
     .eq("staff_id", staffId)
+    .is("hidden_at", null)
     .order("updated_at", { ascending: false })
-    .limit(KEEP_RECENT);
+    .limit(SHOW_RECENT);
+
+  /* Before the migration has run: list them all, exactly as before. */
+  if (noHiddenColumn(error)) {
+    const again = await supabase
+      .from("conversations")
+      .select("id, title, stage, updated_at, state")
+      .eq("staff_id", staffId)
+      .order("updated_at", { ascending: false })
+      .limit(SHOW_RECENT);
+    if (again.error) {
+      console.error("could not list conversations", again.error);
+      return [];
+    }
+    return again.data ?? [];
+  }
 
   if (error) {
     console.error("could not list conversations", error);
     return [];
   }
   return data ?? [];
+}
+
+/* TAKE CHATS OFF SOMEBODY'S LIST, and keep them. See the section header for
+   why this hides rather than deletes.
+
+   Checked by reading back, not by the absence of an error. Row level
+   security filters an update it refuses rather than raising: no error, no
+   rows. Five controls in this app looked like they worked for exactly that
+   reason. So the ids that come back are the ids that were really hidden,
+   and anything short of all of them is reported as a failure.
+
+   staff_id is matched as well as the id. RLS already stops anybody hiding
+   another person's chat; this makes the intent plain in the query too. */
+export async function hideConversations(staffId, ids) {
+  const wanted = (Array.isArray(ids) ? ids : []).filter(Boolean);
+  if (!wanted.length) return { ok: true, hidden: [] };
+
+  const { data, error } = await supabase
+    .from("conversations")
+    .update({ hidden_at: new Date().toISOString() })
+    .in("id", wanted)
+    .eq("staff_id", staffId)
+    .select("id");
+
+  if (noHiddenColumn(error)) {
+    return { ok: false, hidden: [], reason: "not_ready" };
+  }
+  if (error) {
+    console.error("could not hide conversations", error);
+    return { ok: false, hidden: [], reason: "failed" };
+  }
+
+  const hidden = (data ?? []).map((r) => r.id);
+  return { ok: hidden.length === wanted.length, hidden, reason: hidden.length === wanted.length ? null : "partial" };
 }
 
 export async function loadConversation(id) {
@@ -762,18 +842,9 @@ export async function saveConversation({ id, companyId, staffId, title, stage, m
     return null;
   }
 
-  /* Anything past the few we keep is dropped as soon as a new one is
-     made, rather than by a job nobody remembers to run. */
-  const { data: extra } = await supabase
-    .from("conversations")
-    .select("id")
-    .eq("staff_id", staffId)
-    .order("updated_at", { ascending: false })
-    .range(KEEP_RECENT, KEEP_RECENT + 50);
-
-  if (extra?.length) {
-    await supabase.from("conversations").delete().in("id", extra.map((r) => r.id));
-  }
+  /* THE OLD TIDY UP IS GONE. Every save used to delete all but the newest
+     three conversations. That deleted the memory Anthony wants kept, so it
+     was removed on 2026-09-23. See the section header. */
 
   return data?.id ?? null;
 }

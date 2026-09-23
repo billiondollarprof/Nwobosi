@@ -65,6 +65,11 @@ export default function RefreshOrKeep({
   replaceLabel = "Read it again and replace the old one",
   keepLabel = "Keep both",
   busyLabel = "Reading it",
+  /* The picture beside the title. The refresh arrows by default, so the
+     link and file uses are unchanged. Deleting chats passes a bin. */
+  icon: Icon = RefreshCw,
+  /* The main button's colour. Undefined keeps the usual brand gradient. */
+  replaceStyle,
 }) {
   const cancelRef = useRef(null);
 
@@ -113,7 +118,7 @@ export default function RefreshOrKeep({
             className="w-9 h-9 rounded-[11px] flex items-center justify-center shrink-0"
             style={{ backgroundColor: "var(--chip)" }}
           >
-            <RefreshCw size={17} style={{ color: "var(--audience-open)" }} />
+            <Icon size={17} style={{ color: "var(--audience-open)" }} />
           </span>
 
           <div className="min-w-0">
@@ -144,6 +149,7 @@ export default function RefreshOrKeep({
             onClick={onReplace}
             disabled={busy}
             className="w-full flex items-center gap-2 justify-center"
+            style={replaceStyle}
           >
             {busy && <Spinner size={13} color="#fff" />}
             {busy ? busyLabel : replaceLabel}

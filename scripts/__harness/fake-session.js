@@ -49,11 +49,29 @@ function staged() {
   };
 }
 
+/* Extra chats for the sidebar, from window.__RESUME.chats, and the ids a
+   walk has deleted. Hidden ones leave the list exactly as they do for real.
+   window.__HIDE_FAILS makes the delete refuse, to check the screen says so. */
+function hiddenIds() {
+  globalThis.__HIDDEN = globalThis.__HIDDEN || [];
+  return globalThis.__HIDDEN;
+}
+
 export async function listConversations() {
   const row = staged();
   if (!row) return [];
   const { id, title, stage, updated_at, state } = row;
-  return [{ id, title, stage, updated_at, state }];
+  const extra = (globalThis.__RESUME?.chats ?? []).map((c) => ({
+    stage: "interview", updated_at: row.updated_at, state: {}, ...c,
+  }));
+  return [{ id, title, stage, updated_at, state }, ...extra].filter((c) => !hiddenIds().includes(c.id));
+}
+
+export async function hideConversations(staffId, ids) {
+  globalThis.__HIDE_CALLS = (globalThis.__HIDE_CALLS || 0) + 1;
+  if (globalThis.__HIDE_FAILS) return { ok: false, hidden: [], reason: "failed" };
+  hiddenIds().push(...ids);
+  return { ok: true, hidden: [...ids], reason: null };
 }
 
 export async function loadConversation(id) {

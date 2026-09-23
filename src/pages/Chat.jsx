@@ -49,6 +49,7 @@ import {
   Shield,
   LifeBuoy,
   Info,
+  Trash2,
 } from "lucide-react";
 
 import { LogoMark } from "../shared/icons.jsx";
@@ -61,8 +62,11 @@ import {
   listConversations,
   loadConversation,
   saveConversation,
+  hideConversations,
   signOutCompletely,
 } from "../shared/session.js";
+import { usePressAndHold } from "../shared/usePressAndHold.js";
+import RefreshOrKeep from "../shared/RefreshOrKeep.jsx";
 import { readFileAsText, fileKind } from "../shared/readFile.js";
 import { shrinkImage } from "../shared/shrinkImage.js";
 import { askCanva } from "../shared/canvaApi.js";
@@ -550,6 +554,31 @@ export default function Chat() {
   const conversationIdRef = useRef(null);
   const [recentChats, setRecentChats] = useState([]);
 
+  /* DELETING CHATS FROM THE SIDEBAR. Anthony, 2026-09-23: "you can delete a
+     chat at a time by pressing and holding it in the side bar and you can
+     also select multiple chats and delete at the same time."
+
+     `selecting` is the mode, `picked` is which chats are ticked, and
+     `confirmingDelete` opens the dialog that asks before anything happens.
+     Deleting HIDES the chat, it does not destroy it. See hideConversations
+     in src/shared/session.js for why. */
+  const [selecting, setSelecting] = useState(false);
+  const [picked, setPicked] = useState([]);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  const pressAndHold = usePressAndHold();
+
+  /* Closing the sidebar ends selecting. Coming back to it later with ticks
+     still on would look like a delete half done. */
+  useEffect(() => {
+    if (!sidebarOpen) {
+      setSelecting(false);
+      setPicked([]);
+      setDeleteError("");
+    }
+  }, [sidebarOpen]);
+
   /* The current conversation, readable from inside a stream callback
      without going through a state updater. */
   const messagesRef = useRef([]);
@@ -677,7 +706,7 @@ export default function Chat() {
       }
 
       if (who.company?.id) {
-        const work = await listWork(who.company.id);
+        const work = await listWork(who.company.id, who.user.id);
         if (!alive) return;
         setLibraryFiles(
           work.map((w) => ({
@@ -2109,6 +2138,63 @@ export default function Chat() {
   }
 
   /* ------------------------------------------------------------------------
+     4b. DELETING CHATS
+     Hold a chat to start selecting it, tap others to add them, then delete
+     them together. A tap outside selecting still opens the chat.
+     ------------------------------------------------------------------------ */
+
+  function startSelecting(id) {
+    setSelecting(true);
+    setDeleteError("");
+    setPicked((prev) => (prev.includes(id) ? prev : [...prev, id]));
+  }
+
+  function stopSelecting() {
+    setSelecting(false);
+    setPicked([]);
+    setConfirmingDelete(false);
+    setDeleteError("");
+  }
+
+  function togglePicked(id) {
+    setPicked((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }
+
+  async function confirmDelete() {
+    if (!me?.user?.id || !picked.length) return;
+    setDeleteBusy(true);
+    setDeleteError("");
+
+    const result = await hideConversations(me.user.id, picked);
+
+    /* READ THE LIST BACK FROM THE DATABASE rather than trusting what was
+       asked for. A delete that removed nothing must look like one that
+       removed nothing, not like a success. */
+    const fresh = await listConversations(me.user.id);
+    setRecentChats(fresh);
+    setDeleteBusy(false);
+    setConfirmingDelete(false);
+
+    /* The chat that is open right now was one of them. It is gone from the
+       list, so the screen starts a clean chat rather than carrying on in a
+       conversation that no longer appears anywhere. */
+    if (result.hidden.includes(conversationIdRef.current)) handleNewChat();
+
+    if (!result.ok) {
+      setDeleteError(
+        result.reason === "not_ready"
+          ? "Deleting chats is not switched on yet."
+          : result.hidden.length
+          ? "Some of those could not be deleted. Try again."
+          : "That could not be deleted. Try again.",
+      );
+      setPicked((prev) => prev.filter((id) => !result.hidden.includes(id)));
+      return;
+    }
+    stopSelecting();
+  }
+
+  /* ------------------------------------------------------------------------
      5. FILE UPLOADS
      Small files go straight through. Anything over the cap is pushed to
      Drive instead, which keeps large files out of the model context.
@@ -2501,21 +2587,64 @@ export default function Chat() {
             somebody wants to resume a brief, not browse a year of their
             own talking. */}
         {recentChats.length > 0 && (
-          <div className="px-3 pb-1">
-            <p
-              className="text-[11px] font-semibold uppercase tracking-wide px-1 pb-1.5"
-              style={{ color: "var(--text-3)" }}
-            >
-              Pick up where you left off
-            </p>
-            {recentChats.map((chat) => (
+          <div className="px-3 pb-1 min-h-0 flex flex-col">
+            {/* THE HEADING, AND THE WAY IN FOR SOMEBODY WHO NEVER HOLDS.
+                Press and hold is how a phone does it, but nobody is told
+                that, so "Select" sits here in plain sight as well. Both do
+                the same thing. */}
+            <div className="flex items-center justify-between px-1 pb-1.5">
+              <p
+                className="text-[11px] font-semibold uppercase tracking-wide"
+                style={{ color: "var(--text-3)" }}
+              >
+                {selecting
+                  ? picked.length === 0
+                    ? "Tap chats to select"
+                    : `${picked.length} selected`
+                  : "Pick up where you left off"}
+              </p>
+              <button
+                type="button"
+                onClick={() => (selecting ? stopSelecting() : setSelecting(true))}
+                className="text-[12px] font-medium px-1.5 py-0.5 rounded-md hover:opacity-70"
+                style={{ color: selecting ? "var(--text-2)" : "var(--text-3)" }}
+              >
+                {selecting ? "Cancel" : "Select"}
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-1 overflow-y-auto max-h-[42vh]">
+            {recentChats.map((chat) => {
+              const isPicked = picked.includes(chat.id);
+              return (
               <button
                 key={chat.id}
-                onClick={() => resumeChat(chat.id)}
-                className="w-full flex items-start gap-2.5 rounded-[10px] px-2.5 py-2 text-left transition-colors hover:opacity-80"
-                style={{ backgroundColor: "var(--surface)" }}
+                {...pressAndHold.bind(() => startSelecting(chat.id))}
+                onClick={() => {
+                  if (pressAndHold.wasHeld()) return;
+                  if (selecting) togglePicked(chat.id);
+                  else resumeChat(chat.id);
+                }}
+                aria-pressed={selecting ? isPicked : undefined}
+                className="w-full flex items-start gap-2.5 rounded-[10px] px-2.5 py-2 text-left transition-colors hover:opacity-80 select-none"
+                style={{
+                  backgroundColor: isPicked ? "var(--chip)" : "var(--surface)",
+                  WebkitTouchCallout: "none",
+                }}
               >
-                <RotateCw size={13} className="shrink-0 mt-1" style={{ color: "var(--text-3)" }} />
+                {selecting ? (
+                  <span
+                    className="w-[15px] h-[15px] shrink-0 mt-0.5 rounded-full border flex items-center justify-center"
+                    style={{
+                      borderColor: isPicked ? BRAND.red : "var(--border-2)",
+                      backgroundColor: isPicked ? BRAND.red : "transparent",
+                    }}
+                  >
+                    {isPicked && <Check size={10} strokeWidth={3} color="#fff" />}
+                  </span>
+                ) : (
+                  <RotateCw size={13} className="shrink-0 mt-1" style={{ color: "var(--text-3)" }} />
+                )}
                 <span className="min-w-0">
                   <span className="block text-[13px] truncate" style={{ color: "var(--text-1)" }}>
                     {chat.title}
@@ -2530,7 +2659,27 @@ export default function Chat() {
                   </span>
                 </span>
               </button>
-            ))}
+              );
+            })}
+            </div>
+
+            {selecting && (
+              <button
+                type="button"
+                disabled={picked.length === 0}
+                onClick={() => setConfirmingDelete(true)}
+                className="mt-2 w-full flex items-center justify-center gap-2 rounded-[10px] px-3 py-2 text-[13px] font-semibold border transition-colors hover:opacity-85 disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{ borderColor: BRAND.red, color: BRAND.red }}
+              >
+                <Trash2 size={14} />
+                {picked.length <= 1 ? "Delete chat" : `Delete ${picked.length} chats`}
+              </button>
+            )}
+            {deleteError && (
+              <p className="text-[12px] mt-1.5 px-1" style={{ color: BRAND.red }}>
+                {deleteError}
+              </p>
+            )}
           </div>
         )}
 
@@ -3290,6 +3439,27 @@ THE GLOW AND THE PULSE STAY. They were
           </div>
         </div>
       </div>
+      {/* ASKED BEFORE ANYTHING HAPPENS. Cancel changes nothing at all. The
+          words say what the person will notice: the chats leave the list,
+          and their documents stay where they are. */}
+      {confirmingDelete && (
+        <RefreshOrKeep
+          icon={Trash2}
+          busy={deleteBusy}
+          title={picked.length === 1 ? "Delete this chat?" : `Delete ${picked.length} chats?`}
+          lead={
+            picked.length === 1
+              ? "It comes off your list. Documents you made stay in your Library."
+              : "They come off your list. Documents you made stay in your Library."
+          }
+          note=""
+          replaceLabel={picked.length === 1 ? "Delete chat" : `Delete ${picked.length} chats`}
+          busyLabel="Deleting"
+          replaceStyle={{ background: BRAND.red }}
+          onReplace={confirmDelete}
+          onCancel={() => setConfirmingDelete(false)}
+        />
+      )}
     </PageShell>
   );
 }

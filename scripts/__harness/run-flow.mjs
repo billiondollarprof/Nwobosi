@@ -72,6 +72,9 @@ for (const walk of [
      "Nothing came back". This walks that, typing go in words, and every
      way a reopened chat could land on the wrong step or lose its button. */
   "scripts/__harness/continue.cjs",
+  /* Added 2026-09-23. Hold a chat, tap another, cancel, delete, and check
+     the list the database hands back. */
+  "scripts/__harness/delete-chats.cjs",
 ]) {
   const run = spawn("node", [walk], { stdio: "inherit" });
   const code = await new Promise((resolve) => run.on("close", resolve));
