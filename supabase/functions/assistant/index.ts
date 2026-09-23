@@ -190,6 +190,52 @@ function centsFor(tier: Tier, inputTokens: number, outputTokens: number) {
 }
 
 /* --------------------------------------------------------------------------
+   WHEN THE MODEL PROVIDER REFUSES, SAY WHICH REFUSAL IT IS
+
+   Anthony, 2026-09-23. The Anthropic balance ran dry and every call came
+   back:
+
+     400 "Your credit balance is too low to access the Anthropic API.
+          Please go to Plans & Billing to upgrade or purchase credits."
+
+   The catch around the model call turned that into "The assistant could not
+   finish that. Try again." So he tried again. Four times. It could never
+   work, because pressing the button again does not buy credit, and the one
+   fact he needed was the one fact the screen did not give him. A message
+   that invites a retry which cannot succeed is worse than no message: it
+   spends somebody's afternoon and hides the cause.
+
+   So the two refusals that will NOT fix themselves are named as what they
+   are. Everything else keeps the old line, because rate limits and a busy
+   provider really are worth trying again.
+
+   NO VENDOR NAME IN EITHER MESSAGE. The staff member is told the assistant
+   is unavailable and that their admin is the one who can act. Which company
+   runs the model is plumbing, and plumbing never appears on a screen a
+   staff member reads. The operator gets the real reason in the log line
+   directly above, which is where it belongs. */
+function providerRefusal(err: unknown): string | null {
+  const status = (err as { status?: number })?.status;
+  const said = String((err as { message?: string })?.message ?? "");
+
+  /* Out of credit. The alarm for whoever pays the bill, not for the person
+     who happened to be typing. */
+  if (status === 400 && /credit balance is too low/i.test(said)) {
+    return "The assistant is not available at the moment, and it is not something you did. " +
+      "Nothing you wrote has been lost. Your admin needs to look at the account, then try again.";
+  }
+
+  /* A key that is wrong, revoked, or belongs to an account that lapsed.
+     Same shape of problem: no amount of pressing the button helps. */
+  if (status === 401 || status === 403) {
+    return "The assistant is not available at the moment, and it is not something you did. " +
+      "Nothing you wrote has been lost. Your admin needs to look at the account.";
+  }
+
+  return null;
+}
+
+/* --------------------------------------------------------------------------
    THE COMPANY'S VOICE
    This is what makes the assistant sound like it works there rather than
    like a general chatbot. It is built from the admin's own answers, which
@@ -1923,7 +1969,11 @@ Deno.serve(async (req: Request) => {
         send("done", { stopReason: final.stop_reason });
       } catch (err) {
         console.error("anthropic call failed", err);
-        send("error", { reason: "The assistant could not finish that. Try again." });
+        /* The refusal is named when it is one that retrying cannot fix. See
+           providerRefusal above for why that matters. */
+        send("error", {
+          reason: providerRefusal(err) ?? "The assistant could not finish that. Try again.",
+        });
       } finally {
         controller.close();
       }

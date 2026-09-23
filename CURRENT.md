@@ -48,14 +48,50 @@ built and checked, not when it is planned.
                printed to the function logs, and the token in use cannot
                read them (403, `analytics_logs_read`).
 
-               WAITING ON HIM: dashboard, Edge Functions, `assistant`,
-               Logs, the line containing `anthropic call failed`. That line
-               names the fault.
+               ANSWERED 2026-09-23, from the log line. It is the MODEL
+               PROVIDER'S BALANCE, not anything in this codebase:
 
-               IT IS NOT THE THINKING CHANGE made earlier the same day. The
+                 400 "Your credit balance is too low to access the Anthropic
+                 API. Please go to Plans & Billing to upgrade or purchase
+                 credits."
+
+               Three of those lines arrived, all inside 44 seconds at 19:43.
+               So it is not a search bug at all: the model was never reached.
+
+               THE TWO CREDITS MUST NOT BE CONFUSED AGAIN, because he
+               confused them and it cost an afternoon:
+                 * `companies.budget_cents_remaining` is THIS PRODUCT's own
+                   budget, shown to people as outputs remaining. Amara sits
+                   at 100. He had already raised that one, and it was fine.
+                 * The provider's account balance is bought in the provider's
+                   own console. Nothing in this repository or in Supabase can
+                   top it up.
+               When the product's budget runs out the function returns 402
+               with a written message. When the provider's runs out the call
+               throws a 400. Different faults, different fixes.
+
+               IT WAS NOT THE THINKING CHANGE made earlier the same day. The
                research stage is not in `NEVER_THINKS`, and the deployed v34
                was pulled back and checked: its call, its two web tools and
-               its gate are all intact.
+               its gate were all intact.
+
+               FIXED THE SAME DAY, AND THIS IS THE PART WORTH KEEPING: the
+               screen used to answer an empty provider balance with "The
+               assistant could not finish that. Try again." That invites the
+               one action that cannot work. It sent him round four times, and
+               then he pasted three log lines that were all the same 44
+               seconds, because nothing on the screen had told him what was
+               actually wrong. `providerRefusal` in the assistant now names
+               the two refusals that will never fix themselves, the empty
+               balance and a wrong or revoked key, and says plainly that it
+               is not the person's doing and that their admin has to act.
+               Rate limits and a busy provider keep the old "try again",
+               because there it is true. NO VENDOR NAME reaches the person:
+               plumbing never appears on a screen a staff member reads, and
+               the operator still gets the real reason in the log above it.
+               Test: `scripts/tests/provider-refusal.test.mjs` (9), which
+               matches the pattern against the real error text from his log
+               rather than an invented one.
 
                FAULT TWO, THE SKIP. FIXED 2026-09-23. Pressing "Yes, go and
                look" takes the permission card away before the turn runs,
