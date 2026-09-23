@@ -25,6 +25,16 @@ built and checked, not when it is planned.
 
 ### Open
 
+000. **2026-09-23, not built yet: let the person choose the file type.**
+
+     Anthony: "during the process, I wasn't even offered the choice to
+     choose file type. It just saying it producing pdf"
+
+     Today the model picks the format at the read back (FORMAT: line) and
+     the build card only says "Go ahead, build it as a PDF". The only way to
+     change it is "Something is wrong" and typing. Waiting on his pick of
+     how the choice should look.
+
 00. **FIXED IN CODE 2026-09-23, NEEDS ASSISTANT REDEPLOY: the build
     looped on "The plan for this ran out of room".**
 
