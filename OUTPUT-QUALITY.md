@@ -1,7 +1,8 @@
 # OUTPUT QUALITY: DESIGNED FILES, THE COMPANY'S VOICE, REUSING GOOD WORK
 
-Spec, 2026-09-23. **Nothing in here is built yet.** Waiting for Anthony's
-go ahead, per `CLAUDE.md`, "When the user asks for a new feature".
+Spec, 2026-09-23. **Status: A (designed files) is BUILT, waiting on the
+assistant v27 redeploy. B and C were replaced by ROUND 2 at the bottom of
+this file, which is not built yet.**
 
 Anthony, 2026-09-23:
 
