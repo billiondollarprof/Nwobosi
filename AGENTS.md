@@ -46,6 +46,60 @@ because getting one of them wrong is expensive.
   rendered perfectly and wrote nothing to the database, and every one of
   them was found by a person using the screen, never by a test.
 
+## Reading the live logs, and the token for it
+
+Anthony, 2026-09-23: "keep the token and ensure they're saved in the agent.md
+so other agent can use it too."
+
+**The token.** Scoped to **Logs (Read)** on this one project and nothing else.
+It cannot read or write the database, functions, secrets or anything else, so
+a leak of it is bounded, and it is a private repository.
+
+```
+SUPABASE_LOGS_ACCESS_TOKEN=sbp_fc839458df506c3998984bdb59e83b3e63ecc15a
+```
+
+**The endpoint is the NEW one.** The old `analytics/endpoints/logs.all` still
+answers, but it returns an empty result now. Use this:
+
+```
+GET https://api.supabase.com/v1/projects/cbunsqzkhidwjtxdsmxd/analytics/endpoints/logs
+  ?sql=<URL-encoded ClickHouse SQL>
+  &iso_timestamp_start=<ISO time>
+  &iso_timestamp_end=<ISO time>
+Authorization: Bearer <token>
+```
+
+Three things learned the hard way, so nobody repeats them:
+
+1. **The time range is required.** Without it the answer is
+   `{"error":"Backend error! Retry your query."}`, which says nothing useful.
+   With it, a wrong table name gives a clear `Table "x" does not exist.`
+2. **The table is `logs` and the column is `event_message`.** It is the new
+   unified table, so `edge_logs`, `function_logs` and the rest are gone.
+3. **It throttles hard.** Several queries in a row give
+   `ThrottlerException: Too Many Requests`. One query at a time, sleep a few
+   seconds between, and wait a minute out if it starts refusing.
+
+The lines worth looking for:
+
+- `usage stage=<name> tier=... fresh=... cacheWrite=... cacheRead=... out=... cents=...`
+  one per finished turn, with what it cost.
+- `stage=<name> spent its whole ceiling thinking and wrote nothing, asking
+  again without thinking` when a turn starved. If the `out` on that turn's
+  usage line is exactly **twice** the stage's ceiling, both goes starved and
+  the person got nothing.
+- `anthropic call failed` when the model refused, with the real reason.
+- `research asked for without the person's yes; refused` when the search gate
+  stopped something.
+
+**A note from the agent that wrote this down.** A credential in a file that
+git tracks lives in the history for ever, and revoking it later does not take
+it out. If this repository is ever shared, made public, or handed to somebody
+new, this token has to be treated as burnt and replaced. If Anthony would
+rather it sat somewhere git does not reach, that is a one line change and he
+only has to say.
+
 ## The signposts that exist, and why there are several
 
 It is the tool that decides which filename it opens, not the model. Each one
