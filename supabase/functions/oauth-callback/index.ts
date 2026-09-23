@@ -94,6 +94,14 @@ const PROVIDERS: Record<string, { label: string; tokenUrl: string; idEnv: string
     idEnv: "CANVA_CLIENT_ID",
     secretEnv: "CANVA_CLIENT_SECRET",
   },
+  /* Added 2026-09-23. Started by drive-connect. Google accepts the secret in
+     the same Basic header Canva does, so exchange() below is unchanged. */
+  "google-drive": {
+    label: "Google Drive",
+    tokenUrl: "https://oauth2.googleapis.com/token",
+    idEnv: "GOOGLE_CLIENT_ID",
+    secretEnv: "GOOGLE_CLIENT_SECRET",
+  },
 };
 
 /* ==========================================================================
@@ -339,8 +347,10 @@ Deno.serve(async (req: Request) => {
     return finish("failed", "Connected, but not saved", "Something went wrong storing it. Start again from the admin screen.", false);
   }
 
+  /* The marker says WHICH service connected, so the chat can say so. For
+     Canva this is "canva", exactly what it always was. */
   return finish(
-    "canva",
+    String(pending.provider),
     `${provider.label} is connected`,
     "You can close this tab. Nothing else to do.",
     true,

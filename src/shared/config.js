@@ -66,6 +66,9 @@ export const FUNCTIONS = {
   canvaDesign: "canva-design",
   supportReply: "support-reply",
   canvaConnect: "canva-connect",
+  /* Google Drive, 2026-09-23: the handshake, and putting a file in it. */
+  driveConnect: "drive-connect",
+  driveUpload: "drive-upload",
   /* Looks at a picture already in the bucket and stores what it says, so a
      screenshot in the knowledge base is something the assistant can quote
      rather than a name it can only mention. */
@@ -407,8 +410,11 @@ export const WORKFLOW_TOOLS = [
     id: "drive",
     label: "Google Drive",
     icon: DriveIconGlyph,
-    hint: "Point the assistant at a file, and send finished work back",
-    state: "registered",
+    hint: "Send finished work to your own Drive",
+    /* CONNECTABLE since 2026-09-23. Each person connects their own Drive,
+       and a finished file can be put in it from the result card. It can
+       only see the files this product made, see drive-connect. */
+    state: "connectable",
     /* SOMEWHERE A FINISHED FILE CAN BE PUT, as opposed to somewhere facts
        are read from. src/shared/storage.js works off this, so a deployment
        on Dropbox or SharePoint marks that one instead and nothing else in

@@ -13,6 +13,19 @@ repo". Nothing here goes out any other way.
 
 ---
 
+## Google Drive (2026-09-23)
+
+- `drive-connect`: NEW. Straight from the repo.
+- `drive-upload`: NEW. Straight from the repo.
+- `oauth-callback`: REDEPLOY. Live v8 matched the repo before the change
+  (checked by pulling it). The change adds the "google-drive" entry to
+  PROVIDERS (8 lines) and changes one line so the return marker names the
+  service; for Canva it is still "canva".
+- Secrets it reads: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET.
+- In Google Cloud, the OAuth client needs this exact Authorised redirect
+  URI: https://cbunsqzkhidwjtxdsmxd.supabase.co/functions/v1/oauth-callback
+  and the Google Drive API enabled.
+
 ## assistant, v26, a REDEPLOY (2026-09-23)
 
 Live v25 matches commit fb52422 exactly (checked by pulling the deployed

@@ -70,7 +70,8 @@ import RefreshOrKeep from "../shared/RefreshOrKeep.jsx";
 import { readFileAsText, fileKind } from "../shared/readFile.js";
 import { shrinkImage } from "../shared/shrinkImage.js";
 import { askCanva } from "../shared/canvaApi.js";
-import { downloadPdf, downloadDocx } from "../shared/download.js";
+import { downloadPdf, downloadDocx, buildFile } from "../shared/download.js";
+import { askDrive, fileInDrive } from "../shared/driveApi.js";
 /* Each in its own file, and each loaded only when somebody actually asks
    for that format. The deck and spreadsheet libraries are megabytes, and
    a person who only ever makes reports should not download either one to
@@ -1355,6 +1356,9 @@ export default function Chat() {
            reopened chat said Word when the read back had said PDF. */
         format: m.format,
         cutOff: m.cutOff,
+        /* Where a filed document went, so "Open in Drive" still works when
+           the chat is opened again. */
+        link: m.link,
       })),
     });
 
@@ -2361,20 +2365,36 @@ export default function Chat() {
     return () => { alive = false; };
   }, []);
 
+  /* GOOGLE DRIVE, the same way. Asked once when the chat opens, so the
+     result card knows whether it can offer to file a document. */
+  const [driveBusy, setDriveBusy] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const result = await askDrive("status");
+      if (!alive || !result?.ok) return;
+      setConnectors((prev) => ({ ...prev, drive: Boolean(result.connected) }));
+    })();
+    return () => { alive = false; };
+  }, []);
+
   /* Read once on the way back in, said once, then taken out of the address
      bar so a refresh does not replay a message about something that
-     happened a while ago. */
+     happened a while ago. The callback names the service that connected. */
   const [canvaJustBack] = useState(() => {
     if (typeof window === "undefined") return "";
     const marker = new URLSearchParams(window.location.search).get("connected");
-    return marker === "canva" || marker === "failed" ? marker : "";
+    return marker === "canva" || marker === "google-drive" || marker === "failed" ? marker : "";
   });
 
   useEffect(() => {
     if (!canvaJustBack || typeof window === "undefined") return;
     setToast(canvaJustBack === "canva"
       ? "Canva is connected. Nothing else to do."
-      : "Canva did not finish that, so nothing was connected.");
+      : canvaJustBack === "google-drive"
+      ? "Google Drive is connected. Finished work can go straight into it."
+      : "That did not finish, so nothing was connected.");
     const url = new URL(window.location.href);
     url.searchParams.delete("connected");
     window.history.replaceState({}, "", url.toString());
@@ -2409,6 +2429,34 @@ export default function Chat() {
     /* busy stays true on purpose. The page is about to be replaced, and
        putting the row back to normal for the half second in between reads
        as nothing having happened. */
+    window.location.assign(result.url);
+  }
+
+  /* Connect or disconnect this person's own Google Drive. Same control both
+     ways, like Canva, so a connection can always be undone from where it
+     was made. */
+  async function connectDrive() {
+    if (driveBusy) return;
+    if (connectors.drive) {
+      setDriveBusy(true);
+      const result = await askDrive("disconnect");
+      setDriveBusy(false);
+      if (!result?.ok) {
+        setToast(result?.reason ?? "Could not disconnect that. Try again.");
+        return;
+      }
+      setConnectors((prev) => ({ ...prev, drive: false }));
+      setToast("Google Drive disconnected. You can also remove it from your Google account settings.");
+      return;
+    }
+    setDriveBusy(true);
+    const result = await askDrive("start");
+    if (!result?.ok || !result.url) {
+      setDriveBusy(false);
+      setToast(result?.reason ?? "Could not start that. Try again.");
+      return;
+    }
+    /* Busy stays on: the page is about to go to Google and come back. */
     window.location.assign(result.url);
   }
 
@@ -2460,10 +2508,44 @@ export default function Chat() {
      middle one: connected and unreachable. Pressing a button and seeing
      nothing happen sends somebody away believing their document is filed,
      and they find out when somebody asks them for it. */
-  async function handleFile() {
-    setToast("Checking your storage");
+  async function handleFile(format, title, content) {
+    /* Nothing connected: say so plainly. The card does not offer this
+       button then, so this is only reached if the connection was dropped
+       since the page opened. */
     const where = await storageTarget(WORKFLOW_TOOLS, connectors);
-    setToast(storageMessage(where));
+    if (where.state !== "ready") {
+      setToast(storageMessage(where));
+      return;
+    }
+
+    setToast(`Putting it in ${where.name}`);
+    try {
+      const file = await buildFile(format, title, content);
+      const result = await fileInDrive(file);
+      if (!result?.ok) {
+        setToast(result?.reason ?? storageMessage({ state: "unreachable", name: where.name }));
+        /* Google said the connection is gone. The switch shows it, so the
+           person can see what to press. */
+        if (result?.state === "none" || /connecting again/.test(result?.reason ?? "")) {
+          setConnectors((prev) => ({ ...prev, drive: false }));
+        }
+        return;
+      }
+      setToast("");
+      addMessage({
+        role: "assistant",
+        type: "filed",
+        content: `Saved to ${where.name}, in the folder "${result.folder}".`,
+        link: result.link,
+      });
+    } catch (err) {
+      if (err?.code === "no_tables") {
+        setToast("There is no table in this one, so there is nothing to put in a spreadsheet.");
+        return;
+      }
+      console.error("could not file that", err);
+      setToast(`Could not put that in ${where.name}. You can still download it.`);
+    }
   }
 
   async function handleDownload(format, title, content) {
@@ -3025,7 +3107,7 @@ export default function Chat() {
                 onShowText={() => revealText(m.id)}
                 onHideText={() => revealText(m.id, false)}
                 storageName={linkedStorageName}
-                onFile={handleFile}
+                onFile={() => handleFile(m.format ?? buildFormat, titleOf(m.content, m.title), m.content)}
                 onDownload={(format) => handleDownload(format, titleOf(m.content, m.title), m.content)}
               />
             ))}
@@ -3176,11 +3258,13 @@ export default function Chat() {
                           onClick={() =>
                             tool.id === "canva"
                               ? connectCanva()
+                              : tool.id === "drive"
+                              ? connectDrive()
                               : tool.state === "connectable"
                               ? toggleConnector(tool.id)
                               : setDemoNoteFor((open) => (open === tool.id ? null : tool.id))
                           }
-                          disabled={tool.id === "canva" && canvaBusy}
+                          disabled={(tool.id === "canva" && canvaBusy) || (tool.id === "drive" && driveBusy)}
                           className="w-full flex items-center justify-between pl-9 pr-4 py-2.5 hover:opacity-80 transition-opacity"
                         >
                           <span className="flex items-center gap-2.5">
@@ -3211,7 +3295,7 @@ export default function Chat() {
                                 signed in. */}
                             {tool.state === "connectable" ? (
                               <StatusPill tone={connectors[tool.id] ? "ok" : "neutral"}>
-                                {tool.id === "canva" && canvaBusy
+                                {(tool.id === "canva" && canvaBusy) || (tool.id === "drive" && driveBusy)
                                   ? "One moment"
                                   : connectors[tool.id]
                                   ? "Connected"
@@ -3787,6 +3871,35 @@ export function ChatBubble({ message, brief, buildFormat = DEFAULT_FORMAT, build
   /* --- The finished file --- */
   /* The real document, on screen, as it is written. No placeholder
      preview: what is in this box is exactly what downloads. */
+  /* --- Filed in the person's storage ---
+     A plain line saying where it went, and the way to open it there. The
+     link is Google's own address for the file, handed back by drive-upload. */
+  if (message.type === "filed") {
+    return (
+      <div style={riseStyle}>
+        <div
+          className="inline-flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[14px] border px-4 py-3 max-w-full"
+          style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
+        >
+          <Cloud size={15} style={{ color: BRAND.green }} />
+          <span className="text-[13.5px]" style={{ color: "var(--text-1)" }}>{message.content}</span>
+          {message.link && (
+            <a
+              href={message.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-[13px] font-medium hover:opacity-80"
+              style={{ color: BRAND.accentSoft }}
+            >
+              Open in Drive
+              <ExternalLink size={12} />
+            </a>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   if (message.type === "result") {
     /* The document's own heading, the same name the file is saved under.
        It used to show the request ("Make me a one page pricing FAQ") because

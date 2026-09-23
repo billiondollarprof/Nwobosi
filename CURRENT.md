@@ -1082,6 +1082,14 @@ before the video. They are real and they are his decisions, not ideas.
 
 ### Decided, so nobody reopens them
 
+- **2026-09-23: an admin sees everything in their own company.** Anthony:
+  "let admin see everything in their own company." The RLS that lets an
+  admin read every staff member's chats and documents stays. Staff still
+  see only their own. Nothing crosses companies.
+- **2026-09-23: Google Drive is the first storage.** Anthony: "Google
+  drive since I already collected the credentials and the secret is
+  already stored in edge function." He redeploys once the work is done.
+
 - **Headline:** "Private AI that already knows your company. / Zero data
   leakage." His choice, 2026-09-15, over "Your data never leaves your
   cloud". The accent sits on the closing line because it is the anchor.

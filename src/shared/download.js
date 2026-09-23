@@ -67,6 +67,38 @@ export async function downloadDocx(title, markdown) {
   saveBlob(blob, `${slugForFile(title)}.docx`);
 }
 
+/* --------------------------------------------------------------------------
+   SECTION: Any format, built and not saved
+
+   The same file the Download buttons give, handed back instead of saved,
+   so it can be put in Google Drive. One builder for both means what lands
+   in Drive is byte for byte what the person would have downloaded.
+   -------------------------------------------------------------------------- */
+
+export const MIME = {
+  pdf: "application/pdf",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+};
+
+export async function buildFile(format, title, markdown) {
+  const doc = readDocument(markdown, title);
+  let blob;
+  if (format === "pdf") blob = await pdfBlob(doc);
+  else if (format === "pptx") {
+    const { deckBlob } = await import("./docs/deck.js");
+    blob = await deckBlob(doc);
+  } else if (format === "xlsx") {
+    const { sheetBlob } = await import("./downloadSheet.js");
+    blob = await sheetBlob(title, markdown);
+  } else {
+    format = "docx";
+    blob = await wordBlob(doc);
+  }
+  return { blob, filename: `${slugForFile(title)}.${format}`, mimeType: MIME[format] };
+}
+
 /* Kept because it costs nothing and somebody working in a text editor may
    still want it. It is no longer what the button does. */
 export function downloadMarkdown(title, markdown) {

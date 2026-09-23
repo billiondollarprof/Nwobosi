@@ -32,7 +32,7 @@
    ========================================================================== */
 
 import { toTables } from "./structure.js";
-import { slugForFile } from "./download.js";
+import { slugForFile, saveBlob } from "./download.js";
 import { THEME } from "./docs/documentTheme.js";
 
 /* --------------------------------------------------------------------------
@@ -106,7 +106,7 @@ function tabName(name, index) {
   return cleaned || `Table ${index + 1}`;
 }
 
-export async function downloadXlsx(title, markdown) {
+export async function sheetBlob(title, markdown) {
   const tables = toTables(markdown);
   if (!tables.length) {
     /* Named so the caller can tell this apart from a real failure and say
@@ -192,16 +192,13 @@ export async function downloadXlsx(title, markdown) {
   });
 
   const buffer = await book.xlsx.writeBuffer();
-  const blob = new Blob([buffer], {
+  return new Blob([buffer], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
+}
 
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${slugForFile(title)}.xlsx`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
+/* The blob is built by sheetBlob so Google Drive can be sent the identical
+   file. This only saves it. */
+export async function downloadXlsx(title, markdown) {
+  saveBlob(await sheetBlob(title, markdown), `${slugForFile(title)}.xlsx`);
 }

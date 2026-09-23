@@ -158,6 +158,8 @@ Supabase sets for you.
 | `SUPPORT_SHARED_SECRET` | lets the support channel call `support-ask` | if support is used |
 | `SUPPORT_BRIDGE_SECRET` | shared with the WhatsApp bridge | if WhatsApp is used |
 | `AMARA_FUNCTIONS_URL` | where the WhatsApp bridge lives | if WhatsApp is used |
+| `GOOGLE_CLIENT_ID` | Google OAuth client id, for Drive | if Drive is used |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret. Never pasted into a chat | if Drive is used |
 | `CANVA_CLIENT_ID` | Canva app id | if Canva is used |
 | `CANVA_CLIENT_SECRET` | Canva app secret. Never pasted into a chat | if Canva is used |
 | `BRAND_ASSETS_BUCKET` | only if the bucket is not called `brand-assets` | rarely |
@@ -178,6 +180,7 @@ account yet (setup, accepting an invitation).
 ```
 accept-invite      add-link          assistant        canva-connect
 canva-design       check-access-code create-workspace describe-source
+drive-connect      drive-upload
 group-images       invite-staff      oauth-callback   read-before-publish
 read-image         resume-demo       revoke-staff     send-contact
 support-ask        support-reply

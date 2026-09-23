@@ -50,6 +50,13 @@ export default defineConfig({
          nothing else does, and the fake re-exports the real timeLeft using
          an absolute path so it cannot rewrite its own import. */
       {
+        /* Google Drive, 2026-09-23. window.__DRIVE sets whether it is
+           connected and what an upload answers, so the result card's
+           "Put it in Google Drive" can be walked without Google. */
+        find: /^\.\.\/shared\/driveApi\.js$/,
+        replacement: path.resolve(process.cwd(), "scripts/__harness/fake-driveApi.js"),
+      },
+      {
         find: /^\.\.\/shared\/inviteApi\.js$/,
         replacement: path.resolve(process.cwd(), "scripts/__harness/fake-inviteApi.js"),
       },
