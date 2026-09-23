@@ -79,6 +79,7 @@ import { downloadPptx } from "../shared/downloadDeck.js";
 import { downloadXlsx } from "../shared/downloadSheet.js";
 import { toTables } from "../shared/structure.js";
 import DocumentView from "../shared/DocumentView.jsx";
+import ChatText from "../shared/ChatText.jsx";
 import { readDocument, notesAsText } from "../shared/docs/documentModel.js";
 import { BRAND, GRADIENTS, FONTS } from "../shared/tokens";
 import {
@@ -3631,9 +3632,11 @@ export function ChatBubble({ message, brief, buildFormat = DEFAULT_FORMAT, build
           {/* withoutMarks, because the research stage puts [FINDING] before
               each one so the picker below knows where to split. That is
               plumbing and it must never reach a person's eyes. */}
-          <div className="text-[14.5px] leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-1)" }}>
-            {withoutMarks(message.content)}
-          </div>
+          <ChatText
+            text={withoutMarks(message.content)}
+            className="text-[14.5px] leading-relaxed"
+            style={{ color: "var(--text-1)" }}
+          />
         </div>
       </div>
     );
@@ -4019,12 +4022,12 @@ export function ChatBubble({ message, brief, buildFormat = DEFAULT_FORMAT, build
      it understood into a block nobody reads. */
   return (
     <div style={riseStyle}>
-      <p
-        className="text-[15.5px] leading-relaxed max-w-[85%] whitespace-pre-wrap"
+      {/* Shown as what it means, not as typed. See ChatText.jsx. */}
+      <ChatText
+        text={message.content}
+        className="text-[15.5px] leading-relaxed max-w-[85%]"
         style={{ color: "var(--text-1)" }}
-      >
-        {message.content}
-      </p>
+      />
 
       {/* THE REPLY RAN OUT OF ROOM. Said out loud, because the alternative
           is a sentence that stops halfway and a person who thinks that was

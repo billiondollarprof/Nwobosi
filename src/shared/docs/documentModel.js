@@ -127,7 +127,7 @@ export function plainText(runs) {
    know where a list starts and ends.
    -------------------------------------------------------------------------- */
 
-function readBlocks(markdown) {
+export function readBlocks(markdown) {
   const lines = String(markdown ?? "").replace(/\r\n/g, "\n").split("\n");
   const blocks = [];
   let paragraph = [];
