@@ -156,3 +156,7 @@ export async function resolveContradiction() { return { ok: true }; }
 export async function revokeStaff(staffId) {
   return { ok: true, name: staffId, accountRemains: false };
 }
+
+/* The company's sources for the checker. window.__SOURCES, when a test
+   sets it, is the text; unset, there are none. */
+export async function companySourceText() { return window.__SOURCES ?? ""; }

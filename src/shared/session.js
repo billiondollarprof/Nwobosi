@@ -726,6 +726,34 @@ export async function saveWork({ companyId, staffId, title, skill, content, sour
   return { ...data, content };
 }
 
+/* --------------------------------------------------------------------------
+   SECTION: The company's sources, as plain text, for the checker
+   docs/checkDocument.js looks for every number in a finished document in
+   what the writing was allowed to use, and the company's own sources are
+   part of that. Every staff member may read them (knowledge_chunks_read:
+   company rows only), so this reads them under the person's own identity.
+   Read once per company per visit; they do not change mid build.
+   -------------------------------------------------------------------------- */
+
+const sourceTextCache = new Map();
+
+export async function companySourceText(companyId) {
+  if (!companyId) return "";
+  if (sourceTextCache.has(companyId)) return sourceTextCache.get(companyId);
+  const { data, error } = await supabase
+    .from("knowledge_chunks")
+    .select("content")
+    .eq("company_id", companyId)
+    .limit(2000);
+  if (error) {
+    console.warn("could not read the sources for the checker", error);
+    return "";
+  }
+  const text = (data ?? []).map((row) => row.content ?? "").join("\n");
+  sourceTextCache.set(companyId, text);
+  return text;
+}
+
 /* The people on this company. Email is deliberately absent: it lives in
    the auth tables, which a browser cannot read, and a staff list is about
    who has access and how far they may go, not about contact details. */

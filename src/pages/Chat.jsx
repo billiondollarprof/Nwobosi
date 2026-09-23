@@ -64,6 +64,7 @@ import {
   saveConversation,
   hideConversations,
   signOutCompletely,
+  companySourceText,
 } from "../shared/session.js";
 import { usePressAndHold } from "../shared/usePressAndHold.js";
 import RefreshOrKeep from "../shared/RefreshOrKeep.jsx";
@@ -83,6 +84,7 @@ import DocumentView from "../shared/DocumentView.jsx";
 import ChatText from "../shared/ChatText.jsx";
 import { labelledImageBlocks, imagesInMessages } from "../shared/docs/images.js";
 import { readDocument, notesAsText } from "../shared/docs/documentModel.js";
+import { briefSaysNoPictures, stripPictures, fixTotals, numbersNotInSources, numberFindings } from "../shared/docs/checkDocument.js";
 import { BRAND, GRADIENTS, FONTS } from "../shared/tokens";
 import {
   PageShell,
@@ -1729,6 +1731,28 @@ export default function Chat() {
      over from handleGenerate. The `messages` in this closure is from before
      that press, so using it would save and send the conversation without
      it. */
+  /* EVERY NUMBER COMES FROM SOMEWHERE (docs/checkDocument.js, section 3).
+     Looked for in what the writing was allowed to use: the approved brief,
+     what was said in this chat, the outside material they accepted, and
+     the company's own sources. Anything found nowhere joins the "Worth
+     checking" card. Runs after the document is on screen and saved, so it
+     never holds the document up, and a failure here is a line in the
+     console, never a missing document. */
+  async function checkNumbers(resultId, markdown, brief, convo) {
+    try {
+      const sources = await companySourceText(me?.company?.id);
+      const said = (convo ?? []).map((m) => (typeof m.content === "string" ? m.content : "")).join("\n");
+      const allowed = [brief, findingsRef.current.join("\n"), said, sources].join("\n");
+      const lines = numberFindings(numbersNotInSources(markdown, allowed));
+      if (!lines.length) return;
+      const next = updateMessages((prev) =>
+        prev.map((m) => (m.id === resultId ? { ...m, checks: [...(m.checks ?? []), ...lines] } : m)));
+      persist(next, "analyse");
+    } catch (error) {
+      console.warn("could not check the numbers", error);
+    }
+  }
+
   function buildFromBrief(brief, convo = messages) {
     /* Held here as well as written to the row, so the rest of this visit
        knows a brief exists without going back to the database for it. */
@@ -1843,6 +1867,30 @@ export default function Chat() {
           return;
         }
 
+        /* THE CHECKER, 2026-09-23 (DOCUMENT-HARNESS.md, section 5). Code
+           reads the finished document before anybody else does. It takes
+           out pictures the person said to skip and puts right a total
+           that does not add up, and says what it changed. The numbers are
+           checked against the sources just below, once it is saved. A
+           check that fails changes nothing: the document still arrives. */
+        const checks = [];
+        try {
+          let checked = finished;
+          if (briefSaysNoPictures(brief)) {
+            const stripped = stripPictures(checked);
+            checked = stripped.markdown;
+          }
+          const totals = fixTotals(checked);
+          checked = totals.markdown;
+          checks.push(...totals.findings);
+          if (checked !== finished || checks.length) {
+            finished = checked;
+            updateMessages((prev) => prev.map((m) => (m.id === resultId ? { ...m, content: checked, checks } : m)));
+          }
+        } catch (error) {
+          console.warn("the checker could not read this document", error);
+        }
+
         setDailyUsed((n) => Math.min(n + 1, DAILY_LIMIT));
 
         /* THE FINISHED DOCUMENT IS SAVED INTO THE CONVERSATION NOW, not
@@ -1878,6 +1926,8 @@ export default function Chat() {
             content: finished,
           });
         }
+
+        checkNumbers(resultId, finished, brief, convo);
       },
 
       onError: ({ reason, message }) => {
@@ -3929,7 +3979,12 @@ export function ChatBubble({ message, brief, buildFormat = DEFAULT_FORMAT, build
        actually there is the only thing that decides. */
     const hasTable = toTables(message.content ?? "").length > 0;
     /* The notes to the person, taken out of the file. See the card below. */
-    const notes = notesAsText(readDocument(message.content ?? "", title).notes);
+    /* And what the checker found (docs/checkDocument.js): a total it put
+       right, numbers it could not find in the sources, a chart it could
+       not draw, a figure the text pointed at that does not exist. All of it
+       is for the person, none of it goes in the file. */
+    const readForNotes = readDocument(message.content ?? "", title);
+    const notes = [...notesAsText(readForNotes.notes), ...readForNotes.findings, ...(message.checks ?? [])];
 
     /* WHICH FILE THIS IS. Decided in the conversation, back at the read
        back, so by the time anybody sees this card it is already settled. */

@@ -88,6 +88,9 @@ for (const walk of [
      PowerPoint chart, a vector drawing in the PDF, SVG with a PNG copy in
      Word, the numbers and a picture in the spreadsheet. */
   "scripts/__harness/charts.cjs",
+  /* Added 2026-09-23. The checker: a wrong total put right, an invented
+     number listed, a skipped picture kept out. */
+  "scripts/__harness/checker.cjs",
 ]) {
   const run = spawn("node", [walk], { stdio: "inherit" });
   const code = await new Promise((resolve) => run.on("close", resolve));

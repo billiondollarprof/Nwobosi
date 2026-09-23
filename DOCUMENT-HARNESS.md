@@ -154,20 +154,24 @@ It checks:
 4. **Pictures.** Every picture named was actually handed over. If the
    staff said skip, no picture block survives (section 1).
 5. **Numbers against the sources.** Every figure in the document (money,
-   percentages, dates, counts) is looked for in the sources the model was
-   given and in what the staff said. A number found nowhere goes in
-   "Worth checking", with where it appears. This runs in the `assistant`
-   function, because the sources are already there and the browser does
-   not hold them. It is the check that stops an invented number reaching
-   a client.
+   percentages, counts) is looked for in what the writing was allowed to
+   use: the approved brief, what was said in the chat, the outside
+   material they accepted, and the company's own sources. A number found
+   nowhere goes in "Worth checking", with the words around it. It is the
+   check that stops an invented number reaching a client.
+   **Built in the browser, not in `assistant`** (changed while building,
+   2026-09-23): the brief holds every approved fact, the chat is on screen,
+   and every staff member may read the company's sources under RLS. So the
+   check is plain code that can be tested, and the live function did not
+   need a new job.
 
 ## 6. What it touches
 
 - **`assistant` (REDEPLOY, v27, prompt lines plus the number check).**
   Interview: picture source, skip. Read back: charts and where their
   numbers come from. Brief: the chart plan, `Pictures: none`. Writing:
-  the chart block, figure tags, the skip rule. Plus the number check in
-  section 5.5. Every new rule sits in the cached part of the prompt, so
+  the chart block, figure tags, the skip rule. (The number check in 5.5
+  ended up in the browser, see there.) Every new rule sits in the cached part of the prompt, so
   after the first turn it is read at a tenth of the price.
 - **The app (site push only):**
   - `src/shared/docs/documentModel.js`: the chart block, picture source,
@@ -191,7 +195,9 @@ It checks:
    ₦20,000,000 in full, pies reading "0", a one colour histogram in five
    colours; unreadable chart text on a phone (the preview now draws a
    narrower chart there, and a pie's key goes under it).
-3. The checker.
+3. The checker. **DONE 2026-09-23** (checker.cjs 8, check-document 18).
+   `src/shared/docs/checkDocument.js`. Looked at on desktop dark and phone
+   light.
 4. Conversion, both ways, with the check (section 8).
 5. Layout from an upload, only when asked (section 9).
 6. Then v27 is handed over once, with all of it, and Anthony redeploys.
