@@ -25,6 +25,27 @@ built and checked, not when it is planned.
 
 ### Open
 
+00. **FIXED IN CODE 2026-09-23, NEEDS ASSISTANT REDEPLOY: the build
+    looped on "The plan for this ran out of room".**
+
+    Anthony: "it keeps asking me this, after I said go ahead, for the
+    third time."
+
+    Cause, from the logs: `usage stage=brief ... out=2000`, twice, exactly
+    on the ceiling. The model thinks before it writes and the thinking
+    counts inside max_tokens, so at 2000 it spent the whole allowance
+    thinking and never wrote the brief. Same input, same result, so the
+    button could never work.
+
+    Fixed together: brief 2000 to 8000, analyse 4000 to 8000 (it used
+    3162), research 3000 to 8000, generate 8000 to 16000. A turn that
+    thinks until the ceiling and writes nothing is now asked once more
+    with thinking off (`streamWithRoomToWrite`). And a document that stops
+    halfway is no longer saved as finished; the chat says so and the build
+    card comes back. Tests: `room-to-write.test.mjs` (23) and 9 new checks
+    in `download.cjs`. Comes off this list once the redeploy is live and a
+    real build reaches a download.
+
 0. **FIXED 2026-09-21, AND IT WAS MINE: the product could not make a
    document at all between the 16th and the 21st.**
 

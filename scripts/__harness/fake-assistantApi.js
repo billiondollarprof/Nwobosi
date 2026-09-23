@@ -17,7 +17,10 @@ export function sendTurn({ stage = "orient", onMeta, onText, onDone }) {
 
   const queue = (window.__SCRIPT && window.__SCRIPT[stage]) || [];
   const reply = queue.length > 1 ? queue.shift() : (queue[0] ?? "(nothing scripted)");
-  const stopReason = window.__STOP_REASON || "end_turn";
+  /* window.__STOP_REASONS sets how ONE stage ends, so a walk can cut off
+     the document without cutting off everything before it. */
+  const stopReason =
+    (window.__STOP_REASONS && window.__STOP_REASONS[stage]) || window.__STOP_REASON || "end_turn";
 
   /* window.__HANG holds the turn open so the thinking line can be looked
      at. Without it the stub answers in 30ms and the state nobody can see

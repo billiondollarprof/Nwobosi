@@ -57,14 +57,15 @@ const DOCUMENT = [
                 This is the path Anthony asked for by name and the one a
                 demo will show, so it is the main walk.
      skip       "Just get on with it", straight to the read back. */
-async function walkToBuilt(browser, generate, path = 'interview') {
+async function walkToBuilt(browser, generate, path = 'interview', stops = null, brief = 'Write a one page pricing FAQ with the plan table.') {
   const page = await browser.newPage({ viewport: { width: 1280, height: 1000 }, acceptDownloads: true });
   const errs = [];
   page.on('pageerror', (e) => errs.push(e.message));
 
-  await page.addInitScript((doc) => {
+  await page.addInitScript(({ doc, stops, brief }) => {
     try { localStorage.setItem('stellaxafe.theme', 'dark'); } catch {}
     window.__TURNS = [];
+    window.__STOP_REASONS = stops;
     window.__SCRIPT = {
       orient: ['I can see your pricing file.\nOFFER_INTERVIEW'],
       /* A real interview is two turns: it asks, the person answers, and
@@ -72,10 +73,10 @@ async function walkToBuilt(browser, generate, path = 'interview') {
          never wait for an answer, which is not what anybody sees. */
       interview: ['Who is this FAQ for?', 'Got it, customers deciding whether to buy.\nINTERVIEW_COMPLETE'],
       analyse: ['A one page pricing FAQ for customers.\nFORMAT: docx\nREADBACK_COMPLETE'],
-      brief: ['Write a one page pricing FAQ with the plan table.'],
+      brief: [brief],
       generate: [doc],
     };
-  }, generate);
+  }, { doc: generate, stops, brief });
 
   await page.goto('http://localhost:5301/?page=chat', { waitUntil: 'networkidle' });
   await page.waitForTimeout(1200);
@@ -198,6 +199,45 @@ const isPdf = (b) => b.length > 4 && b.slice(0, 4).toString() === '%PDF';
   check('but Word and PDF still are',
     (await plain.page.locator('button', { hasText: 'PDF' }).count()) > 0);
   await plain.page.close();
+
+  /* ---- 5. THE DOCUMENT RUNS OUT OF ROOM HALFWAY ------------------------
+
+     Before 2026-09-23 a document that stopped mid sentence was saved and
+     offered as finished, and nothing said so. Now it has to say so, put
+     the build card back, and the second press has to end in a real file. */
+  const cut = await walkToBuilt(b, DOCUMENT, 'skip', { generate: 'max_tokens' });
+  check('CUT OFF: it says the file is not complete',
+    (await cut.page.locator('text=ran out of room before the end').count()) > 0);
+  check('CUT OFF: the build card comes back, so there is something to press',
+    (await cut.page.locator('button', { hasText: 'Go ahead, build it' }).count()) > 0);
+  await cut.page.screenshot({ path: '/tmp/claude-0/download-cutoff.png', fullPage: true });
+  await cut.page.evaluate(() => { window.__STOP_REASONS = null; });
+  await cut.page.locator('button', { hasText: 'Go ahead, build it' }).first().click();
+  await cut.page.waitForTimeout(2800);
+  const cutTurns = await cut.page.evaluate(() => window.__TURNS || []);
+  check(`CUT OFF: pressing build again runs brief and generate again (${cutTurns.join(' > ')})`,
+    cutTurns.filter((s) => s === 'generate').length === 2);
+  check('CUT OFF: and the build card is gone once it finishes',
+    (await cut.page.locator('button', { hasText: 'Go ahead, build it' }).count()) === 0);
+  const cutWord = await pressAndCatch(cut.page, 'Word');
+  check('CUT OFF: the second press ends in a real Word file', isZip(cutWord.bytes));
+  check('CUT OFF: no page errors' + (cut.errs.length ? ' -> ' + cut.errs.join(' | ') : ''),
+    cut.errs.length === 0);
+  await cut.page.close();
+
+  /* ---- 6. THE BRIEF COMES BACK EMPTY, THE BUG ANTHONY HIT ---------------
+
+     The server now asks again without thinking, so this should be rare.
+     If it still happens, the chat must not be a dead end: it says so and
+     the build card comes back. */
+  const empty = await walkToBuilt(b, DOCUMENT, 'skip', { brief: 'max_tokens' }, '');
+  check('EMPTY BRIEF: it says nothing was built',
+    (await empty.page.locator('text=ran out of room, so nothing was built').count()) > 0);
+  check('EMPTY BRIEF: generate never ran on an empty brief',
+    !(await empty.page.evaluate(() => window.__TURNS || [])).includes('generate'));
+  check('EMPTY BRIEF: the build card comes back',
+    (await empty.page.locator('button', { hasText: 'Go ahead, build it' }).count()) > 0);
+  await empty.page.close();
 
   await b.close();
 

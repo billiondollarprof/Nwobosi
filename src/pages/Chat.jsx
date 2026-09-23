@@ -1591,6 +1591,29 @@ export default function Chat() {
           return;
         }
 
+        /* THE DOCUMENT STOPPED HALFWAY. Before 2026-09-23 this fell
+           straight through to the library and the database, so a document
+           that ended mid sentence was saved and offered for download as
+           though it were finished, and nothing on screen said otherwise.
+
+           Now the part that was written stays on screen, so nothing is
+           hidden, but it is not saved as a finished piece of work. The
+           person is told plainly and the build card comes back. */
+        if (stopReason === "max_tokens") {
+          updateMessages((prev) => [
+            ...prev,
+            {
+              id: nextId(),
+              role: "assistant",
+              type: "error",
+              content:
+                "This document ran out of room before the end, so the file above is not complete. Press build again for the whole thing.",
+            },
+            { id: nextId(), role: "assistant", type: "build" },
+          ]);
+          return;
+        }
+
         setDailyUsed((n) => Math.min(n + 1, DAILY_LIMIT));
 
         /* Into the library, so it is somewhere other than this one

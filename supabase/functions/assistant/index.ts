@@ -420,14 +420,99 @@ function buildBasePrompt(
 
    The other half of that fix is below: a reply that DOES hit the ceiling
    now says so instead of being handed over as though it were finished. */
+/* THE BUILD STAGES WERE RAISED ON 2026-09-23, because the brief was
+   failing every single time. Anthony pressed "Go ahead, build it" three
+   times and got "The plan for this ran out of room" three times.
+
+   The logs showed why: `usage stage=brief ... out=2000`, twice, exactly on
+   the ceiling. On the standard level the model thinks before it writes,
+   and the thinking is counted inside max_tokens. At 2000 it spent the whole
+   allowance thinking and was cut off before writing one word of the brief.
+   The same input gives the same result, so pressing build again could
+   never work, it was a loop.
+
+   A ceiling is not a charge. The company pays for what gets written, not
+   for the room it was given, so a bigger ceiling on these stages costs
+   nothing unless it is used. Orient and interview stay low on purpose, see
+   above. research stays under the size the SDK allows without streaming.
+
+   And if a turn still spends everything thinking and writes nothing, see
+   streamWithRoomToWrite below. */
 const MAX_OUTPUT: Record<string, number> = {
   orient: 1100,
   interview: 1100,
-  analyse: 4000,
-  research: 3000,
-  brief: 2000,
-  generate: 8000,
+  analyse: 8000,
+  research: 8000,
+  brief: 8000,
+  generate: 16000,
 };
+
+/* --------------------------------------------------------------------------
+   A TURN THAT ONLY THOUGHT GETS ONE MORE GO, WITHOUT THINKING
+
+   The thinking is counted inside max_tokens. So a model can use its whole
+   allowance thinking and stop before it writes anything. The person then
+   sees "ran out of room", presses the button again, and gets the same
+   thing, because the same input gives the same result. That is exactly
+   the loop Anthony hit on the brief, 2026-09-23.
+
+   So when a turn ends on the ceiling having written NOTHING, it is asked
+   once more with thinking switched off, and the whole allowance goes to
+   the writing. Nothing had reached the screen, so the person never sees
+   the first attempt. They just get the answer.
+
+   It does NOT retry when some text was already written. That text is on
+   the screen already, and a second answer would land underneath it. A
+   reply that stops halfway is handled by the chat, which says so.
+
+   Both calls are paid for, so the usage of both is added together. The
+   meter below reads it from here, and charging only the second call would
+   let the first one go free.
+   -------------------------------------------------------------------------- */
+async function streamWithRoomToWrite(
+  anthropic: Anthropic,
+  request: Anthropic.MessageCreateParamsNonStreaming,
+  thinkingExtras: Record<string, unknown>,
+  stage: string,
+  onText: (chunk: string) => void,
+): Promise<Anthropic.Message> {
+  let wroteSomething = false;
+
+  const once = async (extras: Record<string, unknown>) => {
+    const run = anthropic.messages.stream({ ...request, ...extras });
+    run.on("text", (chunk: string) => {
+      if (chunk) wroteSomething = true;
+      onText(chunk);
+    });
+    return await run.finalMessage();
+  };
+
+  const first = await once(thinkingExtras);
+
+  const thoughtOnly =
+    first.stop_reason === "max_tokens" && !wroteSomething && "thinking" in thinkingExtras;
+  if (!thoughtOnly) return first;
+
+  console.warn(
+    `stage=${stage} spent its whole ceiling thinking and wrote nothing, asking again without thinking`,
+  );
+
+  const second = await once({});
+  const a = first.usage ?? ({} as Anthropic.Usage);
+  const b = second.usage ?? ({} as Anthropic.Usage);
+  return {
+    ...second,
+    usage: {
+      ...b,
+      input_tokens: (a.input_tokens ?? 0) + (b.input_tokens ?? 0),
+      cache_creation_input_tokens:
+        (a.cache_creation_input_tokens ?? 0) + (b.cache_creation_input_tokens ?? 0),
+      cache_read_input_tokens:
+        (a.cache_read_input_tokens ?? 0) + (b.cache_read_input_tokens ?? 0),
+      output_tokens: (a.output_tokens ?? 0) + (b.output_tokens ?? 0),
+    },
+  } as Anthropic.Message;
+}
 
 /* The interview gets five questions. The prompt asks for three to five and
    the app enforces the ceiling, but a model that knows its last turn has
@@ -1529,17 +1614,18 @@ Deno.serve(async (req: Request) => {
             },
           } as unknown as Anthropic.Message;
         } else {
-          const run = anthropic.messages.stream({
-            model: MODEL_ID[tier],
-            max_tokens: MAX_OUTPUT[stage] ?? MAX_OUTPUT.generate,
-            system: [...stable, { type: "text", text: stageInstruction }],
-            messages,
-            ...thinkingExtras,
-          });
-
-          run.on("text", (chunk: string) => send("text", { text: chunk }));
-
-          final = await run.finalMessage();
+          final = await streamWithRoomToWrite(
+            anthropic,
+            {
+              model: MODEL_ID[tier],
+              max_tokens: MAX_OUTPUT[stage] ?? MAX_OUTPUT.generate,
+              system: [...stable, { type: "text", text: stageInstruction }],
+              messages,
+            },
+            thinkingExtras,
+            stage,
+            (chunk: string) => send("text", { text: chunk }),
+          );
         }
 
         /* ------------------------------------------------------------
