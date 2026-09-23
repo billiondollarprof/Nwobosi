@@ -25,6 +25,28 @@ built and checked, not when it is planned.
 
 ### Open
 
+0000000. **2026-09-23, OPEN: top tier output, company voice, reuse of good
+         work.** With a screenshot of the read back showing raw
+         "**What I'm making:**" and "- " in the chat, and sample.pptx.
+
+         a. "the decision/what I'm making isn't written as a typical prompt
+            with formatting rules. even a slide must have some slide deck
+            design like wise the spreadsheet. I don't want it to be doing
+            basic output but top tier formatted documents that the staff
+            won't have any need to edit."
+         b. "the system learns to sound the way the company sounds from
+            their uploads either in the knowledge base or directly into the
+            chat as uploaded by the staff."
+         c. "it should use inference. in case a completed and downloaded
+            job, next time when someone wants something similar it can
+            suggest if it should use the document as a reference to speed
+            up build and save cost (perhaps), by reminding the staff, since
+            that was noted as a satisfactory job." (This is STYLE-MEMORY.md,
+            specced 2026-09-14, not built.)
+
+         Also still unanswered: admin read access to staff chats (keep or
+         remove), and which storage to wire first.
+
 000000. **2026-09-23, a AND b BUILT (site push only, no redeploy); c
         NEEDS HIS CHOICE: three asks after the first real PDF.**
 
