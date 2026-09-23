@@ -25,6 +25,61 @@ built and checked, not when it is planned.
 
 ### Open
 
+0000000000000. **2026-09-23, OPEN AND SERIOUS: THE INTERNET SEARCH DOES NOT
+               WORK. The skip that went with it is FIXED.**
+               Anthony: "the assistant couldn't search the Internet and
+               couldn't skip the search." That is two faults in one line,
+               and they have different owners.
+
+               FAULT ONE, THE SEARCH. STILL OPEN, AND IT IS THE BIG ONE.
+               Read out of the database rather than guessed at: in his chat
+               of 2026-09-23 he pressed "Yes, go and look" four times, and
+               every research turn came back as an error. Across the whole
+               database a search has never once returned a finding.
+
+               The errors, in his chat, in order: "That stopped before it
+               finished", "The reply stopped partway", and four times "The
+               assistant could not finish that. Try again."
+
+               That last string has exactly one source in the whole
+               codebase: the catch around the model call in the assistant,
+               beside `console.error("anthropic call failed", err)`. So the
+               model call itself is throwing, every time. The real reason is
+               printed to the function logs, and the token in use cannot
+               read them (403, `analytics_logs_read`).
+
+               WAITING ON HIM: dashboard, Edge Functions, `assistant`,
+               Logs, the line containing `anthropic call failed`. That line
+               names the fault.
+
+               IT IS NOT THE THINKING CHANGE made earlier the same day. The
+               research stage is not in `NEVER_THINKS`, and the deployed v34
+               was pulled back and checked: its call, its two web tools and
+               its gate are all intact.
+
+               FAULT TWO, THE SKIP. FIXED 2026-09-23. Pressing "Yes, go and
+               look" takes the permission card away before the turn runs,
+               which is right, because a live Yes button during a search
+               would start a second one. A turn that then FAILED did not put
+               it back, so the person was left holding an error and no way
+               to say no. He typed "skip" into the chat instead, and that
+               failed too, because by then every turn was failing.
+               `putLookupCardBackAfterFailedSearch` in `Chat.jsx` restores
+               the card, both answers with it, on either failure path.
+               Walk: `scripts/__harness/search-skip.cjs` (18 checks).
+
+               WHY IT WENT UNNOTICED, and this is the useful part: the
+               harness stub could only ever end a turn in `onDone`, so NO
+               walk could produce a failed turn, and the screen's answer to
+               a failed turn was the one thing nobody could walk.
+               `window.__ERRORS` was added to `fake-assistantApi.js` for it.
+
+               AND A WARNING FOR THE NEXT PERSON: the first version of this
+               fix passed a hand check and still did nothing on screen. It
+               handed the card to the save and never to the screen, so a
+               question was stored that the person was never shown. It
+               looked correct in the code. Only the walk caught it.
+
 000000000000. **2026-09-23 (DeepSeek session): THE THREE NEW FUNCTIONS ARE
               LIVE. Two things are left, and both are Anthony's to do.**
               Deployed straight from the repo, verify JWT off, matching

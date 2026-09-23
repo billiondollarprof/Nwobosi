@@ -94,6 +94,10 @@ for (const walk of [
   /* Added 2026-09-23. A file converted with no interview, both ways, the
      exact converter and the browser, with the word check said as a fact. */
   "scripts/__harness/convert.cjs",
+  /* Added 2026-09-23. Anthony: "couldn't search the Internet and couldn't
+     skip the search." A failed search has to give the permission card back,
+     both answers with it, or the person is trapped in it. */
+  "scripts/__harness/search-skip.cjs",
 ]) {
   const run = spawn("node", [walk], { stdio: "inherit" });
   const code = await new Promise((resolve) => run.on("close", resolve));
