@@ -13,7 +13,20 @@ repo". Nothing here goes out any other way.
 
 ---
 
-## Nothing pending
+## assistant, v26, a REDEPLOY (2026-09-23)
+
+Live v25 matches commit fb52422 exactly (checked by pulling the deployed
+source). v26 adds prompt lines only, nothing in the logic:
+
+- base prompt: "THE STEPS ARE A PATH, NOT A SCRIPT"
+- analyse: "FIRST, ARE THEY SAYING YES TO A READ BACK YOU ALREADY GAVE?"
+  and the BUILD_NOW marker the chat now acts on
+- orient: a real answer to a real question, not "a line or two"
+
+The chat works without it (a typed "continue" puts the build button up),
+but with it a typed "continue" builds straight away.
+
+## Before that: nothing pending
 
 The money fix and both ceilings went out on 2026-09-10 and are confirmed
 working against live traffic:

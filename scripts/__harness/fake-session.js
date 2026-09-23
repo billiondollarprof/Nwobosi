@@ -39,8 +39,10 @@ function staged() {
     stage: set.stage ?? "analyse",
     updated_at: set.updatedAt,
     state: set.state ?? {},
-    brief: "",
-    messages: [
+    brief: set.brief ?? "",
+    /* A walk can stage any saved conversation, to check what reopening it
+       looks like. Without one, the two line conversation above. */
+    messages: set.messages ?? [
       { role: "user", type: "text", content: "Write me a board report" },
       { role: "assistant", type: "text", content: RESUMED_LINE },
     ],
@@ -58,7 +60,13 @@ export async function loadConversation(id) {
   const row = staged();
   return row && row.id === id ? row : null;
 }
-export async function saveConversation() { return "conv-1"; }
+/* Every save is kept on window.__SAVES, so a walk can check WHAT was saved
+   and how many times, not just that the screen looks right. */
+export async function saveConversation(row) {
+  globalThis.__SAVES = globalThis.__SAVES || [];
+  globalThis.__SAVES.push(JSON.parse(JSON.stringify(row ?? {})));
+  return "conv-1";
+}
 export async function signOutCompletely() {}
 
 /* --------------------------------------------------------------------------

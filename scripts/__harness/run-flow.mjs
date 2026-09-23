@@ -68,6 +68,10 @@ for (const walk of [
      and opens the file that lands, because on production the flow had never
      once reached a downloaded file. */
   "scripts/__harness/download.cjs",
+  /* Added 2026-09-23. Anthony typed "Continue" under a read back and got
+     "Nothing came back". This walks that, typing go in words, and every
+     way a reopened chat could land on the wrong step or lose its button. */
+  "scripts/__harness/continue.cjs",
 ]) {
   const run = spawn("node", [walk], { stdio: "inherit" });
   const code = await new Promise((resolve) => run.on("close", resolve));

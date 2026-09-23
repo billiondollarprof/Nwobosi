@@ -117,6 +117,7 @@ import { titleOf } from "../shared/documentTitle.js";
    state belongs somewhere it can be read top to bottom. */
 import FindingPicker from "../shared/FindingPicker.jsx";
 import SomethingWrong from "../shared/SomethingWrong.jsx";
+import { settleForResume, restingStage } from "../shared/resumeCards.js";
 import { storageTarget, storageMessage } from "../shared/storage.js";
 import { withoutMarks } from "../shared/findings.js";
 import { formatAsked } from "../shared/formatAsked.js";
@@ -142,6 +143,12 @@ const MARKER = {
   interviewDone: "INTERVIEW_COMPLETE",
   needInput: "NEED_INPUT",
   readbackDone: "READBACK_COMPLETE",
+  /* THEY SAID YES IN WORDS. Anthony typed "Continue" under a read back on
+     2026-09-23 and nothing could build, because only the button could. Now
+     the read back step says BUILD_NOW when their message says go, and the
+     app presses the button for them. Only honoured when a read back is
+     actually on the table, see runTurn. */
+  buildNow: "BUILD_NOW",
 };
 
 const MARKER_WORDS = Object.values(MARKER);
@@ -789,7 +796,10 @@ export default function Chat() {
      One function runs every turn, whatever stage it is. The stage is what
      changes: it picks the model and the instruction, and the server caps it
      against what this staff member is allowed. */
-  function runTurn(stage, history) {
+  /* `readbackOnTable` is true when a build card was on screen at the moment
+     they typed. It is the only thing that lets a typed "go ahead" build,
+     so a reply can never skip the read back by saying BUILD_NOW early. */
+  function runTurn(stage, history, { readbackOnTable = false } = {}) {
     setTyping(true);
     setTurnStage(stage);
     setStalled(false);
@@ -875,28 +885,64 @@ export default function Chat() {
            two sentences depends on what the server told us, because "it
            ran out of room" and "it came back empty" are different problems
            and a person can act on the difference. */
-        if (!clean.trim()) {
+        /* A REPLY MADE ONLY OF MARKERS IS NOT AN EMPTY REPLY.
+
+           Anthony, 2026-09-23. He typed "Continue" under a read back. The
+           model answered with the two hidden lines and no words, FORMAT
+           and READBACK_COMPLETE, which is a correct answer: the read back
+           was already on screen and there was nothing new to say. The
+           check below saw no visible words, said "Nothing came back", and
+           returned before the markers were ever read. So the build button
+           never came and he was stuck.
+
+           Now "nothing came back" means no words AND no marker. Markers
+           with no words go on to the handshakes below like any other
+           reply. */
+        const hadMarker = MARKER_WORDS.some((word) => raw.includes(word));
+
+        if (!clean.trim() && !hadMarker) {
           const why = cutOff
             ? "That ran out of room before it could say anything. Ask me again, and shorter if you can."
             : stopReason === "end_without_done"
             ? "That stopped before it finished. Nothing was changed, so try again."
             : "Nothing came back that time. Nothing has changed, so try again, or say it a different way.";
 
-          updateMessages((prev) => [
-            ...prev,
+          /* The empty bubble goes too. It used to stay, with its thumbs
+             and copy buttons under nothing at all. */
+          const withNote = updateMessages((prev) => [
+            ...prev.filter((m) => m.id !== replyId),
             { id: nextId(), role: "assistant", type: "error", content: why },
           ]);
+          /* What they typed is saved, the note is not. A saved note would
+             sit at the bottom of the conversation when it is reopened. */
+          persist(withNote.filter((m) => m.type !== "error"), restingStage(stage));
           return;
         }
 
         /* Built from the ref rather than inside a state updater. An
            updater has to be pure, and React deliberately calls it twice
            in development to catch exactly this: a save fired from inside
-           one wrote the conversation to the database twice. */
+           one wrote the conversation to the database twice.
+
+           Markers and no words: the bubble that was opened for the reply
+           is taken away, because it holds nothing. */
         const next = updateMessages((prev) =>
-          prev.map((m) => (m.id === replyId ? { ...m, content: clean, cutOff } : m))
+          clean.trim()
+            ? prev.map((m) => (m.id === replyId ? { ...m, content: clean, cutOff } : m))
+            : prev.filter((m) => m.id !== replyId)
         );
-        persist(next, stage);
+
+        /* ONE SAVE PER TURN, AND IT IS MADE BELOW, ONCE THE TURN KNOWS
+           WHERE IT ENDED.
+
+           It used to save here, straight away, and then again in some of
+           the branches below. Two problems. The first save recorded the
+           step the turn STARTED on, so a read back that asked a question
+           was saved as the read back step, and a search as "research".
+           And on the very first turn neither save had a conversation id
+           yet, so the two could each create a row. Every branch below now
+           ends in exactly one persist, with the step the work is really
+           on and the cards the person should see. */
 
         /* NO EARLY RETURN HERE, and that was a mistake on 2026-09-16.
 
@@ -978,10 +1024,11 @@ export default function Chat() {
              stuck on the first screen with no route to a document. */
           if (alsoAskedToLook && orientLookupsRef.current < 1) {
             orientLookupsRef.current += 1;
-            updateMessages((prev) => [
+            const withLookup = updateMessages((prev) => [
               ...prev,
               { id: nextId(), role: "assistant", type: "lookup", from: "orient" },
             ]);
+            persist(withLookup, "orient");
             return;
           }
 
@@ -998,11 +1045,13 @@ export default function Chat() {
               { id: nextId(), role: "assistant", type: "offer" },
             ]);
             persist(withOffer, "offered");
+            return;
           }
 
           /* No marker at all and no search behind us means it was not a
              piece of work, just conversation. The stage stays where it is
              and it reads again next time. */
+          persist(next, "orient");
           return;
         }
 
@@ -1032,6 +1081,10 @@ export default function Chat() {
              that turn away from them. */
           if (raw.includes(MARKER.interviewDone)) {
             interviewTurnsRef.current = 0;
+            /* Saved as the interview, not the read back. If the page is
+               closed before the read back arrives, reopening must not find
+               a read back step with no read back in it. */
+            persist(next, "interview");
             setFlowStage("analyse");
             runTurn("analyse", [...history, { role: "assistant", content: clean }]);
             return;
@@ -1043,18 +1096,49 @@ export default function Chat() {
              done, or handleUserReply moves it up at MAX_INTERVIEW_TURNS
              whatever the model thinks. */
           if (alsoAskedToLook) {
-            updateMessages((prev) => [
+            const withLookup = updateMessages((prev) => [
               ...prev,
               { id: nextId(), role: "assistant", type: "lookup", from: "interview" },
             ]);
+            persist(withLookup, "interview");
             return;
           }
 
           /* An ordinary question. Wait for them to answer it. */
+          persist(next, "interview");
           return;
         }
 
         if (stage === "analyse") {
+          /* THEY SAID GO, IN WORDS. "Continue", "yes", "go ahead", "build
+             it", whatever they typed under a read back. The model says
+             BUILD_NOW and this presses the build button for them, so
+             typing works exactly like pressing.
+
+             ONLY WHEN A READ BACK WAS ON THE TABLE. Building without a read
+             back they have seen is the one thing this whole flow exists to
+             stop. If the marker arrives with no build card on screen, it
+             is treated as a read back instead: the card goes up and they
+             press it. */
+          if (raw.includes(MARKER.buildNow)) {
+            const said = formatFromReply(raw);
+            if (said) {
+              formatRef.current = said;
+              setBuildFormat(said);
+            }
+            if (readbackOnTable) {
+              persist(next, "analyse");
+              handleGenerate(undefined, { typed: true });
+              return;
+            }
+            const withBuild = updateMessages((prev) => [
+              ...prev,
+              { id: nextId(), role: "assistant", type: "build", format: formatRef.current },
+            ]);
+            persist(withBuild, "analyse");
+            return;
+          }
+
           /* THE READ BACK, and it is the only thing that earns the Build
              card. Checked FIRST now, so a search request can never take it
              away. If it wants to check something as well, both cards go up
@@ -1072,13 +1156,17 @@ export default function Chat() {
                document, which is what an office reaches for by default. */
             formatRef.current = formatFromReply(raw) ?? DEFAULT_FORMAT;
             setBuildFormat(formatRef.current);
-            updateMessages((prev) => [
+            /* SAVED WITH ITS BUTTON, and with the file type on it. Before
+               2026-09-23 this card was never saved, so a chat reopened
+               after a read back had no button to press. */
+            const withBuild = updateMessages((prev) => [
               ...prev,
               ...(alsoAskedToLook
                 ? [{ id: nextId(), role: "assistant", type: "lookup", from: "analyse" }]
                 : []),
-              { id: nextId(), role: "assistant", type: "build" },
+              { id: nextId(), role: "assistant", type: "build", format: formatRef.current },
             ]);
+            persist(withBuild, "analyse");
             return;
           }
 
@@ -1102,21 +1190,26 @@ export default function Chat() {
                thread to work it out. */
             missingRef.current = clean;
             setFlowStage("interview");
-            if (alsoAskedToLook) {
-              updateMessages((prev) => [
-                ...prev,
-                { id: nextId(), role: "assistant", type: "lookup", from: "interview" },
-              ]);
-            }
+            const asked = alsoAskedToLook
+              ? updateMessages((prev) => [
+                  ...prev,
+                  { id: nextId(), role: "assistant", type: "lookup", from: "interview" },
+                ])
+              : next;
+            /* Saved as the interview, because that is where their answer
+               goes. It used to be saved as the read back step, so a chat
+               reopened here skipped the question it was waiting on. */
+            persist(asked, "interview");
             return;
           }
 
           /* Nothing to hand back yet, it just wants to go and look. */
           if (alsoAskedToLook) {
-            updateMessages((prev) => [
+            const withLookup = updateMessages((prev) => [
               ...prev,
               { id: nextId(), role: "assistant", type: "lookup", from: "analyse" },
             ]);
+            persist(withLookup, "analyse");
             return;
           }
 
@@ -1140,8 +1233,17 @@ export default function Chat() {
              stops depending on it: no marker means the Build card goes up
              anyway. Pressing it writes the brief and then the real
              document, as a file. */
-          updateMessages((prev) => [...prev, { id: nextId(), role: "assistant", type: "build" }]);
+          const withBuild = updateMessages((prev) => [
+            ...prev,
+            { id: nextId(), role: "assistant", type: "build", format: formatRef.current },
+          ]);
+          persist(withBuild, "analyse");
+          return;
         }
+
+        /* Any other step. Nothing reaches here today, but a turn must
+           never end without being saved. */
+        persist(next, restingStage(stage));
       },
 
       onError: ({ reason, message }) => {
@@ -1163,8 +1265,9 @@ export default function Chat() {
 
         /* Saved even though the turn failed. What somebody typed is
            theirs, and losing it because the answer never arrived punishes
-           them for a fault that was not theirs. */
-        persist(next, stage);
+           them for a fault that was not theirs. Saved on a step that is
+           safe to type into, never "research", see resumeCards.js. */
+        persist(next, restingStage(stage));
       },
     });
   }
@@ -1208,6 +1311,10 @@ export default function Chat() {
         content: m.content,
         apiContent: m.apiContent,
         title: m.title,
+        /* Which file a build card or a finished document is. Without it a
+           reopened chat said Word when the read back had said PDF. */
+        format: m.format,
+        cutOff: m.cutOff,
       })),
     });
 
@@ -1233,7 +1340,13 @@ export default function Chat() {
     const log = readResumeLog(row.state);
 
     conversationIdRef.current = row.id;
-    setFlowStage(row.stage ?? "interview");
+
+    /* The step, the button and the file type, decided in one place. See
+       src/shared/resumeCards.js for every rule and why. */
+    const settled = settleForResume(row.messages ?? [], row.stage);
+    setFlowStage(settled.stage);
+    formatRef.current = settled.format ?? DEFAULT_FORMAT;
+    setBuildFormat(formatRef.current);
 
     /* Ref first and state second, the same rule as everywhere else in this
        file: a turn fired straight after this reads the ref. */
@@ -1245,7 +1358,7 @@ export default function Chat() {
     deliveredRef.current = log.delivered;
     briefRef.current = row.brief ?? "";
 
-    const restored = (row.messages ?? []).map((m) => ({ id: nextId(), ...m }));
+    const restored = settled.messages.map((m) => ({ id: nextId(), ...m }));
 
     /* Said only when something came back that they cannot see on screen.
        The conversation itself is right there, so announcing it would be
@@ -1354,8 +1467,15 @@ export default function Chat() {
        search (NEED_LOOKUP), or it reads back again with the Build card.
 
        It costs more per correction. A loop that terminates is worth it. */
+    /* Read BEFORE the cards are cleared. A build card on screen means a
+       read back is waiting, and only then may a typed "go ahead" build. */
+    const readbackOnTable = messagesRef.current.some((m) => m.type === "build");
+
     updateMessages((prev) => prev.filter((m) => m.type !== "build" && m.type !== "offer" && m.type !== "lookup" && m.type !== "useFinding"));
-    let stage = flowStage;
+
+    /* Never research, brief or generate. Typing is a conversation, and
+       those three are only ever started by a button. */
+    let stage = restingStage(flowStage);
 
     /* They typed instead of tapping either button. Typing is a conversation
        and the interview is the conversation stage, so it goes there. That
@@ -1373,7 +1493,7 @@ export default function Chat() {
 
     if (stage !== flowStage) setFlowStage(stage);
 
-    runTurn(stage, toApiMessages([...messages, { role: "user", content: apiContent }]));
+    runTurn(stage, toApiMessages([...messages, { role: "user", content: apiContent }]), { readbackOnTable });
   }
 
   /* ------------------------------------------------------------------------
@@ -1443,24 +1563,34 @@ export default function Chat() {
      brief was being written without the one thing it summarises. These
      are the words on the button they pressed, so nothing is put in their
      mouth. */
-  function handleGenerate(asFormat) {
+  /* `typed` is true when they said go in their own words rather than
+     pressing the button. Their words are already the last thing they
+     said, so no button text is added on their behalf.
+
+     Read from messagesRef, not from `messages`. When this is called from
+     the end of a turn, `messages` is the list from before that turn
+     started, which is missing both what they typed and the reply. */
+  function handleGenerate(asFormat, { typed = false } = {}) {
     if (generating) return;
     const format = FORMAT_NAMES[asFormat] ? asFormat : formatRef.current;
     formatRef.current = format;
     setBuildFormat(format);
 
-    const said = {
-      id: nextId(),
-      role: "user",
-      type: "text",
-      content: `Go ahead, build it as ${FORMAT_NAMES[format]}.`,
-    };
-    const convo = [...messages.filter((m) => m.type !== "build"), said];
+    const said = typed
+      ? null
+      : {
+          id: nextId(),
+          role: "user",
+          type: "text",
+          content: `Go ahead, build it as ${FORMAT_NAMES[format]}.`,
+        };
+    const current = messagesRef.current.filter((m) => m.type !== "build");
+    const convo = said ? [...current, said] : current;
 
     setGenerating(true);
     updateMessages((prev) => [
       ...prev.filter((m) => m.type !== "build"),
-      said,
+      ...(said ? [said] : []),
       { id: nextId(), role: "assistant", type: "generating" },
     ]);
 
@@ -1639,8 +1769,8 @@ export default function Chat() {
            hidden, but it is not saved as a finished piece of work. The
            person is told plainly and the build card comes back. */
         if (stopReason === "max_tokens") {
-          updateMessages((prev) => [
-            ...prev,
+          const withRetry = updateMessages((prev) => [
+            ...prev.map((m) => (m.id === resultId ? { ...m, cutOff: true } : m)),
             {
               id: nextId(),
               role: "assistant",
@@ -1648,12 +1778,23 @@ export default function Chat() {
               content:
                 "This document ran out of room before the end, so the file above is not complete. Press build again for the whole thing.",
             },
-            { id: nextId(), role: "assistant", type: "build" },
+            { id: nextId(), role: "assistant", type: "build", format: formatRef.current },
           ]);
+          persist(withRetry, "analyse");
           return;
         }
 
         setDailyUsed((n) => Math.min(n + 1, DAILY_LIMIT));
+
+        /* THE FINISHED DOCUMENT IS SAVED INTO THE CONVERSATION NOW, not
+           only when it is downloaded. Before 2026-09-23 it was saved only
+           by the download button, so a page reloaded after a build lost
+           the document and came back on the "generate" step.
+
+           Saved on the read back step, because that is where anything they
+           say next belongs: "add a section on refunds" is a change to agree
+           before it is built, not something to write straight into chat. */
+        persist(messagesRef.current, "analyse");
 
         /* Into the library, so it is somewhere other than this one
            conversation. savedToStorage stays false because no storage is

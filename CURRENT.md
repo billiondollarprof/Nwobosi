@@ -25,8 +25,20 @@ built and checked, not when it is planned.
 
 ### Open
 
-0000. **2026-09-23, OPEN: the agent must be able to pick up where it left
-      off, and be as smart as a normal chat inside the guardrails.**
+0000. **2026-09-23, BUILT, NEEDS ASSISTANT REDEPLOY (v26): the agent must
+      be able to pick up where it left off, and be as smart as a normal chat
+      inside the guardrails.** The chat side ships with the site push. A to
+      I below are fixed in `Chat.jsx` and `src/shared/resumeCards.js`. J is
+      the prompt, and is the redeploy: a "THE STEPS ARE A PATH, NOT A
+      SCRIPT" section in the base prompt, BUILD_NOW in the read back step,
+      and orient allowed a real answer to a real question. Checked by
+      `resume-cards.test.mjs` (24) and `scripts/__harness/continue.cjs`
+      (29), which fails 20 checks on the old code.
+
+      STILL OPEN from the same message: "properly scoped, properly
+      documented, every line by line... ready for us to take it and
+      redeploy for another company." A redeploy guide for a new company is
+      not written yet.
 
       Screenshot: after a read back ("I'm thinking PDF... Say if you'd
       rather have Word"), he typed "Continue". An empty reply came back,
@@ -50,8 +62,34 @@ built and checked, not when it is planned.
       interview question; the auto pick with a switch is good, keep it.
       Everything else should be as flexible as a normal chat.
 
-000. **BUILT 2026-09-23, NEEDS THE SAME ASSISTANT REDEPLOY: choose the file
-     type on the build card.**
+      AUDIT, 2026-09-23. Logs: "Continue" ran stage=analyse, out=44. The
+      model wrote only the hidden lines (FORMAT + READBACK_COMPLETE), which
+      is a correct answer to "continue" after a read back, and the app threw
+      it away. Every fault found on the path, all fixed in one pass:
+
+      A. A reply made only of markers was treated as empty. "Nothing came
+         back", markers ignored, no build button, an empty bubble left.
+      B. The build card was never saved. Reopen a chat after a read back
+         and there is no button, which is why he typed "Continue".
+      C. No way to say yes in words. Typing continue or go ahead after a
+         read back could not build; the model had no instruction for it.
+      D. The finished document was not saved to the conversation until it
+         was downloaded. Reload after a build and it was gone.
+      E. Reopened at stage generate or brief, the next message ran the
+         writing stage as a chat reply, a document dumped in a bubble.
+      F. Reopened at stage research, the next message searched the web
+         without asking. A guardrail break.
+      G. A read back that asked for something (NEED_INPUT) was saved as
+         analyse, so reopening skipped back into the wrong step.
+      H. The file type was forgotten on reopen. The card said Word when the
+         read back said PDF, and so did the finished file's card.
+      I. Two saves per turn with no id yet could create two copies of the
+         same conversation on its first turn.
+      J. Nothing in the prompt said the steps are a path, not a script, or
+         how to carry on from "continue".
+
+000. **LIVE 2026-09-23 (assistant v25 + site push): choose the file type
+     on the build card.**
 
      Anthony: "during the process, I wasn't even offered the choice to
      choose file type. It just saying it producing pdf"
@@ -64,8 +102,9 @@ built and checked, not when it is planned.
      last turn and got dropped). The brief prompt has one new line asking
      for the file type. Checked by 9 new CHOICE checks in `download.cjs`.
 
-00. **FIXED IN CODE 2026-09-23, NEEDS ASSISTANT REDEPLOY: the build
-    looped on "The plan for this ran out of room".**
+00. **LIVE 2026-09-23 as assistant v25 (matches commit fb52422): the
+    build looped on "The plan for this ran out of room".** Waiting on one
+    real build that reaches a download before this comes off the list.
 
     Anthony: "it keeps asking me this, after I said go ahead, for the
     third time."
