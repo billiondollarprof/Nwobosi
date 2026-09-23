@@ -164,9 +164,11 @@ Supabase sets for you.
 | `CANVA_CLIENT_SECRET` | Canva app secret. Never pasted into a chat | if Canva is used |
 | `BRAND_ASSETS_BUCKET` | only if the bucket is not called `brand-assets` | rarely |
 
-If a secret that says "yes" is missing, the function that needs it fails.
-It does not quietly skip the step. `invite-staff` without `APP_URL` sends
-links to stellaxafe.com, which is the wrong company.
+Two of these do not fail when they are missing, and that makes them the
+dangerous ones. `APP_URL` and `CONTACT_FROM` quietly fall back to
+StellaXafe's own values. So if you forget them, the company's staff get
+invitation links to stellaxafe.com and emails from StellaXafe. Set both,
+every time.
 
 ### 3.6 Deploy the edge functions
 
