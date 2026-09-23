@@ -202,7 +202,7 @@ function statBlock(block, t) {
           fillColor: hex(t.accent),
           stack: [
             { text: block.value, fontSize: String(block.value).length <= 4 ? 32 : String(block.value).length <= 7 ? 26 : 20, bold: true, color: "#FFFFFF", alignment: "center" },
-            ...(block.caption ? [{ text: block.caption, fontSize: 9, color: hex(t.accentTint), alignment: "center", margin: [0, 4, 0, 0] }] : []),
+            ...(block.caption ? [{ text: block.caption, fontSize: 9.5, color: hex(t.onAccentSoft ?? "FFFFFF"), alignment: "center", margin: [0, 4, 0, 0] }] : []),
           ],
         },
         { stack: blocksToPdf(block.blocks, t), margin: [8, 0, 0, 0] },

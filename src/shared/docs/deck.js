@@ -292,7 +292,7 @@ function drawStat(page, piece, y, h, theme) {
   });
   if (piece.block.caption) {
     page.addText(piece.block.caption, {
-      x: X + 0.25, y: y + h * 0.6, w: panelW - 0.5, h: h * 0.35, fontSize: 14, color: theme.accentTint, align: "center", valign: "top", fontFace: THEME.officeFont,
+      x: X + 0.25, y: y + h * 0.6, w: panelW - 0.5, h: h * 0.35, fontSize: 15, color: theme.onAccentSoft ?? "FFFFFF", align: "center", valign: "top", fontFace: THEME.officeFont,
     });
   }
   const story = textBody(piecesOf(piece.block.blocks).filter((p) => p.kind === "text"), theme, FONT.body + 1);
@@ -372,7 +372,7 @@ function drawCover(deck, slide, theme, brand) {
    nothing, and the cover then carries the company name instead.
    -------------------------------------------------------------------------- */
 
-export async function deckBlob(doc, theme = { ...THEME, highlight: "AAB4D3", kicker: "1B347C" }, brand = null) {
+export async function deckBlob(doc, theme = { ...THEME, highlight: "DDE2EE", onAccentSoft: "EEF0F6", kicker: "1B347C" }, brand = null) {
   const { default: PptxGenJS } = await import("pptxgenjs");
   const deck = new PptxGenJS();
   deck.layout = "LAYOUT_WIDE";

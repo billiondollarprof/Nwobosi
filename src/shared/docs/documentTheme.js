@@ -83,7 +83,9 @@ function lightness(color) {
 
 export function themeFor(brandColor) {
   const raw = String(brandColor ?? "").trim().replace(/^#/, "");
-  if (!/^[0-9a-fA-F]{6}$/.test(raw)) return { ...THEME, highlight: mix(THEME.accent, 0.62), kicker: mix(THEME.accent, -0.1) };
+  if (!/^[0-9a-fA-F]{6}$/.test(raw)) {
+    return { ...THEME, highlight: mix(THEME.accent, 0.85), onAccentSoft: mix(THEME.accent, 0.92), kicker: mix(THEME.accent, -0.1) };
+  }
 
   /* Darkened in small steps until white text on it passes a 4.5 to 1
      contrast, which is the usual bar for readable text. */
@@ -94,8 +96,14 @@ export function themeFor(brandColor) {
     ...THEME,
     accent,
     accentTint: mix(accent, 0.9),
-    /* The pale version of the brand, for a label sitting on the dark band. */
-    highlight: mix(accent, 0.62),
+    /* The label sitting on the dark band. Nearly white, with a breath of the
+       brand in it. It was 62% of the way to white and read as grey on the
+       band; Anthony, 2026-09-23: "even if a texts is supposed to be sub it
+       should be readable too while maintaining its sub position." */
+    highlight: mix(accent, 0.85),
+    /* Secondary text on the accent (a figure's caption). Smaller than the
+       main text, never faint. */
+    onAccentSoft: mix(accent, 0.92),
     /* A slightly deeper version, for the small word under a card title. */
     kicker: mix(accent, -0.1),
   };

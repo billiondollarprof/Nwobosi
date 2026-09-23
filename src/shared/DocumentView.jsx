@@ -104,7 +104,7 @@ function Block({ block, previous }) {
       <div className="flex flex-wrap items-stretch gap-3 my-3">
         <div className="rounded-[10px] px-4 py-3 text-center min-w-[120px]" style={{ backgroundColor: "#1E3A8A", color: "#fff" }}>
           <p className="text-[24px] font-bold leading-tight">{block.value}</p>
-          {block.caption && <p className="text-[11px] mt-1 opacity-80">{block.caption}</p>}
+          {block.caption && <p className="text-[11.5px] mt-1" style={{ opacity: 0.95 }}>{block.caption}</p>}
         </div>
         <div className="flex-1 min-w-[160px] self-center"><Inner blocks={block.blocks} /></div>
       </div>

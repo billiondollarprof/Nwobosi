@@ -146,7 +146,7 @@ function statTable(docx, block, t) {
           verticalAlign: VerticalAlign.CENTER,
           children: [
             new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: block.value, bold: true, size: half(figureSize(block.value)), color: "FFFFFF" })] }),
-            ...(block.caption ? [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: block.caption, size: half(9.5), color: t.accentTint })] })] : []),
+            ...(block.caption ? [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: block.caption, size: half(10), color: t.onAccentSoft ?? "FFFFFF" })] })] : []),
           ],
         }),
         new TableCell({
