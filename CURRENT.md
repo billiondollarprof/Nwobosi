@@ -309,6 +309,34 @@ built and checked, not when it is planned.
               did not catch it on that turn. Either of those may deserve his
               attention. Neither is now changed, and both are his call.
 
+              RESOLVED 2026-09-23, LATER THE SAME DAY, AND THE RIGHT WAY
+              ROUND. The logs settled it: the retry fired four times and
+              FAILED TWICE, and a failed retry is billed at exactly twice the
+              stage's ceiling, which means the second go thought as well.
+              Shown that, he chose option D of four: "you can do D."
+
+              So the retry now says `thinking: { type: "disabled" }` outright
+              instead of passing an empty object and hoping the omission
+              means off. ONE LINE.
+
+              AND NOTHING ELSE MOVED, because D was the option that keeps his
+              design: thinking is still ON for the first attempt on every
+              stage, including the interview. No stage lost its reasoning.
+              The rescue fires only when a turn spent everything thinking and
+              wrote nothing, and nothing had reached the screen, so the
+              person never sees the first attempt and never has to type
+              anything. They just get their answer.
+
+              Deployed as assistant v39 after asking, per the redeploy rule.
+              Pulled back and checked in both directions: the new line is
+              there, the old one is gone, thinking is still on for the first
+              go, nothing lost its thinking, the ceilings are unchanged, and
+              the search tools and gate are untouched.
+
+              The test had to move with it: room-to-write asserted the
+              ABSENCE of the setting on the second go, and now asks for it by
+              name. Stricter than what it replaced.
+
               WHERE HE LEFT IT, IN HIS ORDER:
               1. The converter service on Google Cloud Run, then
                  `CONVERTER_URL` and `CONVERTER_SECRET`. He said to leave this

@@ -129,6 +129,12 @@ NOT CONFIRMED. It is a pattern with times attached, not a proven cause. The
 way to settle it is to push a one line change to a single function file and
 watch whether that one function, and only that one, moves.
 
+**It did not reproduce on 2026-09-23 at 21:51.** A push to `main` carrying
+the option D change left `assistant` sitting on v39, unbothered. So the
+pattern below is a pattern and not a law, and the auto-deploy guess is weaker
+than it looked when it was written. It still has to be treated as possible
+until somebody runs the one line test.
+
 **Why this matters more than it looks.** If it is real, then `CLAUDE.md`'s
 warning gets sharper rather than softer: a push to `main` can put repo code
 into a live function, so a repo that is ahead of the deployment is not a
