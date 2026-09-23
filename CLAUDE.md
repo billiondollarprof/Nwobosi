@@ -552,6 +552,13 @@ Two things keep previews from becoming a problem:
 Hotfixes to `main` directly are allowed when the live site is broken.
 Everything else waits for testing.
 
+**After anything lands on `main`, merge `main` back into `testing` straight
+away.** A hotfix, or a merge from testing, puts a commit on `main` that
+`testing` does not have. Left alone, `testing` shows as behind `main`, which
+reads as though `testing` is missing work and makes the next merge harder
+to trust. On 2026-09-23 it had drifted 5 behind. `testing` should only ever
+be ahead of `main` or level with it.
+
 ## Project structure
 
 This project is not one big file. Each major part of the app is its own page, in its own file:
