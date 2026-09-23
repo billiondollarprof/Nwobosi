@@ -56,6 +56,13 @@ export default defineConfig({
         find: /^\.\.\/shared\/driveApi\.js$/,
         replacement: path.resolve(process.cwd(), "scripts/__harness/fake-driveApi.js"),
       },
+      /* The exact converter, 2026-09-23. convert/convertFile.js is the only
+         thing that imports "./converterApi.js", so this exact specifier
+         swaps it and nothing else. window.__CONVERTER sets how it answers. */
+      {
+        find: /^\.\/converterApi\.js$/,
+        replacement: path.resolve(process.cwd(), "scripts/__harness/fake-converterApi.js"),
+      },
       {
         find: /^\.\.\/shared\/inviteApi\.js$/,
         replacement: path.resolve(process.cwd(), "scripts/__harness/fake-inviteApi.js"),

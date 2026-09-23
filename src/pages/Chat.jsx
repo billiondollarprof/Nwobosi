@@ -71,7 +71,7 @@ import RefreshOrKeep from "../shared/RefreshOrKeep.jsx";
 import { readFileAsText, fileKind } from "../shared/readFile.js";
 import { shrinkImage } from "../shared/shrinkImage.js";
 import { askCanva } from "../shared/canvaApi.js";
-import { downloadPdf, downloadDocx, buildFile } from "../shared/download.js";
+import { downloadPdf, downloadDocx, buildFile, saveBlob } from "../shared/download.js";
 import { askDrive, fileInDrive } from "../shared/driveApi.js";
 /* Each in its own file, and each loaded only when somebody actually asks
    for that format. The deck and spreadsheet libraries are megabytes, and
@@ -85,6 +85,7 @@ import ChatText from "../shared/ChatText.jsx";
 import { labelledImageBlocks, imagesInMessages } from "../shared/docs/images.js";
 import { readDocument, notesAsText } from "../shared/docs/documentModel.js";
 import { briefSaysNoPictures, stripPictures, fixTotals, numbersNotInSources, numberFindings } from "../shared/docs/checkDocument.js";
+import { convertFromReply, withoutConvertLine, kindOfFile } from "../shared/convert/convertAsked.js";
 import { BRAND, GRADIENTS, FONTS } from "../shared/tokens";
 import {
   PageShell,
@@ -186,7 +187,7 @@ const MAX_INTERVIEW_TURNS = 5;
 function visibleText(raw) {
   /* The FORMAT line is plumbing, the same as the markers, and the product
      principle says plumbing never shows. */
-  let out = withoutFormatLine(raw);
+  let out = withoutConvertLine(withoutFormatLine(raw));
   for (const word of MARKER_WORDS) out = out.split(word).join("");
 
   /* A marker arrives in pieces. Anything trailing that could still grow
@@ -494,6 +495,11 @@ export default function Chat() {
      somebody said yes to. */
   const [findings, setFindings] = useState([]);
   const findingsRef = useRef([]);
+  /* Conversion (DOCUMENT-HARNESS.md, section 8). The PDF and Word files
+     attached this visit, by attachment id, and each finished conversion,
+     by its card id. Neither is saved with the conversation. */
+  const originalFilesRef = useRef(new Map());
+  const convertedRef = useRef(new Map());
 
   /* THE THREE THINGS THE RESUME LOG NEEDS THAT NOTHING ELSE HELD.
 
@@ -956,7 +962,7 @@ export default function Chat() {
            Now "nothing came back" means no words AND no marker. Markers
            with no words go on to the handshakes below like any other
            reply. */
-        const hadMarker = MARKER_WORDS.some((word) => raw.includes(word));
+        const hadMarker = MARKER_WORDS.some((word) => raw.includes(word)) || Boolean(convertFromReply(raw));
 
         if (!clean.trim() && !hadMarker) {
           const why = cutOff
@@ -1063,6 +1069,17 @@ export default function Chat() {
         const alsoAskedToLook = raw.includes(MARKER.needLookup);
 
         if (stage === "orient") {
+          /* JUST A CONVERSION (DOCUMENT-HARNESS.md, section 8). The first
+             turn said CONVERT: and a PDF or Word file really is attached in
+             this turn, so there is nothing to interview about: code converts
+             it. A CONVERT line with no such file is ignored and the reply
+             stays as words, so the marker alone can never do anything. */
+          const convertTo = convertFromReply(raw);
+          const toConvert = convertTo ? convertibleFile(convertTo) : null;
+          if (toConvert) {
+            runConversion(toConvert, convertTo);
+            return;
+          }
           if (raw.includes(MARKER.offerInterview)) {
             setFlowStage("offered");
             const withCards = updateMessages((prev) => [
@@ -1731,6 +1748,56 @@ export default function Chat() {
      over from handleGenerate. The `messages` in this closure is from before
      that press, so using it would save and send the conversation without
      it. */
+  /* ---------------------------------------------------------------------
+     CONVERSION (DOCUMENT-HARNESS.md, section 8)
+     --------------------------------------------------------------------- */
+
+  /* The PDF or Word file attached in the person's latest turn that can go
+     the way asked, or null. A Word file can become a PDF and a PDF a Word
+     file; the same format asked for is nothing to do. */
+  function convertibleFile(to) {
+    const lastUser = [...messagesRef.current].reverse().find((m) => m.role === "user");
+    for (const a of lastUser?.attachments ?? []) {
+      const file = originalFilesRef.current.get(a.id);
+      const from = file ? kindOfFile(file.name) : null;
+      if (file && from && from !== to) return file;
+    }
+    return null;
+  }
+
+  async function runConversion(file, to) {
+    const cardId = nextId();
+    updateMessages((prev) => [...prev, { id: cardId, role: "assistant", type: "converted", name: file.name, to, busy: true }]);
+    try {
+      const { convertFile, conversionReport } = await import("../shared/convert/convertFile.js");
+      const result = await convertFile(file, to);
+      convertedRef.current.set(cardId, result);
+      const next = updateMessages((prev) => prev.map((m) => (m.id === cardId
+        ? { ...m, busy: false, filename: result.filename, way: result.way, report: conversionReport(result, to), complete: result.words.complete }
+        : m)));
+      persist(next, "orient");
+    } catch (error) {
+      console.error("could not convert", error);
+      const next = updateMessages((prev) => prev.map((m) => (m.id === cardId
+        ? { ...m, busy: false, failed: true }
+        : m)));
+      persist(next, "orient");
+    }
+  }
+
+  function downloadConverted(cardId) {
+    const result = convertedRef.current.get(cardId);
+    if (result) saveBlob(result.blob, result.filename);
+  }
+
+  /* "Arrange it for me": the converted words go down the normal path, so
+     it is read back and agreed before anything is laid out. */
+  function arrangeConverted(message) {
+    const text = `Lay out ${message.name} properly as a ${message.to === "pdf" ? "PDF" : "Word document"}, keeping every word of it.`;
+    addMessage({ role: "user", type: "text", content: text, attachments: [] });
+    handleUserReply(text);
+  }
+
   /* EVERY NUMBER COMES FROM SOMEWHERE (docs/checkDocument.js, section 3).
      Looked for in what the writing was allowed to use: the approved brief,
      what was said in this chat, the outside material they accepted, and
@@ -2367,6 +2434,11 @@ export default function Chat() {
           });
         return;
       }
+
+      /* The file itself is kept for this visit, not only its words, so it
+         can be converted exactly (convert/convertFile.js). Never saved
+         with the conversation: a reopened chat asks for it again. */
+      if (kind === "pdf" || kind === "docx") originalFilesRef.current.set(id, file);
 
       if (isDocument) {
         readFileAsText(file, { maxChars: MAX_FILE_CHARS }).then((result) => {
@@ -3176,6 +3248,9 @@ export default function Chat() {
                 chatImages={chatImages}
                 onFile={() => handleFile(m.format ?? buildFormat, titleOf(m.content, m.title), m.content)}
                 onDownload={(format) => handleDownload(format, titleOf(m.content, m.title), m.content)}
+                converted={m.type === "converted" ? convertedRef.current.has(m.id) : false}
+                onDownloadConverted={() => downloadConverted(m.id)}
+                onArrange={() => arrangeConverted(m)}
               />
             ))}
             {typing && <Thinking stage={turnStage} stalled={stalled} />}
@@ -3641,7 +3716,7 @@ THE GLOW AND THE PULSE STAY. They were
 /* Every file the build card can make, in the order they are offered. */
 const BUILD_FORMATS = ["docx", "pdf", "pptx", "xlsx"];
 
-export function ChatBubble({ message, brief, buildFormat = DEFAULT_FORMAT, buildStage = "brief", buildStalled = false, onGenerate, onAdjust, onWantInterview, onSkipInterview, onAllowLookup, onRefuseLookup, onUseFinding, onDropFinding, onReset, onRetry, onShowText, onHideText, storageName = "", chatImages = null, onFile, feedback, onFeedback, onCopy, onDownload }) {
+export function ChatBubble({ message, brief, buildFormat = DEFAULT_FORMAT, buildStage = "brief", buildStalled = false, onGenerate, onAdjust, onWantInterview, onSkipInterview, onAllowLookup, onRefuseLookup, onUseFinding, onDropFinding, onReset, onRetry, onShowText, onHideText, storageName = "", chatImages = null, onFile, feedback, onFeedback, onCopy, onDownload, converted = false, onDownloadConverted, onArrange }) {
   const isUser = message.role === "user";
   const riseStyle = { animation: "sx-rise 0.35s ease" };
 
@@ -3818,6 +3893,55 @@ export function ChatBubble({ message, brief, buildFormat = DEFAULT_FORMAT, build
      Yes is the quiet option and No is the plain one, deliberately. Neither
      is a mistake and neither is risky, so this is not a warning dialog and
      must not look like one. */
+  /* A CONVERSION, DONE BY CODE. What it made, how, and what the word by
+     word check found, said as facts. The file itself lives only for this
+     visit; a reopened chat asks for the original again. */
+  if (message.type === "converted") {
+    const label = message.to === "pdf" ? "PDF" : "Word file";
+    return (
+      <div style={riseStyle}>
+        <div
+          className="rounded-[18px] border p-5 backdrop-blur-xl"
+          style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
+        >
+          <p className="text-[15.5px] font-semibold mb-1 break-words" style={{ color: "var(--text-1)" }}>
+            {message.busy ? `Converting ${message.name}` : message.failed ? `${message.name} could not be converted` : message.filename}
+          </p>
+          <p className="text-[13.5px] mb-4 leading-relaxed" style={{ color: "var(--text-3)" }}>
+            {message.busy
+              ? `Making the ${label} and checking every word came across.`
+              : message.failed
+              ? "Nothing was changed. Try again, or attach it once more."
+              : `Ready as a ${label}.`}
+          </p>
+          {!message.busy && !message.failed && (message.report ?? []).length > 0 && (
+            <ul className="space-y-1.5 mb-4">
+              {message.report.map((line, i) => (
+                <li key={i} className="flex gap-2 text-[12.5px] leading-relaxed" style={{ color: i === 0 && message.complete ? "var(--text-1)" : "var(--text-2)" }}>
+                  <span className="shrink-0" style={{ color: "var(--text-3)" }}>•</span>
+                  <span className="break-words min-w-0">{line}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {!message.busy && !message.failed && (converted ? (
+            <div className="flex flex-wrap gap-2">
+              <PrimaryButton onClick={onDownloadConverted} className="flex items-center gap-2">
+                <Download size={15} />
+                Download the {label}
+              </PrimaryButton>
+              <GhostButton onClick={onArrange}>Arrange it for me</GhostButton>
+            </div>
+          ) : (
+            <p className="text-[12.5px]" style={{ color: "var(--text-3)" }}>
+              Attach {message.name} again to download it. Files are not kept once the page closes.
+            </p>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   if (message.type === "offer") {
     return (
       <div style={riseStyle}>

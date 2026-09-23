@@ -52,13 +52,18 @@ export function canBecomeText(name) {
    -------------------------------------------------------------------------- */
 
 async function readPdf(file) {
-  const pdfjs = await import("pdfjs-dist");
+  /* THE LEGACY BUILD, 2026-09-23. The modern build of pdfjs-dist 6 uses
+     JavaScript features so new that many browsers do not have them, in its
+     worker as well as here. Some PDFs (ones made by Word or LibreOffice)
+     then failed with "UnknownErrorException" and the upload was dropped.
+     The legacy build is the same reader with those features filled in. */
+  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
 
   /* The worker has to be told where it lives, and the bundler needs to
      see the URL to include it. Without this line pdf.js silently falls
      back to running on the main thread or fails outright. */
   pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-    "pdfjs-dist/build/pdf.worker.min.mjs",
+    "pdfjs-dist/legacy/build/pdf.worker.min.mjs",
     import.meta.url,
   ).toString();
 

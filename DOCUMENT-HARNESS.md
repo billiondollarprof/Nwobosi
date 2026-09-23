@@ -198,7 +198,12 @@ It checks:
 3. The checker. **DONE 2026-09-23** (checker.cjs 8, check-document 18).
    `src/shared/docs/checkDocument.js`. Looked at on desktop dark and phone
    light.
-4. Conversion, both ways, with the check (section 8).
+4. Conversion, both ways, with the check (section 8). **BUILT 2026-09-23**
+   (convert.cjs 40, convert 15). Waiting on the converter deploy for the
+   exact way; the browser way works now. Found on the way: the PDF reader
+   (pdfjs-dist 6) failed on PDFs made by Word or LibreOffice in browsers
+   without the newest JavaScript, which also broke ordinary PDF uploads in
+   the chat. Both readers now use its legacy build.
 5. Layout from an upload, only when asked (section 9).
 6. Then v27 is handed over once, with all of it, and Anthony redeploys.
 

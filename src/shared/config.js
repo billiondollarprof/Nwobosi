@@ -69,6 +69,9 @@ export const FUNCTIONS = {
   /* Google Drive, 2026-09-23: the handshake, and putting a file in it. */
   driveConnect: "drive-connect",
   driveUpload: "drive-upload",
+  /* A Word file to PDF or a PDF to Word, exactly, through the converter
+     service. See supabase/functions/convert-document. */
+  convertDocument: "convert-document",
   /* Looks at a picture already in the bucket and stores what it says, so a
      screenshot in the knowledge base is something the assistant can quote
      rather than a name it can only mention. */

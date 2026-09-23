@@ -252,8 +252,13 @@ function imageBlock(block, t, images) {
   }
   const maxH = 320;
   const scale = Math.min(PAGE_WIDTH / found.width, maxH / found.height, 1.5);
+  /* A converted Word file says what size each picture was shown at
+     (convert/readOriginal.js). That size is kept, never enlarged. */
+  const shown = found.shownWidth
+    ? { width: Math.min(found.shownWidth, PAGE_WIDTH), height: found.shownHeight * (Math.min(found.shownWidth, PAGE_WIDTH) / found.shownWidth) }
+    : { width: found.width * scale, height: found.height * scale };
   return {
-    stack: [{ image: found.dataUrl, width: found.width * scale, height: found.height * scale, alignment: "center" }, ...caption],
+    stack: [{ image: found.dataUrl, ...shown, alignment: block.align ?? "center" }, ...caption],
     unbreakable: true,
     margin: [0, 6, 0, 14],
   };
@@ -373,8 +378,11 @@ export function blocksToPdf(blocks, t = themeFor(), images = null) {
    fired. They carry this id so the rule can skip them. */
 const RUNNING = "running-header-or-footer";
 
-export function pdfDefinition(doc, t = themeFor(), brand = null, images = null) {
-  const titleBlock = [
+/* `plain`: a conversion (convert/convertFile.js). No title block, no
+   running header and no page numbers, because the original did not have
+   them and a conversion adds nothing. */
+export function pdfDefinition(doc, t = themeFor(), brand = null, images = null, { plain = false } = {}) {
+  const titleBlock = plain || !doc.title ? [] : [
     ...(brand?.name ? [{ text: brand.name.toUpperCase(), fontSize: 8.5, bold: true, color: hex(t.accent), characterSpacing: 1.2, margin: [0, 0, 0, 6] }] : []),
     { text: doc.title, fontSize: THEME.size.title, bold: true, color: hex(THEME.ink), lineHeight: 1.15 },
     ...(doc.subtitle
@@ -393,10 +401,10 @@ export function pdfDefinition(doc, t = themeFor(), brand = null, images = null) 
     /* The title again, small, from page two on, so a printed page that gets
        separated from the rest still says what it belongs to. */
     header: (page) =>
-      page > 1
+      !plain && page > 1
         ? { id: RUNNING, text: brand?.name ? `${brand.name}  ·  ${doc.title}` : doc.title, alignment: "right", fontSize: THEME.size.small, color: hex(THEME.muted), margin: [56, 30, 56, 0] }
         : null,
-    footer: (page, count) => ({
+    footer: (page, count) => (plain ? null : {
       id: RUNNING,
       text: `${page} of ${count}`,
       alignment: "center",
@@ -423,11 +431,11 @@ export function pdfDefinition(doc, t = themeFor(), brand = null, images = null) 
    somebody actually asks for a PDF.
    -------------------------------------------------------------------------- */
 
-export async function pdfBlob(doc, t = themeFor(), brand = null, images = null) {
+export async function pdfBlob(doc, t = themeFor(), brand = null, images = null, options = {}) {
   const [{ default: pdfMake }, fonts] = await Promise.all([
     import("pdfmake/build/pdfmake.js"),
     import("pdfmake/build/vfs_fonts.js"),
   ]);
   pdfMake.addVirtualFileSystem(fonts.default ?? fonts);
-  return pdfMake.createPdf(pdfDefinition(doc, t, brand, images)).getBlob();
+  return pdfMake.createPdf(pdfDefinition(doc, t, brand, images, options)).getBlob();
 }

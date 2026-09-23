@@ -13,6 +13,15 @@ repo". Nothing here goes out any other way.
 
 ---
 
+## Conversion (2026-09-23)
+
+- `convert-document`: NEW. Straight from the repo. Verify JWT off.
+- The converter service on Google Cloud Run: NEW. Steps in
+  `converter/README.md`.
+- Secrets it reads: CONVERTER_URL, CONVERTER_SECRET.
+- Until both are live, conversion still works in the browser; the card
+  says the look is not the original's.
+
 ## Google Drive (2026-09-23)
 
 - `drive-connect`: NEW. Straight from the repo.

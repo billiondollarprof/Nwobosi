@@ -91,6 +91,9 @@ for (const walk of [
   /* Added 2026-09-23. The checker: a wrong total put right, an invented
      number listed, a skipped picture kept out. */
   "scripts/__harness/checker.cjs",
+  /* Added 2026-09-23. A file converted with no interview, both ways, the
+     exact converter and the browser, with the word check said as a fact. */
+  "scripts/__harness/convert.cjs",
 ]) {
   const run = spawn("node", [walk], { stdio: "inherit" });
   const code = await new Promise((resolve) => run.on("close", resolve));

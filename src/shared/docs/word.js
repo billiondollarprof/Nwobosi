@@ -286,7 +286,9 @@ function blocksToWord(docx, doc, t, images, charts = null) {
      merged into one by Word. */
   const spacer = () => out.push(new Paragraph({ children: [], spacing: { after: 120 } }));
 
-  out.push(new Paragraph({ style: "DocTitle", children: runsOf(docx, [{ text: doc.title }]) }));
+  /* A conversion (convert/convertFile.js) has no title of its own: making
+     one up would add words the original never had. */
+  if (doc.title) out.push(new Paragraph({ style: "DocTitle", children: runsOf(docx, [{ text: doc.title }]) }));
   if (doc.subtitle) out.push(new Paragraph({ style: "DocSubtitle", children: runsOf(docx, [{ text: doc.subtitle }]) }));
 
   const levels = doc.blocks.filter((b) => b.type === "h").map((b) => b.level);
@@ -427,7 +429,9 @@ function blocksToWord(docx, doc, t, images, charts = null) {
    SECTION 3: Styles, numbering, footer, and the file
    -------------------------------------------------------------------------- */
 
-export async function wordBlob(doc, t = themeFor(), images = null, charts = null) {
+/* `plain`: a conversion. No page numbers in the footer, because the
+   original did not have them and a conversion adds nothing. */
+export async function wordBlob(doc, t = themeFor(), images = null, charts = null, { plain = false } = {}) {
   const docx = await import("docx");
   const { Document, Packer, Paragraph, TextRun, Footer, AlignmentType, PageNumber, LevelFormat } = docx;
 
@@ -473,7 +477,7 @@ export async function wordBlob(doc, t = themeFor(), images = null, charts = null
     sections: [
       {
         properties: { page: { margin: { top: 1300, bottom: 1300, left: 1250, right: 1250 } } },
-        footers: {
+        footers: plain ? undefined : {
           default: new Footer({
             children: [
               new Paragraph({

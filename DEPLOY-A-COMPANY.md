@@ -162,6 +162,8 @@ Supabase sets for you.
 | `GOOGLE_CLIENT_SECRET` | Google OAuth client secret. Never pasted into a chat | if Drive is used |
 | `CANVA_CLIENT_ID` | Canva app id | if Canva is used |
 | `CANVA_CLIENT_SECRET` | Canva app secret. Never pasted into a chat | if Canva is used |
+| `CONVERTER_URL` | the converter service's address (`converter/README.md`). One converter can serve every company | for exact PDF and Word conversion |
+| `CONVERTER_SECRET` | the converter's secret. Never pasted into a chat | for exact PDF and Word conversion |
 | `BRAND_ASSETS_BUCKET` | only if the bucket is not called `brand-assets` | rarely |
 
 Two of these do not fail when they are missing, and that makes them the
@@ -179,8 +181,8 @@ account yet (setup, accepting an invitation).
 
 ```
 accept-invite      add-link          assistant        canva-connect
-canva-design       check-access-code create-workspace describe-source
-drive-connect      drive-upload
+canva-design       check-access-code convert-document create-workspace
+describe-source    drive-connect     drive-upload
 group-images       invite-staff      oauth-callback   read-before-publish
 read-image         resume-demo       revoke-staff     send-contact
 support-ask        support-reply
