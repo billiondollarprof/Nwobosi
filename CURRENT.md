@@ -66,10 +66,13 @@ built and checked, not when it is planned.
        designed in DIRECTION.md but NOT BUILT. Found on the way: every save
        used to hard delete all but the newest 3 chats; removed. The chat's
        Library asked for the whole company's documents; now asks for the
-       person's own. Needs `20260923120000_conversation_hidden_at.sql` run,
-       and a read of the RLS policies on conversations and work_history to
-       confirm staff isolation. Until the column exists the list shows as
-       before and delete says "not switched on yet". Walk:
+       person's own. `20260923060226_conversation_hidden_at.sql` RAN on the
+       live project 2026-09-23 with his approval; column confirmed.
+       RLS read 2026-09-23: staff read and write only their own rows. BUT
+       conversations_read and work_history_read also let an ADMIN read
+       every staff member's chats and documents in the company. Asked him
+       whether to keep that. Also noted: companies.brand_color exists, so
+       documents can use each company's own accent (documentTheme.js). Walk:
        `scripts/__harness/delete-chats.cjs` (23).
 
        Anthony: "make deleting a chat possible, you can delete a chat at a
@@ -96,12 +99,9 @@ built and checked, not when it is planned.
 
       From the same message: "properly scoped, properly documented, every
       line by line... ready for us to take it and redeploy for another
-      company." WRITTEN 2026-09-23 as `DEPLOY-A-COMPANY.md`. STILL BLOCKED
-      on one thing it names first: 13 of the 25 migrations applied to the
-      live database (including core_schema and row_level_security) are not
-      in the repo, so a new database cannot be built from it. Fix: read
-      them out of supabase_migrations.schema_migrations (a SELECT, needs
-      his approval) and save them as files.
+      company." WRITTEN 2026-09-23 as `DEPLOY-A-COMPANY.md`. The 13
+      missing migrations were read out of the live database with his
+      approval and saved into supabase/migrations/ the same day.
 
       Screenshot: after a read back ("I'm thinking PDF... Say if you'd
       rather have Word"), he typed "Continue". An empty reply came back,

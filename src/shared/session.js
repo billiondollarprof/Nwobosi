@@ -706,10 +706,11 @@ export async function listStaff(companyId) {
    list and nobody sees it in the app again, but the row stays, under the
    same row level security as before: their own rows, their own company.
 
-   THE COLUMN MAY NOT EXIST YET. hidden_at is added by the migration
-   20260923120000_conversation_hidden_at.sql, which Anthony runs by hand.
-   Until then the list falls back to showing everything, and hiding says
-   plainly that it could not, rather than breaking the sidebar.
+   hidden_at was added by 20260923060226_conversation_hidden_at.sql, run
+   on the live project on 2026-09-23. The fallback below stays for a new
+   deployment whose database has not had that migration yet: the list shows
+   everything and hiding says plainly that it could not, rather than the
+   sidebar breaking.
    -------------------------------------------------------------------------- */
 
 /* How many chats the sidebar lists. A list to pick up from, not an archive

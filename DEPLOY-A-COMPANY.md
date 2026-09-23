@@ -20,13 +20,13 @@ changes with them.**
 
 ## 0. READ THIS FIRST: what is not ready yet
 
-Three things stop this guide being followed end to end today. They are
+Three things to know before following this guide. The first is fixed. They are
 listed first so nobody finds them halfway through a deployment.
 
-1. **The first database migrations are not in the repo.** The live
-   project has 25 migrations applied. The repo has files for only some of
-   them. The very first ones, the ones that create the tables and the row
-   level security, exist only inside the live database:
+1. **FIXED 2026-09-23: the first database migrations were not in the
+   repo.** They were read out of the live database and saved into
+   `supabase/migrations/` with their live version numbers. These are the
+   ones that were missing:
 
    ```
    20260824164712 enable_extensions
@@ -44,16 +44,14 @@ listed first so nobody finds them halfway through a deployment.
    20260916001607 staff_effective_limits_can_support
    ```
 
-   So a new company's database cannot be built from the repo yet. **The
-   fix:** read each one out of `supabase_migrations.schema_migrations` in
-   the live project (a read only query, Anthony approves it first) and
-   save it as a file in `supabase/migrations/`. After that, this step is a
-   list of files run in order.
+   Before a new deployment, still compare the repo against the live list
+   (item 3 below): a few repo files carry a different version number from
+   the one the live database recorded.
 
 2. **The per person memory is designed, not built.** `DIRECTION.md`,
    "Memory, instead of keeping the file". Until it is built, each chat's
    own row is its memory. Deleting a chat hides it and keeps the row for
-   exactly this reason (see `20260923120000_conversation_hidden_at.sql`).
+   exactly this reason (see `20260923060226_conversation_hidden_at.sql`).
 
 3. **Some files in `supabase/migrations/` may not have run on the live
    project under the same name.** The live list uses different version
@@ -109,8 +107,8 @@ see) stops one staff member reading another's conversations.
 1. Run every file in `supabase/migrations/` in order, oldest first. The
    file name starts with its date, so the alphabetical order is the right
    order.
-2. **This step is blocked until section 0, item 1 is done.** Without the
-   first migrations there is no `companies` table for the rest to change.
+2. Where two files describe the same change under different version
+   numbers (see section 0, item 3), run it once.
 3. After running, check that every table in the list below exists and
    says RLS is on. All of them must:
 
