@@ -25,15 +25,19 @@ built and checked, not when it is planned.
 
 ### Open
 
-000. **2026-09-23, not built yet: let the person choose the file type.**
+000. **BUILT 2026-09-23, NEEDS THE SAME ASSISTANT REDEPLOY: choose the file
+     type on the build card.**
 
      Anthony: "during the process, I wasn't even offered the choice to
      choose file type. It just saying it producing pdf"
 
-     Today the model picks the format at the read back (FORMAT: line) and
-     the build card only says "Go ahead, build it as a PDF". The only way to
-     change it is "Something is wrong" and typing. Waiting on his pick of
-     how the choice should look.
+     He chose "Buttons on the build card". The main button still builds
+     what the read back picked. Under it, "Or make it" offers the other
+     three, one press each. The pressed words go into the chat as his
+     message, so the brief is told which file it is planning for, and the
+     brief now sees the read back too (before this, the read back was the
+     last turn and got dropped). The brief prompt has one new line asking
+     for the file type. Checked by 9 new CHOICE checks in `download.cjs`.
 
 00. **FIXED IN CODE 2026-09-23, NEEDS ASSISTANT REDEPLOY: the build
     looped on "The plan for this ran out of room".**

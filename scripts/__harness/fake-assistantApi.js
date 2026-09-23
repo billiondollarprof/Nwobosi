@@ -11,9 +11,13 @@
 
 export { toApiMessages } from "../../src/shared/assistantApi.js";
 
-export function sendTurn({ stage = "orient", onMeta, onText, onDone }) {
+export function sendTurn({ stage = "orient", messages = [], onMeta, onText, onDone }) {
   window.__TURNS = window.__TURNS || [];
   window.__TURNS.push(stage);
+  /* What each stage was actually sent, so a walk can check the model was
+     told something, not just that the screen shows it. */
+  window.__SENT = window.__SENT || [];
+  window.__SENT.push({ stage, messages });
 
   const queue = (window.__SCRIPT && window.__SCRIPT[stage]) || [];
   const reply = queue.length > 1 ? queue.shift() : (queue[0] ?? "(nothing scripted)");

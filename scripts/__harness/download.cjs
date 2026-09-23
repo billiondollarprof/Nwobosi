@@ -57,7 +57,7 @@ const DOCUMENT = [
                 This is the path Anthony asked for by name and the one a
                 demo will show, so it is the main walk.
      skip       "Just get on with it", straight to the read back. */
-async function walkToBuilt(browser, generate, path = 'interview', stops = null, brief = 'Write a one page pricing FAQ with the plan table.') {
+async function walkToBuilt(browser, generate, path = 'interview', stops = null, brief = 'Write a one page pricing FAQ with the plan table.', stopAtCard = false) {
   const page = await browser.newPage({ viewport: { width: 1280, height: 1000 }, acceptDownloads: true });
   const errs = [];
   page.on('pageerror', (e) => errs.push(e.message));
@@ -93,6 +93,7 @@ async function walkToBuilt(browser, generate, path = 'interview', stops = null, 
     await page.locator('button', { hasText: 'Just get on with it' }).first().click();
     await page.waitForTimeout(2200);
   }
+  if (stopAtCard) return { page, errs };
   await page.locator('button', { hasText: 'Go ahead, build it' }).first().click();
   await page.waitForTimeout(2800);
 
@@ -238,6 +239,38 @@ const isPdf = (b) => b.length > 4 && b.slice(0, 4).toString() === '%PDF';
   check('EMPTY BRIEF: the build card comes back',
     (await empty.page.locator('button', { hasText: 'Go ahead, build it' }).count()) > 0);
   await empty.page.close();
+
+  /* ---- 7. CHOOSING A DIFFERENT FILE ON THE BUILD CARD -----------------
+
+     Anthony, 2026-09-23: "I wasn't even offered the choice to choose file
+     type. It just saying it producing pdf." The read back picks one; the
+     card now offers the others, one press each. */
+  const pick = await walkToBuilt(b, DOCUMENT, 'skip', null, 'Write it.', true);
+  check('CHOICE: the card offers the other file types',
+    (await pick.page.locator('text=Or make it').count()) > 0 &&
+    (await pick.page.locator('button', { hasText: 'Slides' }).count()) > 0 &&
+    (await pick.page.locator('button', { hasText: 'Spreadsheet' }).count()) > 0);
+  check('CHOICE: the one already picked is not offered twice',
+    (await pick.page.locator('button', { hasText: /^Word$/ }).count()) === 0);
+  await pick.page.screenshot({ path: '/tmp/claude-0/build-choice.png', fullPage: true });
+  await pick.page.locator('button', { hasText: 'Slides' }).first().click();
+  await pick.page.waitForTimeout(2800);
+  check('CHOICE: what they pressed shows as their message',
+    (await pick.page.getByText('Go ahead, build it as slides.', { exact: true }).count()) === 1);
+  const sent = await pick.page.evaluate(() => window.__SENT || []);
+  const briefSent = sent.find((x) => x.stage === 'brief');
+  const lastSaid = briefSent && briefSent.messages[briefSent.messages.length - 1];
+  check('CHOICE: the brief is TOLD it is slides, not just the screen',
+    !!lastSaid && lastSaid.role === 'user' && /slides/.test(String(lastSaid.content)));
+  check('CHOICE: and the brief still sees the read back before it',
+    !!briefSent && briefSent.messages.some((m) => m.role === 'assistant' && /pricing FAQ/i.test(String(m.content))));
+  check('CHOICE: the card says slides', (await pick.page.locator('text=Ready as slides').count()) > 0);
+  const pickDeck = await pressAndCatch(pick.page, 'Slides');
+  check(`CHOICE: the main download is a .pptx (${pickDeck.name})`, /\.pptx$/i.test(pickDeck.name || ''));
+  check('CHOICE: and it is a real PowerPoint file', isZip(pickDeck.bytes));
+  check('CHOICE: no page errors' + (pick.errs.length ? ' -> ' + pick.errs.join(' | ') : ''),
+    pick.errs.length === 0);
+  await pick.page.close();
 
   await b.close();
 

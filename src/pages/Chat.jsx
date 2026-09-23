@@ -1423,11 +1423,46 @@ export default function Chat() {
      for a deployment that needs one. See DIRECTION.md.
      ------------------------------------------------------------------------ */
 
-  function handleGenerate() {
+  /* THE FILE TYPE IS CHOSEN ON THE BUILD CARD.
+
+     Anthony, 2026-09-23: "during the process, I wasn't even offered the
+     choice to choose file type. It just saying it producing pdf."
+
+     The read back still picks the best one, and the main button builds
+     that. The row under it builds any of the others. So `asFormat` is the
+     one they pressed, and nothing pressed means the one the read back
+     chose.
+
+     WHAT THEY PRESSED IS SAID IN THE CONVERSATION. The button's own words
+     go into the chat as their message, the same way "Yes, go and look."
+     does. That does two jobs. The brief is told which file it is writing
+     for, so a spreadsheet gets planned as a table and slides get planned as
+     slides. And the read back stays in what the brief reads: without a
+     message after it, the read back was the last turn, and the last turn
+     is dropped when it is the assistant's (see assistantApi.js), so the
+     brief was being written without the one thing it summarises. These
+     are the words on the button they pressed, so nothing is put in their
+     mouth. */
+  function handleGenerate(asFormat) {
     if (generating) return;
+    const format = FORMAT_NAMES[asFormat] ? asFormat : formatRef.current;
+    formatRef.current = format;
+    setBuildFormat(format);
+
+    const said = {
+      id: nextId(),
+      role: "user",
+      type: "text",
+      content: `Go ahead, build it as ${FORMAT_NAMES[format]}.`,
+    };
+    const convo = [...messages.filter((m) => m.type !== "build"), said];
+
     setGenerating(true);
-    updateMessages((prev) => prev.filter((m) => m.type !== "build"));
-    addMessage({ role: "assistant", type: "generating" });
+    updateMessages((prev) => [
+      ...prev.filter((m) => m.type !== "build"),
+      said,
+      { id: nextId(), role: "assistant", type: "generating" },
+    ]);
 
     let brief = "";
 
@@ -1441,7 +1476,7 @@ export default function Chat() {
          approve a figure, watch it appear on screen, and never see it in
          the document. */
       findings: findingsRef.current.join("\n\n"),
-      messages: toApiMessages(messages),
+      messages: toApiMessages(convo),
 
       onMeta: ({ tier }) => setActiveTier(tier),
       onStall: () => setStalled(true),
@@ -1496,12 +1531,16 @@ export default function Chat() {
           ]);
           return;
         }
-        buildFromBrief(brief.trim());
+        buildFromBrief(brief.trim(), convo);
       },
     });
   }
 
-  function buildFromBrief(brief) {
+  /* `convo` is the conversation including the build they pressed, handed
+     over from handleGenerate. The `messages` in this closure is from before
+     that press, so using it would save and send the conversation without
+     it. */
+  function buildFromBrief(brief, convo = messages) {
     /* Held here as well as written to the row, so the rest of this visit
        knows a brief exists without going back to the database for it. */
     briefRef.current = brief;
@@ -1512,7 +1551,7 @@ export default function Chat() {
 
     /* Saved before a word is written, so the fence the document was built
        inside is on the row whether or not the writing finishes. */
-    persist(messages, "generate", brief);
+    persist(convo, "generate", brief);
 
     /* The card on screen is still the build card, so moving this on is what
        changes its line from "Writing the brief" to "Building your
@@ -1525,7 +1564,7 @@ export default function Chat() {
       stage: "generate",
       brief,
       findings: findingsRef.current.join("\n\n"),
-      messages: toApiMessages(messages),
+      messages: toApiMessages(convo),
 
       onMeta: ({ tier }) => setActiveTier(tier),
       onStall: () => setStalled(true),
@@ -1542,7 +1581,7 @@ export default function Chat() {
               role: "assistant",
               type: "result",
               content: "",
-              title: docTitle(messages),
+              title: docTitle(convo),
               /* Which file this IS, decided back at the read back. The card
                  leads with it rather than offering four equal choices. */
               format: formatRef.current,
@@ -1619,7 +1658,7 @@ export default function Chat() {
         /* Into the library, so it is somewhere other than this one
            conversation. savedToStorage stays false because no storage is
            connected here, and claiming otherwise would be a lie in the UI. */
-        const title = docTitle(messages);
+        const title = docTitle(convo);
 
         setLibraryFiles((prev) => [
           { id: nextId(), title, skill: autoSkill, savedToStorage: false, when: "Just now", content: finished },
@@ -3121,6 +3160,9 @@ THE GLOW AND THE PULSE STAY. They were
    avatar, staff messages sit in a neutral capsule on the right.
    ========================================================================== */
 
+/* Every file the build card can make, in the order they are offered. */
+const BUILD_FORMATS = ["docx", "pdf", "pptx", "xlsx"];
+
 export function ChatBubble({ message, brief, buildFormat = DEFAULT_FORMAT, buildStage = "brief", buildStalled = false, onGenerate, onAdjust, onWantInterview, onSkipInterview, onAllowLookup, onRefuseLookup, onUseFinding, onDropFinding, onReset, onRetry, onShowText, onFile, feedback, onFeedback, onCopy, onDownload }) {
   const isUser = message.role === "user";
   const riseStyle = { animation: "sx-rise 0.35s ease" };
@@ -3348,10 +3390,25 @@ export function ChatBubble({ message, brief, buildFormat = DEFAULT_FORMAT, build
               conversation and this is the last moment to disagree with it
               cheaply. "Build it" hides a decision somebody would want to
               know about; "Build it as a Word document" does not. */}
-          <PrimaryButton onClick={onGenerate} className="w-full flex items-center justify-center gap-2">
+          <PrimaryButton onClick={() => onGenerate()} className="w-full flex items-center justify-center gap-2">
             <FileText size={15} />
             Go ahead, build it as {FORMAT_NAMES[buildFormat] ?? "a Word document"}
           </PrimaryButton>
+          {/* THE OTHER FILE TYPES, one press each. Anthony, 2026-09-23:
+              "I wasn't even offered the choice to choose file type." The
+              main button is the one the read back picked. These build the
+              same work as something else, straight away, with no second
+              question. */}
+          <div className="flex flex-wrap items-center gap-2 mt-3 mb-3">
+            <span className="text-[13px] mr-1 w-full sm:w-auto" style={{ color: "var(--text-3)" }}>
+              Or make it
+            </span>
+            {BUILD_FORMATS.filter((f) => f !== buildFormat).map((f) => (
+              <GhostButton key={f} onClick={() => onGenerate(f)}>
+                {FORMAT_SHORT[f]}
+              </GhostButton>
+            ))}
+          </div>
           {/* NOT A BUTTON THAT CLEARS THE CARD. A box that opens where
               the button was, so the read back being corrected is still on
               screen above the correction. Nothing is asked of any model
