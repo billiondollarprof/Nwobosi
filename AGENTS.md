@@ -53,6 +53,7 @@ file and a pointer for every tool that has been used here.
 | Claude Code | `CLAUDE.md` (the real one) |
 | Gemini CLI | `GEMINI.md` |
 | GitHub Copilot | `.github/copilot-instructions.md` |
+| DeepSeek (DSH) | `CLAUDE.md` and `AGENTS.md`, both read directly |
 
 All of them say the same thing: read `CLAUDE.md`.
 

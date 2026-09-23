@@ -1,13 +1,25 @@
 # CLAUDE.md
 
-This file tells Claude how to work on this project. The product is StellaXafe.
+The rules for working on this project. The product is StellaXafe.
+
+**These rules are not for Claude alone. Every agent working in this repo
+follows them: Claude, DeepSeek, Codex, Gemini, Copilot, and whatever comes
+after them.** Anthony, 2026-09-23: "if I'm giving you the token I want you
+to see CLAUDE.md as your rule and follow it... add in it, that this rule is
+also for DeepSeek agents."
+
+What differs from one agent to the next is only the filename its tool opens.
+It is never the rules once they are open. So this file is written to be read
+by any of them, and the name of the agent reading it is not a reason to skip
+a rule inside it.
 
 **This is the one real rules file, and it is deliberately the only one.**
-`AGENTS.md` sits beside it as a short signpost, because that is the name
-most other coding agents look for. It points here and holds no rules of its
-own, so the two cannot drift apart. If another tool needs its own name, such
-as `GEMINI.md` or `COPILOT.md`, add another signpost like that one. Never
-copy this file.
+Beside it sit short signposts, because each tool looks for its own name:
+`AGENTS.md`, `GEMINI.md`, and `.github/copilot-instructions.md`. They point
+here and hold no rules of their own, so none of them can drift apart from
+this one. The DeepSeek harness reads this file and `AGENTS.md` directly, so
+it needs no signpost of its own. If another tool needs its own name, such as
+`.cursorrules`, add another signpost like those. Never copy this file.
 
 ## How to talk to the user
 
