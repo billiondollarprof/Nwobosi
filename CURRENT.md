@@ -25,6 +25,24 @@ built and checked, not when it is planned.
 
 ### Open
 
+000000. **2026-09-23, OPEN: three asks after the first real PDF.**
+
+        The build reached a real download for the first time (Amara
+        Pricing FAQ, PDF). Then:
+
+        a. "when I open the file right in the chat, I should be able to
+           close it as well."
+        b. "look at the document. the formatting is not very clean and I
+           believe slides/pptx and even word and Excel might not be clean
+           and well arranged if PDF is not so clean. or maybe give the
+           environment better document building tools. sophisticated ones,
+           so that the output looks great."
+        c. "the model didn't ask me to save to storage or detect if storage
+           is connected."
+
+        Still waiting on his yes to the three SQL statements (RLS read,
+        hidden_at column, missing migrations read).
+
 00000. **2026-09-23, BUILT, NEEDS ONE SQL RUN (his approval): delete
        chats, without deleting memory.** Hold a chat or press "Select",
        tick several, delete, confirm. Deleting HIDES the row (hidden_at),
