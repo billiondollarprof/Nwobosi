@@ -25,8 +25,73 @@ built and checked, not when it is planned.
 
 ### Open
 
-0000000000000. **2026-09-23, OPEN AND SERIOUS: THE INTERNET SEARCH DOES NOT
-               WORK. The skip that went with it is FIXED.**
+00000000000000. **2026-09-23, THE LOGS READ, AND THE SEARCH IS NOT WHAT WE
+                THOUGHT. READ THIS BEFORE TOUCHING THE SEARCH.**
+
+                He made a scoped token with Logs (Read) and it settled three
+                things. The endpoint is the NEW one:
+                `GET /v1/projects/{ref}/analytics/endpoints/logs` with
+                `?sql=<url-encoded ClickHouse sql>&iso_timestamp_start=...&iso_timestamp_end=...`.
+                The old `logs.all` still answers but returns empty. The
+                unified table is called `logs`, and the column is
+                `event_message`. It throttles hard, so one query at a time
+                with a sleep between.
+
+                ONE. THE SEARCH RAN. At 19:39:40 there is a completed
+                research turn:
+
+                  usage stage=research tier=standard fresh=4320
+                  cacheWrite=68495 cacheRead=549200 out=6586 cents=45.832
+
+                549,200 tokens of context read is the search results coming
+                in, and 6,586 tokens were written. So the web tools work, the
+                gate works, and the stage runs. THE SEARCH IS NOT BROKEN.
+
+                TWO. IT COSTS 45.832 CENTS, FOR ONE SEARCH. Amara's budget is
+                100 cents. Two searches and the workspace is done. That is
+                product economics and he needs to know it before a customer
+                does. Nothing about this is a bug, and nothing should be
+                changed about it without him deciding.
+
+                THREE. NO FINDINGS CARD HAS EVER BEEN SAVED, in any
+                conversation. So the search runs, gets charged, and the
+                result never reaches a screen. The fault is on the way BACK,
+                not in the search. Not investigated yet.
+
+                WHAT THIS MEANS FOR THE FAILURES HE SAW. All five model
+                failures in the logs are the credit, from 19:41:54 onward.
+                The two earlier ones he described as "That stopped before it
+                finished" and "The reply stopped partway" have NO model error
+                beside them: the function booted, then shut down with no
+                usage line, which is a turn that died in flight after the
+                model was paid for.
+
+                AND THE THING THAT WAS ALREADY FOUND IS NOW PROVEN, which is
+                why the reverts matter more than they look. Four times in the
+                logs:
+
+                  18:56:45 stage=orient    spent its whole ceiling thinking,
+                                           wrote nothing, asked again
+                           -> out=2200 = TWO FULL 1100 CEILINGS, so the
+                              second go wrote nothing either
+                  19:03:51 stage=orient    -> out=1781, so it recovered
+                  19:09:29 stage=interview -> out=2200 again, NOTHING WRITTEN
+                  19:15:28 stage=interview -> out=2090, recovered
+
+                When the two calls add up to exactly twice the ceiling, both
+                spent everything thinking and the person got "ran out of
+                room". That is the fault he reported, shown in his own logs,
+                and the retry does not always save it. IT IS STILL THERE,
+                because the change that addressed it was reverted, correctly,
+                because he did not ask for it. Now he has the evidence and it
+                is his decision what to do.
+
+                NOT CONFIRMED, and do not guess: whether the 19:39:40 search
+                returned anything usable, and why the in-flight turns died.
+
+0000000000000. **2026-09-23: the search failure as it looked BEFORE the logs
+               were read. Kept because the history matters, and superseded by the
+               entry above.**
                Anthony: "the assistant couldn't search the Internet and
                couldn't skip the search." That is two faults in one line,
                and they have different owners.
