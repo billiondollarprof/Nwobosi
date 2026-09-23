@@ -1136,6 +1136,20 @@ before the video. They are real and they are his decisions, not ideas.
 
 ### Decided, so nobody reopens them
 
+- **2026-09-23: storage is whatever the company connects.** Anthony:
+  "remember a company can decide to connect any storage cloud of their
+  choice." Google Drive is the first one built; the connection
+  (oauth-callback PROVIDERS, storage.js, the result card) is built so the
+  next one (Dropbox, OneDrive, SharePoint) is a provider entry, not a
+  rewrite.
+- **2026-09-23: the checkpoints are hard wired, not asked for.** Anthony:
+  "must take permission before searching the Internet. Must follow the
+  path of interview, read back, prompt and build. and interview and read
+  back may continue until everything is provided or the staff says go
+  ahead. read back is the verification phase for the staff and the staff
+  can still make corrections at that point too."
+- **2026-09-23: reuse is shape only.** Answered; do not ask again.
+
 - **2026-09-23: an admin sees everything in their own company.** Anthony:
   "let admin see everything in their own company." The RLS that lets an
   admin read every staff member's chats and documents stays. Staff still
