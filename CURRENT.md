@@ -89,6 +89,33 @@ built and checked, not when it is planned.
                 NOT CONFIRMED, and do not guess: whether the 19:39:40 search
                 returned anything usable, and why the in-flight turns died.
 
+                NARROWED 2026-09-23, AND THIS IS THE USEFUL PART. The fault is
+                NOT the search, and it is NOT the chat page.
+
+                1. The client is correct, and it was tested rather than
+                   reasoned about. Replaying a research reply in the harness
+                   turns it into the findings card ("From outside your
+                   company"), shows the text, and puts the picker up with
+                   "Use this in the work?". First time, no errors.
+                2. The server always sends text on that path, even the
+                   fallback line, and its usage log line is written AFTER
+                   that send. The 19:39:40 usage line exists.
+                3. Yet no findings card and no outside-sources text has ever
+                   been stored, in any conversation. The question was checked
+                   both ways and both are zero.
+
+                So the reply is SENT and never ARRIVES. The break is in the
+                transport between the edge function and the page, or the turn
+                is abandoned while the search is still running. A search
+                holds the stream silent for around two minutes, so reloading
+                the page, opening another chat, or starting a new chat
+                abandons it. It is charged either way. That second one is a
+                hypothesis and is NOT confirmed.
+
+                Worth knowing before the next step: a long search is silent
+                for about two minutes, and the client only speaks up after
+                five.
+
 0000000000000. **2026-09-23: the search failure as it looked BEFORE the logs
                were read. Kept because the history matters, and superseded by the
                entry above.**
