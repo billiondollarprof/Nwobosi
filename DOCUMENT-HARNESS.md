@@ -77,9 +77,10 @@ tables, carried through to charts and figures.
    Figure 2...) and swaps each `[[fig:...]]` for its number. So "see
    Figure 3" always points at the right figure, even after the staff asks
    for a section to move.
-4. Documents (PDF, Word) show "Figure 2. Room revenue by quarter." under
-   the figure. Slides show the caption and source without the number,
-   because a deck does not usually number its figures.
+4. Every format shows "Figure 2. Room revenue by quarter." under the
+   figure, slides included, but only when the document numbers its figures:
+   two or more figures, or the text points at one. A slide that says "as
+   Figure 1 shows" has to have a Figure 1 on it.
 5. A reference to a tag that does not exist becomes a note in "Worth
    checking" and the text reads "the figure below" instead of a broken tag.
 

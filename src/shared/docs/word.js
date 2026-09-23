@@ -179,22 +179,47 @@ function takeawayTable(docx, block, t) {
   });
 }
 
+/* Under every figure: "Figure 2. The front desk", then its source,
+   smaller. The number only shows when the document numbers its figures
+   (documentModel.js, section 5). Charts use this too. */
+function figureCaptionParagraphs(docx, block) {
+  const { Paragraph, TextRun, AlignmentType } = docx;
+  const out = [];
+  const hasSource = Boolean(block.source);
+  if (block.figure || block.caption) {
+    out.push(new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: hasSource ? 20 : 200 },
+      children: [
+        ...(block.figure ? [new TextRun({ text: `Figure ${block.figure}.${block.caption ? " " : ""}`, size: half(9), color: THEME.muted, bold: true })] : []),
+        ...(block.caption ? [new TextRun({ text: block.caption, size: half(9), color: THEME.muted, italics: true })] : []),
+      ],
+    }));
+  }
+  if (hasSource) {
+    out.push(new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 200 },
+      children: [new TextRun({ text: block.source, size: half(8), color: THEME.muted })],
+    }));
+  }
+  return out;
+}
+
 /* A picture, as wide as the text at most and never taller than half a
    page, centred, with its caption under it. A picture that could not be
    found is a shaded line naming it. Word wants the bytes, not an address. */
 function imageParagraphs(docx, block, t, images) {
   const { Paragraph, TextRun, ImageRun, AlignmentType, ShadingType } = docx;
   const found = images?.get(imageKey(block.name));
-  const caption = block.caption
-    ? [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 200 }, children: [new TextRun({ text: block.caption, size: half(9), color: THEME.muted, italics: true })] })]
-    : [];
+  const caption = figureCaptionParagraphs(docx, block);
   if (!found) {
     return [new Paragraph({
       alignment: AlignmentType.CENTER,
       shading: { type: ShadingType.CLEAR, fill: t.accentTint, color: "auto" },
-      spacing: { before: 120, after: 200 },
+      spacing: { before: 120, after: caption.length ? 60 : 200 },
       children: [new TextRun({ text: `Picture to add here: ${block.name}`, color: THEME.muted })],
-    })];
+    }), ...caption];
   }
   const binary = atob(found.dataUrl.split(",")[1] ?? "");
   const bytes = new Uint8Array(binary.length);
@@ -204,7 +229,7 @@ function imageParagraphs(docx, block, t, images) {
   return [
     new Paragraph({
       alignment: AlignmentType.CENTER,
-      spacing: { before: 120, after: block.caption ? 60 : 200, line: 240, lineRule: "auto" },
+      spacing: { before: 120, after: caption.length ? 60 : 200, line: 240, lineRule: "auto" },
       children: [new ImageRun({
         type: found.mime === "image/jpeg" ? "jpg" : "png",
         data: bytes,

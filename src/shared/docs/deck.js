@@ -38,7 +38,7 @@
    ========================================================================== */
 
 import { THEME } from "./documentTheme.js";
-import { plainText, blockText } from "./documentModel.js";
+import { plainText, blockText, figureCaption } from "./documentModel.js";
 import { imageKey } from "./imageKey.js";
 
 /* --------------------------------------------------------------------------
@@ -343,9 +343,30 @@ function fitInto(found, w, h) {
   return { w: found.width * scale, h: found.height * scale };
 }
 
+/* The caption and its source under a figure on a slide. "Figure 2" shows
+   only when the document numbers its figures, which is when the text points
+   at one or there are two or more (documentModel.js, section 5). A slide
+   that says "as Figure 1 shows" has to have a Figure 1 on it. Charts use
+   this too. Returns the height it takes, so the figure can make room. */
+function captionHeight(block) {
+  return (block.caption || block.figure ? 0.42 : 0) + (block.source ? 0.3 : 0);
+}
+
+function drawCaption(page, block, box) {
+  const h = captionHeight(block);
+  if (!h) return;
+  const runs = [];
+  const line = figureCaption(block);
+  if (line) runs.push({ text: line, options: { fontSize: 12, italic: true, color: THEME.muted, breakLine: Boolean(block.source) } });
+  if (block.source) runs.push({ text: block.source, options: { fontSize: 9.5, color: THEME.muted } });
+  page.addText(runs, {
+    x: box.x, y: box.y + box.h - h + 0.05, w: box.w, h: h - 0.05, align: "center", valign: "top", fontFace: THEME.officeFont, margin: 0,
+  });
+}
+
 function drawImage(page, piece, box, theme, images) {
   const found = images?.get(imageKey(piece.block.name));
-  const captionH = piece.block.caption ? 0.42 : 0;
+  const captionH = captionHeight(piece.block);
   if (!found) {
     /* Never an empty hole: a marked space saying which picture goes here. */
     page.addShape("roundRect", { x: box.x, y: box.y, w: box.w, h: box.h - captionH, fill: { color: theme.accentTint }, line: { color: theme.accentTint }, rectRadius: 0.1 });
@@ -356,11 +377,7 @@ function drawImage(page, piece, box, theme, images) {
     const fit = fitInto(found, box.w, box.h - captionH);
     page.addImage({ data: found.dataUrl, x: box.x + (box.w - fit.w) / 2, y: box.y + (box.h - captionH - fit.h) / 2, w: fit.w, h: fit.h });
   }
-  if (piece.block.caption) {
-    page.addText(piece.block.caption, {
-      x: box.x, y: box.y + box.h - captionH + 0.05, w: box.w, h: captionH - 0.05, fontSize: 12, italic: true, color: THEME.muted, align: "center", valign: "top", fontFace: THEME.officeFont, margin: 0,
-    });
-  }
+  drawCaption(page, piece.block, box);
 }
 
 function drawTakeaway(page, runs, theme) {

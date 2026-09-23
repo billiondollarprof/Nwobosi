@@ -218,15 +218,34 @@ function statBlock(block, t) {
 /* A picture, full width at most and never taller than half a page, with
    its caption under it. A picture that could not be found is a marked
    space naming it, so the person sees exactly what is missing. */
+/* Under every figure: "Figure 2. The front desk", then its source, smaller.
+   The number only shows when the document numbers its figures (see
+   documentModel.js, section 5). Charts use this too. */
+function figureCaptionLines(block) {
+  const out = [];
+  if (block.figure || block.caption) {
+    out.push({
+      text: [
+        ...(block.figure ? [{ text: `Figure ${block.figure}.${block.caption ? " " : ""}`, bold: true }] : []),
+        ...(block.caption ? [{ text: block.caption }] : []),
+      ],
+      fontSize: 8.5, color: hex(THEME.muted), alignment: "center", margin: [0, 5, 0, 0],
+    });
+  }
+  if (block.source) out.push({ text: block.source, fontSize: 7.5, color: hex(THEME.muted), alignment: "center", margin: [0, 2, 0, 0] });
+  return out;
+}
+
 function imageBlock(block, t, images) {
   const found = images?.get(imageKey(block.name));
-  const caption = block.caption
-    ? [{ text: block.caption, fontSize: 8.5, color: hex(THEME.muted), alignment: "center", margin: [0, 5, 0, 0] }]
-    : [];
+  const caption = figureCaptionLines(block);
   if (!found) {
     return {
-      table: { widths: ["*"], body: [[{ text: `Picture to add here: ${block.name}`, color: hex(THEME.muted), alignment: "center", fillColor: hex(t.accentTint), margin: [0, 18, 0, 18] }]] },
-      layout: boxLayout(8),
+      stack: [{
+        table: { widths: ["*"], body: [[{ text: `Picture to add here: ${block.name}`, color: hex(THEME.muted), alignment: "center", fillColor: hex(t.accentTint), margin: [0, 18, 0, 18] }]] },
+        layout: boxLayout(8),
+      }, ...caption],
+      unbreakable: true,
       margin: [0, 4, 0, 14],
     };
   }

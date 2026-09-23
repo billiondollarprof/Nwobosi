@@ -5,7 +5,7 @@
    Slides and Spreadsheet versions of the same document. */
 
 import { readFileSync } from "node:fs";
-import { readDocument, readInline, plainText, notesAsText } from "../../src/shared/docs/documentModel.js";
+import { readDocument, readInline, plainText, notesAsText, figureCaption } from "../../src/shared/docs/documentModel.js";
 
 let passed = 0, failed = 0;
 function check(name, cond) {
@@ -107,6 +107,34 @@ check("a block never closed ends at the next heading, and the rest survives",
   unclosed.some((b) => b.type === "cards") && unclosed.some((b) => b.type === "p" && plainText(b.runs) === "Next."));
 check("an unknown block keeps its words",
   readDocument("## A\n:::mystery\nKeep me.\n:::", "x").blocks.some((b) => b.type === "p" && plainText(b.runs) === "Keep me."));
+
+/* 5b. FIGURES: credits, tags and numbers (DOCUMENT-HARNESS 2 and 3) ------- */
+const figs = readDocument(`# T
+
+## Tour
+
+As [[fig:team]] shows, and [[fig:lobby]] too. Not [[fig:ghost]].
+
+:::image lobby.jpg | The front desk | Photo: Chidi Okafor
+
+:::image team photo.jpg #team | The team
+
+:::image rooftop.jpg`, "x");
+const pics = figs.blocks.filter((b) => b.type === "image");
+check("figures: a credit is kept whole", pics[0].source === "Photo: Chidi Okafor");
+check("figures: a name with a space and a tag", pics[1].name === "team photo.jpg" && pics[1].tag === "team");
+check("figures: with no tag, the file name is the tag", pics[0].tag === "lobby");
+check("figures: CODE numbers them in order", pics.map((p) => p.figure).join() === "1,2,3");
+const figText = plainText(figs.blocks.find((b) => b.type === "p").runs);
+check("figures: [[fig:tag]] becomes its number", figText.startsWith("As Figure 2 shows, and Figure 1 too."));
+check("figures: a tag that does not exist says 'the figure', never a broken tag", figText.endsWith("Not the figure.") && !figText.includes("[["));
+check("figures: and the staff is told", figs.findings.length === 1 && /ghost/.test(figs.findings[0]));
+check("figures: 'Figure 1. caption' for documents", figureCaption(pics[0]) === "Figure 1. The front desk");
+check("figures: the number can be left out when asked", figureCaption(pics[0], false) === "The front desk");
+const lone = readDocument("## A\n\n:::image one.jpg | Only one", "x").blocks.find((b) => b.type === "image");
+check("figures: a single picture nobody points at gets no number", lone.figure === null);
+const pointed = readDocument("## A\n\nSee [[fig:one]].\n\n:::image one.jpg | Only one", "x").blocks.find((b) => b.type === "image");
+check("figures: a single picture the text points at IS numbered", pointed.figure === 1);
 
 /* 6. ODD INPUT ----------------------------------------------------------- */
 check("no heading means the fallback title", readDocument("Just words.", "Fallback").title === "Fallback");

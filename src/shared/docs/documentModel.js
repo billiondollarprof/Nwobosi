@@ -50,12 +50,23 @@
      :::stat 20% | what the number is ... :::   one big figure and its story
      :::takeaway The one line that matters.     a strip that sums it up
      :::image team.jpg | Our front desk team    a picture, by its file name
+     :::image team.jpg #team | Caption | Photo: Chidi Okafor
+                                          the same, with a tag and a source
+
+   FIGURES, 2026-09-23 (DOCUMENT-HARNESS.md, sections 2 and 3)
+   A picture can carry its source, printed small under the caption. It can
+   also carry a tag, and the text can point at it with [[fig:team]]. CODE
+   numbers the figures, never the model, so "see Figure 3" always points at
+   the right one. Numbers are only shown when a document has two or more
+   figures, or when the text points at one; a single picture nobody refers
+   to does not need "Figure 1" under it.
 
    READ TOP TO BOTTOM
      1. Inline text: bold, italic, links, line breaks
      2. Blocks: the line by line reading
      3. Design blocks
      4. Title, subtitle and notes
+     5. Figure numbers
    ========================================================================== */
 
 import { isTableLine, isDivider, rawCells } from "../structure.js";
@@ -300,6 +311,19 @@ function readItems(body) {
   return items.map((item) => ({ title: item.title, kicker: item.kicker, blocks: readBlocks(item.lines.join("\n")) }));
 }
 
+/* The first line of a figure: "lobby.jpg #lobby | caption | source".
+   The name may have spaces in it ("team photo.jpg"), so the tag is only a
+   "#word" at the END of the first part. With no tag, the file name without
+   its extension is the tag, so [[fig:lobby]] works for lobby.jpg either way.
+   Everything after the second "|" is the source, kept whole. */
+export function figureHead(rest) {
+  const [first = "", caption = "", ...source] = String(rest ?? "").split("|");
+  const tagged = first.trim().match(/^(.*?)\s+#([\w-]+)$/);
+  const name = (tagged ? tagged[1] : first).trim();
+  const tag = (tagged ? tagged[2] : name.replace(/\.[a-z0-9]+$/i, "")).toLowerCase();
+  return { name, tag, caption: caption.trim(), source: source.join("|").trim() };
+}
+
 function readDesignBlock(kind, rest, lines, index, blocks) {
   if (kind === "label") {
     const text = rest.trim();
@@ -325,8 +349,8 @@ function readDesignBlock(kind, rest, lines, index, blocks) {
      writers look the name up in docs/images.js. A name nobody can find
      becomes a clearly marked space saying which picture belongs there. */
   if (kind === "image") {
-    const [name, ...caption] = rest.split("|");
-    if (name.trim()) blocks.push({ type: "image", name: name.trim(), caption: caption.join("|").trim() });
+    const head = figureHead(rest);
+    if (head.name) blocks.push({ type: "image", name: head.name, tag: head.tag, caption: head.caption, source: head.source, figure: null });
     return 1;
   }
 
@@ -367,7 +391,8 @@ const NOTES_HEADING = /^what would make this better\b/i;
 const SUBTITLE_MAX = 160;
 
 export function readDocument(markdown, fallbackTitle = "Document") {
-  const all = readBlocks(markdown);
+  const { text, refs, findings } = resolveFigureRefs(String(markdown ?? ""));
+  const all = readBlocks(text);
 
   /* The notes to the person, cut out whole: from their heading to the next
      heading at the same level or above, or the end. */
@@ -397,7 +422,8 @@ export function readDocument(markdown, fallbackTitle = "Document") {
     }
   }
 
-  return { title, subtitle, blocks, notes };
+  numberFigures(blocks, refs);
+  return { title, subtitle, blocks, notes, findings };
 }
 
 /* The notes as plain lines, for showing in the chat. */
@@ -422,6 +448,79 @@ export function blockText(block) {
   }
   if (block.type === "stat") return [block.value, block.caption, ...block.blocks.map(blockText)].join("\n");
   if (block.type === "label") return block.text;
-  if (block.type === "image") return block.caption || block.name;
+  if (block.type === "image") return [block.caption || block.name, block.source].filter(Boolean).join("\n");
   return "";
+}
+
+/* --------------------------------------------------------------------------
+   SECTION 5: Figure numbers
+
+   Done in two passes over the same order, so the two can never disagree:
+     1. Before reading, every figure line (":::image" or ":::chart") is
+        found in order and given a number, and every [[fig:tag]] in the text
+        is swapped for "Figure N".
+     2. After reading, the figure blocks are walked in the same order and
+        given the same numbers.
+   A tag used twice points at the first one. A [[fig:tag]] with no figure
+   becomes "the figure" and a finding, so the staff is told rather than
+   the file carrying a broken tag.
+   -------------------------------------------------------------------------- */
+
+const FIGURE_LINE = /^\s*:::\s*(image|chart)\b\s*(.*)$/i;
+const FIGURE_REF = /\[\[\s*fig\s*:\s*([\w.-]+)\s*\]\]/gi;
+
+/* The tag of a chart line, "bar #revenue | ...". A chart with no tag has
+   none; only pictures fall back to their file name. */
+function chartTag(rest) {
+  const first = String(rest ?? "").split("|")[0];
+  const tagged = first.match(/#([\w-]+)/);
+  return tagged ? tagged[1].toLowerCase() : "";
+}
+
+function resolveFigureRefs(markdown) {
+  const tags = new Map();
+  let count = 0;
+  for (const line of markdown.split("\n")) {
+    const m = line.match(FIGURE_LINE);
+    if (!m) continue;
+    count += 1;
+    const tag = m[1].toLowerCase() === "image" ? figureHead(m[2]).tag : chartTag(m[2]);
+    if (tag && !tags.has(tag)) tags.set(tag, count);
+  }
+
+  const findings = [];
+  let pointed = false;
+  const text = markdown.replace(FIGURE_REF, (_, raw) => {
+    const n = tags.get(raw.toLowerCase().replace(/\.[a-z0-9]+$/i, "")) ?? tags.get(raw.toLowerCase());
+    if (n) {
+      pointed = true;
+      return `Figure ${n}`;
+    }
+    findings.push(`The text points at a figure called "${raw}", and there is no such figure. It now says "the figure".`);
+    return "the figure";
+  });
+
+  return { text, refs: { show: count >= 2 || pointed }, findings };
+}
+
+function numberFigures(blocks, refs) {
+  let n = 0;
+  const walk = (list) => {
+    for (const block of list ?? []) {
+      if (block.type === "image" || block.type === "chart") {
+        n += 1;
+        block.figure = refs.show ? n : null;
+      }
+      if (block.items) block.items.forEach((item) => walk(item.blocks));
+      if (block.type === "stat") walk(block.blocks);
+    }
+  };
+  walk(blocks);
+}
+
+/* "Figure 2. The front desk" for documents, or just the caption when the
+   document does not number its figures. Slides pass withNumber false. */
+export function figureCaption(block, withNumber = true) {
+  const number = withNumber && block.figure ? `Figure ${block.figure}.` : "";
+  return [number, block.caption].filter(Boolean).join(" ");
 }

@@ -77,6 +77,23 @@ function Inner({ blocks, images }) {
   return (blocks ?? []).map((b, i) => <Block key={i} block={b} previous={i > 0} images={images} />);
 }
 
+/* "Figure 2. The front desk", then the source, smaller. The same words the
+   PDF and Word files print, so the preview shows what they will get. */
+function FigureCaption({ block }) {
+  if (!block.figure && !block.caption && !block.source) return null;
+  return (
+    <figcaption className="text-center mt-1.5" style={{ color: "var(--text-3)" }}>
+      {(block.figure || block.caption) && (
+        <span className="block text-[11.5px]">
+          {block.figure && <span className="font-semibold not-italic">Figure {block.figure}. </span>}
+          {block.caption && <span className="italic">{block.caption}</span>}
+        </span>
+      )}
+      {block.source && <span className="block text-[10.5px] mt-0.5">{block.source}</span>}
+    </figcaption>
+  );
+}
+
 /* A picture the person handed over is shown. One from the company's files
    is named, because it is only fetched when the file is built. */
 function Picture({ block, images }) {
@@ -90,9 +107,7 @@ function Picture({ block, images }) {
           Picture: {block.name}
         </div>
       )}
-      {block.caption && (
-        <figcaption className="text-[11.5px] text-center mt-1.5 italic" style={{ color: "var(--text-3)" }}>{block.caption}</figcaption>
-      )}
+      <FigureCaption block={block} />
     </figure>
   );
 }

@@ -30,9 +30,9 @@ const DOC = [
   '## Our lobby',
   ':::label Arrival',
   '',
-  'Where every guest is greeted by name.',
+  'Where every guest is greeted by name, as [[fig:lobby]] shows.',
   '',
-  ':::image lobby.png | The front desk',
+  ':::image lobby.png | The front desk | Photo: Chidi Okafor',
   '',
   '## Still to come',
   '',
@@ -94,6 +94,10 @@ async function download(page, label) {
   await page.waitForTimeout(600);
   check('the preview shows the picture where it goes', (await page.locator('figure img[alt="The front desk"]').count()) === 1);
   check('and names the one nobody has given yet', (await page.locator('text=Picture: rooftop.jpg').count()) === 1);
+  /* Added 2026-09-23, DOCUMENT-HARNESS sections 2 and 3. */
+  check('THE CREDIT IS UNDER THE PICTURE', (await page.locator('figcaption', { hasText: 'Photo: Chidi Okafor' }).count()) === 1);
+  check('the figure is numbered by code', (await page.locator('figcaption', { hasText: 'Figure 1.' }).count()) === 1);
+  check('and the text points at it by number', (await page.locator('text=as Figure 1 shows').count()) === 1);
   await page.screenshot({ path: '/tmp/claude-0/images-preview.png', fullPage: false });
   check('no page errors' + (errs.length ? ' -> ' + errs.join(' | ') : ''), errs.length === 0);
 
