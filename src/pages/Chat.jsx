@@ -577,6 +577,15 @@ export default function Chat() {
      and that this person has connected. Empty when there is none, and the
      result card then says so rather than offering a button that cannot
      work. */
+  /* WHOSE FILES THESE ARE. The company's own colour, name and logo, read
+     off its row, so every file comes out in that company's look. See
+     src/shared/docs/documentTheme.js and download.js. */
+  const companyBrand = {
+    name: me?.company?.name ?? "",
+    color: me?.company?.brand_color ?? "",
+    logoUrl: me?.company?.logo_url ?? "",
+  };
+
   const linkedStorageName =
     WORKFLOW_TOOLS.find((tool) => tool.kind === "storage" && tool.state === "connectable" && connectors[tool.id] === true)
       ?.label ?? "";
@@ -2520,7 +2529,7 @@ export default function Chat() {
 
     setToast(`Putting it in ${where.name}`);
     try {
-      const file = await buildFile(format, title, content);
+      const file = await buildFile(format, title, content, companyBrand);
       const result = await fileInDrive(file);
       if (!result?.ok) {
         setToast(result?.reason ?? storageMessage({ state: "unreachable", name: where.name }));
@@ -2551,10 +2560,10 @@ export default function Chat() {
   async function handleDownload(format, title, content) {
     setToast(MAKING[format] ?? "Making the file");
     try {
-      if (format === "pdf") await downloadPdf(title, content);
-      else if (format === "pptx") await downloadPptx(title, content);
-      else if (format === "xlsx") await downloadXlsx(title, content);
-      else await downloadDocx(title, content);
+      if (format === "pdf") await downloadPdf(title, content, companyBrand);
+      else if (format === "pptx") await downloadPptx(title, content, companyBrand);
+      else if (format === "xlsx") await downloadXlsx(title, content, companyBrand);
+      else await downloadDocx(title, content, companyBrand);
       setToast("Saved to your downloads");
 
       /* THE JOB IS FINISHED THE MOMENT THE FILE IS ON THEIR MACHINE.

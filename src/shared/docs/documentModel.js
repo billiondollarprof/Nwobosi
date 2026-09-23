@@ -36,10 +36,25 @@
    - Never lose a line break the writer put inside a paragraph. A plan's
      name on one line and what it is for on the next are two lines.
 
+   DESIGN BLOCKS, 2026-09-23
+   Anthony: "I don't want it to be doing basic output but top tier
+   formatted documents that the staff won't have any need to edit." He sent
+   a deck as the standard: section labels, cards side by side, one big
+   figure, a takeaway strip. So the writing step can now mark those with a
+   few ":::" blocks, and every writer draws them. Each one still reads as
+   plain text anywhere that does not understand it. See OUTPUT-QUALITY.md.
+
+     :::label Pricing                     a small label on the heading above
+     :::cards  ... :::                    2 to 4 cards, each "### Title | kicker"
+     :::steps  ... :::                    the same, numbered in order
+     :::stat 20% | what the number is ... :::   one big figure and its story
+     :::takeaway The one line that matters.     a strip that sums it up
+
    READ TOP TO BOTTOM
      1. Inline text: bold, italic, links, line breaks
      2. Blocks: the line by line reading
-     3. Title, subtitle and notes
+     3. Design blocks
+     4. Title, subtitle and notes
    ========================================================================== */
 
 import { isTableLine, isDivider, rawCells } from "../structure.js";
@@ -151,6 +166,22 @@ export function readBlocks(markdown) {
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index].trim();
 
+    /* A DESIGN BLOCK. Read whole, by section 3 below, which says how many
+       lines it used. */
+    const fence = line.match(/^:::\s*([a-z]+)\s*(.*)$/i);
+    if (fence) {
+      flushAll();
+      const used = readDesignBlock(fence[1].toLowerCase(), fence[2], lines, index, blocks);
+      index += used - 1;
+      continue;
+    }
+    /* A closing ":::" on its own, left over from a block that was already
+       closed or never opened. Nothing to print. */
+    if (/^:::\s*$/.test(line)) {
+      flushAll();
+      continue;
+    }
+
     /* A table: a header row, then a divider row. Both are required. */
     if (isTableLine(line) && isDivider(lines[index + 1])) {
       flushAll();
@@ -221,7 +252,100 @@ export function readBlocks(markdown) {
 }
 
 /* --------------------------------------------------------------------------
-   SECTION 3: Title, subtitle and notes
+   SECTION 3: Design blocks
+
+   Returns how many lines the block used, so the caller can skip them.
+   Anything malformed degrades to ordinary text rather than vanishing: a
+   card with no title is a paragraph, an unknown block is its own lines.
+   -------------------------------------------------------------------------- */
+
+/* "Title | kicker" -> both halves. The kicker is optional. */
+function splitTitle(text) {
+  const [title, ...rest] = String(text ?? "").split("|");
+  return { title: readInline(title.trim()), kicker: rest.join("|").trim() };
+}
+
+/* The lines of a block up to its closing ":::". A block that is never
+   closed ends at the next heading, so a forgotten fence cannot swallow the
+   rest of the document. */
+function bodyLines(lines, start) {
+  const body = [];
+  let i = start + 1;
+  for (; i < lines.length; i += 1) {
+    const t = lines[i].trim();
+    if (/^:::\s*$/.test(t)) return { body, used: i - start + 1 };
+    if (/^#{1,2}\s/.test(t) || /^:::\s*[a-z]/i.test(t)) break;
+    body.push(lines[i]);
+  }
+  return { body, used: i - start };
+}
+
+function readItems(body) {
+  const items = [];
+  let current = null;
+  for (const raw of body) {
+    const heading = raw.trim().match(/^#{3,6}\s+(.*)$/);
+    if (heading) {
+      current = { ...splitTitle(heading[1]), lines: [] };
+      items.push(current);
+    } else if (current) {
+      current.lines.push(raw);
+    } else if (raw.trim()) {
+      /* Text before the first card: a card with no title. */
+      current = { title: [], kicker: "", lines: [raw] };
+      items.push(current);
+    }
+  }
+  return items.map((item) => ({ title: item.title, kicker: item.kicker, blocks: readBlocks(item.lines.join("\n")) }));
+}
+
+function readDesignBlock(kind, rest, lines, index, blocks) {
+  if (kind === "label") {
+    const text = rest.trim();
+    const previous = blocks[blocks.length - 1];
+    if (previous && previous.type === "h" && !previous.label) previous.label = text;
+    else if (text) blocks.push({ type: "label", text });
+    return 1;
+  }
+
+  if (kind === "takeaway") {
+    /* One line, or a block of lines up to ":::". */
+    if (rest.trim()) {
+      blocks.push({ type: "takeaway", runs: readInline(rest.trim()) });
+      return 1;
+    }
+    const { body, used } = bodyLines(lines, index);
+    blocks.push({ type: "takeaway", runs: readInline(body.map((l) => l.trim()).filter(Boolean).join(" ")) });
+    return used;
+  }
+
+  if (kind === "cards" || kind === "steps") {
+    const { body, used } = bodyLines(lines, index);
+    const items = readItems(body).filter((item) => item.title.length || item.blocks.length);
+    if (items.length) blocks.push({ type: kind, items });
+    return used;
+  }
+
+  if (kind === "stat") {
+    const { body, used } = bodyLines(lines, index);
+    const [value, ...caption] = rest.split("|");
+    blocks.push({
+      type: "stat",
+      value: value.trim(),
+      caption: caption.join("|").trim(),
+      blocks: readBlocks(body.join("\n")),
+    });
+    return used;
+  }
+
+  /* Not a block we know. Its lines are kept as ordinary text. */
+  const { body, used } = bodyLines(lines, index);
+  blocks.push(...readBlocks(body.join("\n")));
+  return used;
+}
+
+/* --------------------------------------------------------------------------
+   SECTION 4: Title, subtitle and notes
    -------------------------------------------------------------------------- */
 
 const NOTES_HEADING = /^what would make this better\b/i;
@@ -273,4 +397,19 @@ export function notesAsText(notes) {
     else if (block.runs) out.push(plainText(block.runs));
   }
   return out.filter((line) => line.trim());
+}
+
+/* Every word a block says, flattened, for measuring and for the plain text
+   fallbacks. Knows the design blocks as well as the ordinary ones. */
+export function blockText(block) {
+  if (!block) return "";
+  if (block.runs) return plainText(block.runs);
+  if (block.type === "list") return block.items.map((i) => plainText(i.runs)).join("\n");
+  if (block.type === "table") return [block.header, ...block.rows].map((r) => r.map(plainText).join(" ")).join("\n");
+  if (block.type === "cards" || block.type === "steps") {
+    return block.items.map((i) => [plainText(i.title), i.kicker, ...i.blocks.map(blockText)].join("\n")).join("\n");
+  }
+  if (block.type === "stat") return [block.value, block.caption, ...block.blocks.map(blockText)].join("\n");
+  if (block.type === "label") return block.text;
+  return "";
 }

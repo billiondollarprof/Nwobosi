@@ -26,18 +26,15 @@ repo". Nothing here goes out any other way.
   URI: https://cbunsqzkhidwjtxdsmxd.supabase.co/functions/v1/oauth-callback
   and the Google Drive API enabled.
 
-## assistant, v26, a REDEPLOY (2026-09-23)
+## assistant, v27, a REDEPLOY (2026-09-23)
 
-Live v25 matches commit fb52422 exactly (checked by pulling the deployed
-source). v26 adds prompt lines only, nothing in the logic:
+Live v26 matches the repo as it was before this change (checked by pulling
+the deployed source). v27 adds prompt lines only, and deletes nothing:
 
-- base prompt: "THE STEPS ARE A PATH, NOT A SCRIPT"
-- analyse: "FIRST, ARE THEY SAYING YES TO A READ BACK YOU ALREADY GAVE?"
-  and the BUILD_NOW marker the chat now acts on
-- orient: a real answer to a real question, not "a line or two"
-
-The chat works without it (a typed "continue" puts the build button up),
-but with it a typed "continue" builds straight away.
+- brief: "THE DESIGN PLAN for that file", slide by slide for decks, and
+  where cards, a stat, a table and takeaways go in documents
+- generate: "DESIGN IT, DO NOT JUST TYPE IT", the ::: layout blocks the
+  file writers draw (label, cards, steps, stat, takeaway) and their rules
 
 ## Before that: nothing pending
 

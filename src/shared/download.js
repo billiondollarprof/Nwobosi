@@ -24,6 +24,53 @@
 import { readDocument } from "./docs/documentModel.js";
 import { pdfBlob } from "./docs/pdf.js";
 import { wordBlob } from "./docs/word.js";
+import { themeFor } from "./docs/documentTheme.js";
+
+/* --------------------------------------------------------------------------
+   SECTION: Whose document it is
+
+   `brand` is { name, color, logoUrl } from the company's own row. The
+   colour becomes the accent in every file (themeFor), the name goes on the
+   cover and the running header, and the logo goes on the slide cover.
+
+   The logo is fetched once and turned into a data address, because the
+   slide writer needs the picture itself, not a link to it. If it cannot be
+   fetched (no logo, a blocked address, offline), the cover carries the
+   company name instead. A missing logo never stops a file being made.
+   -------------------------------------------------------------------------- */
+
+const logoCache = new Map();
+
+async function logoData(url) {
+  if (!url) return null;
+  if (logoCache.has(url)) return logoCache.get(url);
+  let data = null;
+  try {
+    const response = await fetch(url);
+    if (response.ok) {
+      const blob = await response.blob();
+      if (blob.type.startsWith("image/")) {
+        data = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : null);
+          reader.onerror = () => resolve(null);
+          reader.readAsDataURL(blob);
+        });
+      }
+    }
+  } catch {
+    data = null;
+  }
+  logoCache.set(url, data);
+  return data;
+}
+
+async function brandFor(brand) {
+  return {
+    theme: themeFor(brand?.color),
+    brand: brand?.name ? { name: brand.name, logoData: await logoData(brand.logoUrl) } : null,
+  };
+}
 
 export function slugForFile(title) {
   return (
@@ -57,14 +104,14 @@ export function saveBlob(blob, filename) {
    are never in either. See those files for the detail.
    -------------------------------------------------------------------------- */
 
-export async function downloadPdf(title, markdown) {
-  const blob = await pdfBlob(readDocument(markdown, title));
-  saveBlob(blob, `${slugForFile(title)}.pdf`);
+export async function downloadPdf(title, markdown, company) {
+  const { blob, filename } = await buildFile("pdf", title, markdown, company);
+  saveBlob(blob, filename);
 }
 
-export async function downloadDocx(title, markdown) {
-  const blob = await wordBlob(readDocument(markdown, title));
-  saveBlob(blob, `${slugForFile(title)}.docx`);
+export async function downloadDocx(title, markdown, company) {
+  const { blob, filename } = await buildFile("docx", title, markdown, company);
+  saveBlob(blob, filename);
 }
 
 /* --------------------------------------------------------------------------
@@ -82,19 +129,21 @@ export const MIME = {
   xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 };
 
-export async function buildFile(format, title, markdown) {
+export async function buildFile(format, title, markdown, company) {
   const doc = readDocument(markdown, title);
+  const { theme, brand } = await brandFor(company);
   let blob;
-  if (format === "pdf") blob = await pdfBlob(doc);
+  if (format === "pdf") blob = await pdfBlob(doc, theme, brand);
   else if (format === "pptx") {
+    if (!doc.blocks.length) throw new Error("nothing to put on a slide");
     const { deckBlob } = await import("./docs/deck.js");
-    blob = await deckBlob(doc);
+    blob = await deckBlob(doc, theme, brand);
   } else if (format === "xlsx") {
     const { sheetBlob } = await import("./downloadSheet.js");
-    blob = await sheetBlob(title, markdown);
+    blob = await sheetBlob(title, markdown, theme);
   } else {
     format = "docx";
-    blob = await wordBlob(doc);
+    blob = await wordBlob(doc, theme);
   }
   return { blob, filename: `${slugForFile(title)}.${format}`, mimeType: MIME[format] };
 }

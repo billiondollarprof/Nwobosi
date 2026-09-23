@@ -60,7 +60,55 @@ check("THE NOTES ARE TAKEN OUT OF THE DOCUMENT",
 const notes = notesAsText(doc.notes);
 check("and kept, as two lines for the chat", notes.length === 2 && notes[1].includes("support email"));
 
-/* 5. ODD INPUT ----------------------------------------------------------- */
+/* 5. THE DESIGN BLOCKS ------------------------------------------------- */
+const designed = readDocument(`# Deck
+
+## Problem Triggers
+:::label Problem
+
+:::cards
+### Blister Packs | Misplacement
+One medication per pack.
+### Pouches | Sorting
+Several medications.
+- Sorted by time
+:::
+
+:::stat 20% | targeted reduction in errors
+Measured after 30 days.
+:::
+
+:::steps
+### The Checklist | Reminds
+At the cart.
+### Verify and Mark | Reinforces
+On the pack.
+:::
+
+:::takeaway Every pill goes into one cup.
+
+After it.`, "x");
+const db = designed.blocks;
+const head = db.find((b) => b.type === "h");
+check("a label sits on the heading above it", head.label === "Problem");
+const cards = db.find((b) => b.type === "cards");
+check("cards: two, with titles and kickers",
+  !!cards && cards.items.length === 2 && plainText(cards.items[0].title) === "Blister Packs" && cards.items[0].kicker === "Misplacement");
+check("a card can hold a list", cards.items[1].blocks.some((b) => b.type === "list"));
+const stat = db.find((b) => b.type === "stat");
+check("stat: the figure, its caption and its story",
+  !!stat && stat.value === "20%" && stat.caption === "targeted reduction in errors" && stat.blocks.length === 1);
+check("steps are read like cards", db.find((b) => b.type === "steps")?.items.length === 2);
+check("the takeaway is one line", plainText(db.find((b) => b.type === "takeaway")?.runs) === "Every pill goes into one cup.");
+check("text after the blocks is ordinary text again", db[db.length - 1].type === "p" && plainText(db[db.length - 1].runs) === "After it.");
+check("no ::: is left anywhere", !JSON.stringify(db).includes(":::"));
+const unclosed = readDocument("## A\n:::cards\n### One\nText\n## B\nNext.", "x").blocks;
+check("a block never closed ends at the next heading, and the rest survives",
+  unclosed.some((b) => b.type === "cards") && unclosed.some((b) => b.type === "p" && plainText(b.runs) === "Next."));
+check("an unknown block keeps its words",
+  readDocument("## A\n:::mystery\nKeep me.\n:::", "x").blocks.some((b) => b.type === "p" && plainText(b.runs) === "Keep me."));
+
+/* 6. ODD INPUT ----------------------------------------------------------- */
 check("no heading means the fallback title", readDocument("Just words.", "Fallback").title === "Fallback");
 check("empty input is empty, not a crash", readDocument("", "X").blocks.length === 0);
 

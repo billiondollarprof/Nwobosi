@@ -40,3 +40,63 @@ export const THEME = {
 export function hex(color) {
   return `#${color}`;
 }
+
+/* --------------------------------------------------------------------------
+   THE COMPANY'S OWN COLOUR, 2026-09-23
+
+   companies.brand_color already exists. When it is set, it becomes the
+   accent in every file, so a deck for Amara is in Amara's colour and a
+   deck for the next company is in theirs. Everything else is worked out
+   from that one colour, so nobody has to choose five.
+
+   TWO GUARDS, because a brand colour is chosen for a logo, not for text:
+     1. The accent carries white text (bands, table heads, the big figure).
+        A light brand colour (a yellow, a pale blue) is darkened until white
+        on it is readable.
+     2. Anything that is not a real six digit colour is ignored, and the
+        quiet navy default is used instead.
+   -------------------------------------------------------------------------- */
+
+function channels(color) {
+  return [0, 2, 4].map((i) => parseInt(color.slice(i, i + 2), 16));
+}
+
+function toHex(rgb) {
+  return rgb.map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0")).join("").toUpperCase();
+}
+
+/* Towards white (amount 1 is white) or black (negative). */
+function mix(color, amount) {
+  const target = amount >= 0 ? 255 : 0;
+  const t = Math.abs(amount);
+  return toHex(channels(color).map((v) => v + (target - v) * t));
+}
+
+/* How light a colour looks, 0 dark to 1 light, the way the eye weighs it. */
+function lightness(color) {
+  const [r, g, b] = channels(color).map((v) => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+export function themeFor(brandColor) {
+  const raw = String(brandColor ?? "").trim().replace(/^#/, "");
+  if (!/^[0-9a-fA-F]{6}$/.test(raw)) return { ...THEME, highlight: mix(THEME.accent, 0.62), kicker: mix(THEME.accent, -0.1) };
+
+  /* Darkened in small steps until white text on it passes a 4.5 to 1
+     contrast, which is the usual bar for readable text. */
+  let accent = raw.toUpperCase();
+  for (let i = 0; i < 12 && (1.05 / (lightness(accent) + 0.05)) < 4.5; i += 1) accent = mix(accent, -0.12);
+
+  return {
+    ...THEME,
+    accent,
+    accentTint: mix(accent, 0.9),
+    /* The pale version of the brand, for a label sitting on the dark band. */
+    highlight: mix(accent, 0.62),
+    /* A slightly deeper version, for the small word under a card title. */
+    kicker: mix(accent, -0.1),
+  };
+}

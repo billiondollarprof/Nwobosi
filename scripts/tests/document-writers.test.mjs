@@ -51,5 +51,32 @@ check("bold survives onto the slides",
 check("numbered steps stay numbered", slides.some((s) => (s.text ?? []).some((p) => p.style === "number" && p.number === 3)));
 check('the quote has no ">"', !slides.some((s) => (s.text ?? []).some((p) => plainText(p.runs).startsWith(">"))));
 
+/* 3. THE DESIGNED DOCUMENT, 2026-09-23 ---------------------------------- */
+{
+  const { themeFor } = await import("../../src/shared/docs/documentTheme.js");
+  const designed = readDocument(readFileSync("scripts/__harness/fixtures/designed.md", "utf8"), "x");
+  const deck = toDeck(designed);
+  const content = deck.filter((s) => s.kind === "content");
+  check(`one slide per section, no spill (${content.map((s) => s.title).join(" / ")})`, content.length === 4);
+  check("every slide carries its label", content.every((s) => s.label));
+  check("the cards slide has three cards", content[0].feature?.kind === "cards" && content[0].feature.items.length === 3);
+  check("and its takeaway", Boolean(content[0].takeaway));
+  check("the stat slide has the figure", content[2].feature?.kind === "stat" && content[2].feature.block.value === "30 days");
+  check("the steps slide has three steps", content[3].feature?.kind === "steps" && content[3].feature.items.length === 3);
+  check("NOTHING GOES UNDER A FEATURE: no slide has text placed after its feature",
+    content.every((s) => !s.feature || s.text.every((p) => p.kind === "text")));
+
+  const pdf = JSON.stringify(pdfDefinition(designed, themeFor("#0B6E4F"), { name: "Amara" }));
+  check("the PDF draws in the company colour", pdf.includes("#0B6E4F"));
+  check("the PDF carries the label, the figure and the takeaway",
+    pdf.includes("THE PROBLEM") && pdf.includes("30 days") && pdf.includes("the same day they speak"));
+  check("no ::: reaches the PDF", !pdf.includes(":::"));
+
+  const pale = themeFor("#FFE600");
+  const lum = (h) => { const [r, g, b] = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+  check(`A PALE BRAND COLOUR IS DARKENED so white text on it reads (${pale.accent})`, 1.05 / (lum(pale.accent) + 0.05) >= 4.5);
+  check("a broken colour falls back to the default", themeFor("not a colour").accent === "1E3A8A");
+}
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

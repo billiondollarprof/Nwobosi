@@ -68,9 +68,73 @@ function Runs({ runs }) {
 
 const HEADING_SIZE = { 1: "17px", 2: "15px", 3: "13.5px", 4: "13px" };
 
+/* The design blocks, drawn the way the files draw them: tinted cards side
+   by side, a figure on a coloured panel, a strip for the takeaway. The
+   preview uses the product's own accent rather than the company's colour,
+   because it sits inside the product's screen. */
+function Inner({ blocks }) {
+  return (blocks ?? []).map((b, i) => <Block key={i} block={b} previous={i > 0} />);
+}
+
+function Cards({ block }) {
+  const numbered = block.type === "steps";
+  return (
+    <div className="grid gap-2 my-3" style={{ gridTemplateColumns: `repeat(auto-fit, minmax(${block.items.length > 2 ? 150 : 200}px, 1fr))` }}>
+      {block.items.map((item, i) => (
+        <div key={i} className="rounded-[10px] px-3 py-2.5" style={{ backgroundColor: "var(--chip)" }}>
+          <p className="font-semibold text-[13px]" style={{ color: "var(--text-1)" }}>
+            {numbered && <span style={{ color: "var(--accent, #5870F8)" }}>{i + 1}{"  "}</span>}
+            <Runs runs={item.title} />
+          </p>
+          {item.kicker && (
+            <p className="text-[11px] font-semibold mt-0.5" style={{ color: "var(--text-3)" }}>{item.kicker}</p>
+          )}
+          <div className="mt-1.5 text-[12.5px]"><Inner blocks={item.blocks} /></div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function Block({ block, previous }) {
+  if (block.type === "cards" || block.type === "steps") return <Cards block={block} />;
+
+  if (block.type === "stat") {
+    return (
+      <div className="flex flex-wrap items-stretch gap-3 my-3">
+        <div className="rounded-[10px] px-4 py-3 text-center min-w-[120px]" style={{ backgroundColor: "#1E3A8A", color: "#fff" }}>
+          <p className="text-[24px] font-bold leading-tight">{block.value}</p>
+          {block.caption && <p className="text-[11px] mt-1 opacity-80">{block.caption}</p>}
+        </div>
+        <div className="flex-1 min-w-[160px] self-center"><Inner blocks={block.blocks} /></div>
+      </div>
+    );
+  }
+
+  if (block.type === "takeaway") {
+    return (
+      <p className="rounded-[10px] px-3.5 py-2.5 my-3 font-semibold text-[13px]" style={{ backgroundColor: "#1E3A8A", color: "#fff" }}>
+        <Runs runs={block.runs} />
+      </p>
+    );
+  }
+
+  if (block.type === "label") {
+    return (
+      <p className="text-[10.5px] font-semibold uppercase tracking-[0.08em] mt-4" style={{ color: "var(--text-3)" }}>
+        {block.text}
+      </p>
+    );
+  }
+
   if (block.type === "h") {
     return (
+      <>
+      {block.label && (
+        <p className="text-[10.5px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--text-3)", marginTop: previous ? "16px" : 0 }}>
+          {block.label}
+        </p>
+      )}
       <p
         className="font-semibold"
         style={{
@@ -78,12 +142,13 @@ function Block({ block, previous }) {
           fontSize: HEADING_SIZE[block.level] ?? "13px",
           /* No gap above the first thing in the document. A heading that
              opens with empty space above it reads as a missing title. */
-          marginTop: previous ? (block.level <= 2 ? "18px" : "14px") : 0,
+          marginTop: block.label ? "2px" : previous ? (block.level <= 2 ? "18px" : "14px") : 0,
           marginBottom: "6px",
         }}
       >
         <Runs runs={block.runs} />
       </p>
+      </>
     );
   }
 
@@ -153,6 +218,7 @@ function Block({ block, previous }) {
     );
   }
 
+  if (!block.runs) return null;
   return (
     <p style={{ color: "var(--text-2)", marginBottom: "8px" }}>
       <Runs runs={block.runs} />

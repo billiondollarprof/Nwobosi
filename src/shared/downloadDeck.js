@@ -27,15 +27,12 @@
 
    ========================================================================== */
 
-import { slugForFile, saveBlob } from "./download.js";
-import { readDocument } from "./docs/documentModel.js";
-import { deckBlob } from "./docs/deck.js";
+import { saveBlob } from "./download.js";
 
 /* The layout itself lives in src/shared/docs/deck.js since 2026-09-23, when
    a table was found drawn on top of the bullets above it. See that file. */
-export async function downloadPptx(title, markdown) {
-  const doc = readDocument(markdown, title);
-  if (!doc.blocks.length) throw new Error("nothing to put on a slide");
-  const blob = await deckBlob(doc);
-  saveBlob(blob, `${slugForFile(title)}.pptx`);
+export async function downloadPptx(title, markdown, company) {
+  const { buildFile } = await import("./download.js");
+  const { blob, filename } = await buildFile("pptx", title, markdown, company);
+  saveBlob(blob, filename);
 }

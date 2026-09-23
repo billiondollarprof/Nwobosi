@@ -21,7 +21,7 @@
      3. Styles, numbering, footer, and writing the file
    ========================================================================== */
 
-import { THEME } from "./documentTheme.js";
+import { THEME, themeFor } from "./documentTheme.js";
 import { plainText } from "./documentModel.js";
 
 /* Half points. Word measures font size in halves. */
@@ -44,9 +44,155 @@ const NUMERIC = /^[₦$€£¥]?\s?-?[\d,]+(\.\d+)?\s?%?$/;
    SECTION 2: Blocks
    -------------------------------------------------------------------------- */
 
-function blocksToWord(docx, doc) {
+/* The width between the margins, in twips (a twentieth of a point), which
+   is what Word measures in. A4 is 11906 wide and each side margin is 1250.
+   Design tables are given exact widths from this, not percentages: some
+   programs that open .docx files ignore percentage widths and squeeze the
+   cards to the width of their words. */
+const CONTENT_TWIPS = 11906 - 1250 * 2;
+
+/* A table with no lines: the shading does the work. Used for every design
+   block below, because a Word table is the one thing that keeps boxes side
+   by side and the same height on every copy of Word. */
+function noBorders(docx) {
+  const none = { style: docx.BorderStyle.NONE, size: 0, color: "FFFFFF" };
+  return { top: none, bottom: none, left: none, right: none, insideHorizontal: none, insideVertical: none };
+}
+
+/* The blocks inside a card or beside a figure, as plain paragraphs. A list
+   becomes lines with a bullet character, which travels safely inside a
+   table cell. */
+function innerParagraphs(docx, blocks, runOptions = {}) {
+  const { Paragraph, TextRun } = docx;
+  const out = [];
+  for (const block of blocks) {
+    if (block.type === "list") {
+      block.items.forEach((item, i) =>
+        out.push(new Paragraph({
+          children: [new TextRun({ text: block.ordered ? `${block.start + i}.  ` : "•  ", ...runOptions }), ...runsOf(docx, item.runs, runOptions)],
+          spacing: { after: 60 },
+        })),
+      );
+    } else if (block.runs) {
+      out.push(new Paragraph({ children: runsOf(docx, block.runs, runOptions), spacing: { after: 100 } }));
+    }
+  }
+  return out.length ? out : [new Paragraph({ children: [] })];
+}
+
+/* Cards (and numbered steps) as one row of shaded cells with thin empty
+   cells between them. Four or more go two to a row. */
+function cardsTable(docx, block, t, numbered) {
+  const { Paragraph, TextRun, Table, TableRow, TableCell, WidthType, ShadingType } = docx;
+  const per = block.items.length > 3 ? 2 : block.items.length;
+  const GAP = 180;
+  const cardW = Math.floor((CONTENT_TWIPS - GAP * (per - 1)) / per);
+  const columnWidths = [];
+  for (let c = 0; c < per; c += 1) {
+    if (c) columnWidths.push(GAP);
+    columnWidths.push(cardW);
+  }
+  const rows = [];
+  for (let i = 0; i < block.items.length; i += per) {
+    const cells = [];
+    block.items.slice(i, i + per).forEach((item, c) => {
+      if (c) cells.push(new TableCell({ children: [new Paragraph({ children: [] })], width: { size: GAP, type: WidthType.DXA } }));
+      cells.push(new TableCell({
+        width: { size: cardW, type: WidthType.DXA },
+        shading: { type: ShadingType.CLEAR, fill: t.accentTint, color: "auto" },
+        margins: { top: 160, bottom: 160, left: 180, right: 180 },
+        children: [
+          new Paragraph({
+            children: [
+              ...(numbered ? [new TextRun({ text: `${i + c + 1}  `, bold: true, color: t.accent })] : []),
+              ...runsOf(docx, item.title, { bold: true, color: t.accent, size: half(12.5) }),
+            ],
+            spacing: { after: 40 },
+          }),
+          ...(item.kicker ? [new Paragraph({ children: [new TextRun({ text: item.kicker, bold: true, size: half(9), color: t.kicker })], spacing: { after: 100 } })] : []),
+          ...innerParagraphs(docx, item.blocks, { size: half(10) }),
+        ],
+      }));
+    });
+    rows.push(new TableRow({ cantSplit: true, children: cells }));
+    if (i + per < block.items.length) {
+      rows.push(new TableRow({ children: [new TableCell({ columnSpan: cells.length, children: [new Paragraph({ children: [], spacing: { after: 0 } })] })] }));
+    }
+  }
+  return new Table({ width: { size: CONTENT_TWIPS, type: WidthType.DXA }, columnWidths, borders: noBorders(docx), rows });
+}
+
+/* A short figure ("20%") can be huge; a longer one ("30 days",
+   "₦1.3m") steps down so it stays on one line in the panel. */
+function figureSize(value) {
+  const n = String(value ?? "").length;
+  return n <= 4 ? 32 : n <= 7 ? 26 : 20;
+}
+
+function statTable(docx, block, t) {
+  const { Paragraph, TextRun, Table, TableRow, TableCell, WidthType, ShadingType, AlignmentType, VerticalAlign } = docx;
+  const panel = Math.round(CONTENT_TWIPS * 0.38);
+  return new Table({
+    width: { size: CONTENT_TWIPS, type: WidthType.DXA },
+    columnWidths: [panel, CONTENT_TWIPS - panel],
+    borders: noBorders(docx),
+    rows: [new TableRow({
+      cantSplit: true,
+      children: [
+        new TableCell({
+          width: { size: panel, type: WidthType.DXA },
+          shading: { type: ShadingType.CLEAR, fill: t.accent, color: "auto" },
+          margins: { top: 240, bottom: 240, left: 200, right: 200 },
+          verticalAlign: VerticalAlign.CENTER,
+          children: [
+            new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: block.value, bold: true, size: half(figureSize(block.value)), color: "FFFFFF" })] }),
+            ...(block.caption ? [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: block.caption, size: half(9.5), color: t.accentTint })] })] : []),
+          ],
+        }),
+        new TableCell({
+          width: { size: CONTENT_TWIPS - panel, type: WidthType.DXA },
+          margins: { top: 120, bottom: 120, left: 280, right: 100 },
+          verticalAlign: VerticalAlign.CENTER,
+          children: innerParagraphs(docx, block.blocks),
+        }),
+      ],
+    })],
+  });
+}
+
+function takeawayTable(docx, block, t) {
+  const { Table, TableRow, TableCell, WidthType, ShadingType, Paragraph } = docx;
+  return new Table({
+    width: { size: CONTENT_TWIPS, type: WidthType.DXA },
+    columnWidths: [CONTENT_TWIPS],
+    borders: noBorders(docx),
+    rows: [new TableRow({
+      cantSplit: true,
+      children: [new TableCell({
+        width: { size: CONTENT_TWIPS, type: WidthType.DXA },
+        shading: { type: ShadingType.CLEAR, fill: t.accent, color: "auto" },
+        margins: { top: 160, bottom: 160, left: 220, right: 220 },
+        children: [new Paragraph({ children: runsOf(docx, block.runs, { bold: true, color: "FFFFFF" }) })],
+      })],
+    })],
+  });
+}
+
+function labelParagraph(docx, text, t) {
+  const { Paragraph, TextRun } = docx;
+  return new Paragraph({
+    keepNext: true,
+    spacing: { before: 280, after: 0 },
+    children: [new TextRun({ text: String(text).toUpperCase(), bold: true, size: half(8.5), color: t.accent, characterSpacing: 30 })],
+  });
+}
+
+function blocksToWord(docx, doc, t) {
   const { Paragraph, HeadingLevel, Table, TableRow, TableCell, WidthType, BorderStyle, ShadingType, AlignmentType } = docx;
   const out = [];
+  /* After a design block, an empty paragraph: two tables touching are
+     merged into one by Word. */
+  const spacer = () => out.push(new Paragraph({ children: [], spacing: { after: 120 } }));
 
   out.push(new Paragraph({ style: "DocTitle", children: runsOf(docx, [{ text: doc.title }]) }));
   if (doc.subtitle) out.push(new Paragraph({ style: "DocSubtitle", children: runsOf(docx, [{ text: doc.subtitle }]) }));
@@ -62,7 +208,33 @@ function blocksToWord(docx, doc) {
   for (const block of doc.blocks) {
     if (block.type === "h") {
       const level = Math.max(1, Math.min(4, block.level - shift));
-      out.push(new Paragraph({ heading: HEADINGS[level - 1], children: runsOf(docx, block.runs) }));
+      if (block.label) out.push(labelParagraph(docx, block.label, t));
+      out.push(new Paragraph({
+        heading: HEADINGS[level - 1],
+        children: runsOf(docx, block.runs),
+        /* The label above already made the gap. */
+        ...(block.label ? { spacing: { before: 40 } } : {}),
+      }));
+      continue;
+    }
+
+    if (block.type === "cards" || block.type === "steps") {
+      out.push(cardsTable(docx, block, t, block.type === "steps"));
+      spacer();
+      continue;
+    }
+    if (block.type === "stat") {
+      out.push(statTable(docx, block, t));
+      spacer();
+      continue;
+    }
+    if (block.type === "takeaway") {
+      out.push(takeawayTable(docx, block, t));
+      spacer();
+      continue;
+    }
+    if (block.type === "label") {
+      out.push(labelParagraph(docx, block.text, t));
       continue;
     }
 
@@ -88,8 +260,8 @@ function blocksToWord(docx, doc) {
         new Paragraph({
           children: runsOf(docx, block.runs, { italics: true }),
           indent: { left: 360 },
-          border: { left: { style: BorderStyle.SINGLE, size: 18, color: THEME.accent, space: 10 } },
-          shading: { type: ShadingType.CLEAR, fill: THEME.accentTint, color: "auto" },
+          border: { left: { style: BorderStyle.SINGLE, size: 18, color: t.accent, space: 10 } },
+          shading: { type: ShadingType.CLEAR, fill: t.accentTint, color: "auto" },
           spacing: { before: 120, after: 200 },
         }),
       );
@@ -111,7 +283,7 @@ function blocksToWord(docx, doc) {
             }),
           ],
           shading: head
-            ? { type: ShadingType.CLEAR, fill: THEME.accent, color: "auto" }
+            ? { type: ShadingType.CLEAR, fill: t.accent, color: "auto" }
             : zebra
             ? { type: ShadingType.CLEAR, fill: THEME.zebra, color: "auto" }
             : undefined,
@@ -143,7 +315,7 @@ function blocksToWord(docx, doc) {
    SECTION 3: Styles, numbering, footer, and the file
    -------------------------------------------------------------------------- */
 
-export async function wordBlob(doc) {
+export async function wordBlob(doc, t = themeFor()) {
   const docx = await import("docx");
   const { Document, Packer, Paragraph, TextRun, Footer, AlignmentType, PageNumber, LevelFormat } = docx;
 
@@ -169,7 +341,7 @@ export async function wordBlob(doc) {
         { id: "DocSubtitle", name: "Document subtitle", basedOn: "Normal", next: "Normal",
           run: { size: half(THEME.size.subtitle + 1), color: THEME.muted, font: THEME.officeFont },
           paragraph: { spacing: { after: 320 } } },
-        heading("Heading1", "Heading 1", THEME.size.h1 + 1, THEME.accent, 360, 120),
+        heading("Heading1", "Heading 1", THEME.size.h1 + 1, t.accent, 360, 120),
         heading("Heading2", "Heading 2", THEME.size.h2 + 0.5, THEME.ink, 280, 100),
         heading("Heading3", "Heading 3", THEME.size.h3 + 0.5, THEME.ink, 220, 80),
         heading("Heading4", "Heading 4", THEME.size.body + 1, THEME.ink, 180, 60),
@@ -178,9 +350,9 @@ export async function wordBlob(doc) {
     numbering: {
       config: [
         { reference: "points", levels: [{ level: 0, format: LevelFormat.BULLET, text: "•", alignment: AlignmentType.LEFT,
-          style: { paragraph: { indent: { left: 540, hanging: 280 } }, run: { color: THEME.accent } } }] },
+          style: { paragraph: { indent: { left: 540, hanging: 280 } }, run: { color: t.accent } } }] },
         { reference: "steps", levels: [{ level: 0, format: LevelFormat.DECIMAL, text: "%1.", alignment: AlignmentType.LEFT,
-          style: { paragraph: { indent: { left: 540, hanging: 320 } }, run: { color: THEME.accent, bold: true } } }] },
+          style: { paragraph: { indent: { left: 540, hanging: 320 } }, run: { color: t.accent, bold: true } } }] },
       ],
     },
     sections: [
@@ -200,7 +372,7 @@ export async function wordBlob(doc) {
             ],
           }),
         },
-        children: blocksToWord(docx, doc),
+        children: blocksToWord(docx, doc, t),
       },
     ],
   });

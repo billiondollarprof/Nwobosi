@@ -19,7 +19,7 @@
    are bold lines, not document headings, because this is a conversation.
    ========================================================================== */
 
-import { readBlocks } from "./docs/documentModel.js";
+import { readBlocks, blockText } from "./docs/documentModel.js";
 
 function Runs({ runs }) {
   return (
@@ -103,6 +103,15 @@ export default function ChatText({ text, className = "", style }) {
           );
         }
 
+        /* A design block (cards, a figure, a takeaway) in a chat reply is
+           shown as its plain words, so nothing is ever hidden. */
+        if (!block.runs) {
+          return (
+            <p key={i} className="whitespace-pre-line" style={{ marginTop: gap }}>
+              {blockText(block)}
+            </p>
+          );
+        }
         return (
           <p key={i} style={{ marginTop: gap }}>
             <Runs runs={block.runs} />

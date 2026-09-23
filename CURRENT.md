@@ -25,8 +25,20 @@ built and checked, not when it is planned.
 
 ### Open
 
-0000000. **2026-09-23, OPEN: top tier output, company voice, reuse of good
-         work.** With a screenshot of the read back showing raw
+0000000. **2026-09-23: top tier output BUILT (needs assistant v27
+         redeploy); company voice and reuse of good work OPEN.**
+
+         Built for (a): documentModel reads ::: design blocks (label,
+         cards, steps, stat, takeaway); slides draw a banded header,
+         cards, numbered steps, a figure panel, a takeaway strip and a
+         cover with the logo; PDF and Word draw the same; spreadsheet gets
+         SUM formulas on Total rows, print setup, filter; every file uses
+         companies.brand_color (darkened if too pale for white text) and
+         the company name; the preview shows the same. The brief now
+         writes a design plan and the writing step is taught the blocks.
+         Tests: document-model (32), document-writers (30).
+
+         (c) waits on his choice: shape only, or the whole document fenced. With a screenshot of the read back showing raw
          "**What I'm making:**" and "- " in the chat, and sample.pptx.
 
          a. "the decision/what I'm making isn't written as a typical prompt

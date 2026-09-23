@@ -32,7 +32,7 @@
    ========================================================================== */
 
 import { toTables } from "./structure.js";
-import { slugForFile, saveBlob } from "./download.js";
+import { saveBlob } from "./download.js";
 import { THEME } from "./docs/documentTheme.js";
 
 /* --------------------------------------------------------------------------
@@ -106,7 +106,7 @@ function tabName(name, index) {
   return cleaned || `Table ${index + 1}`;
 }
 
-export async function sheetBlob(title, markdown) {
+export async function sheetBlob(title, markdown, theme = THEME) {
   const tables = toTables(markdown);
   if (!tables.length) {
     /* Named so the caller can tell this apart from a real failure and say
@@ -156,19 +156,34 @@ export async function sheetBlob(title, markdown) {
     header.height = 22;
     header.eachCell((cell) => {
       cell.font = { ...font, bold: true, color: { argb: "FFFFFFFF" } };
-      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${THEME.accent}` } };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${theme.accent}` } };
       cell.alignment = { vertical: "middle" };
     });
 
+    const firstDataRow = headerAt + 1;
     table.rows.forEach((row, r) => {
       const read = row.map(readCell);
       const added = sheet.addRow(read.map((c) => c.value));
+      /* A TOTAL ROW IS A FORMULA, NOT A TYPED NUMBER, 2026-09-23. A row
+         whose first cell says "Total" gets a real SUM over the rows above
+         it in every number column. So when somebody changes a figure the
+         total changes with it, which is what a spreadsheet is for. The
+         value the model wrote is kept as the formula's cached result, so
+         the file shows the right number even before it is recalculated. */
+      const isTotal = /^total/i.test(String(row[0] ?? "").trim()) && r > 0;
       added.eachCell({ includeEmpty: true }, (cell, col) => {
-        cell.font = font;
-        if (r % 2 === 1) cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${THEME.zebra}` } };
-        cell.border = { bottom: { style: "thin", color: { argb: `FF${THEME.rule}` } } };
+        cell.font = isTotal ? { ...font, bold: true } : font;
+        const fill = isTotal ? theme.accentTint : r % 2 === 1 ? THEME.zebra : null;
+        if (fill) cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${fill}` } };
+        cell.border = isTotal
+          ? { top: { style: "thin", color: { argb: `FF${theme.accent}` } }, bottom: { style: "double", color: { argb: `FF${theme.accent}` } } }
+          : { bottom: { style: "thin", color: { argb: `FF${THEME.rule}` } } };
         const c = read[col - 1];
         if (c?.format) cell.numFmt = c.format;
+        if (isTotal && col > 1 && typeof c?.value === "number") {
+          const letter = sheet.getColumn(col).letter;
+          cell.value = { formula: `SUM(${letter}${firstDataRow}:${letter}${added.number - 1})`, result: c.value };
+        }
       });
     });
 
@@ -182,12 +197,29 @@ export async function sheetBlob(title, markdown) {
        typed once a number format adds separators. A sheet that opens
        showing ##### is a sheet somebody has to fix before they can read it. */
     table.header.forEach((head, i) => {
-      const longest = [head ?? "", ...table.rows.map((r) => r[i] ?? "")]
-        .reduce((most, text) => Math.max(most, String(text).length + (String(text).includes(".") ? 0 : 3)), 0);
+      /* The header gets room for the filter arrow Excel draws beside it. */
+      const longest = Math.max(
+        String(head ?? "").length + 4,
+        ...table.rows.map((r) => String(r[i] ?? "")).map((text) => text.length + (text.includes(".") ? 0 : 3)),
+      );
       sheet.getColumn(i + 1).width = Math.min(Math.max(longest + 4, 12), 60);
     });
 
     sheet.autoFilter = { from: { row: headerAt, column: 1 }, to: { row: headerAt, column: table.header.length } };
+
+    /* PRINTS PROPERLY WITHOUT ANYBODY SETTING IT UP. Fits the width of one
+       page, turns sideways when the table is wide, and repeats the header
+       row at the top of every printed page. */
+    sheet.pageSetup = {
+      orientation: table.header.length > 5 ? "landscape" : "portrait",
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 0,
+      horizontalCentered: true,
+      margins: { left: 0.5, right: 0.5, top: 0.6, bottom: 0.6, header: 0.3, footer: 0.3 },
+      printTitlesRow: `${headerAt}:${headerAt}`,
+    };
+    sheet.headerFooter = { oddFooter: `&L${title}&RPage &P of &N` };
     sheet.views = [{ state: "frozen", ySplit: headerAt, showGridLines: false }];
   });
 
@@ -199,6 +231,8 @@ export async function sheetBlob(title, markdown) {
 
 /* The blob is built by sheetBlob so Google Drive can be sent the identical
    file. This only saves it. */
-export async function downloadXlsx(title, markdown) {
-  saveBlob(await sheetBlob(title, markdown), `${slugForFile(title)}.xlsx`);
+export async function downloadXlsx(title, markdown, company) {
+  const { buildFile } = await import("./download.js");
+  const { blob, filename } = await buildFile("xlsx", title, markdown, company);
+  saveBlob(blob, filename);
 }
