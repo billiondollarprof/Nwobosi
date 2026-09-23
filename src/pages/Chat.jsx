@@ -110,6 +110,7 @@ import {
    just the messages. The shape lives in that file, never inline here. */
 import { buildResumeLog, readResumeLog, resumeLine } from "../shared/resumeLog.js";
 import { shouldReopen } from "../shared/resumeWindow.js";
+import { titleOf } from "../shared/documentTitle.js";
 
 /* Gate two, in its own file. It grew a list and local state of its own the
    day it learned to keep some findings and not others, and a card with
@@ -1304,7 +1305,9 @@ export default function Chat() {
     if (finished) {
       const wanted = formatAsked(text);
       if (wanted) {
-        handleDownload(wanted, finished.title || "Your document", finished.content);
+        /* Named after the document's own heading, not the request. See
+         src/shared/documentTitle.js. */
+      handleDownload(wanted, titleOf(finished.content, finished.title), finished.content);
         updateMessages((prev) => [
           ...prev,
           {
@@ -2655,7 +2658,7 @@ export default function Chat() {
                 buildFormat={buildFormat}
                 onShowText={() => revealText(m.id)}
                 onFile={handleFile}
-                onDownload={(format) => handleDownload(format, m.title || "Your document", m.content)}
+                onDownload={(format) => handleDownload(format, titleOf(m.content, m.title), m.content)}
               />
             ))}
             {typing && <Thinking stage={turnStage} stalled={stalled} />}
@@ -3376,7 +3379,11 @@ export function ChatBubble({ message, brief, buildFormat = DEFAULT_FORMAT, build
   /* The real document, on screen, as it is written. No placeholder
      preview: what is in this box is exactly what downloads. */
   if (message.type === "result") {
-    const title = message.title || "Your document";
+    /* The document's own heading, the same name the file is saved under.
+       It used to show the request ("Make me a one page pricing FAQ") because
+       the card is made before the document arrives. The heading is there by
+       the time anybody reads this, so it is used. See documentTitle.js. */
+    const title = titleOf(message.content, message.title);
     /* Read from the document itself rather than from what the person asked
        for. Somebody can ask for a report and get one with a table in it,
        and somebody can ask for "the numbers" and get prose. What is

@@ -63,6 +63,11 @@ for (const walk of [
      or a new one opens. The rule has its own unit test; this proves the page
      actually asks it and obeys the answer. */
   "scripts/__harness/resume.cjs",
+  /* Added 2026-09-23. flow.cjs stops at "Ready as a Word document" and
+     checks the words on the card. This one presses every download button
+     and opens the file that lands, because on production the flow had never
+     once reached a downloaded file. */
+  "scripts/__harness/download.cjs",
 ]) {
   const run = spawn("node", [walk], { stdio: "inherit" });
   const code = await new Promise((resolve) => run.on("close", resolve));
