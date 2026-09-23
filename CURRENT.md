@@ -25,6 +25,31 @@ built and checked, not when it is planned.
 
 ### Open
 
+0000. **2026-09-23, OPEN: the agent must be able to pick up where it left
+      off, and be as smart as a normal chat inside the guardrails.**
+
+      Screenshot: after a read back ("I'm thinking PDF... Say if you'd
+      rather have Word"), he typed "Continue". An empty reply came back,
+      then "Nothing came back that time."
+
+      Anthony: "asking it to continue couldn't do anything... So the agent
+      can't read its last message and pick up from where it left. I said I
+      wanted a system that is just as intelligent as normal chat, but the
+      only thing is that we now do it guardrails and automated the prompt...
+      I open an old chat. It can still read the old chat and still know
+      where to begin from... this is what we have to deploy for other
+      companies... properly scoped, properly documented, every line by
+      line... Besides, I want to get to the point where I just am able to
+      do the video."
+
+      The guardrails he named, and ONLY these: ask before researching; ask
+      before putting found material in the work; interview, read back, take
+      corrections (research again if needed, read back again), write the
+      prompt (the plan: content, design, shape, reasoning) so it sticks to
+      what was agreed, then ask "go ahead and build". File type can be an
+      interview question; the auto pick with a switch is good, keep it.
+      Everything else should be as flexible as a normal chat.
+
 000. **BUILT 2026-09-23, NEEDS THE SAME ASSISTANT REDEPLOY: choose the file
      type on the build card.**
 
