@@ -60,10 +60,14 @@ built and checked, not when it is planned.
       `resume-cards.test.mjs` (24) and `scripts/__harness/continue.cjs`
       (29), which fails 20 checks on the old code.
 
-      STILL OPEN from the same message: "properly scoped, properly
-      documented, every line by line... ready for us to take it and
-      redeploy for another company." A redeploy guide for a new company is
-      not written yet.
+      From the same message: "properly scoped, properly documented, every
+      line by line... ready for us to take it and redeploy for another
+      company." WRITTEN 2026-09-23 as `DEPLOY-A-COMPANY.md`. STILL BLOCKED
+      on one thing it names first: 13 of the 25 migrations applied to the
+      live database (including core_schema and row_level_security) are not
+      in the repo, so a new database cannot be built from it. Fix: read
+      them out of supabase_migrations.schema_migrations (a SELECT, needs
+      his approval) and save them as files.
 
       Screenshot: after a read back ("I'm thinking PDF... Say if you'd
       rather have Word"), he typed "Continue". An empty reply came back,
