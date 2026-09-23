@@ -81,6 +81,9 @@ for (const walk of [
   /* Added 2026-09-23. A picture handed over in the chat reaches the model
      with its name, and ends up inside the Slides, PDF and Word files. */
   "scripts/__harness/images.cjs",
+  /* Added 2026-09-23. An admin gets a short summary of staff work, never
+     the work itself, and nothing is lost before the SQL has run. */
+  "scripts/__harness/work-summary.cjs",
 ]) {
   const run = spawn("node", [walk], { stdio: "inherit" });
   const code = await new Promise((resolve) => run.on("close", resolve));

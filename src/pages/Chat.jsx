@@ -742,7 +742,7 @@ export default function Chat() {
             skill: w.skill,
             savedToStorage: false,
             when: new Date(w.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
-            content: w.summary,
+            content: w.content ?? w.summary,
           }))
         );
       }

@@ -195,6 +195,9 @@ This is the plan for them. **Nothing below is built yet.**
 
 ## D. Admin sees a summary, not the work (privacy, do first)
 
+**BUILT 2026-09-23 in the app. The SQL is written and waits for Anthony:
+`supabase/migrations/20260923120000_work_content_own_only.sql`.**
+
 Found while planning: `work_history.summary` holds the WHOLE document
 (saveWork writes `summary: content`). So today an admin reads everyone's
 full work, and `conversations_read` lets an admin read every chat.

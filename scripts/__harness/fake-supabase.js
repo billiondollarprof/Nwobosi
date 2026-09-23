@@ -65,22 +65,54 @@ const ROWS = {
 
    window.__BLOCK_DELETE = true makes a delete match nothing and report no
    error, which is exactly what a row level security policy does. */
+/* window.__NO_WORK_CONTENT = true answers the work_content table the way
+   PostgREST does before the table exists, so the walk can prove the app
+   falls back to the old way and loses nothing. */
+function missing(table) {
+  return table === "work_content" && window.__NO_WORK_CONTENT
+    ? { data: null, error: { code: "PGRST205", message: "Could not find the table 'public.work_content' in the schema cache" } }
+    : null;
+}
+
 function builder(table) {
   const filters = [];
+  const matching = () => (ROWS[table] ?? []).filter((r) => filters.every(([c, v]) => (Array.isArray(v) ? v.includes(r[c]) : r[c] === v)));
   const api = {
     select: () => api,
     eq: (col, val) => { filters.push([col, val]); return api; },
+    /* Only a query ending in .in() can be awaited directly. Giving the
+       whole builder a then() would change what every other walk sees. */
+    in: (col, vals) => {
+      filters.push([col, vals]);
+      return { then: (resolve) => Promise.resolve(missing(table) ?? { data: matching(), error: null }).then(resolve) };
+    },
     order: () => api,
     limit: () => Promise.resolve({ data: ROWS[table] ?? [], error: null }),
-    insert: (row) => ({
-      select: () => ({
+    insert: (row) => {
+      const put = () => {
+        const gone = missing(table);
+        if (gone) return gone;
+        const made = { id: `new-${Date.now()}`, created_at: new Date().toISOString(), ...row };
+        (ROWS[table] = ROWS[table] ?? []).unshift(made);
+        return { data: made, error: null };
+      };
+      return {
+        select: () => ({ single: () => Promise.resolve(put()) }),
+        then: (resolve) => Promise.resolve(put()).then(resolve),
+      };
+    },
+    update: (change) => {
+      const upd = {
+        eq: (col, val) => { filters.push([col, val]); return upd; },
+        select: () => upd,
         single: () => {
-          const made = { id: `new-${Date.now()}`, created_at: new Date().toISOString(), ...row };
-          (ROWS[table] = ROWS[table] ?? []).unshift(made);
-          return Promise.resolve({ data: made, error: null });
+          const hit = matching();
+          hit.forEach((r) => Object.assign(r, change));
+          return Promise.resolve(hit.length ? { data: hit[0], error: null } : { data: null, error: { code: "PGRST116", message: "no rows" } });
         },
-      }),
-    }),
+      };
+      return upd;
+    },
     delete: () => {
       const run = () => {
         if (window.__BLOCK_DELETE) return { data: [], error: null };

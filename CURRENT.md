@@ -74,6 +74,13 @@ built and checked, not when it is planned.
              new style."
           4. DECIDED, REPLACES "admin sees everything": "admin can see, just
              the short summery not the entire work."
+             STATUS 2026-09-23: BUILT in the app, WAITING ON ONE SQL RUN
+             (his yes). `20260923120000_work_content_own_only.sql` moves the
+             whole document to a new table only its maker can read, keeps a
+             280 character summary for the admin, and makes each chat its
+             owner's alone. The admin's Recent work now shows who made it
+             and the short summary. Until the SQL runs the app saves the
+             old way, so nothing is lost. Walk: work-summary.cjs (13).
           5. "remember catching [caching] is the one way to save cost while
              delivering the best."
           6. Legibility: the grey sub text on the brand colour ("to hear

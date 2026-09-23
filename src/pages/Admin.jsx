@@ -2670,12 +2670,24 @@ export function AccessSection({ me }) {
                 <p className="text-[14px] font-medium truncate" style={{ color: "var(--text-1)" }}>
                   {row.title}
                 </p>
-                <p className="text-[12.5px] truncate" style={{ color: "var(--text-3)" }}>
-                  {new Date(row.created_at).toLocaleString()}
+                <p className="text-[12.5px]" style={{ color: "var(--text-3)" }}>
+                  {[row.staff?.name, new Date(row.created_at).toLocaleString(undefined, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })].filter(Boolean).join(" · ")}
                 </p>
               </div>
 
               <StatusPill tone="neutral">{SKILL_LABELS[row.skill] ?? "Document"}</StatusPill>
+
+              {/* The short summary only. Anthony, 2026-09-23: "admin can
+                  see, just the short summery not the entire work." The work
+                  itself sits in work_content, which only the person who
+                  made it can read. Its own full line, lined up under the
+                  title (icon 36px + gap 12px), so a phone does not squeeze
+                  it into the space beside the label. */}
+              {row.summary && (
+                <p className="basis-full pl-12 -mt-1.5 text-[13px] leading-snug line-clamp-3" style={{ color: "var(--text-2)" }}>
+                  {row.summary}
+                </p>
+              )}
             </div>
           ))}
         </div>

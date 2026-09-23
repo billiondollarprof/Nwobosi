@@ -15,6 +15,7 @@
 import { supabase } from "./supabase.js";
 import { BRAND_ASSETS_BUCKET, FUNCTIONS } from "./config.js";
 import { clearAdminClock } from "./adminClock.js";
+import { summaryOf } from "./workSummary.js";
 
 /* --------------------------------------------------------------------------
    SECTION: Load the signed in person and their company
@@ -624,16 +625,40 @@ export async function removeSource(id) {
    company's thinking without anybody asking for that.
    -------------------------------------------------------------------------- */
 
+/* --------------------------------------------------------------------------
+   THE WHOLE WORK AND ITS SHORT SUMMARY LIVE IN TWO TABLES, 2026-09-23
+
+   Anthony: "admin can see, just the short summery not the entire work."
+
+   work_history holds the title, the kind of work and a short summary
+   (summaryOf, at most 280 characters). An admin can read it.
+   work_content holds the whole document. Row level security lets only the
+   person who made it read it, so an admin never can.
+
+   BEFORE THE SQL HAS RUN
+   work_content is made by 20260923120000_work_content_own_only.sql, which
+   waits for Anthony's yes. Until it exists, both functions below fall back
+   to the old way (the whole document in summary), so nothing a person has
+   made is ever lost because a table is missing.
+   -------------------------------------------------------------------------- */
+
+function noWorkContentTable(error) {
+  if (!error) return false;
+  return ["42P01", "PGRST205", "PGRST200"].includes(error.code)
+    || /work_content/.test(String(error.message ?? ""));
+}
+
 /* `staffId` narrows it to one person's own documents, which is what the
    chat's Library shows. Anthony, 2026-09-23: "no two staffs gets reminded
    what another staff is doing in the same company." Before this the chat
    asked for the whole company's documents and relied on row level security
    alone to narrow it. The admin screen still asks for the whole company,
-   on purpose, by leaving staffId out. */
+   on purpose, by leaving staffId out, and gets titles, short summaries and
+   who made each one, never the work itself. */
 export async function listWork(companyId, staffId) {
   let query = supabase
     .from("work_history")
-    .select("id, title, skill, summary, created_at")
+    .select(staffId ? "id, title, skill, summary, created_at" : "id, title, skill, summary, created_at, staff:staff_id(name)")
     .eq("company_id", companyId);
   if (staffId) query = query.eq("staff_id", staffId);
 
@@ -645,7 +670,20 @@ export async function listWork(companyId, staffId) {
     console.error("could not list work", error);
     return [];
   }
-  return data ?? [];
+  const rows = data ?? [];
+  if (!staffId || rows.length === 0) return rows;
+
+  /* The person's own Library opens the whole document, so read it from
+     work_content. A row with no content there is an older one saved the
+     old way, whose summary still holds the whole document. */
+  const { data: bodies, error: bodyError } = await supabase
+    .from("work_content")
+    .select("work_id, content")
+    .in("work_id", rows.map((row) => row.id));
+
+  if (bodyError && !noWorkContentTable(bodyError)) console.error("could not read work content", bodyError);
+  const byId = new Map((bodies ?? []).map((body) => [body.work_id, body.content]));
+  return rows.map((row) => ({ ...row, content: byId.get(row.id) ?? row.summary }));
 }
 
 export async function saveWork({ companyId, staffId, title, skill, content, sourcesUsed = [], credits = 0 }) {
@@ -656,7 +694,7 @@ export async function saveWork({ companyId, staffId, title, skill, content, sour
       staff_id: staffId,
       title,
       skill,
-      summary: content,
+      summary: summaryOf(content),
       sources_used: sourcesUsed,
       credits,
     })
@@ -667,7 +705,25 @@ export async function saveWork({ companyId, staffId, title, skill, content, sour
     console.error("could not save work", error);
     return null;
   }
-  return data;
+
+  /* The whole document, readable by this person only. If the table is not
+     there yet, the old way is used: the whole document goes back into
+     summary, so it is still in their Library tomorrow. */
+  const { error: bodyError } = await supabase
+    .from("work_content")
+    .insert({ work_id: data.id, company_id: companyId, staff_id: staffId, content });
+
+  if (bodyError) {
+    if (!noWorkContentTable(bodyError)) console.error("could not save work content", bodyError);
+    const { error: fallbackError } = await supabase
+      .from("work_history")
+      .update({ summary: content })
+      .eq("id", data.id)
+      .select("id")
+      .single();
+    if (fallbackError) console.error("could not keep the whole work", fallbackError);
+  }
+  return { ...data, content };
 }
 
 /* The people on this company. Email is deliberately absent: it lives in

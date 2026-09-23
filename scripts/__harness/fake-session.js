@@ -13,7 +13,10 @@ export async function loadMe() {
   };
 }
 
-export async function listWork() { return []; }
+/* window.__ADMIN_WORK, when a test sets it, is what the admin's "Recent
+   work" list gets back: titles, short summaries and who made each one.
+   Unset, it answers empty as before, so the other walks are untouched. */
+export async function listWork() { return window.__ADMIN_WORK ?? []; }
 export async function saveWork() { return null; }
 /* --------------------------------------------------------------------------
    ONE OLD CONVERSATION, WITH ITS AGE SET BY THE TEST
