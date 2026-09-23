@@ -25,6 +25,48 @@ built and checked, not when it is planned.
 
 ### Open
 
+000000000000. **2026-09-23 (DeepSeek session): THE THREE NEW FUNCTIONS ARE
+              LIVE. Two things are left, and both are Anthony's to do.**
+              Deployed straight from the repo, verify JWT off, matching
+              every other function here: `convert-document` v1,
+              `drive-connect` v1, `drive-upload` v1. The deployed source of
+              each was pulled back from Supabase and checked against the
+              repo. They match.
+
+              THE RECORD WAS WRONG AND IS NOW CORRECTED. `PENDING-DEPLOYS.md`
+              said live `assistant` was v26 with v27 waiting. Live is v31 and
+              the v27 prompt lines are already inside it (`THE DESIGN PLAN`,
+              `DESIGN IT, DO NOT JUST TYPE IT`, `THE SEARCH GATE`, the
+              PICTURES lines). `oauth-callback` is v14 and already carries
+              the `google-drive` provider. So neither needed redeploying, and
+              redeploying `assistant` for v27 would have been wasted risk.
+
+              WHAT IS LEFT, AND ONLY HE CAN DO IT:
+              1. Build the converter service on Google Cloud Run. Steps are
+                 in `converter/README.md`.
+              2. Add `CONVERTER_URL` and `CONVERTER_SECRET` in Supabase
+                 secrets. Nothing needs redeploying after that, because the
+                 functions read them at run time.
+              Until both are done `convert-document` answers
+              `{ ok: false, state: "not_set_up" }` and the browser converts
+              the file itself, so conversion already works today. It gets
+              exact when the service is up.
+
+              CHECKED THIS SESSION, so nobody repeats it: lint clean, all 23
+              function files pass `scripts/check-functions.mjs`, every unit
+              test passes, and the overflow audit is clean across 9 public
+              routes at 4 phone widths against the testing preview. The full
+              harness runs 238 checks. One group of 4 fails, all in PDF TO
+              WORD, BROWSER, and the cause is measured, not guessed: that
+              conversion takes 31.5 seconds in this container against the
+              harness's 30 second wait, so the card is read before it exists.
+              Word to PDF takes 9, PDF to Word the exact way takes 13. This
+              box is capped at 2 CPUs, so it is the box, not the code.
+
+              NEXT, AND HE HAS ASKED FOR IT: merge `testing` into `main`.
+              66 commits are waiting, including the corrected CV, and it has
+              not been done. Do it when he says.
+
 00000000000. **2026-09-23, OPEN: convert a document, no interview.**
              Anthony, word for word: "someone can actually upload any
              document and ask for PDF version or word version. since these

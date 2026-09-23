@@ -13,63 +13,62 @@ repo". Nothing here goes out any other way.
 
 ---
 
-## Conversion (2026-09-23)
+## Checked against the live project, 2026-09-23 (DeepSeek session)
 
-- `convert-document`: NEW. Straight from the repo. Verify JWT off.
-- The converter service on Google Cloud Run: NEW. Steps in
-  `converter/README.md`.
-- Secrets it reads: CONVERTER_URL, CONVERTER_SECRET.
-- Until both are live, conversion still works in the browser; the card
-  says the look is not the original's.
+Everything below was pulled from Supabase and compared with the repo. The
+record had drifted, so what follows replaces what was written here before.
 
-## Google Drive (2026-09-23)
+### assistant is v31, and v27 is already inside it
 
-- `drive-connect`: NEW. Straight from the repo.
-- `drive-upload`: NEW. Straight from the repo.
-- `oauth-callback`: REDEPLOY. Live v8 matched the repo before the change
-  (checked by pulling it). The change adds the "google-drive" entry to
-  PROVIDERS (8 lines) and changes one line so the return marker names the
-  service; for Canva it is still "canva".
-- Secrets it reads: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET.
-- In Google Cloud, the OAuth client needs this exact Authorised redirect
-  URI: https://cbunsqzkhidwjtxdsmxd.supabase.co/functions/v1/oauth-callback
-  and the Google Drive API enabled.
+The old note said live was v26 and that v27 was waiting. Live is **v31**.
+The v27 prompt lines are all present in the deployed copy:
 
-## assistant, v27, a REDEPLOY (2026-09-23)
+- `THE DESIGN PLAN` (brief)
+- `DESIGN IT, DO NOT JUST TYPE IT` and the `:::` layout blocks (generate)
+- `THE SEARCH GATE` (research is refused unless the person said yes)
+- the PICTURES lines and `:::image`
 
-Live v26 matches the repo as it was before this change (checked by pulling
-the deployed source). v27 adds prompt lines only, and deletes nothing:
+Nothing to do. Do not redeploy it for v27, because v27 is live already.
 
-- brief: "THE DESIGN PLAN for that file", slide by slide for decks, and
-  where cards, a stat, a table and takeaways go in documents
-- generate: "DESIGN IT, DO NOT JUST TYPE IT", the ::: layout blocks the
-  file writers draw (label, cards, steps, stat, takeaway) and their rules
-- THE SEARCH GATE: the research stage is refused (403) unless the
-  person's last message is exactly "Yes, go and look.", so the web is
-  never reached without their yes, whatever the browser sends.
-  search-gate.test.mjs keeps the chat's words and the server's the same.
-- PICTURES: the interview asks once where a picture would help (their own
-  photos, a written prompt for an image generator, or stock photos with
-  the search yes), the read back says which picture goes where, and the
-  writer places them with `:::image name | caption`.
+### oauth-callback is v14, and google-drive is already inside it
 
-Checked again 2026-09-23 after the pictures lines: live is still v26 with
-the same ezbr_sha256, and the diff against the repo before this change
-deletes nothing.
+The old note said this one needed a REDEPLOY to add the Drive provider. It
+does not. The deployed v14 already carries the `google-drive` provider entry.
 
-## Before that: nothing pending
+### The three new functions went out on 2026-09-23
 
-The money fix and both ceilings went out on 2026-09-10 and are confirmed
-working against live traffic:
+Deployed by the DeepSeek session, straight from the repo, verify JWT off,
+matching every other function here.
 
-```
-support usage fresh=1157 cacheWrite=22739 cacheRead=0 out=163 cents=3.039575
-```
+| function | version | state |
+|---|---|---|
+| `convert-document` | v1 | ACTIVE |
+| `drive-connect` | v1 | ACTIVE |
+| `drive-upload` | v1 | ACTIVE |
 
-`cents=3.039575` rather than a whole number, and `cacheWrite=22739` against
-the old `11009`, which is the raised ceiling reading all 82,178 characters
-Amara has published instead of stopping at 40,000.
+The deployed source of all three was pulled back and checked against the
+repo. They match.
 
-Amara's budget went from 76.000000 to 72.960425. Exact.
+## Still waiting, and none of it is a code deploy
 
-`support-ask` version 11. `assistant` version 7.
+### 1. The converter service on Google Cloud Run
+
+`converter/` is written and was tested here with LibreOffice 24.2 and
+pdf2docx 0.5.13. The service itself is not built. The steps are in
+`converter/README.md`.
+
+Until it exists, `convert-document` answers `{ ok: false, state:
+"not_set_up" }` and the browser converts the file itself, saying the look is
+not the original's. So conversion already works. It gets exact when the
+service is up.
+
+### 2. Two secrets in Supabase
+
+Add these once the converter service has a URL. Nothing needs redeploying
+afterwards, because the functions read them at run time.
+
+- `CONVERTER_URL`
+- `CONVERTER_SECRET`
+
+The Google pair, `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`, are already
+stored, which is what `drive-connect` assumes in its header.
