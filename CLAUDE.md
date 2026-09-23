@@ -535,6 +535,76 @@ So the honest version of the rule is now:
 The paste rule exists because the repo and the deployment drift. It was never
 about the pasting. It was about not knowing. Now it can be known, so know it.
 
+### A redeploy is asked for. Every time, including a one line change.
+
+Anthony, 2026-09-23: "According to the rules, a redeploy is something that
+you should normally ask me to do... if care is not taken, something can be
+broken. So you must make sure that you are accurate by all means. Otherwise
+ask me to go to the repo and copy and paste it myself."
+
+He is right, and this was not explicit enough. A function that is already
+live is a working thing. Redeploying it puts new code in front of real
+people, so it is a live change, and live changes are asked for.
+
+**Even when he asked for the fix.** The fix is his request. The deploy is a
+separate yes, and it is his too. Say what will be deployed, say which
+function and which version it is now, and wait.
+
+### How a redeploy actually happens here, so nobody has to guess
+
+**Nobody retypes the function. Not ever.** The tooling edits the file in the
+repo using exact text replacement, old text in and new text out, so nothing
+else in the file moves. Then the Supabase CLI uploads **that whole file** and
+bundles it.
+
+That last part is the part that matters. The whole file goes up, so anything
+sitting in the repo file at that moment becomes live. The risk is therefore
+never "a typing mistake". The risk is that the repo file is not what Anthony
+built. That is why the comparison below comes before the edit, not after.
+
+### The order, and it is not optional
+
+1. **Pull the deployed body and compare it with the repo, BEFORE editing.**
+   The technique that works: the deployed body is a transpiled bundle with
+   the types stripped and the whitespace collapsed, so a byte comparison is
+   impossible. What does work is taking every long string literal out of the
+   repo file and checking each one is present in the deployed bundle. If all
+   of them are there, the deployment is that source, and the repo is safe to
+   edit. Say the count out loud: "655 of 655".
+2. **Edit by exact replacement only.** Never rewrite the file, never tidy
+   something on the way past, never reformat.
+3. **grep the file for the thing you just added.** A script that printed "ok"
+   and a file that contains the change are two different facts.
+4. **Run `node scripts/check-functions.mjs`.**
+5. **Count the deletions in the diff.** Adding to a working function should
+   delete nothing. If something had to be replaced, list every removed line
+   in the reply.
+6. **Deploy.**
+7. **Pull the deployed body back and check it landed.** The new lines are
+   present, and the things you did not touch are still there. Both, not just
+   the first.
+8. **Say plainly what was checked, and what was not.** If the check was
+   limited, say how. "The deployed copy contains all 655 markers and the new
+   lines" is honest. "It is byte for byte the same" is not, and cannot be,
+   because of the transpiling.
+
+### When to hand it back instead
+
+Any of these means stop and give it to Anthony:
+
+- The deployed copy and the repo differ, and the difference is not yours.
+- The change is not a small addition, it is a rewrite.
+- He has asked for something you cannot verify, and the check you can do is
+  weak.
+- Anything at all where you are not sure.
+
+Then the fallback is the one he has always had, and it always works: **he
+pastes the currently deployed source into the chat, you add only the new
+lines to that, and you hand the whole function back in one copyable block**
+for him to paste into the console and deploy himself. Slow, and completely
+safe, which is the right trade when the alternative is breaking a live
+function he depends on.
+
 ### An edit that was not written to disk is not an edit
 
 On 2026-09-09 support went down for three messages. Every reply was written,
