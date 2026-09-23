@@ -50,6 +50,44 @@ function logs (403, `analytics_logs_read`). If the message comes back, the
 log line starting with `usage stage=` settles it in seconds. He can read it
 in the dashboard: Edge Functions, assistant, Logs.
 
+### Two different failures, and they must not be confused again
+
+Anthony said afterwards that the cause was the assistant's credit running
+out, and he had raised it in the backend. **He is right that the credit ran
+out. It is a different failure, with its own message, and it was not the one
+he reported.**
+
+They are easy to mix up because both read as "it stopped":
+
+- **Credit gone.** The budget is checked before anything is spent, so the
+  turn never reaches the model. The message is "This workspace has used up
+  its included outputs. This was a temporary build, talk to StellaXafe about
+  running it inside your own systems." The client shows it as a normal text
+  bubble, not an error (Chat.jsx, `reason === "out_of_budget"`), and it is
+  **saved** into the conversation.
+- **Ran out of room.** The turn reached the model, the model hit its token
+  ceiling and wrote nothing. The note is type `error` and is deliberately
+  **not saved** on that turn, so the conversation ends on the person's own
+  message.
+
+The evidence that it was the second one: his conversation of 2026-09-23
+(`c1da5894`) contains "That ran out of room before it could say anything"
+as message 9. The budget message appears nowhere in it. It does appear
+twice, in `ab634c54`, and that conversation was last touched
+**2026-09-22 00:23:52**, the day before. So the credit ran out on the 22nd,
+he raised it, and the 23rd was the token ceiling.
+
+**A note for whoever reads this next.** The two changes landed in the same
+twenty minutes: his credit and assistant v33. Message 11 of that
+conversation is a real reply and the chat moved from `interview` to
+`analyse`, so it is working. It is **not** proof that v33 fixed it, since
+his credit fix landed at the same time. Do not claim it as proof.
+
+**Still open, new, and not this:** message 12 of the same conversation is
+"That one stopped answering. Send it again." That is the client's stall
+watchdog (`src/shared/assistantApi.js`), a turn that went quiet rather than
+a turn that ran out. Nobody has looked at it yet.
+
 **Left for next time, in his order:**
 
 1. The converter service on Google Cloud Run, then `CONVERTER_URL` and
