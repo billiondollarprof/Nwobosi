@@ -146,6 +146,34 @@ const ADAPTIVE_THINKING: Record<Tier, boolean> = {
   standard: true,
 };
 
+/* THE TWO SHORT STAGES DO NOT THINK, WHATEVER THE LEVEL.
+
+   Anthony, 2026-09-23, mid build: "The assistant keep saying this: That ran
+   out of room before it could say anything. Ask me again, and shorter if
+   you can."
+
+   The cause was read out of his own conversation, which sat at
+   stage=interview with his answer saved and no reply after it. That is the
+   shape of a turn that produced no words at all.
+
+   A question is about two hundred tokens. These two stages are capped at
+   1100 on purpose, so the model never has the room to write the document
+   during the interview instead of asking. But the thinking is counted
+   inside that same 1100. On a message carrying real answers to five
+   questions the thinking spent the whole allowance and stopped before one
+   word of a question came out. The same input gives the same result, so
+   asking again changed nothing.
+
+   streamWithRoomToWrite below is the safety net, and on this stage it did
+   not catch it. So here thinking is off from the start and the whole 1100
+   goes to the words, which is what the person is waiting for.
+
+   Nothing changes for the stages that genuinely reason. analyse, research,
+   brief and generate keep their thinking and have 8000 or 16000 to spend it
+   in, and the ceiling that stops the interview turning into a build is
+   untouched. See streamWithRoomToWrite for the shape that switches it off. */
+const NEVER_THINKS: string[] = ["orient", "interview"];
+
 /* NO ROUNDING UP. Anthony, 2026-09-10: "why do you suppose to be rounding up
    numbers? That's real money."
 
@@ -513,7 +541,11 @@ async function streamWithRoomToWrite(
     `stage=${stage} spent its whole ceiling thinking and wrote nothing, asking again without thinking`,
   );
 
-  const second = await once({});
+  /* SAID OUT LOUD RATHER THAN LEFT OUT. This used to pass an empty object,
+     which only omits the thinking parameter and hopes the model takes that
+     as off. Saying "disabled" is the shape 0.68.0 knows, so the intent of
+     the line above is now what actually gets sent. */
+  const second = await once({ thinking: { type: "disabled" } });
   const a = first.usage ?? ({} as Anthropic.Usage);
   const b = second.usage ?? ({} as Anthropic.Usage);
   return {
@@ -1615,17 +1647,24 @@ Deno.serve(async (req: Request) => {
      comparison against it reads as dead code to the type checker while
      still being the right shape for the day routing comes back.
 
+     NEVER_THINKS is the second half of the lookup, and it is about the
+     stage rather than the level. The two short stages have 1100 tokens
+     between them and the thinking is counted inside that, so thinking there
+     spends the person's answer before a word of it is written. See the note
+     beside NEVER_THINKS.
+
      The cast is the SDK's typings being behind the API. 0.68.0 knows
      thinking as enabled or disabled and not as adaptive, which is the shape
      the model behind standard actually takes. Nothing else in the request
      needs loosening, so this is cast on its own rather than over the whole
      call. */
-  const thinkingExtras = ADAPTIVE_THINKING[tier]
-    ? {
-        thinking: { type: "adaptive" } as unknown as Anthropic.ThinkingConfigParam,
-        output_config: { effort: "high" as const },
-      }
-    : {};
+  const thinkingExtras =
+    ADAPTIVE_THINKING[tier] && !NEVER_THINKS.includes(stage)
+      ? {
+          thinking: { type: "adaptive" } as unknown as Anthropic.ThinkingConfigParam,
+          output_config: { effort: "high" as const },
+        }
+      : {};
 
   /* ----------------------------------------------------------------------
      THE FIRST GATE, AND IT IS CODED RATHER THAN ASKED FOR
