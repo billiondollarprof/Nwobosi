@@ -25,6 +25,29 @@ built and checked, not when it is planned.
 
 ### Open
 
+0000000000. **2026-09-23, OPEN: pictures with sources, figure numbers,
+            charts, skip means skip, and a harness the staff can rely on.**
+            Anthony, word for word:
+            "all staffs can read and use what's already in the knowledge
+            base"
+            "if assistant at any point suggest image but the staff says skip
+            it, the assistant should work without image and still give the
+            best output"
+            "So, I thought of the images not to only have name but also
+            source, if the staff provides it and if the staff wants something
+            like fig. tagging invade of multiple images or graphical
+            representation like charts. that means the assistant is capable
+            of drawing any kind of chart, be it bar chat, line, histogram etc
+            anyone required."
+            "We want to achieve the best document style and the most
+            dependable workflow product. So staffs are confident they can
+            rely on the assistant. Think about this for a minute and do a
+            research on the best and most useful way the assistant can
+            achieve all these. A sophisticated harness in the assistant's
+            environment that enables it work at its best."
+            DECIDED: he redeploys `assistant` only "after you consider
+            everything that needs to be in that file". So v27 waits for this.
+
 000000000. **2026-09-23, OPEN: Canva design does not work.** Anthony asked
            "is the canva for design currently functional?" Answer, checked:
            connecting Canva works (a token row exists), but NOTHING in the
@@ -74,8 +97,9 @@ built and checked, not when it is planned.
              new style."
           4. DECIDED, REPLACES "admin sees everything": "admin can see, just
              the short summery not the entire work."
-             STATUS 2026-09-23: BUILT in the app, WAITING ON ONE SQL RUN
-             (his yes). `20260923120000_work_content_own_only.sql` moves the
+             STATUS 2026-09-23: DONE. SQL RAN on the live project with his
+             yes ("yes run the salsa"); checked after: 1 of 1 documents
+             copied whole, longest summary 280, RLS on, chat rule own only. `20260923120000_work_content_own_only.sql` moves the
              whole document to a new table only its maker can read, keeps a
              280 character summary for the admin, and makes each chat its
              owner's alone. The admin's Recent work now shows who made it

@@ -89,4 +89,4 @@ where length(summary) > 280;
 drop policy if exists conversations_read on public.conversations;
 create policy conversations_read on public.conversations
   for select to authenticated
-  using (staff_id = auth.uid());
+  using (company_id = private.current_company_id() and staff_id = auth.uid());
