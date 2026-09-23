@@ -36,6 +36,7 @@
 import { THEME, themeFor, hex } from "./documentTheme.js";
 import { plainText } from "./documentModel.js";
 import { imageKey } from "./imageKey.js";
+import { chartSvg } from "./charts/chartSvg.js";
 
 /* The usable width of an A4 page between the margins, in points. */
 const PAGE_WIDTH = 595.28 - 56 * 2;
@@ -258,6 +259,20 @@ function imageBlock(block, t, images) {
   };
 }
 
+/* A chart, drawn straight from its SVG so it stays sharp at any zoom, with
+   the same caption and source lines as a picture. A chart that could not
+   be drawn shows its table instead: the numbers still reach the reader,
+   and the staff was told why in the chat. */
+function chartBlock(block, t) {
+  const svg = chartSvg(block.data, t, { font: "Roboto" });
+  if (!svg) return block.table ? [tableBlock(block.table, t), ...figureCaptionLines(block)] : figureCaptionLines(block);
+  return {
+    stack: [{ svg, width: PAGE_WIDTH, alignment: "center" }, ...figureCaptionLines(block)],
+    unbreakable: true,
+    margin: [0, 6, 0, 14],
+  };
+}
+
 function takeawayBlock(block, t) {
   return {
     table: { widths: ["*"], body: [[{ text: textOf(block.runs, { bold: true }), color: "#FFFFFF", fillColor: hex(t.accent) }]] },
@@ -278,6 +293,28 @@ function headingStyle(level, t) {
     3: { fontSize: THEME.size.h3, color: hex(THEME.ink), margin: [0, 10, 0, 4] },
     4: { fontSize: THEME.size.body, color: hex(THEME.ink), margin: [0, 8, 0, 3] },
   }[level];
+}
+
+/* A HEADING GOES WITH ITS FIGURE. A picture or chart cannot be split, so
+   when it does not fit it moves to the next page whole, and on 2026-09-23
+   that left its heading alone at the foot of the page before. The page
+   break rule below could not see it, because pdfmake had already counted
+   the figure on the first page before moving it. So a heading followed
+   straight away by a figure is joined to it, and the two move together. */
+function keepHeadingsWithFigures(out) {
+  const joined = [];
+  for (let i = 0; i < out.length; i += 1) {
+    const node = out[i];
+    const next = out[i + 1];
+    if (node?.headlineLevel && next?.unbreakable && next.stack) {
+      const { headlineLevel, ...heading } = node;
+      joined.push({ stack: [heading, ...next.stack], unbreakable: true, margin: next.margin });
+      i += 1;
+    } else {
+      joined.push(node);
+    }
+  }
+  return joined;
 }
 
 export function blocksToPdf(blocks, t = themeFor(), images = null) {
@@ -321,9 +358,10 @@ export function blocksToPdf(blocks, t = themeFor(), images = null) {
     else if (block.type === "takeaway") out.push(takeawayBlock(block, t));
     else if (block.type === "label") out.push(labelText(block.text, t));
     else if (block.type === "image") out.push(imageBlock(block, t, images));
+    else if (block.type === "chart") out.push(chartBlock(block, t));
     else if (block.runs) out.push({ text: textOf(block.runs), margin: [0, 0, 0, 9] });
   }
-  return out;
+  return keepHeadingsWithFigures(out);
 }
 
 /* --------------------------------------------------------------------------

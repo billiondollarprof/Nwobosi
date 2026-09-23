@@ -182,7 +182,15 @@ It checks:
 ## 7. Order
 
 1. Skip, picture source, figure numbers. Small, and they share one block.
+   **DONE 2026-09-23** (images.cjs, document-model tests).
 2. Charts in every format, drawn, opened, and looked at in all four files.
+   **DONE 2026-09-23** (charts.cjs 14, chart-data 28). Looked at: all nine
+   kinds at full and phone size, and the PDF, Word, Slides and Spreadsheet
+   files rendered page by page. Found and fixed on the way: a PDF heading
+   left alone above a chart that moved to the next page; slides showing
+   ₦20,000,000 in full, pies reading "0", a one colour histogram in five
+   colours; unreadable chart text on a phone (the preview now draws a
+   narrower chart there, and a pie's key goes under it).
 3. The checker.
 4. Conversion, both ways, with the check (section 8).
 5. Layout from an upload, only when asked (section 9).

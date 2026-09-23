@@ -173,12 +173,27 @@ export function toTables(markdown) {
 
   let heading = "";
   let at = 0;
+  /* A table inside a ":::chart" block is that chart's numbers. It is named
+     after the chart's caption, and carries the chart's place in reading
+     order, so the spreadsheet can put the chart's picture beside it. The
+     count matches documentModel.js, which numbers charts the same way. */
+  let charts = 0;
+  let chart = null;
 
   while (at < lines.length) {
     const line = lines[at].trim();
 
     const h = line.match(/^#{1,6}\s+(.+)$/);
-    if (h) { heading = clean(h[1]); at += 1; continue; }
+    if (h) { heading = clean(h[1]); chart = null; at += 1; continue; }
+
+    const opensChart = line.match(/^:::\s*chart\b(.*)$/i);
+    if (opensChart) {
+      chart = { index: charts, caption: clean(opensChart[1].split("|")[1] ?? "") };
+      charts += 1;
+      at += 1;
+      continue;
+    }
+    if (/^:::\s*$/.test(line)) { chart = null; at += 1; continue; }
 
     /* A header row, then a divider. Both, or it is not a table. */
     if (isTableLine(line) && at + 1 < lines.length && isDivider(lines[at + 1])) {
@@ -196,7 +211,12 @@ export function toTables(markdown) {
         at += 1;
       }
 
-      if (rows.length) tables.push({ name: heading, header, rows });
+      if (rows.length) {
+        tables.push(chart
+          ? { name: chart.caption || heading, header, rows, chartIndex: chart.index }
+          : { name: heading, header, rows });
+      }
+      chart = null;
       continue;
     }
 

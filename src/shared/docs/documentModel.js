@@ -52,6 +52,9 @@
      :::image team.jpg | Our front desk team    a picture, by its file name
      :::image team.jpg #team | Caption | Photo: Chidi Okafor
                                           the same, with a tag and a source
+     :::chart bar #revenue | Caption | Source: Q3 report
+     | Quarter | 2025 |  ...  :::         a chart, drawn by code from a table
+                                          (charts/chartData.js)
 
    FIGURES, 2026-09-23 (DOCUMENT-HARNESS.md, sections 2 and 3)
    A picture can carry its source, printed small under the caption. It can
@@ -70,6 +73,7 @@
    ========================================================================== */
 
 import { isTableLine, isDivider, rawCells } from "../structure.js";
+import { chartData } from "./charts/chartData.js";
 
 /* --------------------------------------------------------------------------
    SECTION 1: Inline text
@@ -354,6 +358,32 @@ function readDesignBlock(kind, rest, lines, index, blocks) {
     return 1;
   }
 
+  /* A chart: its type, tag, caption and source on the first line, and a
+     table of numbers under it. charts/chartData.js reads and checks the
+     numbers. A chart with a problem keeps its table, so the writers can
+     show the numbers instead, and the problem is told to the staff. */
+  if (kind === "chart") {
+    const { body, used } = bodyLines(lines, index);
+    const [first = "", caption = "", ...source] = rest.split("|");
+    const kindWord = first.trim().split(/\s+/)[0] ?? "";
+    const table = readBlocks(body.join("\n")).find((b) => b.type === "table") ?? null;
+    const cells = (row) => row.map((runs) => plainText(runs).trim());
+    const data = table
+      ? chartData(kindWord, cells(table.header), table.rows.map(cells))
+      : { kind: null, categories: [], series: [], unit: {}, problem: "The chart has no table of numbers under it." };
+    blocks.push({
+      type: "chart",
+      kind: data.kind,
+      tag: chartTag(rest),
+      caption: caption.trim(),
+      source: source.join("|").trim(),
+      table,
+      data,
+      figure: null,
+    });
+    return used;
+  }
+
   if (kind === "cards" || kind === "steps") {
     const { body, used } = bodyLines(lines, index);
     const items = readItems(body).filter((item) => item.title.length || item.blocks.length);
@@ -423,6 +453,11 @@ export function readDocument(markdown, fallbackTitle = "Document") {
   }
 
   numberFigures(blocks, refs);
+  forEachBlock(blocks, (block) => {
+    if (block.type === "chart" && block.data.problem) {
+      findings.push(`${block.caption ? `The chart "${block.caption}"` : "A chart"} could not be drawn, so its numbers are shown as a table. ${block.data.problem}`);
+    }
+  });
   return { title, subtitle, blocks, notes, findings };
 }
 
@@ -449,6 +484,10 @@ export function blockText(block) {
   if (block.type === "stat") return [block.value, block.caption, ...block.blocks.map(blockText)].join("\n");
   if (block.type === "label") return block.text;
   if (block.type === "image") return [block.caption || block.name, block.source].filter(Boolean).join("\n");
+  if (block.type === "chart") {
+    const table = block.table ? blockText(block.table) : "";
+    return [block.caption, table, block.source].filter(Boolean).join("\n");
+  }
   return "";
 }
 
@@ -503,19 +542,31 @@ function resolveFigureRefs(markdown) {
   return { text, refs: { show: count >= 2 || pointed }, findings };
 }
 
+/* Every block, including the ones inside cards, steps and a stat, in
+   reading order. */
+export function forEachBlock(blocks, visit) {
+  for (const block of blocks ?? []) {
+    visit(block);
+    if (block.items) block.items.forEach((item) => forEachBlock(item.blocks, visit));
+    if (block.type === "stat") forEachBlock(block.blocks, visit);
+  }
+}
+
 function numberFigures(blocks, refs) {
   let n = 0;
-  const walk = (list) => {
-    for (const block of list ?? []) {
-      if (block.type === "image" || block.type === "chart") {
-        n += 1;
-        block.figure = refs.show ? n : null;
-      }
-      if (block.items) block.items.forEach((item) => walk(item.blocks));
-      if (block.type === "stat") walk(block.blocks);
+  let charts = 0;
+  forEachBlock(blocks, (block) => {
+    if (block.type === "image" || block.type === "chart") {
+      n += 1;
+      block.figure = refs.show ? n : null;
     }
-  };
-  walk(blocks);
+    /* Every chart's place in reading order, so its picture copy
+       (charts/chartPictures.js) can be found again by each writer. */
+    if (block.type === "chart") {
+      block.chartIndex = charts;
+      charts += 1;
+    }
+  });
 }
 
 /* "Figure 2. The front desk" for documents, or just the caption when the

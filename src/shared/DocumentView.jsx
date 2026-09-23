@@ -46,6 +46,12 @@
 
 import { readDocument } from "./docs/documentModel.js";
 import { imageKey } from "./docs/imageKey.js";
+import { chartSvg } from "./docs/charts/chartSvg.js";
+import { themeFor } from "./docs/documentTheme.js";
+
+/* Charts in the preview use the quiet default colours. The files use the
+   company's own colour; the preview sits inside the product's screen. */
+const THEME_FOR_PREVIEW = themeFor();
 
 /* --------------------------------------------------------------------------
    SECTION 1: One block
@@ -132,9 +138,57 @@ function Cards({ block }) {
   );
 }
 
+/* A chart, drawn by the same code as the PDF (docs/charts/chartSvg.js), on
+   a white card whatever the theme, because that is how it will look on
+   the page. The drawing is built from escaped text only, so it is safe to
+   put in as it is. A chart that could not be drawn shows its table. */
+/* Two drawings: the full one, and a narrower one for a phone, where the
+   full one scaled down would make its labels too small to read. CSS picks
+   which one shows, so nothing has to measure the screen. */
+const PHONE_CHART = { width: 330, height: 270 };
+
+/* A pie on a phone puts its key under it, so it needs more height: enough
+   for the pie and one line per slice. */
+function phoneSize(data) {
+  if (data.kind !== "pie" && data.kind !== "doughnut") return PHONE_CHART;
+  const slices = data.series?.[0]?.values.length ?? 0;
+  return { width: PHONE_CHART.width, height: 230 + slices * 20 };
+}
+
+function Chart({ block, theme }) {
+  const svg = chartSvg(block.data, theme);
+  const phoneSvg = chartSvg(block.data, theme, phoneSize(block.data));
+  if (!svg) {
+    return (
+      <figure className="my-3">
+        {block.table && <Block block={block.table} previous />}
+        <FigureCaption block={block} />
+      </figure>
+    );
+  }
+  return (
+    <figure className="my-3">
+      <div
+        className="hidden sm:block rounded-[10px] bg-white p-2 [&>svg]:w-full [&>svg]:h-auto"
+        role="img"
+        aria-label={block.caption || "Chart"}
+        dangerouslySetInnerHTML={{ __html: svg }}
+      />
+      <div
+        className="sm:hidden rounded-[10px] bg-white p-1.5 [&>svg]:w-full [&>svg]:h-auto"
+        role="img"
+        aria-label={block.caption || "Chart"}
+        dangerouslySetInnerHTML={{ __html: phoneSvg }}
+      />
+      <FigureCaption block={block} />
+    </figure>
+  );
+}
+
 function Block({ block, previous, images }) {
   if (block.type === "cards" || block.type === "steps") return <Cards block={block} />;
   if (block.type === "image") return <Picture block={block} images={images} />;
+  if (block.type === "chart") return <Chart block={block} theme={THEME_FOR_PREVIEW} />;
 
   if (block.type === "stat") {
     return (

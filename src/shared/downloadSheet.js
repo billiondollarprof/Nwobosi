@@ -106,7 +106,11 @@ function tabName(name, index) {
   return cleaned || `Table ${index + 1}`;
 }
 
-export async function sheetBlob(title, markdown, theme = THEME) {
+/* `charts` is the Map from docs/charts/chartPictures.js. A table that is
+   a chart's numbers gets the chart's picture beside it. Excel has no way
+   to be handed a native chart from here, so the picture shows the chart
+   and the cells stay live numbers anybody can sum or re-chart. */
+export async function sheetBlob(title, markdown, theme = THEME, charts = null) {
   const tables = toTables(markdown);
   if (!tables.length) {
     /* Named so the caller can tell this apart from a real failure and say
@@ -206,6 +210,17 @@ export async function sheetBlob(title, markdown, theme = THEME) {
     });
 
     sheet.autoFilter = { from: { row: headerAt, column: 1 }, to: { row: headerAt, column: table.header.length } };
+
+    const picture = table.chartIndex !== undefined ? charts?.get(table.chartIndex) : null;
+    if (picture) {
+      const id = book.addImage({ base64: picture.png, extension: "png" });
+      /* One empty column after the table, then the chart, at the header's
+         row. 520 pixels wide keeps it readable without swamping the sheet. */
+      sheet.addImage(id, {
+        tl: { col: table.header.length + 1, row: headerAt - 1 },
+        ext: { width: 520, height: Math.round((picture.height / picture.width) * 520) },
+      });
+    }
 
     /* PRINTS PROPERLY WITHOUT ANYBODY SETTING IT UP. Fits the width of one
        page, turns sideways when the table is wide, and repeats the header

@@ -40,6 +40,7 @@
 import { THEME } from "./documentTheme.js";
 import { plainText, blockText, figureCaption } from "./documentModel.js";
 import { imageKey } from "./imageKey.js";
+import { chartPalette } from "./charts/chartSvg.js";
 
 /* --------------------------------------------------------------------------
    SECTION 1: Measurements, in inches, widescreen 13.33 by 7.5
@@ -116,6 +117,10 @@ function piecesOf(blocks) {
       pieces.push({ kind: "table", block, h: (block.rows.length + 1) * rowHeight(block) + 0.1 });
     } else if (block.type === "image") {
       pieces.push({ kind: "image", block, h: 3.4 });
+    } else if (block.type === "chart") {
+      /* A chart that could not be drawn is its table, like everywhere else. */
+      if (!block.data.problem) pieces.push({ kind: "chart", block, h: 3.6 });
+      else if (block.table) pieces.push({ kind: "table", block: block.table, h: (block.table.rows.length + 1) * rowHeight(block.table) + 0.1 });
     } else if (block.type === "h") {
       pieces.push({ kind: "text", runs: block.runs, style: "sub", h: textHeight(plainText(block.runs).length, FONT.body + 1) });
     } else if (block.type === "list") {
@@ -136,7 +141,10 @@ function piecesOf(blocks) {
   return pieces;
 }
 
-const FEATURES = new Set(["cards", "steps", "stat", "table", "image"]);
+const FEATURES = new Set(["cards", "steps", "stat", "table", "image", "chart"]);
+
+/* Pictures and charts sit beside the text; the rest go under it. */
+const BESIDE = new Set(["image", "chart"]);
 
 /* A picture shares its slide with the text, side by side: the text takes
    this share of the width and the picture the rest. */
@@ -190,7 +198,7 @@ export function toDeck(doc) {
       if (FEATURES.has(piece.kind)) {
         /* A picture goes BESIDE the text, so what has to fit is the text at
            its narrower width, not the text plus the picture stacked. */
-        const besideText = piece.kind === "image" && slide.text.length;
+        const besideText = BESIDE.has(piece.kind) && slide.text.length;
         const needed = besideText ? slide.used / TEXT_SHARE : slide.used + piece.h + 0.2;
         const crowded = slide.feature || slide.takeaway || needed > room();
         if (crowded && (slide.text.length || slide.feature || slide.takeaway)) next();
@@ -380,6 +388,107 @@ function drawImage(page, piece, box, theme, images) {
   drawCaption(page, piece.block, box);
 }
 
+/* A REAL POWERPOINT CHART, 2026-09-23. Not a picture: the staff can click
+   it in PowerPoint and change a number, and the chart moves with it. The
+   numbers come from charts/chartData.js, already checked, so histogram
+   buckets and all are exactly what the PDF and Word files show. Colours
+   are the same palette as the drawing (charts/chartSvg.js). */
+/* Big numbers are shortened the way the drawing shortens them: 20000000
+   shows as ₦20M. In an Office number format each "," at the end divides by
+   a thousand, so ",," is millions. The cell keeps the full number. */
+function numberFormat(data) {
+  const all = data.series.flatMap((s) => s.values);
+  const biggest = Math.max(...all.map((v) => Math.abs(v)));
+  const [divide, suffix, scale] = biggest >= 1e9 ? [",,,", "B", 1e9] : biggest >= 1e6 ? [",,", "M", 1e6] : biggest >= 1e4 ? [",", "k", 1e3] : ["", "", 1];
+  const whole = all.every((v) => Number.isInteger(v / scale));
+  const base = `${whole ? "#,##0" : "#,##0.0"}${divide}${suffix ? `"${suffix}"` : ""}`;
+  if (data.unit?.percent) return `${whole ? "0" : "0.0"}"%"`;
+  if (data.unit?.currency) return `"${data.unit.currency}"${base}`;
+  return base;
+}
+
+function drawChart(deck, page, piece, box, theme) {
+  const { block } = piece;
+  const data = block.data;
+  const captionH = captionHeight(block);
+  const area = { x: box.x, y: box.y, w: box.w, h: box.h - captionH };
+  const palette = chartPalette(theme);
+  const format = numberFormat(data);
+  const few = data.categories.length * data.series.length <= 16;
+  const common = {
+    ...area,
+    fontFace: THEME.officeFont,
+    /* One set of numbers is one colour. PowerPoint otherwise gives each
+       bar of a single series its own colour, which reads as a key that is
+       not there. Pies are the exception: each slice needs its own. */
+    chartColors: data.series.length > 1 || data.kind === "pie" || data.kind === "doughnut" ? palette : [palette[0]],
+    catAxisLabelColor: THEME.muted,
+    valAxisLabelColor: THEME.muted,
+    catAxisLabelFontSize: 11,
+    valAxisLabelFontSize: 11,
+    catAxisLineShow: true,
+    valAxisLineShow: false,
+    valGridLine: { color: THEME.rule, size: 0.75 },
+    catGridLine: { style: "none" },
+    valAxisLabelFormatCode: format,
+    dataLabelFormatCode: format,
+    dataLabelColor: THEME.body,
+    dataLabelFontSize: 10,
+    showLegend: data.series.length > 1,
+    legendPos: "t",
+    legendFontSize: 11,
+    legendColor: THEME.body,
+  };
+  const series = data.series.map((s) => ({ name: s.name || block.caption || "Values", labels: data.categories.map(String), values: s.values }));
+
+  if (data.kind === "pie" || data.kind === "doughnut") {
+    page.addChart(data.kind, series.slice(0, 1), {
+      ...common,
+      showLegend: true,
+      legendPos: "r",
+      showPercent: true,
+      showValue: false,
+      /* The share is a fraction, so it needs a per cent format, not the
+         value's format, or every slice reads "0". */
+      dataLabelFormatCode: "0%",
+      dataLabelColor: "FFFFFF",
+      dataLabelFontSize: 12,
+      dataBorder: { pt: 1.5, color: "FFFFFF" },
+      ...(data.kind === "doughnut" ? { holeSize: 58 } : {}),
+    });
+  } else if (data.kind === "scatter") {
+    page.addChart("scatter", [{ name: data.xName || "X", values: data.categories }, { name: data.series[0].name || "Y", values: data.series[0].values }], {
+      ...common,
+      showLegend: false,
+      lineSize: 0,
+      lineDataSymbol: "circle",
+      lineDataSymbolSize: 8,
+      showCatAxisTitle: Boolean(data.xName),
+      catAxisTitle: data.xName,
+      showValAxisTitle: Boolean(data.series[0].name),
+      valAxisTitle: data.series[0].name,
+      catAxisTitleFontSize: 11,
+      valAxisTitleFontSize: 11,
+    });
+  } else if (data.kind === "line" || data.kind === "area") {
+    page.addChart(data.kind, series, {
+      ...common,
+      lineSize: 2.5,
+      lineDataSymbol: data.categories.length <= 24 ? "circle" : "none",
+      lineDataSymbolSize: 7,
+    });
+  } else {
+    page.addChart("bar", series, {
+      ...common,
+      barDir: data.kind === "bar" ? "bar" : "col",
+      barGrouping: data.kind === "stacked" ? "stacked" : "clustered",
+      barGapWidthPct: data.kind === "histogram" ? 3 : 60,
+      showValue: few && data.kind !== "stacked",
+    });
+  }
+  drawCaption(page, block, box);
+}
+
 function drawTakeaway(page, runs, theme) {
   const y = FOOT_Y - 0.2 - TAKEAWAY_H;
   page.addShape("roundRect", { x: X, y, w: BODY_W, h: TAKEAWAY_H, fill: { color: theme.accent }, line: { color: theme.accent }, rectRadius: 0.08 });
@@ -455,10 +564,12 @@ export async function deckBlob(doc, theme = { ...THEME, highlight: "DDE2EE", onA
 
     /* TEXT BESIDE A PICTURE. The text on the left, the picture on the
        right, both from under the band to the bottom of the space. */
-    if (slide.feature?.kind === "image" && slide.text.length) {
+    if (BESIDE.has(slide.feature?.kind) && slide.text.length) {
       const textW = BODY_W * TEXT_SHARE;
       page.addText(textBody(slide.text, theme), { x: X, y: BODY_TOP, w: textW, h: bottom - BODY_TOP, valign: "middle", fontFace: THEME.officeFont, margin: 0 });
-      drawImage(page, slide.feature, { x: X + textW + 0.4, y: BODY_TOP, w: BODY_W - textW - 0.4, h: bottom - BODY_TOP }, theme, images);
+      const side = { x: X + textW + 0.4, y: BODY_TOP, w: BODY_W - textW - 0.4, h: bottom - BODY_TOP };
+      if (slide.feature.kind === "chart") drawChart(deck, page, slide.feature, side, theme);
+      else drawImage(page, slide.feature, side, theme, images);
       if (slide.takeaway) drawTakeaway(page, slide.takeaway, theme);
       continue;
     }
@@ -472,6 +583,8 @@ export async function deckBlob(doc, theme = { ...THEME, highlight: "DDE2EE", onA
     if (slide.feature?.kind === "image") {
       /* A picture on its own takes the whole space. */
       drawImage(page, slide.feature, { x: X, y, w: BODY_W, h: bottom - y }, theme, images);
+    } else if (slide.feature?.kind === "chart") {
+      drawChart(deck, page, slide.feature, { x: X, y, w: BODY_W, h: bottom - y }, theme);
     } else if (slide.feature) {
       const h = Math.min(slide.feature.h, bottom - y);
       if (slide.feature.kind === "cards" || slide.feature.kind === "steps") drawCards(page, slide.feature, y, Math.max(h, 1.5), theme);

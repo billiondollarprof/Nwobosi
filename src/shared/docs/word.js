@@ -249,7 +249,37 @@ function labelParagraph(docx, text, t) {
   });
 }
 
-function blocksToWord(docx, doc, t, images) {
+/* A chart: the SVG, so it stays sharp in current Word, with the PNG copy
+   Word needs for older versions (charts/chartPictures.js). */
+function dataBytes(dataUrl) {
+  const binary = atob(String(dataUrl).split(",")[1] ?? "");
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+function chartParagraphs(docx, block, picture) {
+  const { Paragraph, ImageRun, AlignmentType } = docx;
+  const caption = figureCaptionParagraphs(docx, block);
+  const width = 620;
+  const height = Math.round((picture.height / picture.width) * width);
+  return [
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      keepNext: caption.length > 0,
+      spacing: { before: 120, after: caption.length ? 60 : 200, line: 240, lineRule: "auto" },
+      children: [new ImageRun({
+        type: "svg",
+        data: new TextEncoder().encode(picture.svg),
+        fallback: { type: "png", data: dataBytes(picture.png) },
+        transformation: { width, height },
+      })],
+    }),
+    ...caption,
+  ];
+}
+
+function blocksToWord(docx, doc, t, images, charts = null) {
   const { Paragraph, HeadingLevel, Table, TableRow, TableCell, WidthType, BorderStyle, ShadingType, AlignmentType } = docx;
   const out = [];
   /* After a design block, an empty paragraph: two tables touching are
@@ -267,7 +297,15 @@ function blocksToWord(docx, doc, t, images) {
      in a document starts at 1 again rather than carrying on from the first. */
   let listCount = 0;
 
-  for (const block of doc.blocks) {
+  /* A chart with no picture copy (it could not be drawn, or there is no
+     browser to draw it) becomes its own table, with its caption under it,
+     so the numbers still reach the reader. */
+  const blocks = doc.blocks.flatMap((block) =>
+    block.type === "chart" && !charts?.get(block.chartIndex)
+      ? [block.table, { type: "figureCaption", of: block }].filter(Boolean)
+      : [block]);
+
+  for (const block of blocks) {
     if (block.type === "h") {
       const level = Math.max(1, Math.min(4, block.level - shift));
       if (block.label) out.push(labelParagraph(docx, block.label, t));
@@ -301,6 +339,14 @@ function blocksToWord(docx, doc, t, images) {
     }
     if (block.type === "image") {
       out.push(...imageParagraphs(docx, block, t, images));
+      continue;
+    }
+    if (block.type === "chart") {
+      out.push(...chartParagraphs(docx, block, charts.get(block.chartIndex)));
+      continue;
+    }
+    if (block.type === "figureCaption") {
+      out.push(...figureCaptionParagraphs(docx, block.of));
       continue;
     }
 
@@ -381,7 +427,7 @@ function blocksToWord(docx, doc, t, images) {
    SECTION 3: Styles, numbering, footer, and the file
    -------------------------------------------------------------------------- */
 
-export async function wordBlob(doc, t = themeFor(), images = null) {
+export async function wordBlob(doc, t = themeFor(), images = null, charts = null) {
   const docx = await import("docx");
   const { Document, Packer, Paragraph, TextRun, Footer, AlignmentType, PageNumber, LevelFormat } = docx;
 
@@ -441,7 +487,7 @@ export async function wordBlob(doc, t = themeFor(), images = null) {
             ],
           }),
         },
-        children: blocksToWord(docx, doc, t, images),
+        children: blocksToWord(docx, doc, t, images, charts),
       },
     ],
   });

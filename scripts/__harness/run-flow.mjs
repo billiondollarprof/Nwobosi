@@ -84,6 +84,10 @@ for (const walk of [
   /* Added 2026-09-23. An admin gets a short summary of staff work, never
      the work itself, and nothing is lost before the SQL has run. */
   "scripts/__harness/work-summary.cjs",
+  /* Added 2026-09-23. Charts drawn by code in every file: a real
+     PowerPoint chart, a vector drawing in the PDF, SVG with a PNG copy in
+     Word, the numbers and a picture in the spreadsheet. */
+  "scripts/__harness/charts.cjs",
 ]) {
   const run = spawn("node", [walk], { stdio: "inherit" });
   const code = await new Promise((resolve) => run.on("close", resolve));

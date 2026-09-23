@@ -138,6 +138,13 @@ export async function buildFile(format, title, markdown, company, messages = [])
   const { theme, brand } = await brandFor(company);
   const { collectImages } = await import("./docs/images.js");
   const images = await collectImages(doc, messages, company?.id);
+  /* Word and Excel need a picture copy of each chart; the PDF and Slides
+     draw their own. Made only for the formats that use them. */
+  let charts = null;
+  if (format !== "pdf" && format !== "pptx") {
+    const { chartPictures } = await import("./docs/charts/chartPictures.js");
+    charts = await chartPictures(doc, theme);
+  }
   let blob;
   if (format === "pdf") blob = await pdfBlob(doc, theme, brand, images);
   else if (format === "pptx") {
@@ -146,10 +153,10 @@ export async function buildFile(format, title, markdown, company, messages = [])
     blob = await deckBlob(doc, theme, brand, images);
   } else if (format === "xlsx") {
     const { sheetBlob } = await import("./downloadSheet.js");
-    blob = await sheetBlob(title, markdown, theme);
+    blob = await sheetBlob(title, markdown, theme, charts);
   } else {
     format = "docx";
-    blob = await wordBlob(doc, theme, images);
+    blob = await wordBlob(doc, theme, images, charts);
   }
   return { blob, filename: `${slugForFile(title)}.${format}`, mimeType: MIME[format] };
 }
