@@ -39,6 +39,15 @@ built and checked, not when it is planned.
              interview currently. so the assistant listens to know when
              interview is needed and when the staff just wants a conversion."
              Planned in DOCUMENT-HARNESS.md, section 8. Goes into v27.
+             DECIDED 2026-09-23: "it's a conversion, meaning nothing inside
+             the original document is missing and no new thing is added. why
+             A when we can have both already? remember, flexibility and
+             dependability". So BOTH: the exact converter server AND the
+             in-browser way, with a check that nothing went missing.
+             ALSO: "even during a new build, if the staff asks that the
+             layout of an upload should be used, then the layout should not
+             be thrown away. this only happens if they say it."
+             (DOCUMENT-HARNESS.md, section 9.)
 
 0000000000. **2026-09-23, OPEN: pictures with sources, figure numbers,
             charts, skip means skip, and a harness the staff can rely on.**

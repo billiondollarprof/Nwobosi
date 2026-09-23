@@ -1,7 +1,7 @@
 # THE DOCUMENT HARNESS: CHARTS, FIGURES, PICTURE SOURCES, AND A CHECKER
 
-Spec, 2026-09-23. **Status: PLANNED, waiting for Anthony's go ahead.
-Nothing below is built yet.** His words are in `CURRENT.md`, at the top.
+Spec, 2026-09-23. **Status: GO AHEAD given 2026-09-23. Being built in the order in
+section 7.** His words are in `CURRENT.md`, at the top.
 
 He asked for four things and one idea behind them:
 
@@ -183,8 +183,9 @@ It checks:
 1. Skip, picture source, figure numbers. Small, and they share one block.
 2. Charts in every format, drawn, opened, and looked at in all four files.
 3. The checker.
-4. Conversion (section 8).
-5. Then v27 is handed over once, with all of it, and Anthony redeploys.
+4. Conversion, both ways, with the check (section 8).
+5. Layout from an upload, only when asked (section 9).
+6. Then v27 is handed over once, with all of it, and Anthony redeploys.
 
 Each step is built, used by hand, and looked at in all four file formats
 before the next one starts.
@@ -255,32 +256,77 @@ guess:
 A PDF of scanned pages has no text in it. It says so, the way reading one
 already does, and offers to read the pages as pictures instead.
 
-### 8.4 THE DECISION ONLY ANTHONY CAN MAKE: how exact the look is
+### 8.4 DECIDED: both ways, and nothing missing, nothing added
 
-In the browser, a Word to PDF conversion keeps the words, headings,
-lists, tables and pictures, but it prints them in the company's house
-style. It does not keep the original's exact look, such as a letterhead,
-its fonts or its margins. A staff member converting a signed letter
-expects the same letter.
+Anthony, 2026-09-23: "it's a conversion, meaning nothing inside the
+original document is missing and no new thing is added. why A when we can
+have both already? remember, flexibility and dependability."
 
-- **A. In the browser (can be built now).** Free, instant, and the file
-  never leaves the device. Word to PDF comes out in house style, and the
-  reply says so.
-- **B. Exact look, with a converter server.** A small server running
-  LibreOffice (Gotenberg is the usual open source one) makes a PDF that
-  looks exactly like the Word file. It costs hosting and one more secret,
-  and the file travels to that server, which is ours and not a third
-  party's. PDF to Word is still imperfect either way.
+So a conversion is faithful by definition. It does not restyle, it does
+not tidy, it does not add a cover. Two ways are built, and they back each
+other up:
 
-Recommended: **A now**, with the honest line in the reply, and B added
-the day a customer needs the exact look.
+1. **The converter server, the main way.** A small service of our own:
+   LibreOffice for Word to PDF, which prints the Word file exactly as Word
+   lays it out (letterhead, fonts, margins), and pdf2docx for PDF to Word,
+   which keeps tables, pictures and the page layout far better than
+   rebuilding from text. It runs on Google Cloud Run (it sleeps when
+   nobody is converting, so it costs nothing when idle), in the Google
+   Cloud project Anthony already has for Drive. The browser never calls it
+   directly: a Supabase function `convert-document` checks who is asking
+   and passes the file on with a secret only the two servers know.
+2. **In the browser, the fallback.** If the server cannot be reached, the
+   browser converts it the way 8.2 describes. It keeps every word, heading,
+   list, table and picture, and the reply says plainly that the look is
+   not the original's.
+
+### 8.4.1 The check that makes "nothing missing" true
+
+After every conversion, whichever way did it, code reads the words out of
+the new file and compares them with the words in the original. Then the
+reply says one of two things, as a fact:
+
+- "Every word came across." Or,
+- "3 lines did not come across: ..." with the lines, and the offer to try
+  the other way.
+
+It also counts pictures and tables in and out. So a conversion never
+quietly drops something, and nothing new can appear without showing up
+in the comparison.
 
 ### 8.5 What it touches
 
 - `assistant` (v27): the orient lines in 8.1. Prompt lines only.
+- `convert-document` (NEW Supabase function) and `converter/` (NEW: the
+  Cloud Run service, a Dockerfile with LibreOffice and pdf2docx). Anthony
+  deploys the service once, with steps written out for him.
 - `src/shared/convert/` (new): `wordToDocument.js`, `pdfToDocument.js`,
   each returning the document model plus a list of what did not carry
   across.
 - `Chat.jsx`: the `CONVERT:` marker, the result card with the notes and
   **Arrange it for me**.
 - No SQL.
+
+---
+
+## 9. Use the layout of an upload, only when asked
+
+Anthony, 2026-09-23: "even during a new build, if the staff asks that the
+layout of an upload should be used, then the layout should not be thrown
+away. this only happens if they say it."
+
+1. **Only when they say it.** "Lay it out like this one", "use this
+   format". Otherwise an upload is read for its words, as today.
+2. **When they say it, the layout is read, not thrown away.** The same
+   readers the conversion uses (section 8) read the upload's structure:
+   the order of its sections, where its tables and pictures sit, heading
+   levels. From a Word file, its fonts, colours and margins too.
+3. **The model gets the structure as a plan to follow**, so the new work
+   comes out in the same order and shape. The writers get the fonts,
+   colours and margins, in place of the house style, for this piece only.
+4. **The read back says it:** "Laid out like Q2 report.docx." So the staff
+   can see it was understood before anything is built.
+
+This is round 2 item 7 ("a one off style", `OUTPUT-QUALITY.md`) made
+concrete. The company wide version, where an admin uploads a style for
+every file, uses the same reading.
