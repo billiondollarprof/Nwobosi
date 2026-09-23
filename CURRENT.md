@@ -25,6 +25,21 @@ built and checked, not when it is planned.
 
 ### Open
 
+00000000000. **2026-09-23, OPEN: convert a document, no interview.**
+             Anthony, word for word: "someone can actually upload any
+             document and ask for PDF version or word version. since these
+             two are usually inter invertible. maybe the assistant just sees
+             this type of request and passes it to code. but where conversion
+             can affect layout, the assistant says so and can offer to
+             arrange it after the conversion, this happens usually when
+             converting from PDF to word. I believe every staff may like that
+             they can do this as well. So assistant understands whenever a
+             staff uploads a document and says they want it converted. Hope
+             this won't be confusing as the assistant knows only the path of
+             interview currently. so the assistant listens to know when
+             interview is needed and when the staff just wants a conversion."
+             Planned in DOCUMENT-HARNESS.md, section 8. Goes into v27.
+
 0000000000. **2026-09-23, OPEN: pictures with sources, figure numbers,
             charts, skip means skip, and a harness the staff can rely on.**
             Anthony, word for word:

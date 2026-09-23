@@ -183,7 +183,104 @@ It checks:
 1. Skip, picture source, figure numbers. Small, and they share one block.
 2. Charts in every format, drawn, opened, and looked at in all four files.
 3. The checker.
-4. Then v27 is handed over once, with all of it, and Anthony redeploys.
+4. Conversion (section 8).
+5. Then v27 is handed over once, with all of it, and Anthony redeploys.
 
 Each step is built, used by hand, and looked at in all four file formats
 before the next one starts.
+
+---
+
+## 8. Convert a document, with no interview
+
+Anthony, 2026-09-23: "someone can actually upload any document and ask
+for PDF version or word version... the assistant listens to know when
+interview is needed and when the staff just wants a conversion."
+
+### 8.1 How the assistant tells the two apart
+
+The first turn (orient) already reads every message before anything
+else happens. So it gets one more job:
+
+1. **A document is attached and the person only wants it in another
+   format** ("make this a PDF", "I need this in Word"). The reply is one
+   short line and a marker, `CONVERT: pdf` or `CONVERT: docx`. No
+   interview, no read back, because there is nothing to decide.
+2. **They want something made FROM the document** ("use this to write a
+   proposal in Word"). That is new work, so it is the normal path:
+   interview, read back, brief, build. Naming a format does not make it a
+   conversion.
+3. **Not sure which.** It asks, once: "Do you want this exactly as it
+   is, as a Word file, or shall I rework it?"
+
+Code guards the marker: it only acts when a PDF or Word file really was
+attached in that turn. Otherwise it is ignored and the chat carries on as
+normal.
+
+### 8.2 Code does the conversion, the model does not
+
+Once the marker arrives, the model is finished. Code reads the file and
+writes the other format in the browser, with the same writers the rest
+of the product uses. So a conversion costs one short model reply and
+nothing else, and it takes seconds.
+
+**What was found in the audit.** Today an upload is read for its words
+only. A Word file is read with `mammoth.extractRawText` and a PDF is
+read page by page with spaces between the pieces. Both throw the layout
+away, which is right for the model and wrong for a conversion. So
+conversion reads the file again, differently:
+
+- **Word to PDF.** mammoth's HTML reading keeps headings, lists, tables,
+  bold, italic and the pictures inside the file. That becomes the
+  document model, and the PDF writer prints it.
+- **PDF to Word.** pdf.js gives every piece of text with its position
+  and size. Code rebuilds lines, paragraphs, headings (by size), and
+  lists (by the bullet or number at the start). Tables, columns and text
+  boxes do not survive this well, and nobody's PDF to Word does. Adobe's
+  own converter shifts layout too.
+
+### 8.3 Saying what changed, and offering to arrange it
+
+Code knows what it could not carry across, because it is the one that
+did the reading. So the reply says it plainly, from facts, not from a
+guess:
+
+- "Your Word file is ready. The table on page 2 came across as plain
+  lines, and the two columns on page 3 are now one."
+- Then one offer: **Arrange it for me.** That sends the converted text
+  down the normal build path (brief and writing, with the design plan),
+  and the staff gets a laid out document. It is an offer, because it costs
+  a model call, and a lot of the time a plain conversion is all they need.
+
+A PDF of scanned pages has no text in it. It says so, the way reading one
+already does, and offers to read the pages as pictures instead.
+
+### 8.4 THE DECISION ONLY ANTHONY CAN MAKE: how exact the look is
+
+In the browser, a Word to PDF conversion keeps the words, headings,
+lists, tables and pictures, but it prints them in the company's house
+style. It does not keep the original's exact look, such as a letterhead,
+its fonts or its margins. A staff member converting a signed letter
+expects the same letter.
+
+- **A. In the browser (can be built now).** Free, instant, and the file
+  never leaves the device. Word to PDF comes out in house style, and the
+  reply says so.
+- **B. Exact look, with a converter server.** A small server running
+  LibreOffice (Gotenberg is the usual open source one) makes a PDF that
+  looks exactly like the Word file. It costs hosting and one more secret,
+  and the file travels to that server, which is ours and not a third
+  party's. PDF to Word is still imperfect either way.
+
+Recommended: **A now**, with the honest line in the reply, and B added
+the day a customer needs the exact look.
+
+### 8.5 What it touches
+
+- `assistant` (v27): the orient lines in 8.1. Prompt lines only.
+- `src/shared/convert/` (new): `wordToDocument.js`, `pdfToDocument.js`,
+  each returning the document model plus a list of what did not carry
+  across.
+- `Chat.jsx`: the `CONVERT:` marker, the result card with the notes and
+  **Arrange it for me**.
+- No SQL.
