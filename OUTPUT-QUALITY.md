@@ -175,3 +175,93 @@ C1.3 is how it is made safe. He decides:
 
 Each one is built, used by hand, checked by eye in all four formats, and
 only then marked done, before the next starts.
+
+---
+
+# ROUND 2, 2026-09-23 (after A was built)
+
+Anthony's answers and new asks are recorded word for word in `CURRENT.md`.
+This is the plan for them. **Nothing below is built yet.**
+
+## Decided
+
+- **Reuse is SHAPE ONLY** (C2). No document content is kept for reuse.
+- **An admin sees a short summary of staff work, not the work itself.**
+  This replaces "admin sees everything" from earlier the same day.
+- **Caching stays the main cost saver.** Anything per company goes in the
+  cached part of the prompt; anything per person goes in its own cached
+  block after it; only the stage instruction changes turn to turn.
+
+## D. Admin sees a summary, not the work (privacy, do first)
+
+Found while planning: `work_history.summary` holds the WHOLE document
+(saveWork writes `summary: content`). So today an admin reads everyone's
+full work, and `conversations_read` lets an admin read every chat.
+
+1. The full text moves to a new table, `work_content`, readable only by
+   the person who made it (RLS own rows only).
+2. `work_history.summary` becomes a real short summary, made when the work
+   is saved: its title line, what it is for, and its section names.
+3. `conversations_read` loses its admin clause, so each chat is its
+   owner's alone.
+4. Existing rows: their full text is copied into `work_content`, then
+   their summary is shortened. Shown as SQL first, it writes.
+
+## 1. Images in the work
+
+1. **Noticing.** While planning slides or a document, the assistant notes
+   where a picture would carry the point (a cover, a product, a place, a
+   team). It asks during the interview, once, for those spots only.
+2. **Three answers offered, the person picks.** Upload their own photos;
+   get a written prompt for Midjourney or any image generator, one per
+   spot, that they can paste; or stock photo suggestions (search words and
+   where to look), which uses the "go and look" permission like any search.
+   Images already in the knowledge base are used first and named.
+3. **Reading the pictures.** Uploaded images are already sent to the model
+   so it can see them. It says which image goes where, in the read back,
+   and the person can move them.
+4. **Placing them.** A new block, `:::image <file name> | caption`. Slides
+   get an image beside text or a full picture slide; PDF and Word place
+   the image with its caption where the plan said. The picture itself is
+   carried from the chat or the knowledge base into the file.
+
+## 2. Voice, learned over time, per person
+
+1. **Start:** Anthony's plain, conversational method, plus what the
+   company's own documents show (formal or warm, spelling, em dashes or
+   not, how customers are addressed). That becomes the COMPANY voice note.
+2. **First chat:** the assistant asks each person, once, how they like to
+   sound, and invites one or two of their past pieces to learn from.
+3. **Their voice note** is kept on their own row and refined when they
+   correct tone ("less formal", "no em dashes"). If they never answer, the
+   company note is used.
+4. **Cost:** both notes sit in cached blocks of the prompt, so they are
+   read at a tenth of the price after the first turn.
+
+## 3. Shape memory (STYLE-MEMORY.md), shape only
+
+1. On download, the shape is worked out in the browser, no model call:
+   how it opens, sections, depth, words per section, bullets against
+   prose, tables, cards, figures, how it closes, the format.
+2. Stored on the person's `work_history` row, small.
+3. At the start of similar work, the assistant sees that person's kept
+   shapes and says which one it will follow, in one line, so it does not
+   think a style up from nothing. The person can say no.
+4. **Later, with Drive connected:** the files it filed there can be read
+   back for layout and tone as well. The Drive connection can only see
+   files the app made, so that is exactly the kept work.
+
+## 7. The company's own format, the sample deck is only the default
+
+1. **A company style:** an admin uploads their own deck or document as a
+   style source. Its colours, fonts and layout habits are read from the
+   file (as was done with sample.pptx) and stored for the company. Every
+   file then uses that instead of the default look.
+2. **A one off style:** a staff member hands over a document in the chat
+   and says "like this". That style is used for this piece only.
+
+## Proposed order
+
+D first (privacy, small). Then 1 (images, what a demo shows). Then 7
+(company formats), 2 (voice) and 3 (shape memory), which all feed the same
+learning phase and share their storage.
