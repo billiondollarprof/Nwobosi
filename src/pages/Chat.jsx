@@ -79,6 +79,7 @@ import { downloadPptx } from "../shared/downloadDeck.js";
 import { downloadXlsx } from "../shared/downloadSheet.js";
 import { toTables } from "../shared/structure.js";
 import DocumentView from "../shared/DocumentView.jsx";
+import { readDocument, notesAsText } from "../shared/docs/documentModel.js";
 import { BRAND, GRADIENTS, FONTS } from "../shared/tokens";
 import {
   PageShell,
@@ -568,6 +569,15 @@ export default function Chat() {
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const pressAndHold = usePressAndHold();
+
+  /* WHICH STORAGE, IF ANY, THIS PERSON CAN PUT A FINISHED FILE IN. The same
+     rule storage.js uses: a storage tool that can actually be connected,
+     and that this person has connected. Empty when there is none, and the
+     result card then says so rather than offering a button that cannot
+     work. */
+  const linkedStorageName =
+    WORKFLOW_TOOLS.find((tool) => tool.kind === "storage" && tool.state === "connectable" && connectors[tool.id] === true)
+      ?.label ?? "";
 
   /* Closing the sidebar ends selecting. Coming back to it later with ticks
      still on would look like a delete half done. */
@@ -2430,8 +2440,11 @@ export default function Chat() {
 
      So the words are always there, they are just not the first thing. One
      press and the document is on screen to read and copy. */
-  function revealText(id) {
-    updateMessages((prev) => prev.map((m) => (m.id === id ? { ...m, showText: true } : m)));
+  /* Open or close the document inside the chat. Anthony, 2026-09-23:
+     "when I open the file right in the chat, I should be able to close it
+     as well." It used to open and never close. */
+  function revealText(id, show = true) {
+    updateMessages((prev) => prev.map((m) => (m.id === id ? { ...m, showText: show } : m)));
   }
 
   /* PUTTING IT WHERE THE COMPANY KEEPS THINGS.
@@ -3009,6 +3022,8 @@ export default function Chat() {
                 onCopy={() => copyText(m.content)}
                 buildFormat={buildFormat}
                 onShowText={() => revealText(m.id)}
+                onHideText={() => revealText(m.id, false)}
+                storageName={linkedStorageName}
                 onFile={handleFile}
                 onDownload={(format) => handleDownload(format, titleOf(m.content, m.title), m.content)}
               />
@@ -3474,7 +3489,7 @@ THE GLOW AND THE PULSE STAY. They were
 /* Every file the build card can make, in the order they are offered. */
 const BUILD_FORMATS = ["docx", "pdf", "pptx", "xlsx"];
 
-export function ChatBubble({ message, brief, buildFormat = DEFAULT_FORMAT, buildStage = "brief", buildStalled = false, onGenerate, onAdjust, onWantInterview, onSkipInterview, onAllowLookup, onRefuseLookup, onUseFinding, onDropFinding, onReset, onRetry, onShowText, onFile, feedback, onFeedback, onCopy, onDownload }) {
+export function ChatBubble({ message, brief, buildFormat = DEFAULT_FORMAT, buildStage = "brief", buildStalled = false, onGenerate, onAdjust, onWantInterview, onSkipInterview, onAllowLookup, onRefuseLookup, onUseFinding, onDropFinding, onReset, onRetry, onShowText, onHideText, storageName = "", onFile, feedback, onFeedback, onCopy, onDownload }) {
   const isUser = message.role === "user";
   const riseStyle = { animation: "sx-rise 0.35s ease" };
 
@@ -3780,6 +3795,8 @@ export function ChatBubble({ message, brief, buildFormat = DEFAULT_FORMAT, build
        and somebody can ask for "the numbers" and get prose. What is
        actually there is the only thing that decides. */
     const hasTable = toTables(message.content ?? "").length > 0;
+    /* The notes to the person, taken out of the file. See the card below. */
+    const notes = notesAsText(readDocument(message.content ?? "", title).notes);
 
     /* WHICH FILE THIS IS. Decided in the conversation, back at the read
        back, so by the time anybody sees this card it is already settled. */
@@ -3820,8 +3837,53 @@ export function ChatBubble({ message, brief, buildFormat = DEFAULT_FORMAT, build
             here first.
           </p>
 
+          {/* THE NOTES TO THE PERSON, HERE AND NOT IN THE FILE.
+
+              The writing step ends with "What would make this better" when
+              it had to work round something missing. That is written to the
+              person who asked, and on 2026-09-23 it was printed inside a
+              pricing FAQ meant for customers. documentModel.js now keeps it
+              out of every file, and it is shown here instead, where the
+              person reads it before sending anything out. */}
+          {notes.length > 0 && (
+            <div
+              className="rounded-[12px] border px-3.5 py-3 mb-4"
+              style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-2)" }}
+            >
+              <p className="text-[12.5px] font-semibold mb-1.5" style={{ color: "var(--text-1)" }}>
+                Worth checking before it goes out
+              </p>
+              <ul className="space-y-1.5">
+                {notes.map((line, i) => (
+                  <li key={i} className="flex gap-2 text-[12.5px] leading-relaxed" style={{ color: "var(--text-2)" }}>
+                    <span className="shrink-0" style={{ color: "var(--text-3)" }}>•</span>
+                    <span>{line}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {message.showText && (
             <div className="relative mb-4">
+              {/* A WAY BACK OUT, at the top where the eye already is. The
+                  row of buttons is below the document, and on a phone that
+                  can be a long scroll away. */}
+              <div className="flex items-center justify-between mb-1.5 px-0.5">
+                <span className="text-[11.5px] font-semibold uppercase tracking-wide" style={{ color: "var(--text-3)" }}>
+                  Preview
+                </span>
+                <button
+                  type="button"
+                  onClick={onHideText}
+                  className="flex items-center gap-1 text-[12.5px] font-medium px-2 py-1 rounded-md hover:opacity-70"
+                  style={{ color: "var(--text-2)" }}
+                  aria-label="Close the preview"
+                >
+                  <X size={13} />
+                  Close
+                </button>
+              </div>
               <div
                 className="rounded-[14px] border p-4 overflow-y-auto"
                 style={{
@@ -3884,13 +3946,27 @@ export function ChatBubble({ message, brief, buildFormat = DEFAULT_FORMAT, build
                 up and could be Dropbox or anything else. Pressing it gets
                 one of three honest answers, including the awkward one
                 where something is connected and cannot be reached. */}
-            <GhostButton onClick={onFile}>Put it in your storage</GhostButton>
-            {!message.showText && (
+            {/* STORAGE IS CHECKED, NOT ASKED ABOUT BLINDLY. Anthony,
+                2026-09-23: "the model didn't ask me to save to storage or
+                detect if storage is connected." When something is
+                connected the card offers it by name. When nothing is, a
+                button that could only ever answer "nothing is connected"
+                is noise, so the card says it once, plainly, below. */}
+            {storageName && <GhostButton onClick={onFile}>Put it in {storageName}</GhostButton>}
+            {message.showText ? (
+              <GhostButton onClick={onHideText}>Close preview</GhostButton>
+            ) : (
               <GhostButton onClick={onShowText}>Show it here</GhostButton>
             )}
             <GhostButton onClick={onCopy}>Copy</GhostButton>
             <GhostButton onClick={onReset}>Start something new</GhostButton>
           </div>
+
+          {!storageName && (
+            <p className="text-[12px] mt-3 leading-relaxed" style={{ color: "var(--text-3)" }}>
+              No storage is connected here yet, so this one is a download.
+            </p>
+          )}
 
         </div>
       </div>

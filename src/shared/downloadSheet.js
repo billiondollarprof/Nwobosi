@@ -33,6 +33,7 @@
 
 import { toTables } from "./structure.js";
 import { slugForFile } from "./download.js";
+import { THEME } from "./docs/documentTheme.js";
 
 /* --------------------------------------------------------------------------
    SECTION 1: Reading one cell
@@ -63,7 +64,12 @@ export function readCell(raw) {
   const money = text.match(/^([£$€₦])\s*([+-]?[\d,]*\.?\d+)$/);
   if (money) {
     const n = Number(money[2].replace(/,/g, ""));
-    if (Number.isFinite(n)) return { value: n, format: `"${money[1]}"#,##0.00` };
+    /* Decimals only when they were written. "₦124,200" shown as
+       "₦124,200.00" is wider than the column was measured for, which is
+       exactly how a cell came out as ##### on 2026-09-23. */
+    if (Number.isFinite(n)) {
+      return { value: n, format: money[2].includes(".") ? `"${money[1]}"#,##0.00` : `"${money[1]}"#,##0` };
+    }
   }
 
   /* A plain number, with or without thousands separators. */
@@ -128,32 +134,61 @@ export async function downloadXlsx(title, markdown) {
     }
     used.add(name.toLowerCase());
 
-    const sheet = book.addWorksheet(name);
+    const sheet = book.addWorksheet(name, { properties: { defaultRowHeight: 18 } });
+    const font = { name: THEME.officeFont, size: 11, color: { argb: `FF${THEME.body}` } };
+
+    /* THE SAME LOOK AS THE OTHER FILES, 2026-09-23. A title row with the
+       document's name and the table's name, a gap, then the table with an
+       accent header, a filter on it, and a soft stripe on every other row.
+       The table itself stays one clean block, so sorting and filtering it
+       work exactly as anybody expects. */
+    const titleRow = sheet.addRow([title]);
+    titleRow.font = { ...font, size: 15, bold: true, color: { argb: `FF${THEME.ink}` } };
+    titleRow.height = 24;
+    if (table.name && table.name !== title) {
+      const sub = sheet.addRow([table.name]);
+      sub.font = { ...font, color: { argb: `FF${THEME.muted}` } };
+    }
+    sheet.addRow([]);
 
     const header = sheet.addRow(table.header);
-    header.font = { bold: true };
+    const headerAt = header.number;
+    header.height = 22;
     header.eachCell((cell) => {
-      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF3F4F6" } };
+      cell.font = { ...font, bold: true, color: { argb: "FFFFFFFF" } };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${THEME.accent}` } };
+      cell.alignment = { vertical: "middle" };
     });
 
-    for (const row of table.rows) {
+    table.rows.forEach((row, r) => {
       const read = row.map(readCell);
       const added = sheet.addRow(read.map((c) => c.value));
-      read.forEach((c, i) => {
-        if (c.format) added.getCell(i + 1).numFmt = c.format;
+      added.eachCell({ includeEmpty: true }, (cell, col) => {
+        cell.font = font;
+        if (r % 2 === 1) cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${THEME.zebra}` } };
+        cell.border = { bottom: { style: "thin", color: { argb: `FF${THEME.rule}` } } };
+        const c = read[col - 1];
+        if (c?.format) cell.numFmt = c.format;
       });
-    }
-
-    /* Columns sized to their longest cell, within reason. A sheet that
-       opens showing ##### instead of the numbers is a sheet somebody has
-       to fix before they can read it. */
-    sheet.columns.forEach((column, i) => {
-      const longest = [table.header[i] ?? "", ...table.rows.map((r) => r[i] ?? "")]
-        .reduce((most, text) => Math.max(most, String(text).length), 0);
-      column.width = Math.min(Math.max(longest + 2, 10), 48);
     });
 
-    sheet.views = [{ state: "frozen", ySplit: 1 }];
+    /* Numbers line up on the right, so their header does too. */
+    table.header.forEach((_, i) => {
+      const allNumbers = table.rows.length > 0 && table.rows.every((row) => typeof readCell(row[i]).value === "number");
+      if (allNumbers) sheet.getCell(headerAt, i + 1).alignment = { vertical: "middle", horizontal: "right" };
+    });
+
+    /* Columns sized to what the cell SHOWS, which is wider than what was
+       typed once a number format adds separators. A sheet that opens
+       showing ##### is a sheet somebody has to fix before they can read it. */
+    table.header.forEach((head, i) => {
+      const longest = [head ?? "", ...table.rows.map((r) => r[i] ?? "")]
+        .reduce((most, text) => Math.max(most, String(text).length + (String(text).includes(".") ? 0 : 3)), 0);
+      sheet.getColumn(i + 1).width = Math.min(Math.max(longest + 4, 12), 60);
+    });
+
+    sheet.autoFilter = { from: { row: headerAt, column: 1 }, to: { row: headerAt, column: table.header.length } };
+    sheet.views = [{ state: "frozen", ySplit: headerAt, showGridLines: false }];
   });
 
   const buffer = await book.xlsx.writeBuffer();

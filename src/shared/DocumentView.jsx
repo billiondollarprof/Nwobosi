@@ -25,10 +25,12 @@
 
    IT RENDERS THE SAME BLOCKS THE FILES DO
    ---------------------------------------
-   parseMarkdown in download.js is what the PDF and the Word writer read. It
-   is what this reads too, deliberately. One parser, three renderings, so
-   the thing on screen cannot drift from the thing that downloads. If a
-   table shows here, a table is in the file.
+   readDocument in docs/documentModel.js is what every file writer reads.
+   It is what this reads too, deliberately. One reading, five renderings,
+   so the thing on screen cannot drift from the thing that downloads. If a
+   table shows here, a table is in the file. The notes to the person
+   ("What would make this better") are not in the file, so they are not
+   here either; the chat shows them under the card.
 
    WHAT IT IS NOT
    --------------
@@ -42,7 +44,7 @@
      2. The document
    ========================================================================== */
 
-import { parseMarkdown } from "./download.js";
+import { readDocument } from "./docs/documentModel.js";
 
 /* --------------------------------------------------------------------------
    SECTION 1: One block
@@ -55,9 +57,11 @@ import { parseMarkdown } from "./download.js";
 function Runs({ runs }) {
   return (
     <>
-      {(runs ?? []).map((run, i) =>
-        run.bold ? <strong key={i} style={{ fontWeight: 600 }}>{run.text}</strong> : <span key={i}>{run.text}</span>,
-      )}
+      {(runs ?? []).map((run, i) => {
+        if (run.br) return <br key={i} />;
+        const style = { fontWeight: run.bold ? 600 : undefined, fontStyle: run.italic ? "italic" : undefined };
+        return run.bold || run.italic ? <span key={i} style={style}>{run.text}</span> : <span key={i}>{run.text}</span>;
+      })}
     </>
   );
 }
@@ -83,13 +87,17 @@ function Block({ block, previous }) {
     );
   }
 
-  if (block.type === "li") {
+  if (block.type === "list") {
     return (
-      <div className="flex gap-2" style={{ marginBottom: "4px" }}>
-        <span className="shrink-0 tabular-nums" style={{ color: "var(--text-3)" }}>
-          {block.ordered ? `${block.number}.` : "•"}
-        </span>
-        <span style={{ color: "var(--text-2)" }}><Runs runs={block.runs} /></span>
+      <div style={{ margin: "2px 0 10px" }}>
+        {block.items.map((item, i) => (
+          <div key={i} className="flex gap-2" style={{ marginBottom: "4px" }}>
+            <span className="shrink-0 tabular-nums" style={{ color: "var(--text-3)" }}>
+              {block.ordered ? `${block.start + i}.` : "•"}
+            </span>
+            <span style={{ color: "var(--text-2)" }}><Runs runs={item.runs} /></span>
+          </div>
+        ))}
       </div>
     );
   }
@@ -157,16 +165,24 @@ function Block({ block, previous }) {
    -------------------------------------------------------------------------- */
 
 export default function DocumentView({ markdown }) {
-  const blocks = parseMarkdown(markdown);
+  const doc = readDocument(markdown, "");
 
   /* Nothing to show is a real state while a document is still streaming in.
      It must not render an empty bordered box, which reads as a failure. */
-  if (!blocks.length) return null;
+  if (!doc.blocks.length && !doc.title) return null;
 
   return (
     <div className="text-[13.5px] leading-relaxed">
-      {blocks.map((block, i) => (
-        <Block key={i} block={block} previous={i > 0} />
+      {doc.title && (
+        <p className="font-semibold" style={{ color: "var(--text-1)", fontSize: "18px", marginBottom: doc.subtitle ? "2px" : "10px" }}>
+          {doc.title}
+        </p>
+      )}
+      {doc.subtitle && (
+        <p style={{ color: "var(--text-3)", marginBottom: "10px" }}>{doc.subtitle}</p>
+      )}
+      {doc.blocks.map((block, i) => (
+        <Block key={i} block={block} previous={i > 0 || Boolean(doc.title)} />
       ))}
     </div>
   );

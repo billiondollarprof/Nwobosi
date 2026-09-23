@@ -25,7 +25,23 @@ built and checked, not when it is planned.
 
 ### Open
 
-000000. **2026-09-23, OPEN: three asks after the first real PDF.**
+000000. **2026-09-23, a AND b BUILT (site push only, no redeploy); c
+        NEEDS HIS CHOICE: three asks after the first real PDF.**
+
+        Built: every format now reads one model
+        (`src/shared/docs/documentModel.js`). PDF moved from hand drawn
+        jsPDF (no ₦ in Helvetica) to pdfmake with Roboto inside the file.
+        Word got real styles, numbering and footer. Slides are measured so
+        nothing overlaps, with a cover and bold kept. Spreadsheet sized to
+        what the cell shows. Title printed once everywhere. The "What would
+        make this better" notes are out of every file and shown in the chat
+        card instead. The preview closes. The card says by itself when no
+        storage is connected. Tests: document-model (22),
+        document-writers (18), flow.cjs storage and close checks.
+
+        Still open for (c): there is NO real storage connector at all.
+        Drive is registered, not connectable. Saving for real needs a
+        connector build and his OAuth app for whichever storage he picks.
 
         The build reached a real download for the first time (Amara
         Pricing FAQ, PDF). Then:

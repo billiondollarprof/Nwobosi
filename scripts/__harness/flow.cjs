@@ -266,15 +266,16 @@ function check(name, cond) { (cond ? OK : BAD).push(name); }
   /* PUTTING IT IN THE COMPANY'S STORAGE, and the honest answer when there
      is none. Anthony, 2026-09-21: "if no cloud storage is connected, it
      will say so." Never "Google Drive": whatever they connected. */
-  check('the storage question is asked, without naming a brand',
-    (await page.locator('text=Put it in your storage').count()) > 0);
+  /* CHANGED 2026-09-23. Anthony: "the model didn't ask me to save to
+     storage or detect if storage is connected." The card now checks by
+     itself and says so, instead of a button that could only ever answer
+     "nothing is connected". With storage connected it offers it by name. */
+  check('the card says by itself that no storage is connected',
+    (await page.locator('text=No storage is connected here yet').count()) > 0);
+  check('and does not offer a storage button that cannot work',
+    (await page.locator('button', { hasText: 'Put it in' }).count()) === 0);
   check('and it does not say Google Drive',
     (await page.locator('text=Google Drive').count()) === 0);
-
-  await page.locator('button', { hasText: 'Put it in your storage' }).first().click();
-  await page.waitForTimeout(900);
-  check('pressing it says plainly that none is connected here',
-    (await page.locator('text=No storage is connected here').count()) > 0);
 
   /* The words are still there for somebody who cannot open the file. */
   await page.locator('button', { hasText: 'Show it here' }).first().click();
@@ -282,6 +283,20 @@ function check(name, cond) { (cond ? OK : BAD).push(name); }
   check('"Show it here" pastes it into the chat on request',
     (await page.locator('text=What do you do?').count()) > 0);
   await page.screenshot({ path: '/tmp/claude-0/flow-filefirst.png', fullPage: true });
+
+  /* AND IT CLOSES. Anthony, 2026-09-23: "when I open the file right in
+     the chat, I should be able to close it as well." */
+  await page.locator('button[aria-label="Close the preview"]').first().click();
+  await page.waitForTimeout(400);
+  check('the preview closes from the Close at its top',
+    (await page.locator('text=What do you do?').count()) === 0);
+  await page.locator('button', { hasText: 'Show it here' }).first().click();
+  await page.waitForTimeout(400);
+  await page.locator('button', { hasText: 'Close preview' }).first().click();
+  await page.waitForTimeout(400);
+  check('and from "Close preview" in the row below',
+    (await page.locator('text=What do you do?').count()) === 0 &&
+    (await page.locator('button', { hasText: 'Show it here' }).count()) > 0);
 
   if (built) {
     const before = await page.evaluate(() => (window.__TURNS || []).length);
