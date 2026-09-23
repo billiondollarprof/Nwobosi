@@ -532,7 +532,27 @@ async function streamWithRoomToWrite(
     `stage=${stage} spent its whole ceiling thinking and wrote nothing, asking again without thinking`,
   );
 
-  const second = await once({});
+  /* SAID OUT LOUD RATHER THAN LEFT OUT. Anthony, 2026-09-23, choosing this
+     from four options: "you can do D."
+
+     This line used to pass an empty object, which only OMITS the thinking
+     setting and hopes the model reads that as off. It does not. His own logs
+     proved it: the retry fired four times and failed twice, and a failed
+     retry is billed at exactly twice the stage's ceiling, so the second go
+     spent its whole allowance thinking too and wrote nothing either. The
+     person then got "ran out of room" after being charged for two attempts.
+
+     disabled is the shape 0.68.0 knows, so the intent written above is now
+     what is actually sent, and the whole ceiling goes to the words.
+
+     WHAT DID NOT CHANGE, on purpose: thinking is still ON for the first
+     attempt on every stage, including the interview. The interview reasons,
+     which is what makes it able to weigh the answers it has just been given
+     and work out what is still missing. This is the rescue, not the rule. It
+     fires only when a turn spent everything thinking and wrote nothing, and
+     nothing had reached the screen, so the person never sees the first
+     attempt and never has to type anything. They just get their answer. */
+  const second = await once({ thinking: { type: "disabled" } });
   const a = first.usage ?? ({} as Anthropic.Usage);
   const b = second.usage ?? ({} as Anthropic.Usage);
   return {

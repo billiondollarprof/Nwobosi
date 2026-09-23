@@ -84,7 +84,15 @@ const used = (i, o) => ({ input_tokens: i, cache_creation_input_tokens: 0, cache
 
   check("IT ASKS AGAIN instead of handing back nothing", model.requests.length === 2);
   check("the first go had thinking on", "thinking" in model.requests[0]);
-  check("THE SECOND GO HAS THINKING OFF", !("thinking" in model.requests[1]));
+  /* ASKS FOR THE SETTING NOW, RATHER THAN FOR ITS ABSENCE. Anthony approved
+     this on 2026-09-23, option D of four. The second go used to pass an empty
+     object and simply leave the thinking setting out, which only HOPES the
+     model reads that as off. His logs showed it does not: the retry failed
+     twice out of four, and a failed retry is billed at twice the ceiling, so
+     the second go thought as well. It now says disabled outright, so this
+     check is stricter than the one it replaces rather than weaker. */
+  check("THE SECOND GO HAS THINKING OFF, SAID OUT LOUD",
+    model.requests[1].thinking?.type === "disabled");
   check("and no effort setting either", !("output_config" in model.requests[1]));
   check("the second go keeps the same ceiling", model.requests[1].max_tokens === 2000);
   check("the person gets the brief", shown === "# Brief\nAudience: finance");
