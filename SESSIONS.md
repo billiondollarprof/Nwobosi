@@ -58,6 +58,44 @@ in the dashboard: Edge Functions, assistant, Logs.
 2. Test the v33 interview fix by sending a message in the chat that failed.
 3. The walkthrough video. That is what all of this is for.
 
+### A real clue on the "functions redeploy themselves" mystery
+
+`CLAUDE.md` has carried this as unexplained since 2026-09-08: functions
+jumping a version with nobody asking. Here is what was seen today, with
+times, so the next person does not start from nothing.
+
+At **17:31:04**, eight functions all jumped in the same second:
+`invite-staff` v22, `support-ask` v23, `oauth-callback` v15,
+`support-reply` v11, `group-images` v9, `revoke-staff` v8, and the three
+this session had just deployed, which went v1 to v2.
+
+That is one minute after this session pushed 67 commits from `testing` into
+`main`. **That push touched 140 files, function files among them.**
+
+At **19:17:19** this session pushed the assistant fix to `main`.
+`assistant` was v33 at 19:17:05, deployed by hand. It was **v34 at
+19:18:22**, one minute after the push. The deployed copy still contained
+every line of the fix, so the redeploy came from the repo.
+
+At **19:24:30** a push followed that changed only `CURRENT.md` and
+`SESSIONS.md`. **Nothing redeployed.**
+
+**The guess this points at: a GitHub integration on the Supabase project is
+deploying functions on push to `main`, and only those whose files changed.**
+That would explain all three observations at once, including why the older
+test in `CLAUDE.md` found no trigger: that test predates the integration.
+He connected GitHub to this repo today for the Cloud Run build, so a
+Supabase side may have been switched on around the same time.
+
+NOT CONFIRMED. It is a pattern with times attached, not a proven cause. The
+way to settle it is to push a one line change to a single function file and
+watch whether that one function, and only that one, moves.
+
+**Why this matters more than it looks.** If it is real, then `CLAUDE.md`'s
+warning gets sharper rather than softer: a push to `main` can put repo code
+into a live function, so a repo that is ahead of the deployment is not a
+bookkeeping problem, it is a deployment about to happen.
+
 ---
 
 ## Session 10: 2026-09-10
