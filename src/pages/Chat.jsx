@@ -81,6 +81,7 @@ import { downloadXlsx } from "../shared/downloadSheet.js";
 import { toTables } from "../shared/structure.js";
 import DocumentView from "../shared/DocumentView.jsx";
 import ChatText from "../shared/ChatText.jsx";
+import { labelledImageBlocks, imagesInMessages } from "../shared/docs/images.js";
 import { readDocument, notesAsText } from "../shared/docs/documentModel.js";
 import { BRAND, GRADIENTS, FONTS } from "../shared/tokens";
 import {
@@ -266,11 +267,10 @@ function buildTurnContent(text, attachments) {
 
   if (!imageFiles.length) return written;
 
+  /* Each picture goes with its file name in front of it, so the model can
+     say which one belongs where. See docs/images.js. */
   return [
-    ...imageFiles.map((a) => ({
-      type: "image",
-      source: { type: "base64", media_type: a.image.media_type, data: a.image.data },
-    })),
+    ...labelledImageBlocks(imageFiles),
     {
       type: "text",
       text: written || `Here is ${imageFiles.map((a) => a.name).join(" and ")}.`,
@@ -581,10 +581,16 @@ export default function Chat() {
      off its row, so every file comes out in that company's look. See
      src/shared/docs/documentTheme.js and download.js. */
   const companyBrand = {
+    id: me?.company?.id ?? "",
     name: me?.company?.name ?? "",
     color: me?.company?.brand_color ?? "",
     logoUrl: me?.company?.logo_url ?? "",
   };
+
+  /* Pictures handed over in this chat, by name, so the preview can show
+     them where the document places them. Company images are fetched only
+     when a file is built, not for the preview. */
+  const chatImages = imagesInMessages(messages);
 
   const linkedStorageName =
     WORKFLOW_TOOLS.find((tool) => tool.kind === "storage" && tool.state === "connectable" && connectors[tool.id] === true)
@@ -2529,7 +2535,7 @@ export default function Chat() {
 
     setToast(`Putting it in ${where.name}`);
     try {
-      const file = await buildFile(format, title, content, companyBrand);
+      const file = await buildFile(format, title, content, companyBrand, messagesRef.current);
       const result = await fileInDrive(file);
       if (!result?.ok) {
         setToast(result?.reason ?? storageMessage({ state: "unreachable", name: where.name }));
@@ -2560,10 +2566,11 @@ export default function Chat() {
   async function handleDownload(format, title, content) {
     setToast(MAKING[format] ?? "Making the file");
     try {
-      if (format === "pdf") await downloadPdf(title, content, companyBrand);
-      else if (format === "pptx") await downloadPptx(title, content, companyBrand);
+      const convo = messagesRef.current;
+      if (format === "pdf") await downloadPdf(title, content, companyBrand, convo);
+      else if (format === "pptx") await downloadPptx(title, content, companyBrand, convo);
       else if (format === "xlsx") await downloadXlsx(title, content, companyBrand);
-      else await downloadDocx(title, content, companyBrand);
+      else await downloadDocx(title, content, companyBrand, convo);
       setToast("Saved to your downloads");
 
       /* THE JOB IS FINISHED THE MOMENT THE FILE IS ON THEIR MACHINE.
@@ -3116,6 +3123,7 @@ export default function Chat() {
                 onShowText={() => revealText(m.id)}
                 onHideText={() => revealText(m.id, false)}
                 storageName={linkedStorageName}
+                chatImages={chatImages}
                 onFile={() => handleFile(m.format ?? buildFormat, titleOf(m.content, m.title), m.content)}
                 onDownload={(format) => handleDownload(format, titleOf(m.content, m.title), m.content)}
               />
@@ -3583,7 +3591,7 @@ THE GLOW AND THE PULSE STAY. They were
 /* Every file the build card can make, in the order they are offered. */
 const BUILD_FORMATS = ["docx", "pdf", "pptx", "xlsx"];
 
-export function ChatBubble({ message, brief, buildFormat = DEFAULT_FORMAT, buildStage = "brief", buildStalled = false, onGenerate, onAdjust, onWantInterview, onSkipInterview, onAllowLookup, onRefuseLookup, onUseFinding, onDropFinding, onReset, onRetry, onShowText, onHideText, storageName = "", onFile, feedback, onFeedback, onCopy, onDownload }) {
+export function ChatBubble({ message, brief, buildFormat = DEFAULT_FORMAT, buildStage = "brief", buildStalled = false, onGenerate, onAdjust, onWantInterview, onSkipInterview, onAllowLookup, onRefuseLookup, onUseFinding, onDropFinding, onReset, onRetry, onShowText, onHideText, storageName = "", chatImages = null, onFile, feedback, onFeedback, onCopy, onDownload }) {
   const isUser = message.role === "user";
   const riseStyle = { animation: "sx-rise 0.35s ease" };
 
@@ -4021,7 +4029,7 @@ export function ChatBubble({ message, brief, buildFormat = DEFAULT_FORMAT, build
                 {/* Rendered, not raw. Somebody reading this to check it
                     before sending it out should see the document, not a
                     wall of hashes and pipes. */}
-                <DocumentView markdown={message.content} />
+                <DocumentView markdown={message.content} images={chatImages} />
               </div>
 
               {/* aria-hidden and pointer-events-none: a hint for the eye,

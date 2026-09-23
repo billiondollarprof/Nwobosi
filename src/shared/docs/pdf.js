@@ -35,6 +35,7 @@
 
 import { THEME, themeFor, hex } from "./documentTheme.js";
 import { plainText } from "./documentModel.js";
+import { imageKey } from "./imageKey.js";
 
 /* The usable width of an A4 page between the margins, in points. */
 const PAGE_WIDTH = 595.28 - 56 * 2;
@@ -214,6 +215,30 @@ function statBlock(block, t) {
   };
 }
 
+/* A picture, full width at most and never taller than half a page, with
+   its caption under it. A picture that could not be found is a marked
+   space naming it, so the person sees exactly what is missing. */
+function imageBlock(block, t, images) {
+  const found = images?.get(imageKey(block.name));
+  const caption = block.caption
+    ? [{ text: block.caption, fontSize: 8.5, color: hex(THEME.muted), alignment: "center", margin: [0, 5, 0, 0] }]
+    : [];
+  if (!found) {
+    return {
+      table: { widths: ["*"], body: [[{ text: `Picture to add here: ${block.name}`, color: hex(THEME.muted), alignment: "center", fillColor: hex(t.accentTint), margin: [0, 18, 0, 18] }]] },
+      layout: boxLayout(8),
+      margin: [0, 4, 0, 14],
+    };
+  }
+  const maxH = 320;
+  const scale = Math.min(PAGE_WIDTH / found.width, maxH / found.height, 1.5);
+  return {
+    stack: [{ image: found.dataUrl, width: found.width * scale, height: found.height * scale, alignment: "center" }, ...caption],
+    unbreakable: true,
+    margin: [0, 6, 0, 14],
+  };
+}
+
 function takeawayBlock(block, t) {
   return {
     table: { widths: ["*"], body: [[{ text: textOf(block.runs, { bold: true }), color: "#FFFFFF", fillColor: hex(t.accent) }]] },
@@ -236,7 +261,7 @@ function headingStyle(level, t) {
   }[level];
 }
 
-export function blocksToPdf(blocks, t = themeFor()) {
+export function blocksToPdf(blocks, t = themeFor(), images = null) {
   /* The model writes "##" for its top sections, because "#" was the title.
      So the shallowest heading used is treated as level 1 and gets the
      accent colour, whatever number of hashes it had. */
@@ -276,6 +301,7 @@ export function blocksToPdf(blocks, t = themeFor()) {
     else if (block.type === "stat") out.push(statBlock(block, t));
     else if (block.type === "takeaway") out.push(takeawayBlock(block, t));
     else if (block.type === "label") out.push(labelText(block.text, t));
+    else if (block.type === "image") out.push(imageBlock(block, t, images));
     else if (block.runs) out.push({ text: textOf(block.runs), margin: [0, 0, 0, 9] });
   }
   return out;
@@ -290,7 +316,7 @@ export function blocksToPdf(blocks, t = themeFor()) {
    fired. They carry this id so the rule can skip them. */
 const RUNNING = "running-header-or-footer";
 
-export function pdfDefinition(doc, t = themeFor(), brand = null) {
+export function pdfDefinition(doc, t = themeFor(), brand = null, images = null) {
   const titleBlock = [
     ...(brand?.name ? [{ text: brand.name.toUpperCase(), fontSize: 8.5, bold: true, color: hex(t.accent), characterSpacing: 1.2, margin: [0, 0, 0, 6] }] : []),
     { text: doc.title, fontSize: THEME.size.title, bold: true, color: hex(THEME.ink), lineHeight: 1.15 },
@@ -322,7 +348,7 @@ export function pdfDefinition(doc, t = themeFor(), brand = null) {
       margin: [0, 26, 0, 0],
     }),
 
-    content: [...titleBlock, ...blocksToPdf(doc.blocks, t)],
+    content: [...titleBlock, ...blocksToPdf(doc.blocks, t, images)],
 
     /* A HEADING NEVER ENDS A PAGE. If nothing that follows a heading fits
        on the same page, the heading moves to the next page with it. */
@@ -340,11 +366,11 @@ export function pdfDefinition(doc, t = themeFor(), brand = null) {
    somebody actually asks for a PDF.
    -------------------------------------------------------------------------- */
 
-export async function pdfBlob(doc, t = themeFor(), brand = null) {
+export async function pdfBlob(doc, t = themeFor(), brand = null, images = null) {
   const [{ default: pdfMake }, fonts] = await Promise.all([
     import("pdfmake/build/pdfmake.js"),
     import("pdfmake/build/vfs_fonts.js"),
   ]);
   pdfMake.addVirtualFileSystem(fonts.default ?? fonts);
-  return pdfMake.createPdf(pdfDefinition(doc, t, brand)).getBlob();
+  return pdfMake.createPdf(pdfDefinition(doc, t, brand, images)).getBlob();
 }

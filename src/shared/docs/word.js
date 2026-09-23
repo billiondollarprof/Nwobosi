@@ -23,6 +23,7 @@
 
 import { THEME, themeFor } from "./documentTheme.js";
 import { plainText } from "./documentModel.js";
+import { imageKey } from "./imageKey.js";
 
 /* Half points. Word measures font size in halves. */
 const half = (pt) => Math.round(pt * 2);
@@ -178,6 +179,42 @@ function takeawayTable(docx, block, t) {
   });
 }
 
+/* A picture, as wide as the text at most and never taller than half a
+   page, centred, with its caption under it. A picture that could not be
+   found is a shaded line naming it. Word wants the bytes, not an address. */
+function imageParagraphs(docx, block, t, images) {
+  const { Paragraph, TextRun, ImageRun, AlignmentType, ShadingType } = docx;
+  const found = images?.get(imageKey(block.name));
+  const caption = block.caption
+    ? [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 200 }, children: [new TextRun({ text: block.caption, size: half(9), color: THEME.muted, italics: true })] })]
+    : [];
+  if (!found) {
+    return [new Paragraph({
+      alignment: AlignmentType.CENTER,
+      shading: { type: ShadingType.CLEAR, fill: t.accentTint, color: "auto" },
+      spacing: { before: 120, after: 200 },
+      children: [new TextRun({ text: `Picture to add here: ${block.name}`, color: THEME.muted })],
+    })];
+  }
+  const binary = atob(found.dataUrl.split(",")[1] ?? "");
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  /* Pixels at 96 to the inch. The text is about 627 wide on A4 here. */
+  const scale = Math.min(620 / found.width, 420 / found.height, 1);
+  return [
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 120, after: block.caption ? 60 : 200, line: 240, lineRule: "auto" },
+      children: [new ImageRun({
+        type: found.mime === "image/jpeg" ? "jpg" : "png",
+        data: bytes,
+        transformation: { width: Math.round(found.width * scale), height: Math.round(found.height * scale) },
+      })],
+    }),
+    ...caption,
+  ];
+}
+
 function labelParagraph(docx, text, t) {
   const { Paragraph, TextRun } = docx;
   return new Paragraph({
@@ -187,7 +224,7 @@ function labelParagraph(docx, text, t) {
   });
 }
 
-function blocksToWord(docx, doc, t) {
+function blocksToWord(docx, doc, t, images) {
   const { Paragraph, HeadingLevel, Table, TableRow, TableCell, WidthType, BorderStyle, ShadingType, AlignmentType } = docx;
   const out = [];
   /* After a design block, an empty paragraph: two tables touching are
@@ -235,6 +272,10 @@ function blocksToWord(docx, doc, t) {
     }
     if (block.type === "label") {
       out.push(labelParagraph(docx, block.text, t));
+      continue;
+    }
+    if (block.type === "image") {
+      out.push(...imageParagraphs(docx, block, t, images));
       continue;
     }
 
@@ -315,7 +356,7 @@ function blocksToWord(docx, doc, t) {
    SECTION 3: Styles, numbering, footer, and the file
    -------------------------------------------------------------------------- */
 
-export async function wordBlob(doc, t = themeFor()) {
+export async function wordBlob(doc, t = themeFor(), images = null) {
   const docx = await import("docx");
   const { Document, Packer, Paragraph, TextRun, Footer, AlignmentType, PageNumber, LevelFormat } = docx;
 
@@ -331,7 +372,10 @@ export async function wordBlob(doc, t = themeFor()) {
       default: {
         document: {
           run: { font: THEME.officeFont, size: half(THEME.size.body + 0.5), color: THEME.body },
-          paragraph: { spacing: { after: 140, line: 300 } },
+          /* The rule is said out loud. Word reads a missing rule as "auto",
+             LibreOffice reads it as an exact height, and an exact height
+             cuts an inline picture down to one line of text. */
+          paragraph: { spacing: { after: 140, line: 300, lineRule: "auto" } },
         },
       },
       paragraphStyles: [
@@ -372,7 +416,7 @@ export async function wordBlob(doc, t = themeFor()) {
             ],
           }),
         },
-        children: blocksToWord(docx, doc, t),
+        children: blocksToWord(docx, doc, t, images),
       },
     ],
   });

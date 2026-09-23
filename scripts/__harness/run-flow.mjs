@@ -78,6 +78,9 @@ for (const walk of [
   /* Added 2026-09-23. The result card files the same file in Google Drive
      when it is connected, and says plainly when it is not. */
   "scripts/__harness/drive.cjs",
+  /* Added 2026-09-23. A picture handed over in the chat reaches the model
+     with its name, and ends up inside the Slides, PDF and Word files. */
+  "scripts/__harness/images.cjs",
 ]) {
   const run = spawn("node", [walk], { stdio: "inherit" });
   const code = await new Promise((resolve) => run.on("close", resolve));

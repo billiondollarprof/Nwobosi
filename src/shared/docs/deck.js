@@ -39,6 +39,7 @@
 
 import { THEME } from "./documentTheme.js";
 import { plainText, blockText } from "./documentModel.js";
+import { imageKey } from "./imageKey.js";
 
 /* --------------------------------------------------------------------------
    SECTION 1: Measurements, in inches, widescreen 13.33 by 7.5
@@ -113,6 +114,8 @@ function piecesOf(blocks) {
       pieces.push({ kind: "stat", block, h: Math.max(2.7, blocksHeight(block.blocks, FONT.body + 1, BODY_W - 4.4) + 0.3) });
     } else if (block.type === "table") {
       pieces.push({ kind: "table", block, h: (block.rows.length + 1) * rowHeight(block) + 0.1 });
+    } else if (block.type === "image") {
+      pieces.push({ kind: "image", block, h: 3.4 });
     } else if (block.type === "h") {
       pieces.push({ kind: "text", runs: block.runs, style: "sub", h: textHeight(plainText(block.runs).length, FONT.body + 1) });
     } else if (block.type === "list") {
@@ -133,7 +136,11 @@ function piecesOf(blocks) {
   return pieces;
 }
 
-const FEATURES = new Set(["cards", "steps", "stat", "table"]);
+const FEATURES = new Set(["cards", "steps", "stat", "table", "image"]);
+
+/* A picture shares its slide with the text, side by side: the text takes
+   this share of the width and the picture the rest. */
+const TEXT_SHARE = 0.54;
 
 export function toDeck(doc) {
   const levels = doc.blocks.filter((b) => b.type === "h").map((b) => b.level);
@@ -181,7 +188,11 @@ export function toDeck(doc) {
         continue;
       }
       if (FEATURES.has(piece.kind)) {
-        const crowded = slide.feature || slide.takeaway || slide.used + piece.h + 0.2 > room();
+        /* A picture goes BESIDE the text, so what has to fit is the text at
+           its narrower width, not the text plus the picture stacked. */
+        const besideText = piece.kind === "image" && slide.text.length;
+        const needed = besideText ? slide.used / TEXT_SHARE : slide.used + piece.h + 0.2;
+        const crowded = slide.feature || slide.takeaway || needed > room();
         if (crowded && (slide.text.length || slide.feature || slide.takeaway)) next();
         slide.feature = piece;
         slide.used += piece.h + 0.2;
@@ -326,6 +337,32 @@ function drawTable(page, block, y, theme) {
   });
 }
 
+/* The largest box of the picture's own shape that fits in the space. */
+function fitInto(found, w, h) {
+  const scale = Math.min(w / found.width, h / found.height);
+  return { w: found.width * scale, h: found.height * scale };
+}
+
+function drawImage(page, piece, box, theme, images) {
+  const found = images?.get(imageKey(piece.block.name));
+  const captionH = piece.block.caption ? 0.42 : 0;
+  if (!found) {
+    /* Never an empty hole: a marked space saying which picture goes here. */
+    page.addShape("roundRect", { x: box.x, y: box.y, w: box.w, h: box.h - captionH, fill: { color: theme.accentTint }, line: { color: theme.accentTint }, rectRadius: 0.1 });
+    page.addText(`Picture to add here: ${piece.block.name}`, {
+      x: box.x, y: box.y, w: box.w, h: box.h - captionH, fontSize: 14, color: THEME.muted, align: "center", valign: "middle", fontFace: THEME.officeFont,
+    });
+  } else {
+    const fit = fitInto(found, box.w, box.h - captionH);
+    page.addImage({ data: found.dataUrl, x: box.x + (box.w - fit.w) / 2, y: box.y + (box.h - captionH - fit.h) / 2, w: fit.w, h: fit.h });
+  }
+  if (piece.block.caption) {
+    page.addText(piece.block.caption, {
+      x: box.x, y: box.y + box.h - captionH + 0.05, w: box.w, h: captionH - 0.05, fontSize: 12, italic: true, color: THEME.muted, align: "center", valign: "top", fontFace: THEME.officeFont, margin: 0,
+    });
+  }
+}
+
 function drawTakeaway(page, runs, theme) {
   const y = FOOT_Y - 0.2 - TAKEAWAY_H;
   page.addShape("roundRect", { x: X, y, w: BODY_W, h: TAKEAWAY_H, fill: { color: theme.accent }, line: { color: theme.accent }, rectRadius: 0.08 });
@@ -372,7 +409,7 @@ function drawCover(deck, slide, theme, brand) {
    nothing, and the cover then carries the company name instead.
    -------------------------------------------------------------------------- */
 
-export async function deckBlob(doc, theme = { ...THEME, highlight: "DDE2EE", onAccentSoft: "EEF0F6", kicker: "1B347C" }, brand = null) {
+export async function deckBlob(doc, theme = { ...THEME, highlight: "DDE2EE", onAccentSoft: "EEF0F6", kicker: "1B347C" }, brand = null, images = null) {
   const { default: PptxGenJS } = await import("pptxgenjs");
   const deck = new PptxGenJS();
   deck.layout = "LAYOUT_WIDE";
@@ -397,14 +434,28 @@ export async function deckBlob(doc, theme = { ...THEME, highlight: "DDE2EE", onA
     const page = deck.addSlide({ masterName: "CONTENT" });
     drawHeader(page, slide, theme);
 
+    const bottom = FOOT_Y - 0.25 - (slide.takeaway ? TAKEAWAY_H + 0.25 : 0);
+
+    /* TEXT BESIDE A PICTURE. The text on the left, the picture on the
+       right, both from under the band to the bottom of the space. */
+    if (slide.feature?.kind === "image" && slide.text.length) {
+      const textW = BODY_W * TEXT_SHARE;
+      page.addText(textBody(slide.text, theme), { x: X, y: BODY_TOP, w: textW, h: bottom - BODY_TOP, valign: "middle", fontFace: THEME.officeFont, margin: 0 });
+      drawImage(page, slide.feature, { x: X + textW + 0.4, y: BODY_TOP, w: BODY_W - textW - 0.4, h: bottom - BODY_TOP }, theme, images);
+      if (slide.takeaway) drawTakeaway(page, slide.takeaway, theme);
+      continue;
+    }
+
     let y = BODY_TOP;
     if (slide.text.length) {
       const h = slide.text.reduce((s, p) => s + p.h, 0) + 0.05;
       page.addText(textBody(slide.text, theme), { x: X, y, w: BODY_W, h, valign: "top", fontFace: THEME.officeFont, margin: 0 });
       y += h + 0.2;
     }
-    if (slide.feature) {
-      const bottom = FOOT_Y - 0.25 - (slide.takeaway ? TAKEAWAY_H + 0.25 : 0);
+    if (slide.feature?.kind === "image") {
+      /* A picture on its own takes the whole space. */
+      drawImage(page, slide.feature, { x: X, y, w: BODY_W, h: bottom - y }, theme, images);
+    } else if (slide.feature) {
       const h = Math.min(slide.feature.h, bottom - y);
       if (slide.feature.kind === "cards" || slide.feature.kind === "steps") drawCards(page, slide.feature, y, Math.max(h, 1.5), theme);
       else if (slide.feature.kind === "stat") drawStat(page, slide.feature, y, Math.max(h, 2.4), theme);

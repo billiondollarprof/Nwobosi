@@ -39,6 +39,14 @@ the deployed source). v27 adds prompt lines only, and deletes nothing:
   person's last message is exactly "Yes, go and look.", so the web is
   never reached without their yes, whatever the browser sends.
   search-gate.test.mjs keeps the chat's words and the server's the same.
+- PICTURES: the interview asks once where a picture would help (their own
+  photos, a written prompt for an image generator, or stock photos with
+  the search yes), the read back says which picture goes where, and the
+  writer places them with `:::image name | caption`.
+
+Checked again 2026-09-23 after the pictures lines: live is still v26 with
+the same ezbr_sha256, and the diff against the repo before this change
+deletes nothing.
 
 ## Before that: nothing pending
 

@@ -45,6 +45,7 @@
    ========================================================================== */
 
 import { readDocument } from "./docs/documentModel.js";
+import { imageKey } from "./docs/imageKey.js";
 
 /* --------------------------------------------------------------------------
    SECTION 1: One block
@@ -72,8 +73,28 @@ const HEADING_SIZE = { 1: "17px", 2: "15px", 3: "13.5px", 4: "13px" };
    by side, a figure on a coloured panel, a strip for the takeaway. The
    preview uses the product's own accent rather than the company's colour,
    because it sits inside the product's screen. */
-function Inner({ blocks }) {
-  return (blocks ?? []).map((b, i) => <Block key={i} block={b} previous={i > 0} />);
+function Inner({ blocks, images }) {
+  return (blocks ?? []).map((b, i) => <Block key={i} block={b} previous={i > 0} images={images} />);
+}
+
+/* A picture the person handed over is shown. One from the company's files
+   is named, because it is only fetched when the file is built. */
+function Picture({ block, images }) {
+  const found = images?.get?.(imageKey(block.name));
+  return (
+    <figure className="my-3">
+      {found ? (
+        <img src={found.dataUrl} alt={block.caption || block.name} className="rounded-[10px] max-h-[260px] w-auto mx-auto" />
+      ) : (
+        <div className="rounded-[10px] px-3 py-5 text-center text-[12px]" style={{ backgroundColor: "var(--chip)", color: "var(--text-3)" }}>
+          Picture: {block.name}
+        </div>
+      )}
+      {block.caption && (
+        <figcaption className="text-[11.5px] text-center mt-1.5 italic" style={{ color: "var(--text-3)" }}>{block.caption}</figcaption>
+      )}
+    </figure>
+  );
 }
 
 function Cards({ block }) {
@@ -96,8 +117,9 @@ function Cards({ block }) {
   );
 }
 
-function Block({ block, previous }) {
+function Block({ block, previous, images }) {
   if (block.type === "cards" || block.type === "steps") return <Cards block={block} />;
+  if (block.type === "image") return <Picture block={block} images={images} />;
 
   if (block.type === "stat") {
     return (
@@ -230,7 +252,7 @@ function Block({ block, previous }) {
    SECTION 2: The document
    -------------------------------------------------------------------------- */
 
-export default function DocumentView({ markdown }) {
+export default function DocumentView({ markdown, images = null }) {
   const doc = readDocument(markdown, "");
 
   /* Nothing to show is a real state while a document is still streaming in.
@@ -248,7 +270,7 @@ export default function DocumentView({ markdown }) {
         <p style={{ color: "var(--text-3)", marginBottom: "10px" }}>{doc.subtitle}</p>
       )}
       {doc.blocks.map((block, i) => (
-        <Block key={i} block={block} previous={i > 0 || Boolean(doc.title)} />
+        <Block key={i} block={block} previous={i > 0 || Boolean(doc.title)} images={images} />
       ))}
     </div>
   );

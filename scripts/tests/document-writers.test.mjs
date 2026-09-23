@@ -78,5 +78,25 @@ check('the quote has no ">"', !slides.some((s) => (s.text ?? []).some((p) => pla
   check("a broken colour falls back to the default", themeFor("not a colour").accent === "1E3A8A");
 }
 
+/* 4. PICTURES, 2026-09-23 ------------------------------------------------ */
+{
+  const { themeFor } = await import("../../src/shared/docs/documentTheme.js");
+  /* A real 2 by 1 PNG, red then blue. */
+  const PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAIAAAB7QOjdAAAAEUlEQVR4nGP4z8DwnwEIGRgAMe8D/Q4RwRsAAAAASUVORK5CYII=";
+  const images = new Map([["lobby", { name: "lobby.png", dataUrl: PNG, mime: "image/png", width: 800, height: 400 }]]);
+  const pictured = readDocument("# Deck\n\n## Our lobby\n:::label Place\n\nWhere guests arrive.\n\n:::image lobby.png | The front desk\n\n## Later\n\n:::image missing.jpg | To come", "x");
+  const pics = pictured.blocks.filter((b) => b.type === "image");
+  check("the reader finds both pictures, with names and captions", pics.length === 2 && pics[0].name === "lobby.png" && pics[0].caption === "The front desk");
+
+  const def = JSON.stringify(pdfDefinition(pictured, themeFor(), null, images));
+  check("THE PDF CARRIES THE PICTURE ITSELF", def.includes(PNG));
+  check("its caption is under it", def.includes("The front desk"));
+  check("a picture nobody gave is a marked space, never something else", def.includes("Picture to add here: missing.jpg"));
+
+  const deck = toDeck(pictured);
+  const lobby = deck.find((s) => s.title === "Our lobby");
+  check("on a slide the picture sits with the text, not after it", lobby?.feature?.kind === "image" && lobby.text.length === 1);
+}
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

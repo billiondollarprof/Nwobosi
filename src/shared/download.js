@@ -104,13 +104,13 @@ export function saveBlob(blob, filename) {
    are never in either. See those files for the detail.
    -------------------------------------------------------------------------- */
 
-export async function downloadPdf(title, markdown, company) {
-  const { blob, filename } = await buildFile("pdf", title, markdown, company);
+export async function downloadPdf(title, markdown, company, messages) {
+  const { blob, filename } = await buildFile("pdf", title, markdown, company, messages);
   saveBlob(blob, filename);
 }
 
-export async function downloadDocx(title, markdown, company) {
-  const { blob, filename } = await buildFile("docx", title, markdown, company);
+export async function downloadDocx(title, markdown, company, messages) {
+  const { blob, filename } = await buildFile("docx", title, markdown, company, messages);
   saveBlob(blob, filename);
 }
 
@@ -129,21 +129,27 @@ export const MIME = {
   xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 };
 
-export async function buildFile(format, title, markdown, company) {
+/* `messages` is the conversation, which is where pictures the person
+   handed over live. Pictures the document names are found there or in the
+   company's knowledge base, prepared once, and handed to every writer. See
+   docs/images.js. */
+export async function buildFile(format, title, markdown, company, messages = []) {
   const doc = readDocument(markdown, title);
   const { theme, brand } = await brandFor(company);
+  const { collectImages } = await import("./docs/images.js");
+  const images = await collectImages(doc, messages, company?.id);
   let blob;
-  if (format === "pdf") blob = await pdfBlob(doc, theme, brand);
+  if (format === "pdf") blob = await pdfBlob(doc, theme, brand, images);
   else if (format === "pptx") {
     if (!doc.blocks.length) throw new Error("nothing to put on a slide");
     const { deckBlob } = await import("./docs/deck.js");
-    blob = await deckBlob(doc, theme, brand);
+    blob = await deckBlob(doc, theme, brand, images);
   } else if (format === "xlsx") {
     const { sheetBlob } = await import("./downloadSheet.js");
     blob = await sheetBlob(title, markdown, theme);
   } else {
     format = "docx";
-    blob = await wordBlob(doc, theme);
+    blob = await wordBlob(doc, theme, images);
   }
   return { blob, filename: `${slugForFile(title)}.${format}`, mimeType: MIME[format] };
 }

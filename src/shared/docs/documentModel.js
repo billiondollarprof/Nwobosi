@@ -49,6 +49,7 @@
      :::steps  ... :::                    the same, numbered in order
      :::stat 20% | what the number is ... :::   one big figure and its story
      :::takeaway The one line that matters.     a strip that sums it up
+     :::image team.jpg | Our front desk team    a picture, by its file name
 
    READ TOP TO BOTTOM
      1. Inline text: bold, italic, links, line breaks
@@ -319,6 +320,16 @@ function readDesignBlock(kind, rest, lines, index, blocks) {
     return used;
   }
 
+  /* A picture, named by the file it came from: something the person
+     uploaded in the chat, or an image in the company's knowledge base. The
+     writers look the name up in docs/images.js. A name nobody can find
+     becomes a clearly marked space saying which picture belongs there. */
+  if (kind === "image") {
+    const [name, ...caption] = rest.split("|");
+    if (name.trim()) blocks.push({ type: "image", name: name.trim(), caption: caption.join("|").trim() });
+    return 1;
+  }
+
   if (kind === "cards" || kind === "steps") {
     const { body, used } = bodyLines(lines, index);
     const items = readItems(body).filter((item) => item.title.length || item.blocks.length);
@@ -411,5 +422,6 @@ export function blockText(block) {
   }
   if (block.type === "stat") return [block.value, block.caption, ...block.blocks.map(blockText)].join("\n");
   if (block.type === "label") return block.text;
+  if (block.type === "image") return block.caption || block.name;
   return "";
 }

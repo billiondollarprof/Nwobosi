@@ -47,6 +47,15 @@ built and checked, not when it is planned.
              goes into which slide. even if asked to include an image into a
              PDF or word intended document, it should take the image and asks
              or suggest where the image fits."
+             STATUS 2026-09-23: BUILT in the app, waiting on the assistant
+             v27 redeploy for the asking part. Pictures handed over in the
+             chat reach the model with their file names. The read back says
+             which picture goes where. The writer places them with
+             `:::image name | caption`, and they land inside the Slides, PDF
+             and Word files (images.cjs, 8 checks). A picture nobody has
+             given yet shows as "Picture to add here: name". The interview
+             asks once, and offers their own photos, a Midjourney style
+             prompt, or stock photos (stock uses the search yes).
           2. Voice. "it's over a repeated time, not one off. at the beginning,
              the assistant may just use my conversational method and also
              learn a few things from the knowledge base... staffs maybe able

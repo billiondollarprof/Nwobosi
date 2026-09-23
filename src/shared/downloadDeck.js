@@ -31,8 +31,8 @@ import { saveBlob } from "./download.js";
 
 /* The layout itself lives in src/shared/docs/deck.js since 2026-09-23, when
    a table was found drawn on top of the bullets above it. See that file. */
-export async function downloadPptx(title, markdown, company) {
+export async function downloadPptx(title, markdown, company, messages) {
   const { buildFile } = await import("./download.js");
-  const { blob, filename } = await buildFile("pptx", title, markdown, company);
+  const { blob, filename } = await buildFile("pptx", title, markdown, company, messages);
   saveBlob(blob, filename);
 }
