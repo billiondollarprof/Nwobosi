@@ -25,6 +25,68 @@ built and checked, not when it is planned.
 
 ### Open
 
+000000000000000. **2026-09-25, THE SEARCH IS OURS NOW, AND IT NEEDS A KEY
+                   BEFORE IT CAN SEARCH. Read this before touching the search,
+                   the research stage, or anything a vendor provides.**
+
+                   Anthony: "give it the search tool and can't there be a
+                   search tool usable for any model not just anthropic or
+                   DeepSeek". Built: `supabase/functions/_shared/search.ts`,
+                   beside `brain.ts` and built the same way, so the provider is
+                   a setting rather than a branch in a stage. The research
+                   stage declares `web_search` and `web_fetch` as PLAIN
+                   function tools to whichever vendor is answering, and this
+                   function runs them itself. The loop turns on whether a tool
+                   was called, not on a vendor's stop reason, which is the
+                   exact thing that failed on DeepSeek. Live as `assistant`
+                   v45, 638 of 638 markers, nothing lost.
+
+                   NOTHING HE DESIGNED MOVED. The person still approves the
+                   lookup. The ceilings are still 20 searches and 12 fetches,
+                   now counted in code because Anthropic no longer counts them
+                   for us. The findings still arrive as a tickable list.
+                   "Where this came from" is written from results this function
+                   actually received. A failed search is now told apart from an
+                   empty one in words.
+
+                   ⚠️ **AND IT CANNOT SEARCH YET, BECAUSE THE FREE PROVIDER IS
+                   REFUSED FROM THE EDGE RUNTIME.** DuckDuckGo rate limits
+                   datacentre addresses and Supabase's edge is one. Measured
+                   both ways rather than assumed: from an ordinary network,
+                   seven queries across seven regions, ten results each, no
+                   throttling, with browser, bot and no user agent alike; from
+                   the edge runtime, twice, on BOTH endpoints, every search
+                   refused. The DeepSeek call succeeds from that same runtime,
+                   so it is DuckDuckGo blocking this address range, not a
+                   broken network.
+
+                   ⚠️ **ANTHROPIC IS WORSE OFF UNTIL THIS IS DECIDED.** Its
+                   hosted search worked and cost 45.8 cents. It now uses the
+                   same neutral provider, so it does not work either. Amara
+                   runs on DeepSeek, where search was already dead, so nothing
+                   usable today is worse; the regression appears only if a
+                   company is moved back onto Anthropic.
+
+                   HIS CONDITION FAILED, SO THE CHOICE IS HIS AGAIN. He chose
+                   keyless on the condition that it was capable: "if option one
+                   is capable even for quick research across different
+                   geopolitical zones, then use it for now". It is capable from
+                   an ordinary network and refused from the one that matters.
+                   Either give it a key for Brave or Tavily, both with a free
+                   tier, which is one environment variable and one key, or keep
+                   Anthropic's hosted search for Anthropic and the neutral path
+                   for the rest. Recorded either way: "while deploying for
+                   clients we would be including others for better results."
+
+                   Two real bugs were caught by the new tests before the
+                   deploy, both in reading a result page: an advert on the lite
+                   endpoint carries the same class as a result and unwraps to a
+                   DuckDuckGo address, so adverts were being offered as
+                   sources; and because an advert was dropped while its snippet
+                   was still counted, every snippet after it landed on the
+                   wrong address. Pairing is now by document order.
+                   `scripts/tests/search.test.mjs`, 58 checks.
+
 0000000000000000. **2026-09-25, THE BRAIN IS SWAPPABLE: THE SEAM IS BUILT, THE
                    DEEPSEEK ADAPTER IS NEXT. Read this before touching any
                    model call.**

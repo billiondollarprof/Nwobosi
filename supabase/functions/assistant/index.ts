@@ -41,6 +41,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk@0.68.0";
 import { clientFor, modelFor, rateFor, supportsAdaptiveThinking, vendorForCompany, type Vendor } from "../_shared/brain.ts";
+import { readPage, SEARCH_TOOL_SCHEMAS, webSearch, MAX_FETCHES, MAX_SEARCHES } from "../_shared/search.ts";
 
 /* --------------------------------------------------------------------------
    CAPABILITY LEVELS, AND THE ONE PLACE A MODEL IS NAMED
@@ -1690,7 +1691,15 @@ Deno.serve(async (req: Request) => {
      the page, fetch reads it properly. Fetch will only open an address that
      is already in the conversation, so it cannot wander on its own.
 
-     max_uses is a ceiling on one turn, not a leash on the searching itself.
+     THE CEILINGS ARE ENFORCED BY THIS FUNCTION NOW. They used to be passed
+     to Anthropic as `max_uses` on its hosted tools, and Anthropic counted
+     them. The tools are ours as of 2026-09-25, so the counting is ours too:
+     `MAX_SEARCHES` and `MAX_FETCHES` in `_shared/search.ts`, applied in the
+     research loop below. A ceiling that is only a sentence in a prompt is a
+     suggestion, and the whole reason these tools are declared here rather
+     than in `_shared` is that this stage is the only place allowed to have
+     them.
+
      Anthony: "once the human gives it the go-ahead, it is never limited."
      and, 2026-09-14: "equip the agent with enough instruments so it can be
      very intelligent."
@@ -1705,16 +1714,9 @@ Deno.serve(async (req: Request) => {
      these in a circle, and every one of them is his money. Twenty and twelve
      is a thorough piece of research. It is not a budget to be spent for the
      sake of it, and the prompt says so.
-
-     NOT code_execution. These tool versions do their own filtering with it
-     underneath, and declaring a second execution environment confuses the
-     model about which one it is in.
      ---------------------------------------------------------------------- */
   const searchTools = stage === "research"
-    ? [
-        { type: "web_search_20260209", name: "web_search", max_uses: 20 },
-        { type: "web_fetch_20260209", name: "web_fetch", max_uses: 12 },
-      ] as unknown as Anthropic.ToolUnion[]
+    ? (SEARCH_TOOL_SCHEMAS as unknown as Anthropic.ToolUnion[])
     : undefined;
 
   const encoder = new TextEncoder();
@@ -1784,19 +1786,37 @@ Deno.serve(async (req: Request) => {
              spinner and then the findings, which is honest about what is
              happening.
 
-             PAUSE_TURN IS NOT AN ERROR. A long server tool run comes back
-             with stop_reason "pause_turn" and the work half done. The
-             answer is to hand the response back and ask it to carry on.
-             Left unhandled it looks exactly like a model that stopped
-             mid sentence. Three continuations is enough for a real search
-             and stops a loop from running forever.
+             THE TOOLS ARE OURS NOW, AND THAT IS THE WHOLE POINT. Until
+             2026-09-25 `web_search` and `web_fetch` were Anthropic's hosted
+             tools, so Anthropic ran them on its side and handed back
+             `web_search_tool_result` blocks. That worked on Anthropic and did
+             NOTHING AT ALL on DeepSeek, silently: the stop reason was never
+             `pause_turn`, so the loop below gave up on its first round and no
+             result block ever arrived. Anthony's instruction: "can't there be
+             a search tool usable for any model not just anthropic or
+             DeepSeek". Now the model asks, `_shared/search.ts` runs it, and
+             the answer goes back as an ordinary tool result. One path, every
+             vendor, and the search cannot work on one company's brain and
+             quietly fail on the next one's.
+
+             A FAILED SEARCH IS NOT AN EMPTY ONE. "That search failed" and
+             "nothing is published on this" are different facts. Reporting the
+             first as the second is how a document ends up carrying a number
+             nobody published, so the reason is passed through in words and
+             the model is told which of the two it is holding.
              ------------------------------------------------------------ */
           const convo = [...messages];
           let fresh = 0, cWrite = 0, cRead = 0, out = 0;
           let text = "";
+          let searches = 0, fetches = 0;
           const sourcesFound: { url: string; title: string }[] = [];
 
-          for (let round = 0; round < 4; round += 1) {
+          /* THE ROUND CAP IS A BACKSTOP, NOT THE BUDGET. The budget is the
+             search and fetch ceilings below, because those are the numbers
+             the prompt promises the person and the numbers that cost money.
+             Rounds exist only so a model that keeps asking forever cannot
+             hold the request open past the plan's time limit. */
+          for (let round = 0; round < 12; round += 1) {
             const reply = await anthropic.messages.create({
               model: modelFor(vendor, tier),
               max_tokens: MAX_OUTPUT.research,
@@ -1810,37 +1830,99 @@ Deno.serve(async (req: Request) => {
             cWrite += reply.usage?.cache_creation_input_tokens ?? 0;
             cRead += reply.usage?.cache_read_input_tokens ?? 0;
             out += reply.usage?.output_tokens ?? 0;
+            final = reply;
 
-            for (const block of reply.content as unknown as Record<string, unknown>[]) {
+            const blocks = reply.content as unknown as Record<string, unknown>[];
+            const asked: Record<string, unknown>[] = [];
+
+            for (const block of blocks) {
               if (block.type === "text") text += String(block.text ?? "");
-
-              /* THE SOURCES COME FROM THE TOOL, NOT FROM THE MODEL. A model
-                 asked to list where it looked can write a plausible address
-                 that never existed. These are the addresses it actually
-                 opened, read off the result blocks, so they cannot be
-                 invented.
-
-                 A FAILED SEARCH DOES NOT THROW. It comes back as a normal
-                 success with an error object where the list should be. On
-                 success this content is an array; on failure it is an
-                 object. Indexing without checking would make a search that
-                 failed read exactly like a search that found nothing, and
-                 the model would fill the gap itself. */
-              if (block.type === "web_search_tool_result" && Array.isArray(block.content)) {
-                for (const r of block.content as Record<string, unknown>[]) {
-                  const url = String(r.url ?? "").trim();
-                  if (url && !sourcesFound.some((x) => x.url === url)) {
-                    sourcesFound.push({ url, title: String(r.title ?? url).slice(0, 160) });
-                  }
-                }
-              }
+              if (block.type === "tool_use") asked.push(block);
             }
 
-            if (reply.stop_reason !== "pause_turn") { final = reply; break; }
+            /* Nothing asked for means it has finished looking and is writing
+               up. The stop reason is deliberately not consulted: it differs
+               by vendor, and the presence of a tool call does not. */
+            if (!asked.length) break;
+
             convo.push({ role: "assistant", content: reply.content });
-            final = reply;
+
+            /* EVERY CALL GETS AN ANSWER, INCLUDING THE REFUSED ONES. A vendor
+               speaking OpenAI's format rejects the NEXT request outright if an
+               assistant turn carries tool calls with no tool results after
+               them, so one skipped answer breaks the whole turn rather than
+               the one call. */
+            const results: Record<string, unknown>[] = [];
+
+            for (const call of asked) {
+              const id = String(call.id ?? "");
+              const name = String(call.name ?? "");
+              const input = (call.input ?? {}) as Record<string, unknown>;
+              let content: string;
+
+              if (name === "web_search") {
+                if (searches >= MAX_SEARCHES) {
+                  content =
+                    "The ceiling on searches for this turn has been reached. Use web_fetch on an address you already have, or write up what you have found.";
+                } else {
+                  searches += 1;
+                  const found = await webSearch(String(input.query ?? ""));
+                  console.log(
+                    `research search=${searches} fetches=${fetches} provider=${found.provider} ` +
+                      `ok=${found.ok} hits=${found.hits.length}${found.reason ? ` reason=${found.reason}` : ""}`,
+                  );
+
+                  if (!found.ok) {
+                    content = `That search failed (${found.reason}). This is a failure, not an absence of information: do not treat the subject as having nothing published on it, and do not fill the gap from memory.`;
+                  } else if (!found.hits.length) {
+                    content = "That search found nothing at all. Try different words, or a different angle on it.";
+                  } else {
+                    for (const hit of found.hits) {
+                      if (!sourcesFound.some((x) => x.url === hit.url)) {
+                        sourcesFound.push({ url: hit.url, title: hit.title.slice(0, 160) });
+                      }
+                    }
+                    content = found.hits
+                      .map((hit, i) =>
+                        `${i + 1}. ${hit.title}\n   ${hit.url}${hit.snippet ? `\n   ${hit.snippet}` : ""}`)
+                      .join("\n\n");
+                  }
+                }
+              } else if (name === "web_fetch") {
+                if (fetches >= MAX_FETCHES) {
+                  content =
+                    "The ceiling on opening pages for this turn has been reached. Write up what you have.";
+                } else {
+                  fetches += 1;
+                  const page = await readPage(String(input.url ?? ""));
+                  console.log(
+                    `research fetch=${fetches} ok=${page.ok}${page.ok ? ` chars=${page.text.length}` : ` reason=${page.reason}`}`,
+                  );
+
+                  if (!page.ok) {
+                    content = `That page could not be read (${page.reason}). That is the page failing to load, not the page disagreeing with you.`;
+                  } else {
+                    if (!sourcesFound.some((x) => x.url === page.url)) {
+                      sourcesFound.push({ url: page.url, title: page.title });
+                    }
+                    content = `${page.title}\n${page.url}\n\n${page.text}`;
+                  }
+                }
+              } else {
+                content = `There is no tool called ${name}. The only two are web_search and web_fetch.`;
+              }
+
+              results.push({ type: "tool_result", tool_use_id: id, content });
+            }
+
+            convo.push({ role: "user", content: results });
           }
 
+          /* THE SOURCES COME FROM WHAT THIS FUNCTION RECEIVED, NOT FROM THE
+             MODEL. A model asked to list where it looked can write a
+             plausible address that never existed. These are the addresses it
+             actually searched and actually opened, read off the results
+             above, so they cannot be invented. */
           if (sourcesFound.length) {
             text += "\n\nWhere this came from\n" +
               sourcesFound.slice(0, 12).map((x) => `- ${x.title}\n  ${x.url}`).join("\n");

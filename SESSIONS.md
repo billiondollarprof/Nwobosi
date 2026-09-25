@@ -4,6 +4,83 @@ Log of each work session. Newest at the top. Keep entries short.
 
 ---
 
+## Session 13: 2026-09-25, the search becomes ours, and the free provider does not work from the edge
+
+Anthony: "give it the search tool and can't there be a search tool usable for
+any model not just anthropic or DeepSeek". Yes. It is built, deployed and
+tested. It cannot be SEARCHED WITH yet, and that is the whole finding below.
+
+**What was wrong.** `web_search` and `web_fetch` were Anthropic's hosted
+tools. Anthropic ran them server side and returned `web_search_tool_result`
+blocks. On DeepSeek they became ordinary function tools, the model called
+one, the stop reason was never `pause_turn`, so the loop gave up on its first
+round and no result ever arrived. Silent, and it said "I searched and found
+nothing usable for this" when no search had happened.
+
+**What was built.** `supabase/functions/_shared/search.ts`, sitting beside
+`brain.ts` and built the same way: the provider is a setting, not a branch in
+a stage. The research stage now declares two plain function tools to
+whichever vendor is answering, and this function runs them. The model asks,
+the search happens here, the results go back as a tool result, and the loop
+turns on whether a tool was CALLED rather than on any vendor's stop reason.
+Nothing Anthony designed moved: the person still approves the lookup, the
+ceilings are still 20 searches and 12 fetches (now counted in code rather
+than passed to Anthropic as `max_uses`), the findings still come back as a
+tickable list, and "Where this came from" is written from the results this
+function actually received, so it cannot be invented. A failed search is now
+told apart from an empty one in words, because reporting the first as the
+second is how a document ends up carrying a number nobody published.
+
+Live as `assistant` v45, 638 of 638 markers, nothing lost from the copy
+before it. 58 new checks in `scripts/tests/search.test.mjs`. Two real bugs
+were caught by those checks before the deploy: an advert on the lite page
+carries the same class as a result and its wrapper unwraps to a DuckDuckGo
+address, so two adverts were being offered as sources; and because an advert
+was dropped as a result while its SNIPPET was still counted, every snippet
+after it was attached to the wrong address, which shows a source against a
+claim it does not make. Both fixed, and pairing is now by document order.
+
+**THE FINDING, AND IT IS THE POINT OF THE ENTRY. The keyless provider is
+refused from the edge runtime.** DuckDuckGo rate limits datacentre addresses
+and Supabase's edge is one. Measured, not guessed:
+
+- From this container: seven queries across seven regions, ten results each,
+  about 600ms, no throttling. Nigeria returned Nairametrics and Business AM,
+  the US returned JD Power, the UK returned Knight Frank and UKHospitality,
+  India returned the Economic Times, the Gulf returned Arabian Business and
+  CoStar. The user agent makes no difference: browser, bot and none all work.
+- From the edge runtime, twice, on both endpoints: every search refused.
+  Asked and answered from the live function, not from a reading of the code.
+
+So it is not the headers and it is not the parser. It is the address the
+function runs from. The model call to DeepSeek succeeds from the same
+runtime, which is what proves the edge has outbound access at all, so this is
+DuckDuckGo blocking this address range and not a broken network.
+
+⚠️ **ANTHROPIC IS WORSE OFF THAN BEFORE UNTIL THIS IS DECIDED.** Anthropic's
+hosted search worked and cost 45.8 cents a search. It now goes through the
+same neutral provider, so it does not work either. Amara runs on DeepSeek,
+where search was already dead, so nothing the person can use today is worse.
+The regression only appears if a company is moved back onto Anthropic.
+
+**Left for Anthony, because his condition failed.** He chose the keyless
+provider on the condition that it was capable for quick research: "if option
+one is capable even for quick research across different geopolitical zones,
+then use it for now". It is capable from an ordinary network and refused from
+the one that matters. So the choice is his: give `_shared/search.ts` a key
+for Brave or Tavily, both of which have a free tier, or keep Anthropic's
+hosted search for Anthropic and the neutral path for everyone else. The
+module is already written for the first one; switching is one environment
+variable and one key.
+
+**Cost so far.** 18.63 cents of the company budget across this session's
+verification runs, 85.60 down to 66.97. Most of it is the three research
+turns, which carry the largest prompt and the highest output ceiling of any
+stage, and each of those turns ended with no findings because of the block
+above.
+
+---
+
 ## Session 12: 2026-09-25, the DeepSeek brain, driven stage by stage
 
 Anthony: "verify end to end that assistant can start interview and build a
