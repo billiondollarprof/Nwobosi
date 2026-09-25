@@ -1658,12 +1658,49 @@ Deno.serve(async (req: Request) => {
      the model behind standard actually takes. Nothing else in the request
      needs loosening, so this is cast on its own rather than over the whole
      call. */
-  const thinkingExtras = supportsAdaptiveThinking(vendor, tier)
-    ? {
+  /* ⚠️ THESE TWO STAGES DO NOT ASK FOR THINKING, AND HERE IS WHY. 2026-09-25.
+
+     Anthony's walkthrough died at the first interview question. His logs:
+
+       stage=orient spent its whole ceiling thinking and wrote nothing,
+       asking again without thinking
+
+     `orient` and `interview` are capped at 1100 tokens on purpose, so the
+     model cannot write the document instead of asking a question. Thinking is
+     counted INSIDE that same 1100. DeepSeek's documentation says thinking is
+     ON by default with effort high, so the reasoning took the whole allowance
+     and there was nothing left to write a question with, on EVERY turn. The
+     rescue below caught it and asked again with thinking off, which worked.
+     But it meant every orient and interview turn was two model calls, the
+     first one paid for in full and thrown away. The reasoning was never used.
+     It was only ever bought and discarded.
+
+     ⚠️ ASKING FOR LOW EFFORT WAS TRIED FIRST AND IT DID NOT WORK. Deployed at
+     13:36 on 2026-09-25 and the rescue fired again eleven seconds later,
+     proven from the log rather than assumed. DeepSeek's "low" is still more
+     thinking than a 1100 token cap can hold.
+
+     ⚠️ THINKING IS TURNED OFF HERE ON ANTHONY'S INSTRUCTION, not an agent's
+     judgement. 2026-09-25: "maybe turning off thinking for those stages is
+     best. but if it doesn't lead to producing good work, then I will ask you
+     to turn it on." An earlier agent made this same change unasked on
+     2026-09-23 and he refused it, correctly, because the interview reasons.
+     THE REASON IT IS RIGHT NOW AND WAS NOT THEN: on a vendor whose thinking is
+     on by default, the reasoning never survives these two stages anyway. It is
+     bought and thrown away on every single turn, so nothing is lost by not
+     buying it. It is one line to put back.
+
+     ⚠️ AND THE RESCUE BELOW STAYS, for every other stage and for any vendor
+     where a small-cap stage still starves. It is the net, not the rule. */
+  const TIGHT_STAGES = ["orient", "interview"];
+  const thinkingForStage = TIGHT_STAGES.includes(stage)
+    ? { thinking: { type: "disabled" } as unknown as Anthropic.ThinkingConfigParam }
+    : {
         thinking: { type: "adaptive" } as unknown as Anthropic.ThinkingConfigParam,
         output_config: { effort: "high" as const },
-      }
-    : {};
+      };
+
+  const thinkingExtras = supportsAdaptiveThinking(vendor, tier) ? thinkingForStage : {};
 
   /* ----------------------------------------------------------------------
      THE FIRST GATE, AND IT IS CODED RATHER THAN ASKED FOR

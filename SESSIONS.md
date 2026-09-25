@@ -4,6 +4,68 @@ Log of each work session. Newest at the top. Keep entries short.
 
 ---
 
+## Session 16: 2026-09-25, the walkthrough died thinking, and one log line found it
+
+Anthony: "my walk through stopped working. both Whatsapp and assistant stopped
+responding." Two separate faults, neither what it looked like.
+
+**WhatsApp was never broken.** A colleague replied on that thread at 13:04:22
+from the dashboard and the customer answered 23 seconds later. While a person is
+handling a thread the bot deliberately holds, so it said nothing. `support_state`
+showed `support_active` true at that moment and false again later. Five questions
+on that thread are still open with colleagues, the oldest from 2026-09-09. He
+confirmed afterwards: "support answered".
+
+**The assistant was broken, and his logs said it exactly.**
+
+    12:52:10  stage=orient spent its whole ceiling thinking and wrote nothing, asking again without thinking
+    12:53:59  stage=interview spent its whole ceiling thinking and wrote nothing, asking again without thinking
+
+`orient` and `interview` are capped at 1100 tokens on purpose so the model
+cannot write the document instead of asking a question. Thinking is counted
+INSIDE that 1100. DeepSeek's thinking is ON by default with effort high. So the
+reasoning took the whole allowance and there was nothing left to write a
+question with, on every single turn, and the reasoning was then thrown away by
+the rescue. Every orient and interview turn was two model calls, the first
+bought in full and discarded.
+
+**BOUNDING THE EFFORT WAS TRIED FIRST AND IT FAILED.** `reasoning_effort: "low"`
+was deployed and the rescue fired again ELEVEN SECONDS LATER. Proven from the
+log, not assumed. DeepSeek's low is still more thinking than a 1100 cap holds.
+
+**Then the thing he suggested, which works.** Thinking is now off for those two
+stages only, on his instruction: "maybe turning off thinking for those stages is
+best. but if it doesn't lead to producing good work, then I will ask you to turn
+it on." It is right now and was wrong on 2026-09-23 because the reasoning never
+survives those stages anyway, so nothing is lost by not buying it. One line to
+put back. The rescue stays for every other stage and every other vendor.
+
+Measured before and after, from his own logs:
+
+    13:36:18  stage=orient spent its whole ceiling thinking and wrote nothing   (rescue fired)
+    13:36:21  usage stage=orient ... out=1382 cents=0.757016                    (two calls)
+    13:38:09  usage stage=orient fresh=179 cacheRead=18944 out=327 cents=0.055976  (ONE call, no rescue)
+
+**13.5 times cheaper, and one call instead of two.** The interview went from
+0.193292 to 0.071754. Both verified working: orient offered the interview,
+interview asked its questions.
+
+⚠️ **AND A MEASUREMENT TRAP, now understood.** A rescued turn's usage line SUMS
+both attempts' input tokens, so it reports roughly DOUBLE the real prompt. That
+is why orient lines read 38,271 tokens and clean ones read 19,127. Nothing was
+ever duplicated. Read the rescue line before believing a prompt size.
+
+⚠️ **STILL UNRESOLVED, and it is his money: support's own prompt is 33,254
+tokens in a SINGLE call**, against the assistant's 19,127 for the same material.
+Support makes one model call, confirmed by reading the file, so this is not the
+same summing trap. Until it is understood, every customer message pays full
+price for about 17,000 tokens.
+
+**Cost of this session: 1.08 cents**, 0.95 proving that low effort did not work
+and 0.13 proving that no thinking does.
+
+---
+
 ## Session 14: 2026-09-25, why the money went, and it was our meter
 
 Anthony: "13 cents is too much and your search that returned empty on Doku...
