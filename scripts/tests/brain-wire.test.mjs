@@ -15,7 +15,7 @@
    ========================================================================== */
 
 import { build } from "esbuild";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -284,6 +284,95 @@ check("an http error is raised with the status and the vendor's own words",
   threw != null && threw.includes("400") && threw.includes("boom"));
 
 globalThis.fetch = realFetch;
+
+/* --------------------------------------------------------------------------
+   8. WHAT A TURN ACTUALLY COST — THE OVERCHARGE OF 2026-09-25
+
+   THE BUG. Anthony: "13 cents is too much and your search that returned empty
+   still took money, why? ... how much does the cache cost and I believe after
+   the first chat, the subsequent ones in a session are cached."
+
+   He was right about the caching and the meter could not see it. This read
+   OpenAI's `prompt_tokens_details.cached_tokens`, which DeepSeek never sends.
+   DeepSeek sends `prompt_cache_hit_tokens`. So the hit count was always zero,
+   every input token was priced as a miss, and a token DeepSeek charges a
+   fiftieth of the price for was billed at the full rate.
+
+   A cache hit on deepseek-flash is $0.006 per million against $0.30 for a
+   miss, so this is up to fifty times too much on cached input.
+   -------------------------------------------------------------------------- */
+
+const deepseekUsage = fromWireResponse({
+  choices: [{ message: { content: "ok" }, finish_reason: "stop" }],
+  usage: {
+    prompt_tokens: 20000,
+    completion_tokens: 100,
+    total_tokens: 20100,
+    prompt_cache_hit_tokens: 18000,
+    prompt_cache_miss_tokens: 2000,
+  },
+}).usage;
+
+check("DeepSeek's cache hits are read from DeepSeek's own field",
+  deepseekUsage.cache_read_input_tokens === 18000);
+check("and the cached tokens are taken OUT of the full price count",
+  deepseekUsage.input_tokens === 2000);
+check("so the two add back up to what was sent, with nothing lost or doubled",
+  deepseekUsage.input_tokens + deepseekUsage.cache_read_input_tokens === 20000);
+check("output is still read", deepseekUsage.output_tokens === 100);
+
+const openaiUsage = fromWireResponse({
+  choices: [{ message: { content: "ok" }, finish_reason: "stop" }],
+  usage: { prompt_tokens: 20000, completion_tokens: 100, prompt_tokens_details: { cached_tokens: 18000 } },
+}).usage;
+
+check("OpenAI's shape is still read, because one adapter covers both",
+  openaiUsage.cache_read_input_tokens === 18000 && openaiUsage.input_tokens === 2000);
+
+const plainUsage = fromWireResponse({
+  choices: [{ message: { content: "ok" }, finish_reason: "stop" }],
+  usage: { prompt_tokens: 5000, completion_tokens: 50 },
+}).usage;
+
+check("a turn with nothing cached is all full price",
+  plainUsage.input_tokens === 5000 && plainUsage.cache_read_input_tokens === 0);
+
+/* What the numbers mean in money, using DeepSeek's published peak rates:
+   a cache hit is $0.006 per million and a miss is $0.30 per million. */
+const M = 1_000_000;
+const billedAsMiss = (20000 / M) * 0.30;
+const billedHonestly = (2000 / M) * 0.30 + (18000 / M) * 0.006;
+check("pricing that turn as though nothing was cached is far too much",
+  billedAsMiss / billedHonestly > 4);
+check("and the honest price for that turn is a fraction of a cent",
+  billedHonestly * 100 < 0.1);
+
+/* --------------------------------------------------------------------------
+   9. AND THE ARITHMETIC LIVES IN ONE PLACE
+
+   The wire was only half of it. The assistant also hardcoded Anthropic's
+   multipliers, `cacheWrite * 2` and `cacheRead * 0.1`, whatever vendor was
+   answering, so DeepSeek's write of 1 and read of 0.02 were never applied.
+   `_shared/brain.ts` holds both, and `support-ask` has always used them.
+   -------------------------------------------------------------------------- */
+
+const assistantSource = readFileSync("supabase/functions/assistant/index.ts", "utf8");
+const supportSource = readFileSync("supabase/functions/support-ask/index.ts", "utf8");
+
+/* Comments are stripped first, and they have to be. The comment that explains
+   this bug NAMES the old arithmetic, so a plain text search finds the
+   explanation and reports it as the bug. What must not come back is the CODE. */
+const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
+const assistantCode = stripComments(assistantSource);
+
+check("the assistant takes its rates from the shared table",
+  /centsExact\(/.test(assistantCode));
+check("no vendor's cache multipliers are hardcoded in the assistant",
+  !/cacheRead \* 0\.1/.test(assistantCode) && !/cacheWrite \* 2/.test(assistantCode));
+check("and it no longer keeps a second copy of the cost arithmetic",
+  !/function centsFor\(/.test(assistantCode));
+check("support-ask, which was always right, still uses the shared one",
+  /centsExact\(/.test(stripComments(supportSource)));
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

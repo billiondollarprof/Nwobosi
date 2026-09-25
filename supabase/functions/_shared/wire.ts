@@ -320,15 +320,39 @@ export function fromWireResponse(json: Json): Anthropicish {
   const usage = (json.usage ?? {}) as Json;
   const details = (usage.prompt_tokens_details ?? {}) as Json;
 
+  /* ⚠️ TWO VENDORS, TWO NAMES FOR THE SAME FACT, AND READING ONLY ONE OF THEM
+     PRICED EVERY CACHED TOKEN AS A MISS.
+
+     OpenAI puts the count in `prompt_tokens_details.cached_tokens`. DeepSeek
+     uses `prompt_cache_hit_tokens`, and never sends the OpenAI shape. This
+     read only the OpenAI one, so on DeepSeek the hit count was ALWAYS zero and
+     the meter charged full price for input that cost a fiftieth of it.
+     DeepSeek's cache is automatic, on an exact prefix match, so a conversation
+     sending the same nineteen thousand token prompt again was hitting it and
+     being billed as though it had not.
+
+     Found 2026-09-25, from Anthony asking why a failed search still cost money
+     and whether later turns in a session were cached. They were. The meter
+     could not see it.
+     https://api-docs.deepseek.com/guides/kv_cache/ */
+  const promptTokens = Number(usage.prompt_tokens ?? 0);
+  const cachedTokens =
+    Number(usage.prompt_cache_hit_tokens ?? 0) || Number(details.cached_tokens ?? 0);
+
   return {
     content,
     stop_reason: FINISH[String(choice.finish_reason ?? "stop")] ?? "end_turn",
     usage: {
-      input_tokens: Number(usage.prompt_tokens ?? 0),
+      /* ⚠️ BOTH VENDORS COUNT THE CACHED TOKENS INSIDE prompt_tokens, AND
+         ANTHROPIC DOES NOT. Anthropic reports input_tokens,
+         cache_creation_input_tokens and cache_read_input_tokens as three
+         non-overlapping numbers, which is the shape every caller here reads.
+         So the cached count is SUBTRACTED. Leaving it in charges those tokens
+         twice: once at full price inside input_tokens, and again at the
+         discounted rate. */
+      input_tokens: Math.max(0, promptTokens - cachedTokens),
       output_tokens: Number(usage.completion_tokens ?? 0),
-      /* Cached input is reported separately, and this is what makes the
-         cheap rate provable in the log line. */
-      cache_read_input_tokens: Number(details.cached_tokens ?? 0),
+      cache_read_input_tokens: cachedTokens,
       /* ⚠️ ALWAYS ZERO, and it is not a bug. DeepSeek has no cache-write
          premium: a write bills as an ordinary miss and is already inside
          prompt_tokens. Anthropic reports it separately, which is why the

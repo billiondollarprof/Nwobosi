@@ -40,7 +40,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk@0.68.0";
-import { clientFor, modelFor, rateFor, supportsAdaptiveThinking, vendorForCompany, type Vendor } from "../_shared/brain.ts";
+import { centsExact, clientFor, modelFor, supportsAdaptiveThinking, vendorForCompany, type Vendor } from "../_shared/brain.ts";
 import { readPage, SEARCH_TOOL_SCHEMAS, webSearch, MAX_FETCHES, MAX_SEARCHES } from "../_shared/search.ts";
 
 /* --------------------------------------------------------------------------
@@ -112,9 +112,13 @@ type Tier = (typeof LADDER)[number];
    shared between them and one company's turn could be answered by another
    company's brain. */
 
-/* Dollars per million tokens, per level, now held per VENDOR in
-   _shared/brain.ts and read through rateFor below. Used to turn real usage
-   into a real number of cents to take off the company's budget.
+/* Dollars per million tokens, per level, held per VENDOR in
+   _shared/brain.ts and applied by `centsExact` from there. Used to turn real
+   usage into a real number of cents to take off the company's budget.
+
+   ⚠️ THE ARITHMETIC IS NOT DONE IN THIS FILE, AND THAT IS DELIBERATE. It used
+   to be, with Anthropic's cache multipliers hardcoded, which quietly overpriced
+   every DeepSeek turn. One place applies the rates so one place can be wrong.
 
    THE RATES ARE STILL NOT MIRRORED IN THE BROWSER. They used to be duplicated
    in src/shared/config.js so an admin screen could print a rate card in
@@ -167,20 +171,6 @@ const STAFF_TIER: Tier = "standard";
    until he answers. See CLAUDE.md, "Never change what Anthony designed
    without asking first". */
 
-/* NO ROUNDING UP. Anthony, 2026-09-10: "why do you suppose to be rounding up
-   numbers? That's real money."
-
-   Math.ceil charged a whole cent for a message that truly cost a fraction of
-   one, every time, always in our favour. The cause was the column rather than
-   this line: budget_cents_remaining was an integer, so a fraction had nowhere
-   to go. It is numeric now.
-
-   Six decimal places, because that is what the column holds. */
-function centsFor(vendor: Vendor, tier: Tier, inputTokens: number, outputTokens: number) {
-  const { input, output } = rateFor(vendor, tier);
-  const dollars = (inputTokens / 1_000_000) * input + (outputTokens / 1_000_000) * output;
-  return Math.round(dollars * 100 * 1e6) / 1e6;
-}
 
 
 /* --------------------------------------------------------------------------
@@ -1970,13 +1960,26 @@ Deno.serve(async (req: Request) => {
         const freshInput = final.usage?.input_tokens ?? 0;
         const outputTokens = final.usage?.output_tokens ?? 0;
 
-        /* A one hour cache write costs twice the base input rate. A five
-           minute one costs 1.25. We ask for an hour above, so this is 2.
-           Getting it wrong is not a rounding error: at 1.25 the company is
-           undercharged by a third of every write, which is our money, and
-           their budget outlives what they actually spent. */
-        const inputTokens = freshInput + cacheWrite * 2 + cacheRead * 0.1;
-        const cents = centsFor(vendor, tier, inputTokens, outputTokens);
+        /* ⚠️ THE RATE TABLE WAS MADE PER VENDOR AND THIS LINE KEPT ANTHROPIC'S
+           NUMBERS HARDCODED. It read `fresh + cacheWrite * 2 + cacheRead * 0.1`
+           whatever vendor was answering. Two is Anthropic's one hour cache
+           write, and a tenth is Anthropic's cache read. DeepSeek charges ONE
+           for a write and a FIFTIETH for a read, and `_shared/brain.ts` has
+           held both of those since the table was built, with
+           `billableDollars` applying them.
+
+           So the arithmetic is no longer done here at all. `centsExact` takes
+           the four counts and applies the right vendor's numbers, which is
+           also what `support-ask` has always done, so the two now agree.
+
+           `long` because the assistant is the one stage that asks for a one
+           hour cache. It is ignored by vendors that bill a write as a miss. */
+        const cents = centsExact(vendor, tier, {
+          fresh: freshInput,
+          cacheWrite,
+          cacheRead,
+          output: outputTokens,
+        }, "long");
 
         /* If cacheRead stays at zero over a conversation, the cache is not
            holding and something above the prompt is changing between

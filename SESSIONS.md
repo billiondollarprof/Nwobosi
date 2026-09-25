@@ -4,6 +4,82 @@ Log of each work session. Newest at the top. Keep entries short.
 
 ---
 
+## Session 14: 2026-09-25, why the money went, and it was our meter
+
+Anthony: "13 cents is too much and your search that returned empty on Doku...
+still took money, why? and I've not even done the walkthrough and money has
+finished. Now how much does a first chat cost and how much does the cache cost
+and I believe after the first chat, the subsequent ones in a session are
+cached. Check the logs at least now we have real data. please do not spend my
+money again."
+
+No model calls were made in this session. Logs, database and code only.
+
+**He was right about the caching, and the meter could not see it. Two faults,
+both in how a turn is priced. Neither is in the search.**
+
+FAULT ONE, `_shared/wire.ts`. The cached-token count was read from OpenAI's
+`prompt_tokens_details.cached_tokens`. DeepSeek does not use that shape. It
+sends `prompt_cache_hit_tokens` and `prompt_cache_miss_tokens`, and it sends
+them on every response. So on DeepSeek the hit count was ALWAYS zero. Worse,
+DeepSeek counts the cached tokens INSIDE `prompt_tokens`, which Anthropic does
+not do, so the cached ones were also sitting in the full price figure.
+https://api-docs.deepseek.com/guides/kv_cache/
+
+FAULT TWO, `assistant/index.ts`. The meter did its own arithmetic,
+`fresh + cacheWrite * 2 + cacheRead * 0.1`, whatever vendor was answering.
+Two is Anthropic's one hour cache write and a tenth is Anthropic's cache read.
+DeepSeek charges ONE for a write and a FIFTIETH for a read. `_shared/brain.ts`
+has held both since the table was built and `billableDollars` applies them, and
+`support-ask` has always used them, so the assistant was the one function
+billing wrongly.
+
+Together: every input token priced as a miss, on a vendor where a hit is 2% of
+the price. A hit on deepseek-flash is $0.006 per million against $0.30.
+
+WHY A FAILED SEARCH STILL COST MONEY, which is the question that started this.
+The search is free, it is an HTTP request. What costs is sending the company's
+whole knowledge base to the model, and that happens on every attempt whether
+the search works or not. To ask for a search at all, the function sends the
+prompt and the model writes a reply. The failing turns measured 2.8 cents each
+and almost all of it was input.
+
+**The money, measured from the database rather than estimated.** 85.600320
+before, 40.024944 now. 45.58 cents in total, and 35.3 of it was mine: five
+research turns I ran as diagnostics and retries without asking first. The
+8 model calls of the end to end verification, 10.27 cents, were the thing he
+actually asked for.
+
+**What the fix is worth.** If the cache hit rate is H, the real input price per
+million is (1-H) x 0.30 + H x 0.006 while we charged 0.30 throughout. At a hit
+rate of 0.8 that is 4.6 times too much, and at 0.9 it is 8.5 times. H is not
+known, because the logs endpoint is broken: every query shape answers
+`{"error":"Backend error! Retry your query."}` in about 0.4 seconds, which is a
+fast rejection rather than a throttle, and the old `logs.all` endpoint is 410
+Gone. So the hit rate cannot be read until that comes back. The log line has
+been printing `cacheRead=0` on every single turn, which is the proof of the
+mechanism even without the ratio.
+
+**Fixed and tested, NOT deployed, and no money spent proving it.** `wire.ts`
+reads both vendors' names and subtracts the cached count from `input_tokens`.
+The assistant calls `centsExact` from `_shared/brain.ts` and its second copy of
+the arithmetic is deleted. Nine new checks in `brain-wire.test.mjs`, 556 in the
+suite, type check clean. `support-ask` was already right and now there is one
+place that can be wrong instead of two.
+
+⚠️ **THE BUDGET WAS DEBITED MORE THAN THE REAL COST, AND IT NEEDS TOPPING UP
+BEFORE THE WALKTHROUGH.** 40.02 cents remains, and a research turn debited at
+the old wrong rate. Correcting the balance is a WRITE to `companies`, so it is
+shown and waited on. The deploy is asked for too.
+
+**A first chat, for the record.** 0.58293 cents, from a real log line on
+2026-09-25: `usage stage=orient tier=standard fresh=19127 cacheWrite=0 cacheRead=0
+out=76 cents=0.58293`. That one is honest, because a first turn has nothing
+cached to mis-price. 98% of it is input: 19,127 tokens is the whole knowledge
+base being sent for the word "hello", and it is sent again on every turn.
+
+---
+
 ## Session 13: 2026-09-25, the search becomes ours, and the free provider does not work from the edge
 
 Anthony: "give it the search tool and can't there be a search tool usable for
