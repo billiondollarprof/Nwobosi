@@ -550,6 +550,66 @@ people, so it is a live change, and live changes are asked for.
 separate yes, and it is his too. Say what will be deployed, say which
 function and which version it is now, and wait.
 
+### Standing permission to run SQL and deploy, once a check has proved it
+
+Anthony, 2026-09-25: *"if you can build a way to verify your SQL to ensure that
+nothing is broken, that everything is clean, then I can give you a standing
+approval to run the SQL yourself... and at the end of the build you give me
+final reports so that every process will be fast."*
+
+He is trading a round trip for a mechanism. The mechanism is two commands, and
+they must have proved themselves on a real case before they carry any authority.
+A rule that lets an agent act unverified, written before the verification
+exists, is the exact mistake the rest of this file was written to prevent.
+
+**Before any SQL:**
+```
+node scripts/db-dryrun.mjs <file.sql> --expect "<object>" --additive-only
+```
+Postgres runs DDL inside a transaction, so this runs the statement for real,
+takes a snapshot of the database's shape before and after, prints the exact
+catalogue difference, and **rolls back**. It is a dry run and nothing persists.
+The check was proved on 2026-09-25 against a throwaway table first: the table
+was created inside the transaction and was gone afterwards, which is what shows
+the rollback is real rather than assumed.
+
+**Before and after any redeploy:**
+```
+node scripts/check-deploy.mjs <slug> [--from <gitref>] [--no-loss <oldfile>]
+```
+The deployed body comes back as a transpiled bundle, so a byte comparison is
+impossible, exactly as this file already says. What survives transpiling is
+every string literal, so the check requires that **every long string literal in
+the source appears in the deployed body**. It reported 623 of 623 for the
+assistant on 2026-09-25. `--no-loss` then requires that nothing the previous
+copy had is gone, which is how a silently deleted line gets caught.
+
+**The permission, and its exact edges.**
+
+- It covers **execution of a plan Anthony has already approved**, where both
+  checks come back CLEAN. Nothing else.
+- **It never covers a design decision.** What to build, what a prompt says, what
+  a price is, whether to turn thinking off: all still his, all still asked first.
+- **Anything a check cannot prove is still asked.** A dry run proves a statement
+  is valid, additive, and does only what was intended. It does **not** prove
+  runtime behaviour, so a behaviour change still gets used by hand afterwards.
+- **SQL and deploys only.** A migration that drops or alters an existing object
+  is not covered by `--additive-only`, and anything destructive is asked for in
+  plain words first, whatever the check says.
+- **The brief is the price of the permission.** Every run ends with a short
+  report: what ran, what the checks said, and what it means. Plain words, with
+  the technical term and its meaning in brackets the first time. No narration of
+  what was tried.
+- **It is his to withdraw, per task and at any time.** If a check ever fails,
+  stop and say so rather than working around it.
+
+**When the check says the live copy is not the repo copy, the live copy wins.**
+Say it, paste it, and wait. That is not a formality: on 2026-09-25 the assistant
+was live at v41 while the register recorded v39, and `oauth-callback`,
+`convert-document`, `drive-connect` and `drive-upload` had all moved two
+versions beyond what was written down. The code turned out to match, 623 markers
+of 623, but nobody could have known that without looking.
+
 ### How a redeploy actually happens here, so nobody has to guess
 
 **Nobody retypes the function. Not ever.** The tooling edits the file in the

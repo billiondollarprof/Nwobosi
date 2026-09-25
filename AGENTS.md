@@ -41,6 +41,15 @@ because getting one of them wrong is expensive.
 - **The repo is not the deployment.** An edge function file existing in
   `supabase/functions/` means it is written, not that it is live. Pull the
   deployed copy and compare before changing anything.
+- **Anthony may grant standing permission to run SQL and deploy**, once two
+  checks have proved themselves: `node scripts/db-dryrun.mjs` for SQL, which
+  runs the statement for real and rolls it back, and
+  `node scripts/check-deploy.mjs` for a redeploy, which proves the deployed copy
+  carries every string literal of the source. It covers executing a plan he has
+  approved, where both checks come back CLEAN. It never covers a design
+  decision, and it is his to withdraw. The full rule, with its edges, is in
+  `CLAUDE.md`, "Standing permission to run SQL and deploy, once a check has
+  proved it".
 - **Nothing is finished until it has been used.** Click the control. Change
   the value and refresh. This project has shipped several controls that
   rendered perfectly and wrote nothing to the database, and every one of
@@ -58,6 +67,24 @@ a leak of it is bounded, and it is a private repository.
 ```
 SUPABASE_LOGS_ACCESS_TOKEN=sbp_fc839458df506c3998984bdb59e83b3e63ecc15a
 ```
+
+**⚠️ THIS TOKEN IS SUPERSEDED, AND A BROADER ONE MUST NEVER GO IN THIS FILE.**
+
+On 2026-09-25 Anthony made one token carrying Logs, database and edge
+functions, so an agent can run SQL and deploy. That one is deliberately **not
+written down here**, and must not be. The logs token was defensible in a
+tracked file because a leak of it is bounded to reading log lines. A token that
+can run SQL and deploy functions is not bounded at all, and from a tracked file
+it would live in the history for ever.
+
+So the broad token lives outside the repository, at
+`/data/workspace/.supabase-token`, mode 600. Every script reads
+`SUPABASE_ACCESS_TOKEN` from the environment first and falls back to that path.
+Replace the value there. Never paste it into a file git tracks.
+
+The note further down this section is unchanged and still the point: a
+credential in a tracked file lives in the history for ever, and revoking it
+later does not take it out.
 
 **The endpoint is the NEW one.** The old `analytics/endpoints/logs.all` still
 answers, but it returns an empty result now. Use this:

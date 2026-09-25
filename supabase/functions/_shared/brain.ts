@@ -70,6 +70,79 @@ export function vendorFor(row: { brain_vendor?: string | null } | null | undefin
   return DEFAULT_VENDOR;
 }
 
+/* Narrow shape so this does not depend on the Supabase client's type, which
+   would drag the SDK into every caller. Only `from` is used. */
+interface TableReader {
+  from(table: string): {
+    select(columns: string): {
+      eq(column: string, value: string): {
+        maybeSingle(): Promise<{ data: unknown; error: unknown }>;
+      };
+    };
+  };
+}
+
+function asVendor(value: unknown): Vendor {
+  return (value === "anthropic" || value === "openai" || value === "deepseek")
+    ? value
+    : DEFAULT_VENDOR;
+}
+
+/* --------------------------------------------------------------------------
+   WHICH VENDOR, PER COMPANY, AT REQUEST TIME
+
+   ⚠️ THIS IS READ ON EVERY REQUEST AND NEVER CACHED, ON PURPOSE. An edge
+   function isolate serves concurrent requests for DIFFERENT companies, so a
+   module level variable holding the vendor would be shared between them and
+   one company's answers could be produced by another company's brain. The
+   vendor is a local, always.
+
+   ⚠️ IT FAILS CLOSED TO ANTHROPIC, NOT TO AN ERROR. Any problem at all, a
+   missing row, a network error, or the table not existing yet, resolves to
+   `DEFAULT_VENDOR`, which is what every deployment runs today. That is what
+   makes this safe to deploy BEFORE the migration is run: the worst case is
+   today's behaviour, never a broken turn.
+   -------------------------------------------------------------------------- */
+export async function vendorForCompany(
+  sb: TableReader | null | undefined,
+  companyId: string | null | undefined,
+): Promise<Vendor> {
+  if (!sb || !companyId) return DEFAULT_VENDOR;
+  try {
+    const { data, error } = await sb
+      .from("company_brain")
+      .select("vendor")
+      .eq("company_id", companyId)
+      .maybeSingle();
+    if (error) return DEFAULT_VENDOR;
+    return asVendor((data as { vendor?: unknown } | null)?.vendor);
+  } catch (_) {
+    return DEFAULT_VENDOR;
+  }
+}
+
+/* For the one function that never looked a company up. It resolves the
+   company from the caller's own staff row first, which is the same lookup
+   read-before-publish already does. */
+export async function vendorForUser(
+  sb: TableReader | null | undefined,
+  userId: string | null | undefined,
+): Promise<Vendor> {
+  if (!sb || !userId) return DEFAULT_VENDOR;
+  try {
+    const { data, error } = await sb
+      .from("staff")
+      .select("company_id")
+      .eq("id", userId)
+      .maybeSingle();
+    if (error) return DEFAULT_VENDOR;
+    const companyId = (data as { company_id?: string } | null)?.company_id;
+    return await vendorForCompany(sb, companyId ?? null);
+  } catch (_) {
+    return DEFAULT_VENDOR;
+  }
+}
+
 /* --------------------------------------------------------------------------
    2. THE TABLE. The only place in the server that names a real model.
    -------------------------------------------------------------------------- */
