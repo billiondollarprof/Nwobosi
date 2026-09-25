@@ -42,6 +42,7 @@
    ========================================================================== */
 
 import Anthropic from "npm:@anthropic-ai/sdk@0.68.0";
+import { makeOpenAiClient } from "./wire.ts";
 
 /* --------------------------------------------------------------------------
    1. THE VOCABULARY
@@ -273,11 +274,14 @@ export function centsRoundedUp(
 /* --------------------------------------------------------------------------
    5. THE CLIENT
 
-   ⚠️ STEP ONE IS ANTHROPIC ONLY, ON PURPOSE.
-   This returns the Anthropic client while the vendor is Anthropic, so the
-   eight functions behave exactly as they do today and any difference after
-   the port is a bug in the port. The OpenAI-format adapter arrives next, and
-   it is the adapter that changes here, not the eight call sites.
+   ONE CLIENT, WHATEVER THE VENDOR. Anthropic is spoken through its own SDK.
+   Everyone else is spoken through `_shared/wire.ts`, which translates to and
+   from the OpenAI format. DeepSeek publishes that format natively, which is
+   why one adapter covers both it and OpenAI.
+
+   ⚠️ THIS IS THE ONLY PART OF THE SERVER THAT CHANGED WHEN A SECOND VENDOR
+   ARRIVED. No stage, prompt, gate or checkpoint lives here, which is what
+   makes the brain swappable without the product changing.
    -------------------------------------------------------------------------- */
 
 const ANTHROPIC_KEY = "ANTHROPIC_API_KEY";
@@ -297,14 +301,36 @@ export function hasKeyFor(vendor: Vendor): boolean {
   return !!Deno.env.get(keyNameFor(vendor));
 }
 
-/* ⚠️ STEP ONE IS ANTHROPIC ONLY, ON PURPOSE.
-   Only the Anthropic adapter exists, so this is the only vendor it can
-   build. The OpenAI-format adapter, which covers DeepSeek and OpenAI both,
-   is the next step, and it changes HERE rather than in the eight call sites.
-   That is the whole point of this file. */
+/* WHERE EACH VENDOR LIVES. */
+const WIRE_BASE: Record<Vendor, string> = {
+  anthropic: "",
+  deepseek: "https://api.deepseek.com",
+  openai: "https://api.openai.com/v1",
+};
+
+/* Whether this vendor is ready to be chosen. OpenAI is not, because nobody has
+   picked its models or checked its prices. A vendor whose row is empty must
+   fail loudly rather than quietly send an empty model name. */
+export function vendorReady(vendor: Vendor): boolean {
+  return Object.values(BRAIN[vendor]).every((c) => c.model.length > 0);
+}
+
+/* ⚠️ THE CAST IS DELIBERATE AND NARROW.
+   `Anthropic` in the SDK describes the whole surface of that client. The wire
+   adapter implements exactly `messages.create` and `messages.stream`, which is
+   all any caller here uses, and both are asserted in the tests. The SDK's
+   typing being wider than the contract is why this reads as a cast rather than
+   a substitution, and the same shape of cast is already used in
+   assistant/index.ts for its thinking config. */
 export function clientFor(vendor: Vendor): Anthropic {
   const key = Deno.env.get(keyNameFor(vendor));
   if (!key) throw new Error(`${keyNameFor(vendor)} is not set`);
+
   if (vendor === "anthropic") return new Anthropic({ apiKey: key });
-  throw new Error(`No adapter for ${vendor} yet`);
+
+  if (!vendorReady(vendor)) {
+    throw new Error(`No models chosen for ${vendor} yet, so it cannot be used`);
+  }
+
+  return makeOpenAiClient(WIRE_BASE[vendor], key) as unknown as Anthropic;
 }
