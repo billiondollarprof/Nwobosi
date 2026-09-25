@@ -30,6 +30,25 @@
 type Json = Record<string, unknown>;
 type Anthropicish = Record<string, unknown>;
 
+/* ⚠️ A VERSION STRING, BECAUSE A LOGIC-ONLY CHANGE IS INVISIBLE TO THE DEPLOY
+   CHECK. `scripts/check-deploy.mjs` proves a deployed bundle was built from a
+   given source by finding that source's STRING LITERALS in it. A change that
+   alters only a condition, and adds no new literal, cannot be told apart from
+   the version before it. That is exactly the shape of the thinking fix below,
+   so this string exists to make the difference findable.
+
+   ⚠️ IT MUST BE OVER 40 CHARACTERS, because that is the length at which the
+   check starts treating a literal as a marker. A short version string is
+   extracted by nothing and proves nothing, which is how the first attempt at
+   this failed.
+
+   ⚠️ AND IT MUST BE USED, or esbuild strips it from the bundle and the check
+   can never find it. It is carried on the client object returned below, which
+   cannot be dropped because that object is what a caller receives. Do not
+   remove it as dead code. Bump it whenever this file's behaviour changes. */
+export const WIRE_VERSION = "wire-4: no thinking asked for now means thinking off";
+
+
 /* --------------------------------------------------------------------------
    1. WHAT ANTHROPIC SENDS THAT OPENAI HAS NO FIELD FOR
    -------------------------------------------------------------------------- */
@@ -197,13 +216,31 @@ export function toWireToolChoice(choice: unknown): unknown {
    ⚠️ THE RESCUE DEPENDS ON THIS. assistant/index.ts retries ONCE with
    thinking disabled when a turn spent its whole ceiling thinking and wrote
    nothing. DeepSeek does take a per-request switch, which is why that rescue
-   survives a vendor change. `adaptive` and `enabled` both mean on. */
+   survives a vendor change. `adaptive` and `enabled` both mean on.
+
+   ⚠️⚠️ SENDING NOTHING MEANS TWO DIFFERENT THINGS, AND THAT BROKE SIX
+   FUNCTIONS THE FIRST TIME THEY RAN. Anthropic leaves thinking OFF unless a
+   request turns it on. DeepSeek turns it ON unless a request says otherwise.
+   So a call that asked for no thinking got none on Anthropic and all of it on
+   DeepSeek, and DeepSeek then REFUSED six of them outright:
+
+     support model call failed Error: 400
+     "Thinking mode does not support this tool_choice"
+
+   Six of the eight functions force a tool by name and none of them sets
+   thinking, so every one of them was broken the moment the company moved to
+   DeepSeek. The assistant worked, which is how the fault hid: it DOES set
+   thinking, and it does not force a tool.
+
+   So the absence of a thinking request is now stated out loud as disabled.
+   That is not a new opinion about the default, it is parity with the vendor
+   this code was written against. A request that wants thinking says so. */
 export function toWireThinking(thinking: unknown, outputConfig: unknown): Json {
   const out: Json = {};
   const t = (thinking ?? {}) as Json;
 
-  if (t.type === "disabled") out.thinking = { type: "disabled" };
-  else if (t.type === "enabled" || t.type === "adaptive") out.thinking = { type: "enabled" };
+  if (t.type === "enabled" || t.type === "adaptive") out.thinking = { type: "enabled" };
+  else out.thinking = { type: "disabled" };
 
   const effort = ((outputConfig ?? {}) as Json).effort;
   if (typeof effort === "string") out.reasoning_effort = effort;
@@ -414,5 +451,5 @@ export function makeOpenAiClient(baseUrl: string, apiKey: string) {
     };
   }
 
-  return { messages: { create, stream } };
+  return { messages: { create, stream }, wireVersion: WIRE_VERSION };
 }

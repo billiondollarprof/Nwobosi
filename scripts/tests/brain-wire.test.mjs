@@ -118,10 +118,25 @@ check("any becomes required, auto stays auto",
 check("adaptive thinking means on", eq(toWireThinking({ type: "adaptive" }, null), { thinking: { type: "enabled" } }));
 check("the rescue's disabled survives the translation",
   eq(toWireThinking({ type: "disabled" }, null), { thinking: { type: "disabled" } }));
+
+/* ⚠️⚠️ THE BUG THIS GUARDS, AND IT REACHED A REAL PERSON.
+   Anthropic leaves thinking OFF unless a request turns it on. DeepSeek turns
+   it ON unless a request says otherwise. So a call that asked for no thinking
+   got none on Anthropic and all of it on DeepSeek, and DeepSeek refused it:
+
+     support model call failed Error: 400
+     "Thinking mode does not support this tool_choice"
+
+   Six of the eight functions force a tool by name and none sets thinking, so
+   every one of them broke the moment a company moved to DeepSeek. The
+   assistant hid it, because it does set thinking and does not force a tool.
+   Asking for nothing must mean OFF. */
+check("no thinking asked for means OFF, to match Anthropic's default",
+  eq(toWireThinking(undefined, undefined), { thinking: { type: "disabled" } }));
+check("and an explicitly disabled request still means off",
+  eq(toWireThinking({ type: "disabled" }, undefined), { thinking: { type: "disabled" } }));
 check("effort is carried across as reasoning_effort",
   toWireThinking({ type: "adaptive" }, { effort: "high" }).reasoning_effort === "high");
-check("no thinking set means nothing is sent",
-  eq(toWireThinking(undefined, undefined), {}));
 
 /* --------------------------------------------------------------------------
    4. THE WHOLE BODY
@@ -144,6 +159,18 @@ check("a non-streaming request does not ask for a stream", body.stream === undef
 const sbody = toWireBody({ model: "m", messages: [] }, true);
 check("a streaming request asks for usage in the last chunk, or the meter charges nothing",
   sbody.stream === true && sbody.stream_options.include_usage === true);
+
+/* THE EXACT SHAPE THAT WAS REFUSED IN PRODUCTION: a forced tool and no thinking
+   asked for. This is the body support-ask builds, and the vendors' disagreement
+   about the default is what turned it into a 400. */
+const forced = toWireBody({
+  model: "deepseek-flash",
+  messages: [{ role: "user", content: "u" }],
+  tools: [{ name: "reply", input_schema: { type: "object" } }],
+  tool_choice: { type: "tool", name: "reply" },
+}, false);
+check("a forced tool no longer collides with thinking, which is what broke support",
+  forced.thinking.type === "disabled" && forced.tool_choice.function.name === "reply");
 
 /* --------------------------------------------------------------------------
    5. THE REPLY, DRESSED AS ANTHROPIC'S

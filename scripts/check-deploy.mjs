@@ -97,6 +97,36 @@ if (fromRef) {
   describedAs = `${localPath} in the working tree`;
 }
 
+/* ⚠️ THE SHARED MODULES ARE BUNDLED IN TOO, SO THEIR MARKERS COUNT, AND THE
+   WALK HAS TO BE TRANSITIVE.
+   The first production bug on DeepSeek was a fix in `_shared/wire.ts`, and
+   checking only the function's own file could not see whether it had landed.
+   A one-level scan does not fix that either: no function imports wire.ts
+   directly, they import brain.ts, which imports wire.ts. So the walk follows
+   every import until there are none left. */
+function readShared(rel) {
+  const p = `supabase/functions/_shared/${rel}`;
+  if (fromRef) { try { return execSync(`git show ${fromRef}:${p}`).toString(); } catch { return ""; } }
+  return existsSync(p) ? readFileSync(p, "utf8") : "";
+}
+
+const sharedFiles = [];
+const seen = new Set();
+let sharedSource = "";
+const queue = [...new Set([...source.matchAll(/from "\.\.\/_shared\/([A-Za-z0-9_.-]+\.ts)"/g)].map((m) => m[1]))];
+while (queue.length) {
+  const f = queue.shift();
+  if (seen.has(f)) continue;
+  seen.add(f);
+  const text = readShared(f);
+  if (!text) continue;
+  sharedFiles.push(f);
+  sharedSource += "\n" + text;
+  /* Its own imports, which may be siblings inside _shared. */
+  for (const m of text.matchAll(/from "\.\/([A-Za-z0-9_.-]+\.ts)"/g)) queue.push(m[1]);
+}
+if (sharedFiles.length) describedAs += `  + _shared/${sharedFiles.join(", _shared/")}`;
+
 const metaRes = await fetch(`https://api.supabase.com/v1/projects/${REF}/functions/${slug}`, {
   headers: { Authorization: `Bearer ${TOKEN}` },
 });
@@ -113,7 +143,7 @@ console.log(`function   : ${slug}   LIVE version v${meta.version}, ${meta.status
 console.log(`source     : ${describedAs}`);
 console.log(`deployed   : ${body.length} bytes (a transpiled bundle, so this is a marker check, not a byte diff)\n`);
 
-const marks = literals(source);
+const marks = literals(source + sharedSource);
 let found = 0;
 const missing = [];
 for (const m of marks) {

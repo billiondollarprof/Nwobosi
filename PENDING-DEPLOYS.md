@@ -13,6 +13,58 @@ repo". Nothing here goes out any other way.
 
 ---
 
+## 2026-09-25, later: the first real turn, and the bug it found
+
+**The staff side worked on DeepSeek, first try.** Anthony typed hello and got a
+reply. The usage line, verbatim:
+
+```
+usage stage=orient tier=standard fresh=19127 cacheWrite=0 cacheRead=0 out=76 cents=0.58293
+```
+
+**0.58 of one cent.** 19,127 input at $0.30 per million plus 76 output at $1.20
+per million is exactly that, so DeepSeek answered and the meter is right.
+`cacheWrite=0` is correct for this vendor: a write bills as an ordinary miss and
+is already inside `fresh`.
+
+**The WhatsApp side did not answer, and the log said why:**
+
+```
+support model call failed Error: 400
+"Thinking mode does not support this tool_choice"
+```
+
+⚠️ **SIX OF THE EIGHT FUNCTIONS WERE BROKEN ON DEEPSEEK, AND THE ASSISTANT HID
+IT.** Anthropic leaves thinking OFF unless a request turns it on. DeepSeek turns
+it ON unless a request says otherwise. The adapter sent nothing when nothing was
+asked for, so the same request meant "no thinking" on Anthropic and "all the
+thinking" on DeepSeek, and DeepSeek refuses thinking together with a forced tool.
+
+Six of the eight force a tool by name and none of them sets thinking, so all six
+were broken. The assistant worked because it DOES set thinking and does not force
+a tool, which is exactly why the fault was invisible until a customer-facing
+function was used.
+
+Fixed in `_shared/wire.ts`: asking for nothing now means OFF, out loud, which is
+parity with the vendor this code was written against.
+
+**Redeployed, every one verified:**
+
+| function | now |
+|---|---|
+| `assistant` | **v43** |
+| `support-ask` | **v26** |
+| `add-link` | **v21** |
+| `canva-design` | **v13** |
+| `read-image` | **v12** |
+| `describe-source` | **v12** |
+| `group-images` | **v12** |
+| `read-before-publish` | **v15** |
+
+⚠️ **`support-ask` HAS STILL NOT ANSWERED A REAL MESSAGE.** It is fixed and
+deployed, and the shape that failed is now a test, but a person has to send one
+before this is finished.
+
 ## Checked against the live project, 2026-09-25 (DeepSeek session)
 
 **Eight functions were deployed, and every version written below was stale.**
