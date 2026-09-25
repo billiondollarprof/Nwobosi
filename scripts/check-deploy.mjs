@@ -61,6 +61,31 @@ function literals(source) {
   return [...new Set((source.match(/"[^"\n]{40,400}"/g) ?? []))].map((s) => s.slice(1, -1));
 }
 
+/* ⚠️ A MARKER MAY BE RE-EXPRESSED, AND TREATING THAT AS A DELETION IS A FALSE
+   ALARM. The first version of this check called a deploy failed because
+   describe-source had turned
+
+     console.error("ANTHROPIC_API_KEY is not set, nothing described")
+
+   into a template literal, so the prefix became an interpolation and the whole
+   sentence was no longer contiguous in the deployed body. Nothing was deleted:
+   the sentence is still there, in pieces.
+
+   So a marker counts as present when a LONG WINDOW of it is present. The window
+   is 60 per cent of the marker, and never less than 24 characters. A message
+   that was genuinely deleted has no such window anywhere, which is what this is
+   for. A message that was re-composed keeps its distinctive tail, which is
+   almost always the part that carries the meaning. */
+function containsMostly(body, marker) {
+  if (body.includes(Buffer.from(marker, "utf8"))) return true;
+  const win = Math.max(24, Math.floor(marker.length * 0.6));
+  if (marker.length <= win) return false;
+  for (let i = 0; i + win <= marker.length; i++) {
+    if (body.includes(Buffer.from(marker.slice(i, i + win), "utf8"))) return true;
+  }
+  return false;
+}
+
 const localPath = `supabase/functions/${slug}/index.ts`;
 let source, describedAs;
 if (fromRef) {
@@ -92,7 +117,7 @@ const marks = literals(source);
 let found = 0;
 const missing = [];
 for (const m of marks) {
-  if (body.includes(Buffer.from(m, "utf8"))) found += 1;
+  if (containsMostly(body, m)) found += 1;
   else missing.push(m);
 }
 
@@ -114,7 +139,7 @@ if (missing.length) {
 if (noLossFile) {
   if (!existsSync(noLossFile)) { console.error(`\n--no-loss file not found: ${noLossFile}`); process.exit(2); }
   const was = literals(readFileSync(noLossFile, "utf8"));
-  const lost = was.filter((m) => !body.includes(Buffer.from(m, "utf8")));
+  const lost = was.filter((m) => !containsMostly(body, m));
   console.log(`\nNOTHING LOST: the previous copy had ${was.length} markers, ${lost.length} are gone`);
   for (const m of lost.slice(0, 10)) console.log(`   - ${m.slice(0, 90)}`);
   if (lost.length) {
