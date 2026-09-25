@@ -49,34 +49,53 @@ built and checked, not when it is planned.
                    actually received. A failed search is now told apart from an
                    empty one in words.
 
-                   ⚠️ **AND IT CANNOT SEARCH YET, BECAUSE THE FREE PROVIDER IS
-                   REFUSED FROM THE EDGE RUNTIME.** DuckDuckGo rate limits
-                   datacentre addresses and Supabase's edge is one. Measured
-                   both ways rather than assumed: from an ordinary network,
-                   seven queries across seven regions, ten results each, no
-                   throttling, with browser, bot and no user agent alike; from
-                   the edge runtime, twice, on BOTH endpoints, every search
-                   refused. The DeepSeek call succeeds from that same runtime,
-                   so it is DuckDuckGo blocking this address range, not a
-                   broken network.
+                   ✅ **IT SEARCHES, AND IT NEEDS NO ACCOUNT AND NO KEY.**
+                   Tavily has a keyless mode, `X-Tavily-Access-Mode: keyless`,
+                   which is a supported part of its API rather than a scraped
+                   page. Tested from the edge runtime and it answers. It also
+                   returns extracted page text instead of a snippet, so the
+                   model often need not open the page at all. Proved end to end
+                   on DeepSeek from the live function: asked for current Lagos
+                   hotel rates against the rest of West Africa, it came back
+                   with seven findings and real addresses, named a source it
+                   would not sign off, said STR and CoStar hold the current
+                   comparison and it is paywalled, and closed with what it
+                   could not find.
 
-                   ⚠️ **ANTHROPIC IS WORSE OFF UNTIL THIS IS DECIDED.** Its
-                   hosted search worked and cost 45.8 cents. It now uses the
-                   same neutral provider, so it does not work either. Amara
-                   runs on DeepSeek, where search was already dead, so nothing
-                   usable today is worse; the regression appears only if a
-                   company is moved back onto Anthropic.
+                   ⚠️ DUCKDUCKGO IS REFUSED FROM THE EDGE RUNTIME, and that is
+                   why it is no longer the default. It rate limits datacentre
+                   addresses and Supabase's edge is one. Measured both ways:
+                   from an ordinary network, seven queries across seven
+                   regions, ten results each, no throttling, with browser, bot
+                   and no user agent alike; from the edge, twice, on BOTH
+                   endpoints, every request refused. So the provider is a CHAIN
+                   now rather than one choice, because one provider was the
+                   single point of silent failure: Brave first if a key is
+                   present, then Tavily keyless, then DuckDuckGo for a laptop
+                   with nothing configured. `SEARCH_PROVIDER` pins one, and a
+                   pin is honoured alone.
 
-                   HIS CONDITION FAILED, SO THE CHOICE IS HIS AGAIN. He chose
-                   keyless on the condition that it was capable: "if option one
-                   is capable even for quick research across different
-                   geopolitical zones, then use it for now". It is capable from
-                   an ordinary network and refused from the one that matters.
-                   Either give it a key for Brave or Tavily, both with a free
-                   tier, which is one environment variable and one key, or keep
-                   Anthropic's hosted search for Anthropic and the neutral path
-                   for the rest. Recorded either way: "while deploying for
-                   clients we would be including others for better results."
+                   ⚠️ **A WORKING SEARCH COSTS ABOUT 13.5 CENTS A TURN.** Two
+                   live research turns took the budget from 66.97 to 40.02. A
+                   FAILING turn cost 2.8 cents because it gave up after one
+                   round; a working one runs several and every round re-reads
+                   everything already collected on top of the whole knowledge
+                   base. A 100 cent workspace therefore holds about seven
+                   searches. The likeliest lever is the prompt cache, because
+                   Anthropic re-reads its stable blocks at a tenth while
+                   DeepSeek's first logged turn reported `cacheWrite=0
+                   cacheRead=0`, which suggests nothing is cached there at all.
+                   NOT INVESTIGATED YET, and it should be before a customer
+                   sees it.
+
+                   Provider facts, corrected from the vendors' own pages after
+                   the first numbers given to him were wrong. Brave: $5 per
+                   1,000 requests with $5 of free credit a month, so about
+                   1,000 free searches, and A CARD IS REQUIRED even for the
+                   free credit. Tavily: free plan is 1,000 credits a month with
+                   NO CARD, and keyless needs nothing. Recorded on his
+                   instruction: "while deploying for clients we would be
+                   including others for better results."
 
                    Two real bugs were caught by the new tests before the
                    deploy, both in reading a result page: an advert on the lite
@@ -85,7 +104,7 @@ built and checked, not when it is planned.
                    sources; and because an advert was dropped while its snippet
                    was still counted, every snippet after it landed on the
                    wrong address. Pairing is now by document order.
-                   `scripts/tests/search.test.mjs`, 58 checks.
+                   `scripts/tests/search.test.mjs`, 65 checks.
 
 0000000000000000. **2026-09-25, THE BRAIN IS SWAPPABLE: THE SEAM IS BUILT, THE
                    DEEPSEEK ADAPTER IS NEXT. Read this before touching any

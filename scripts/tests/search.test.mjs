@@ -44,7 +44,7 @@ await build({
 });
 const {
   parseKeylessResults, normaliseUrl, isPrivateHost, htmlToText,
-  providerName, providerReady, describeProviders, webSearch,
+  providerName, providerReady, describeProviders, providerChain, webSearch,
   SEARCH_TOOL_SCHEMAS, MAX_SEARCHES, MAX_FETCHES, SEARCH_VERSION,
 } = await import(join(dir, "search.mjs"));
 
@@ -181,27 +181,65 @@ check("tags are gone", !/<[a-z]/i.test(TEXT));
    -------------------------------------------------------------------------- */
 
 delete process.env.SEARCH_PROVIDER;
-check("with nothing set, the provider is the one needing no account",
-  providerName() === "keyless");
-check("and it is ready with no key at all", providerReady() === true);
-
-process.env.SEARCH_PROVIDER = "brave";
 delete process.env.BRAVE_API_KEY;
-check("a paid provider is chosen when asked for", providerName() === "brave");
-check("and it reports itself not ready with no key", providerReady() === false);
-check("the provider list names every one and its state",
-  /keyless: ready/.test(describeProviders()) && /brave/.test(describeProviders()));
+delete process.env.TAVILY_API_KEY;
 
-process.env.SEARCH_PROVIDER = "something-else";
-check("an unknown provider falls back rather than throwing",
-  providerName() === "keyless");
+check("with nothing set, Tavily runs keyless and needs no account",
+  providerName() === "tavily");
+check("and it is ready with no key at all", providerReady() === true);
+check("DuckDuckGo is kept behind it, because it works from a laptop",
+  providerChain().includes("duckduckgo"));
+check("neither of them needs a key for the chain to be usable",
+  providerReady("tavily") === true && providerReady("duckduckgo") === true);
+
+/* A KEY IS THE SWITCH. This is what stops a key being added and the search
+   still quietly running on the provider the edge runtime is refused by. */
+process.env.BRAVE_API_KEY = "test-brave-key";
+check("adding a Brave key puts Brave first with no other setting",
+  providerName() === "brave" && providerReady() === true);
+
+process.env.TAVILY_API_KEY = "test-tavily-key";
+check("with both keys, Brave still goes first",
+  providerName() === "brave");
+
+delete process.env.BRAVE_API_KEY;
+check("with only a Tavily key, Tavily goes first", providerName() === "tavily");
+
+process.env.SEARCH_PROVIDER = "duckduckgo";
+check("an explicit setting is honoured alone, with no falling back past it",
+  providerName() === "duckduckgo" && providerChain().length === 1);
 delete process.env.SEARCH_PROVIDER;
 
-const noKey = await webSearch("lagos hotels");
-check("a ready provider is actually used for a real search",
-  noKey.provider === "keyless" && typeof noKey.ok === "boolean");
-check("an empty query is refused rather than searched for",
-  (await webSearch("   ")).ok === false);
+process.env.SEARCH_PROVIDER = "brave";
+delete process.env.TAVILY_API_KEY;
+check("a provider can be asked for by name", providerName() === "brave");
+check("and it reports itself not ready with no key", providerReady() === false);
+check("the provider list names every one and its state",
+  /tavily: ready, keyless/.test(describeProviders())
+  && /brave: missing BRAVE_API_KEY/.test(describeProviders()));
+
+process.env.SEARCH_PROVIDER = "something-else";
+check("an unknown provider falls back to the chain rather than throwing",
+  providerName() === "tavily" && providerChain().length === 2);
+delete process.env.SEARCH_PROVIDER;
+delete process.env.BRAVE_API_KEY;
+delete process.env.TAVILY_API_KEY;
+
+/* ⚠️ NO REAL SEARCH IS MADE IN THIS FILE. A suite that needs the network goes
+   red for reasons that are not the code, and this module's whole history is
+   about a search that failed without saying so. The live call is made by hand
+   and recorded in SESSIONS.md. What is checked here is the shape the stage
+   leans on: a refusal is an answer, and it says which provider would have run. */
+const emptyQuery = await webSearch("   ");
+check("an empty query is refused, and names the provider that would run",
+  emptyQuery.ok === false && emptyQuery.reason === "empty query"
+  && typeof emptyQuery.provider === "string" && emptyQuery.provider.length > 0);
+check("and it hands back no hits rather than inventing any",
+  Array.isArray(emptyQuery.hits) && emptyQuery.hits.length === 0);
+
+const longQuery = await webSearch("x".repeat(401));
+check("an absurdly long query is refused too",
+  longQuery.ok === false && longQuery.reason === "query too long");
 
 /* --------------------------------------------------------------------------
    5. THE STAGE, READ FROM THE REAL SOURCE

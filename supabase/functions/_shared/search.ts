@@ -43,24 +43,33 @@
    THE PROVIDER IS PLUGGABLE, LIKE THE BRAIN
    -----------------------------------------
    A company deployed on its own may want the search to be one they pay for
-   and can hold to an SLA. So the provider is chosen by an environment
-   variable and the default needs nothing at all.
+   and can hold to an SLA. So the provider is a setting, and with nothing set
+   at all the search still works.
 
-     SEARCH_PROVIDER=keyless   (default) no account, no key, no cost
-     SEARCH_PROVIDER=brave     needs BRAVE_API_KEY
-     SEARCH_PROVIDER=tavily    needs TAVILY_API_KEY
+     SEARCH_PROVIDER=brave       needs BRAVE_API_KEY
+     SEARCH_PROVIDER=tavily      keyless, or with TAVILY_API_KEY for more
+     SEARCH_PROVIDER=duckduckgo  no account, no key
 
-   ⚠️ THE KEYLESS DEFAULT IS FOR QUICK RESEARCH, AND IT IS NOT THE END STATE.
-   Recorded on Anthony's instruction: "while deploying for clients we would be
-   including others for better results." It was tested across geopolitical
-   zones on 2026-09-25 and answered all of them (Nigeria, the UK, the US,
-   India, Brazil, the Gulf, and a technical query) with ten results each in
-   about 600ms, with no region blocking and no throttling. Its weakness is
-   real and worth knowing: it leans on statistics aggregators such as
-   worldmetrics, wifitalents and gitnux alongside the genuine sources. The
-   research prompt already handles that, because it requires following a lead
-   back to whoever published it first, but a paying customer should be moved
-   onto Brave or Tavily.
+   With no setting, a key promotes its provider to the front, then Tavily runs
+   keyless, and DuckDuckGo backs it up. `providerChain`.
+
+   ⚠️ THE DEFAULT USED TO BE DUCKDUCKGO ALONE, AND THAT IS WHY SEARCH WAS DEAD
+   ON 2026-09-25. It answered perfectly from an ordinary network: seven
+   queries across seven regions, ten results each, about 600ms, no throttling,
+   and the user agent made no difference. From the runtime the function
+   actually runs in, EVERY request was refused, on both of its endpoints,
+   twice. DuckDuckGo rate limits datacentre addresses and Supabase's edge is
+   one. One provider meant one point of failure and it was silent.
+
+   So Tavily is the one that matters, because its keyless mode is a supported
+   part of the API rather than a scraped page, and it returns extracted page
+   text instead of a bare snippet.
+
+   ⚠️ AND IT IS STILL NOT THE END STATE, on Anthony's instruction: "while
+   deploying for clients we would be including others for better results." So
+   a customer deployment gets a key. Tavily's free plan is 1,000 credits a
+   month and needs no card. Brave is half a cent a search with $5 of free
+   credit a month, but it asks for a card even on the free credits.
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
@@ -70,24 +79,68 @@
    can ask once and get a plain answer it can act on.
    -------------------------------------------------------------------------- */
 
-export type SearchProvider = "keyless" | "brave" | "tavily";
+export type SearchProvider = "brave" | "tavily" | "duckduckgo";
 
 /** A long marker for `scripts/check-deploy.mjs` (it matches long literals). */
 export const SEARCH_VERSION =
-  "search-1: the search runs in this function for every vendor, and every address shown comes from a result actually received";
+  "search-2: the search runs in this function for every vendor, tries every provider in turn, and every address shown comes from a result actually received";
 
-const PROVIDERS: SearchProvider[] = ["keyless", "brave", "tavily"];
+const PROVIDERS: SearchProvider[] = ["brave", "tavily", "duckduckgo"];
 
-/** The key each provider needs. Keyless needs nothing, which is the point. */
+/** The key each one may use. Tavily works without one, so null is not "unusable". */
 const KEY_NAME: Record<SearchProvider, string | null> = {
-  keyless: null,
   brave: "BRAVE_API_KEY",
   tavily: "TAVILY_API_KEY",
+  duckduckgo: null,
 };
 
-export function providerName(): SearchProvider {
+/* Providers that run with no key at all. Tavily's keyless mode is a supported
+   part of its API rather than a scraped page, which is why it is trusted where
+   DuckDuckGo is not. */
+const WORKS_KEYLESS: Record<SearchProvider, boolean> = {
+  brave: false,
+  tavily: true,
+  duckduckgo: true,
+};
+
+/* --------------------------------------------------------------------------
+   THE CHAIN, AND WHY IT IS A CHAIN
+   --------------------------------------------------------------------------
+   A single provider failing is the exact bug this file was written to end. On
+   2026-09-25 DuckDuckGo was the only one, it answered perfectly from an
+   ordinary network, and it refused every request from the runtime the function
+   actually runs in. One provider meant one point of silent failure.
+
+   So the providers are tried in order and the first that returns results wins.
+   A key promotes its provider to the front. Nothing else has to be set: with
+   no keys at all, Tavily's keyless mode answers and DuckDuckGo backs it up.
+   -------------------------------------------------------------------------- */
+
+export function providerChain(): SearchProvider[] {
+  /* An explicit choice is honoured alone, so a deployment can be pinned and
+     the pin can be tested. Nothing silently falls back past a pin. */
   const asked = (Deno.env.get("SEARCH_PROVIDER") ?? "").trim().toLowerCase();
-  return (PROVIDERS as string[]).includes(asked) ? (asked as SearchProvider) : "keyless";
+  if ((PROVIDERS as string[]).includes(asked)) return [asked as SearchProvider];
+
+  const chain: SearchProvider[] = [];
+
+  /* A key means somebody is paying for better results, so it goes first. */
+  for (const provider of PROVIDERS) {
+    if (KEY_NAME[provider] && keyFor(provider)) chain.push(provider);
+  }
+
+  /* Then whatever works with nothing, Tavily before DuckDuckGo because it is
+     an API built for agents and returns the page text, not only a snippet. */
+  for (const provider of ["tavily", "duckduckgo"] as SearchProvider[]) {
+    if (!chain.includes(provider)) chain.push(provider);
+  }
+
+  return chain;
+}
+
+/** The provider that will be tried first. Named for the log line. */
+export function providerName(): SearchProvider {
+  return providerChain()[0];
 }
 
 function keyFor(provider: SearchProvider): string | undefined {
@@ -99,15 +152,14 @@ function keyFor(provider: SearchProvider): string | undefined {
 
 /** True when this provider can actually run right now. */
 export function providerReady(provider = providerName()): boolean {
-  return KEY_NAME[provider] === null || Boolean(keyFor(provider));
+  return WORKS_KEYLESS[provider] || Boolean(keyFor(provider));
 }
 
 /** One line per provider, for a log line or a handover note. */
 export function describeProviders(): string {
   return PROVIDERS.map((p) => {
-    const name = KEY_NAME[p];
-    const state = name === null ? "ready, needs no key" : keyFor(p) ? "ready" : `missing ${name}`;
-    return `${p}: ${state}`;
+    if (WORKS_KEYLESS[p]) return `${p}: ${keyFor(p) ? "ready with a key" : "ready, keyless"}`;
+    return `${p}: ${keyFor(p) ? "ready" : `missing ${KEY_NAME[p]}`}`;
   }).join("; ");
 }
 
@@ -173,23 +225,24 @@ function tidy(value: unknown, limit: number): string {
 }
 
 /* --------------------------------------------------------------------------
-   SECTION 3: The keyless provider
+   SECTION 3: DuckDuckGo, the backup that needs nothing
 
-   DuckDuckGo, which needs no account, no key and no bill. Its result links
-   come back wrapped in a redirect of its own, so they are unwrapped here: an
-   address shown to a person must be the address of the thing itself.
+   No account, no key and no bill. Its result links come back wrapped in a
+   redirect of its own, so they are unwrapped here: an address shown to a
+   person must be the address of the thing itself.
 
-   TWO ENDPOINTS, AND THAT IS NOT DECORATION. Measured on 2026-09-25, this
-   provider answers perfectly from an ordinary network and was refused from
-   the edge runtime the function actually runs in. DuckDuckGo rate limits
-   datacentre addresses, and Supabase's edge is one. So the second endpoint is
-   tried before giving up, and every attempt is recorded in the failure, which
-   is how the block was identified rather than guessed at.
+   ⚠️ IT IS A BACKUP NOW, NOT THE DEFAULT, AND THIS IS WHY. Measured on
+   2026-09-25: from an ordinary network it answers perfectly, and from the edge
+   runtime the function actually runs in, EVERY request was refused, on both
+   of its endpoints, twice. DuckDuckGo rate limits datacentre addresses and
+   Supabase's edge is one. Kept because it works from a laptop with no account
+   at all, which is worth having for local work. `providerChain` puts Tavily
+   ahead of it.
 
-   ⚠️ THE KEYLESS PROVIDER ALONE IS NOT ENOUGH FOR A PAYING CUSTOMER. Set
-   `SEARCH_PROVIDER` to brave or tavily and give it a key. See the file
-   header. The failure below says which of the two happened, so a block can
-   never be mistaken for "nothing is published on this".
+   TWO ENDPOINTS, AND THAT IS NOT DECORATION. The second is tried before
+   giving up, and every attempt is recorded in the failure, which is how the
+   block was identified rather than guessed at. A block can never be mistaken
+   for "nothing is published on this".
    -------------------------------------------------------------------------- */
 
 /** Reads an attribute whichever way it is quoted. The two endpoints differ. */
@@ -379,12 +432,31 @@ async function braveSearch(query: string, limit: number, key: string): Promise<S
   })).filter((hit) => hit.url && hit.title);
 }
 
-async function tavilySearch(query: string, limit: number, key: string): Promise<SearchHit[]> {
+/* Tavily answers with or without a key, and the two are meant to be
+   interchangeable: keyless is "free and rate-limited, ideal for exploration",
+   and a key raises the limit. So this is ONE function and the key is optional,
+   which is why a key can be added later without the search changing shape.
+
+   ⚠️ IT RETURNS EXTRACTED PAGE TEXT, NOT A SNIPPET, and that is the reason it
+   replaced DuckDuckGo as the default. Roughly 1,400 characters per result
+   comes back already cleaned, so the model often does not need to open the
+   page at all. It is capped here because the research stage re-reads its own
+   context on every round, so an uncapped result set is paid for again and
+   again. */
+const TAVILY_RESULT_CHARS = 1000;
+
+async function tavilySearch(query: string, limit: number, key?: string): Promise<SearchHit[]> {
   const response = await fetch("https://api.tavily.com/search", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      /* THE MODE HEADER IS WHAT MAKES IT KEYLESS. Without it the endpoint asks
+         the caller to sign in, and the search fails for a reason that looks
+         nothing like a missing key. */
+      ...(key ? {} : { "X-Tavily-Access-Mode": "keyless" }),
+    },
     body: JSON.stringify({
-      api_key: key,
+      ...(key ? { api_key: key } : {}),
       query,
       max_results: limit,
       search_depth: "basic",
@@ -399,7 +471,7 @@ async function tavilySearch(query: string, limit: number, key: string): Promise<
   return (body.results ?? []).slice(0, limit).map((row) => ({
     title: tidy(row.title, 200),
     url: String(row.url ?? ""),
-    snippet: tidy(row.content, 400),
+    snippet: tidy(row.content, TAVILY_RESULT_CHARS),
   })).filter((hit) => hit.url && hit.title);
 }
 
@@ -416,7 +488,8 @@ export async function webSearch(
   query: string,
   { limit = MAX_HITS }: { limit?: number } = {},
 ): Promise<SearchOutcome> {
-  const provider = providerName();
+  const chain = providerChain();
+  const provider = chain[0];
   const wanted = Math.max(1, Math.min(limit, MAX_HITS));
   const clean = String(query ?? "").replace(/\s+/g, " ").trim();
 
@@ -427,36 +500,51 @@ export async function webSearch(
     return { ok: false, hits: [], provider, reason: "query too long" };
   }
 
-  const key = keyFor(provider);
-  if (KEY_NAME[provider] !== null && !key) {
-    return { ok: false, hits: [], provider, reason: `${KEY_NAME[provider]} is not set` };
+  /* EVERY ATTEMPT IS RECORDED, because "the search failed" on its own is what
+     made the original hole invisible for a day. The reason names each provider
+     and what it did, so a block can never be mistaken for an empty result. */
+  const attempts: string[] = [];
+
+  for (const candidate of chain) {
+    const key = keyFor(candidate);
+
+    if (!WORKS_KEYLESS[candidate] && !key) {
+      attempts.push(`${candidate}: no key`);
+      continue;
+    }
+
+    try {
+      let hits: SearchHit[] = [];
+      if (candidate === "brave") hits = await braveSearch(clean, wanted, key!);
+      else if (candidate === "tavily") hits = await tavilySearch(clean, wanted, key);
+      else hits = await keylessSearch(clean, wanted);
+
+      /* Addresses that point inside the network are dropped here as well as in
+         readPage, so a bad one can never reach the model in the first place. */
+      const safe = hits.filter((hit) => {
+        try {
+          return normaliseUrl(hit.url) !== null;
+        } catch {
+          return false;
+        }
+      });
+
+      if (safe.length) return { ok: true, hits: safe, provider: candidate };
+
+      /* A provider that answered with nothing is not the same as one that was
+         refused, and both are worth saying. The next one gets its turn. */
+      attempts.push(`${candidate}: found nothing`);
+    } catch (error) {
+      attempts.push(`${candidate}: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
-  try {
-    let hits: SearchHit[] = [];
-    if (provider === "brave") hits = await braveSearch(clean, wanted, key!);
-    else if (provider === "tavily") hits = await tavilySearch(clean, wanted, key!);
-    else hits = await keylessSearch(clean, wanted);
-
-    /* Addresses that point inside the network are dropped here as well as in
-       readPage, so a bad one can never reach the model in the first place. */
-    const safe = hits.filter((hit) => {
-      try {
-        return normaliseUrl(hit.url) !== null;
-      } catch {
-        return false;
-      }
-    });
-
-    return { ok: true, hits: safe, provider };
-  } catch (error) {
-    return {
-      ok: false,
-      hits: [],
-      provider,
-      reason: error instanceof Error ? error.message : String(error),
-    };
-  }
+  return {
+    ok: false,
+    hits: [],
+    provider,
+    reason: `every search provider failed (${attempts.join("; ")})`,
+  };
 }
 
 /* --------------------------------------------------------------------------

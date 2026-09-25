@@ -40,9 +40,9 @@ was dropped as a result while its SNIPPET was still counted, every snippet
 after it was attached to the wrong address, which shows a source against a
 claim it does not make. Both fixed, and pairing is now by document order.
 
-**THE FINDING, AND IT IS THE POINT OF THE ENTRY. The keyless provider is
-refused from the edge runtime.** DuckDuckGo rate limits datacentre addresses
-and Supabase's edge is one. Measured, not guessed:
+**THE FINDING THAT MATTERED, AND HOW IT WAS SOLVED. DuckDuckGo is refused from
+the edge runtime.** It rate limits datacentre addresses and Supabase's edge is
+one. Measured, not guessed:
 
 - From this container: seven queries across seven regions, ten results each,
   about 600ms, no throttling. Nigeria returned Nairametrics and Business AM,
@@ -52,32 +52,52 @@ and Supabase's edge is one. Measured, not guessed:
 - From the edge runtime, twice, on both endpoints: every search refused.
   Asked and answered from the live function, not from a reading of the code.
 
-So it is not the headers and it is not the parser. It is the address the
-function runs from. The model call to DeepSeek succeeds from the same
-runtime, which is what proves the edge has outbound access at all, so this is
-DuckDuckGo blocking this address range and not a broken network.
+So it was never the headers and never the parser. It was the address the
+function runs from.
 
-⚠️ **ANTHROPIC IS WORSE OFF THAN BEFORE UNTIL THIS IS DECIDED.** Anthropic's
-hosted search worked and cost 45.8 cents a search. It now goes through the
-same neutral provider, so it does not work either. Amara runs on DeepSeek,
-where search was already dead, so nothing the person can use today is worse.
-The regression only appears if a company is moved back onto Anthropic.
+**The fix was not a key. Tavily has a keyless mode**, `X-Tavily-Access-Mode:
+keyless`, which is a supported part of its API rather than a scraped page. It
+was tested from the edge and it answers. It also returns extracted page text
+instead of a bare snippet, so the model often does not need to open the page
+at all. Anthony chose a Brave key first, and Brave is wired and ready, but no
+account is needed for search to work today.
 
-**Left for Anthony, because his condition failed.** He chose the keyless
-provider on the condition that it was capable for quick research: "if option
-one is capable even for quick research across different geopolitical zones,
-then use it for now". It is capable from an ordinary network and refused from
-the one that matters. So the choice is his: give `_shared/search.ts` a key
-for Brave or Tavily, both of which have a free tier, or keep Anthropic's
-hosted search for Anthropic and the neutral path for everyone else. The
-module is already written for the first one; switching is one environment
-variable and one key.
+The provider is now a CHAIN rather than one choice, because one provider was
+exactly the single point of silent failure: Brave first if a key is present,
+then Tavily keyless, then DuckDuckGo as a backup for a laptop with nothing
+configured. `SEARCH_PROVIDER` pins one when a deployment needs that, and a pin
+is honoured alone with nothing falling back past it.
 
-**Cost so far.** 18.63 cents of the company budget across this session's
-verification runs, 85.60 down to 66.97. Most of it is the three research
-turns, which carry the largest prompt and the highest output ceiling of any
-stage, and each of those turns ended with no findings because of the block
-above.
+**Proved end to end from the live function on DeepSeek.** Asked for current
+Lagos hotel rates against the rest of West Africa, it returned seven findings
+with real addresses, including a ₦205,534 premium business rate from Estate
+Intel via Business a.m., 66.7% occupancy from the same report, and STR's 2019
+Africa ranking. It marked a Ghanaian developer's undated page as a source it
+would not sign off, said plainly that STR and CoStar hold the current
+comparison and it is paywalled, and closed with what it could not find rather
+than filling the gap. That is the prompt working through a search that
+actually ran.
+
+**AND A WORKING SEARCH IS EXPENSIVE: about 13.5 cents a turn.** Two live
+research turns took the budget from 66.97 to 40.02, so 26.94 cents for the
+pair. A FAILING turn cost 2.8 cents, because it gave up after one round. A
+working one runs several rounds and every round re-reads everything already
+collected on top of the company's whole knowledge base. At that rate a
+100 cent workspace holds about seven searches, which is the same economics
+finding as Anthropic's 45.8 cents, only smaller. The likeliest lever is the
+prompt cache, because on Anthropic the stable blocks are re-read at a tenth
+and DeepSeek's first logged turn reported `cacheWrite=0 cacheRead=0`, which
+suggests nothing is being cached there at all. NOT INVESTIGATED YET, and it
+should be before a customer sees it.
+
+**Corrected on his behalf, from the vendors' own pages, because the first
+numbers given to him were wrong.** Brave: $5 per 1,000 requests and $5 of free
+credit a month, so about 1,000 free searches, and a CARD IS REQUIRED even for
+the free credit. Tavily: free plan is 1,000 credits a month with NO CARD, and
+keyless needs nothing at all.
+
+**Cost for the whole session.** 45.58 cents, 85.60 down to 40.02. Recorded
+because he asked why search was expensive, and the answer changed twice.
 
 ---
 
