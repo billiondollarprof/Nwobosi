@@ -65,11 +65,55 @@ built and checked, not when it is planned.
                    than quietly spending on prices nobody has checked. Its
                    models and rates have to be chosen before it can be used.
 
-                   NEXT: the OpenAI-format adapter, which natively covers both
-                   OpenAI and DeepSeek, then the column, then DeepSeek on his
-                   own company. `DEEPSEEK_API_KEY` is already in Supabase
-                   secrets, and `keyNameFor("deepseek")` already returns that
-                   exact name.
+                   ✅ DONE LATER THE SAME DAY, 2026-09-25. The column became a
+                   TABLE, `company_brain`, and it is the one thing left here.
+                   Why a table and not a column: `src/shared/session.js` loads
+                   the company with `select(*)`, so a column on `companies`
+                   would have put the vendor name into the browser payload on
+                   every page load, and the brain is meant to be swappable
+                   without the product knowing which brain it is.
+
+                   ✅ TABLE CREATED and verified: 3 columns, a foreign key to
+                   `companies`, a trigger that maintains `updated_at`, and row
+                   level security ON with **ZERO policies**, so the edge
+                   functions read it with the service role and the browser
+                   cannot read it at all. The check constraint rejects anything
+                   outside anthropic, deepseek, openai.
+
+                   ✅ ALL EIGHT FUNCTIONS DEPLOYED on `testing` and live:
+                   assistant v42, support-ask v25, add-link v20,
+                   read-before-publish v14, canva-design v12, read-image v11,
+                   describe-source v11, group-images v11. Every live copy was
+                   compared with the repo BEFORE the deploy and matched marker
+                   for marker, so nothing made in the console was reverted.
+                   `PENDING-DEPLOYS.md` records it.
+
+                   ✅ **AMARA ITSELF NOW RUNS ON DEEPSEEK.** `company_brain` holds
+                   one row, company `Amara`, vendor `deepseek`. Both levels map
+                   to `deepseek-flash`, because DeepSeek's own release note says
+                   V4.1-Flash beats V4-Pro on performance, cost, speed and
+                   runtime, and that all `deepseek-v4-pro` requests now route to
+                   Flash anyway. There is no second brain to choose.
+
+                   ⚠️ **NOT YET USED BY A PERSON.** Verified structurally, never
+                   exercised. The first real turn is the test. If
+                   `DEEPSEEK_API_KEY` is missing or wrong, that turn fails
+                   loudly with the secret's name in the log rather than quietly
+                   answering from Anthropic, which is deliberate: a company
+                   configured for one vendor should not be billed on another.
+
+                   ⚠️ The token in this workspace can read logs and run SQL and
+                   deploy, but NOT secrets, so whether the key is really there
+                   could not be checked in advance. Ask Anthony to say if a turn
+                   fails with `DEEPSEEK_API_KEY is not set`.
+
+                   THE TWO CHECKS THAT EARNED THE STANDING PERMISSION, both in
+                   `CLAUDE.md` and both proved on a real case before being
+                   relied on: `scripts/db-dryrun.mjs` runs a statement inside a
+                   transaction, reports the exact catalogue difference, and
+                   rolls back (proved against a throwaway table first, which was
+                   gone afterwards); `scripts/check-deploy.mjs` proves the
+                   deployed copy carries every string literal of the source.
 
 00000000000000. **2026-09-23, THE LOGS READ, AND THE SEARCH IS NOT WHAT WE
                 THOUGHT. READ THIS BEFORE TOUCHING THE SEARCH.**

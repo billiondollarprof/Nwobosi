@@ -120,18 +120,49 @@ create temp table _snap as
    where n.nspname = 'public';
 `;
 
+/* ⚠️ THE SCHEMA SNAPSHOT CANNOT SEE A DATA CHANGE, AND THAT WAS A REAL HOLE.
+   An INSERT, an UPDATE or a DELETE leaves every table, column, policy and
+   trigger exactly where it was, so the difference came back empty and the check
+   said CLEAN whatever the statement did to the rows. It would have reported a
+   data write as "nothing changed", which is the most dangerous kind of green.
+
+   So a table named with --rows gets its row count read before and after, inside
+   the same transaction. ⚠️ A count is not the whole story: an UPDATE that
+   changes a value without changing any count still passes. The report says so
+   rather than implying more than was checked. */
+const rowTables = [];
+for (let i = 0; i < args.length; i++) {
+  if (args[i] === "--rows") rowTables.push(args[++i]);
+}
+
+/* One temp table holding a row per watched table, so the counts can be folded
+   into the single result set this endpoint returns. */
+const countTable = (name) => rowTables.length === 0 ? "" :
+  `create temp table ${name} as\n` +
+  rowTables.map((t) => `  select '${t}' as t, count(*) as n from ${t}`).join("\n  union all\n") +
+  ";\n";
+
+const countRows = rowTables.length === 0 ? "" :
+  `union all
+select 'ROWS_BEFORE' as change, t || ' = ' || n::text as line from _rc_before
+union all
+select 'ROWS_AFTER' as change, t || ' = ' || n::text as line from _rc_after`;
+
 const BOTH = `
 begin;
 ${SNAPSHOT}
 create temp table _before as select line from _snap;
 drop table _snap;
+${countTable("_rc_before")}
 ${sql}
 ${SNAPSHOT}
 create temp table _after as select line from _snap;
 drop table _snap;
+${countTable("_rc_after")}
 select 'ADDED' as change, line from (select line from _after except select line from _before) a
 union all
 select 'REMOVED' as change, line from (select line from _before except select line from _after) r
+${countRows}
 order by change, line;
 rollback;
 `;
@@ -160,6 +191,18 @@ try { rows = JSON.parse(text); } catch { console.log(`RESULT    : unexpected ans
 const added = rows.filter((r) => r.change === "ADDED").map((r) => r.line);
 const removed = rows.filter((r) => r.change === "REMOVED").map((r) => r.line);
 
+/* The row counts are reported separately from the shape, because a count going
+   up is not a schema change and must not be read as one. */
+const counts = (phase) => new Map(rows.filter((r) => r.change === phase)
+  .map((r) => { const i = r.line.lastIndexOf(" = "); return [r.line.slice(0, i), Number(r.line.slice(i + 3))]; }));
+const before = counts("ROWS_BEFORE");
+const after = counts("ROWS_AFTER");
+const shrank = [];
+for (const [t, n] of before) {
+  const m = after.get(t);
+  if (m !== undefined && m < n) shrank.push(`${t} ${n} -> ${m}`);
+}
+
 console.log(`RESULT    : SQL is VALID and applied cleanly inside the transaction.\n`);
 console.log(`WOULD ADD    (${added.length})`);
 for (const l of added) console.log(`  + ${l}`);
@@ -168,7 +211,24 @@ console.log(`\nWOULD REMOVE (${removed.length})`);
 for (const l of removed) console.log(`  - ${l}`);
 if (!removed.length) console.log("  (nothing)");
 
+if (before.size) {
+  console.log(`\nROWS WATCHED`);
+  for (const [t, n] of before) {
+    const m = after.get(t);
+    const delta = m === undefined ? "?" : (m > n ? `+${m - n}` : m < n ? `${m - n}` : "no change");
+    console.log(`  ${t.padEnd(32)} ${n} -> ${m}   (${delta})`);
+  }
+  console.log(`  ⚠️ a count is not the whole story: an UPDATE that changes a value`);
+  console.log(`     without changing any count still passes this.`);
+}
+
 let failed = false;
+
+/* A watched table that lost rows is a removal, whatever the shape says. */
+if (additiveOnly && shrank.length) {
+  console.log(`\n*** NOT ADDITIVE: rows were removed from ${shrank.join(", ")} ***`);
+  failed = true;
+}
 
 /* Every changed object has to be one that was expected. This is the check that
    catches a statement that quietly touches something nobody asked about. */
