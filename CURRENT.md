@@ -88,6 +88,19 @@ built and checked, not when it is planned.
                    for marker, so nothing made in the console was reverted.
                    `PENDING-DEPLOYS.md` records it.
 
+                   ⚠️ THOSE VERSIONS ARE ONE BEHIND. All eight were redeployed
+                   again the same day for the thinking fix, which is what broke
+                   the first real DeepSeek turn: Anthropic defaults thinking
+                   OFF and DeepSeek defaults it ON, so six functions that force
+                   `tool_choice` came back 400 with "Thinking mode does not
+                   support this tool_choice". `toWireThinking` now treats
+                   nothing-asked-for as off. The live versions after that
+                   redeploy are: assistant v43, support-ask v26, add-link v21,
+                   read-before-publish v15, canva-design v13, read-image v12,
+                   describe-source v12, group-images v12. All ACTIVE, all
+                   `verify_jwt: false`, all CLEAN against `check-deploy.mjs`
+                   with zero markers missing.
+
                    ✅ **AMARA ITSELF NOW RUNS ON DEEPSEEK.** `company_brain` holds
                    one row, company `Amara`, vendor `deepseek`. Both levels map
                    to `deepseek-flash`, because DeepSeek's own release note says
@@ -95,17 +108,40 @@ built and checked, not when it is planned.
                    runtime, and that all `deepseek-v4-pro` requests now route to
                    Flash anyway. There is no second brain to choose.
 
-                   ⚠️ **NOT YET USED BY A PERSON.** Verified structurally, never
-                   exercised. The first real turn is the test. If
-                   `DEEPSEEK_API_KEY` is missing or wrong, that turn fails
-                   loudly with the secret's name in the log rather than quietly
-                   answering from Anthropic, which is deliberate: a company
-                   configured for one vendor should not be billed on another.
+                   ✅ **USED END TO END, 2026-09-25, AND IT WORKS.** Anthony:
+                   "verify end to end that assistant can start interview and
+                   build a job." Every stage was driven over HTTP the way the
+                   app drives it, on DeepSeek, and all six passed: `orient`
+                   offered the interview and emitted `OFFER_INTERVIEW` where
+                   the app looks for it, `interview` asked five sharp
+                   questions and closed with `INTERVIEW_COMPLETE`, `analyse`
+                   read back with `FORMAT: pdf` and `READBACK_COMPLETE`,
+                   `brief` wrote 6,248 characters of plan and sourced facts,
+                   and `generate` wrote a complete one page FAQ in the `:::`
+                   design blocks. That document was then put through the
+                   app's own `buildFile`, which parsed 30 blocks with no
+                   unknown type and wrote a real 30,071 byte PDF and an
+                   11,789 byte DOCX carrying the real figures. `SESSIONS.md`
+                   has the detail. The first turn failed in production at
+                   03:19 before the thinking fix; the 08:12 turn after it is
+                   a clean answer, and both are still on the row.
 
-                   ⚠️ The token in this workspace can read logs and run SQL and
-                   deploy, but NOT secrets, so whether the key is really there
-                   could not be checked in advance. Ask Anthony to say if a turn
-                   fails with `DEEPSEEK_API_KEY is not set`.
+                   ⚠️ **THE SEARCH STAGE DOES NOT WORK ON DEEPSEEK, AND IT
+                   FAILS SILENTLY.** `assistant/index.ts` attaches
+                   `web_search_20260209` and `web_fetch_20260209`, which are
+                   Anthropic's HOSTED tools: Anthropic runs the search and
+                   returns `web_search_tool_result` blocks, and the loop reads
+                   its sources out of those blocks. DeepSeek has no such
+                   thing. The adapter sends them as ordinary function tools,
+                   DeepSeek replies with a tool call, the stop reason is not
+                   `pause_turn`, so the loop breaks on the first round. No
+                   result block ever arrives, `sourcesFound` stays empty, and
+                   the person gets the preamble or "I searched and found
+                   nothing usable for this." No error, no crash, nothing in
+                   the logs. This is the opposite of the Anthropic case
+                   recorded below, where the search ran and cost 45.832 cents.
+                   DIAGNOSED, NOT TOUCHED: what happens to the search while
+                   this workspace runs on DeepSeek is Anthony's decision.
 
                    THE TWO CHECKS THAT EARNED THE STANDING PERMISSION, both in
                    `CLAUDE.md` and both proved on a real case before being
@@ -114,6 +150,16 @@ built and checked, not when it is planned.
                    rolls back (proved against a throwaway table first, which was
                    gone afterwards); `scripts/check-deploy.mjs` proves the
                    deployed copy carries every string literal of the source.
+
+                   **Two contradictions the assistant found in the company
+                   material by itself, worth knowing before a demo.**
+                   The pricing contradicts itself: the pricing page says
+                   26,100 / 33,300 / 62,100, and the Partner Program rates
+                   table says 29,000 / 37,000 / 69,000. And the Terms describe
+                   a "Founding Businesses programme" offering temporary full
+                   access, which is where the "free month" idea came from.
+                   The assistant flags both, unprompted, before it will put a
+                   price in a document.
 
 00000000000000. **2026-09-23, THE LOGS READ, AND THE SEARCH IS NOT WHAT WE
                 THOUGHT. READ THIS BEFORE TOUCHING THE SEARCH.**

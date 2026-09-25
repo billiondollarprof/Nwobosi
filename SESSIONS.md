@@ -4,6 +4,81 @@ Log of each work session. Newest at the top. Keep entries short.
 
 ---
 
+## Session 12: 2026-09-25, the DeepSeek brain, driven stage by stage
+
+Anthony: "verify end to end that assistant can start interview and build a
+job." Done, and it passes. One real gap found, written down below, not
+touched.
+
+**How it was driven without a person at the screen.** `resume-demo` will mint
+a session for a redeemed code, and `SX-RLDY-ZZC2` ("Client: ANTHONY") is his
+own, already redeemed and tied to this one company. Nothing was consumed and
+no unused client demo code was touched. The magic link was swapped for a real
+session and each stage was called over HTTP exactly as the app calls it,
+including the same message shape and the marker checks `Chat.jsx` does. Six
+turns, all `standard` tier, all on DeepSeek.
+
+**What passed, in the order the product runs it.**
+
+- `orient`, given a real work request, emitted `OFFER_INTERVIEW` as the last
+  line, which is where the app looks for it. It also refused to invent: it
+  read the knowledge base, found no free month in it, and said so before
+  offering to interview.
+- `interview` asked five specific questions and finished in two turns with
+  `INTERVIEW_COMPLETE`. It caught a genuine contradiction in the company
+  material (below) without being pointed at it.
+- `analyse` produced the read back and ended with `FORMAT: pdf` and
+  `READBACK_COMPLETE`.
+- `brief` wrote a real 6,248 character brief, with the facts it would use and
+  the source of each one.
+- `generate` wrote a complete one page FAQ using the `:::` design blocks
+  (`label`, `stat`, `cards`, `takeaway`) and a markdown table, with zero em
+  dashes and both guarantee conditions on every mention, as the brief said.
+- The document was then pushed through the app's own `buildFile` from
+  `src/shared/download.js`. It parsed as 30 blocks with no unknown type, and
+  wrote a real 30,071 byte PDF (`%PDF-`) and an 11,789 byte DOCX (`PK`). The
+  text of both was read back and carries the real figures.
+
+So the vendor swap holds. A cheaper model, a different wire format, and the
+whole chain from a sentence to a finished file still works.
+
+**WHAT DOES NOT WORK ON DEEPSEEK: the search stage.** This is the one thing to
+know before a demo. `assistant/index.ts` attaches
+`web_search_20260209` and `web_fetch_20260209`, which are Anthropic's own
+hosted tools. Anthropic runs the search server side and returns
+`web_search_tool_result` blocks, and the loop reads the sources out of those
+blocks. DeepSeek has no such thing. The adapter sends them as ordinary
+function tools, DeepSeek answers with a tool call,
+`reply.stop_reason` is not `pause_turn`, so the loop breaks on the first
+round. No result block ever arrives, `sourcesFound` stays empty, and the
+person gets the preamble text or "I searched and found nothing usable for
+this." No error, no crash. It just quietly does not search.
+
+That is a diagnosis, not a licence. Whether search moves to a vendor of its
+own, or the gate is closed while the workspace runs on DeepSeek, is his call.
+
+**Found in the company material, twice, by the assistant itself.**
+
+1. The pricing contradicts itself. The pricing page says Essential 26,100,
+   Premier 33,300, Signature 62,100. The Partner Program rates table says
+   29,000, 37,000 and 69,000. The assistant flagged both sets and asked which
+   is live before it would write anything with a price in it.
+2. The Terms describe a "Founding Businesses programme" offering temporary
+   full access. That is where the "free month" idea came from, and the
+   assistant traced it there on its own.
+
+Both matter for the coming pricing restructure, which changes these numbers
+anyway.
+
+**What it cost.** 10.27 cents of the company's budget, 85.60 down to 75.33.
+Six model calls and two rendered files.
+
+**Left undone on purpose.** Search was not fixed or disabled. Nothing was
+changed in the workspace. The session token was made outside the repo and is
+not written down anywhere.
+
+---
+
 ## Session 11: 2026-09-23, DeepSeek (DSH)
 
 Ran out of credit partway. Nothing was left half done. Everything below is
