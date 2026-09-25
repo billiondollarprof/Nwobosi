@@ -60,17 +60,55 @@ Gone. So the hit rate cannot be read until that comes back. The log line has
 been printing `cacheRead=0` on every single turn, which is the proof of the
 mechanism even without the ratio.
 
-**Fixed and tested, NOT deployed, and no money spent proving it.** `wire.ts`
-reads both vendors' names and subtracts the cached count from `input_tokens`.
-The assistant calls `centsExact` from `_shared/brain.ts` and its second copy of
-the arithmetic is deleted. Nine new checks in `brain-wire.test.mjs`, 556 in the
-suite, type check clean. `support-ask` was already right and now there is one
-place that can be wrong instead of two.
+**Fixed, deployed and MEASURED.** `wire.ts` reads DeepSeek's own name for the
+cache count and takes those tokens out of `input_tokens`. The assistant calls
+`centsExact` from `_shared/brain.ts` and its second copy of the arithmetic is
+deleted. `support-ask` was already right, so now there is one place that can be
+wrong instead of two. Nine new checks in `brain-wire.test.mjs`, 556 in the
+suite. Live as `assistant` v48, 639 of 639 markers.
 
-⚠️ **THE BUDGET WAS DEBITED MORE THAN THE REAL COST, AND IT NEEDS TOPPING UP
-BEFORE THE WALKTHROUGH.** 40.02 cents remains, and a research turn debited at
-the old wrong rate. Correcting the balance is a WRITE to `companies`, so it is
-shown and waited on. The deploy is asked for too.
+**And the cache was working the whole time. The meter was the thing lying.**
+Three turns, measured from the budget itself rather than estimated:
+
+| Turn | Before the fix | After |
+|---|---|---|
+| First turn, brand new conversation | 0.58293 | **0.023456** |
+| Second turn, same conversation | not measured | 0.151136 |
+| A real search turn | 13.5 | **1.443713** |
+
+The first turn is the proof. Its input is the same nineteen thousand token
+company material it always was, and 19,127 tokens at the cache-hit rate is
+0.011476 cents while the same tokens at the miss rate is 0.573810. The
+measured 0.023456 sits on the cache-hit line, not the miss line, so DeepSeek's
+cache is hitting and the meter is now crediting it. **25 times cheaper on a
+chat turn. 9.4 times cheaper on a search turn.**
+
+⚠️ **THE CACHE HITS EVEN ACROSS CONVERSATIONS, AND THAT IS WHY THE FIRST TURN
+IS ALMOST FREE.** The key is the prefix, and the prefix is the company's
+material, which is identical every time. So a brand new chat still hits the
+cache for that whole block. Worth knowing, because it means the per-conversation
+"first message" is not special at all.
+
+**His arithmetic, checked against measurement rather than agreed with.** He
+said 100 cents should cover about thirty walkthroughs, or at least five with a
+search inside. A walkthrough is six stages; at half a cent a stage that is 3
+cents, so 88.4 cents is about 29 walkthroughs, and with a search inside at 4.44
+cents it is about 19. He was right and the meter was the only thing that said
+otherwise. NOT yet measured end to end as a full six stage walkthrough: the
+three turns above are a chat pair and a search, and the writing stage produces
+a much larger reply than either.
+
+**The search itself works for the video.** The measured research turn came back
+with the sources block present and fifteen distinct addresses, with no account
+and no key of any kind.
+
+**Top-up applied.** `update public.companies set budget_cents_remaining =
+budget_cents_remaining + 50`, 40.024944 to 90.024944, his figure and not the
+whole 100. `db-dryrun` first, CLEAN. After the three measured turns the balance
+is 88.406639.
+
+**Total spent on his account across both sessions: 47.19 cents**, of which 35.3
+was my unasked diagnostics. The rest is the verification he asked for.
 
 **A first chat, for the record.** 0.58293 cents, from a real log line on
 2026-09-25: `usage stage=orient tier=standard fresh=19127 cacheWrite=0 cacheRead=0
