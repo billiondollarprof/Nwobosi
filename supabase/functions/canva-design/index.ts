@@ -50,6 +50,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk@0.68.0";
 import { canvaAccessToken } from "../_shared/canva.ts";
+import { clientFor, hasKeyFor, keyNameFor, modelFor, vendorFor, type Vendor } from "../_shared/brain.ts";
 
 /* ==========================================================================
    1. PLUMBING
@@ -194,7 +195,11 @@ async function waitForJob(
    the screen shows the two differently.
    ========================================================================== */
 
-const REVIEW_MODEL = "claude-sonnet-5";
+/* ⚠️ The model now comes from _shared/brain.ts, the one place in the server
+   that names a real model. The company row replaces `null` when the
+   `brain_vendor` column lands; until then this is Anthropic. */
+const VENDOR: Vendor = vendorFor(null);
+const REVIEW_MODEL = modelFor(VENDOR, "standard");
 
 const REVIEW_TOOL: Anthropic.Tool = {
   name: "verdict",
@@ -234,13 +239,12 @@ DO NOT fail it for taste. A layout you would have done differently is not a brok
 Write in British English, in plain words, for somebody who is not a designer.`;
 
 async function review(imageUrl: string, title: string, brief: string) {
-  const key = Deno.env.get("ANTHROPIC_API_KEY");
-  if (!key) {
-    console.error("ANTHROPIC_API_KEY is not set, design not checked");
+  if (!hasKeyFor(VENDOR)) {
+    console.error(`${keyNameFor(VENDOR)} is not set, design not checked`);
     return null;
   }
 
-  const anthropic = new Anthropic({ apiKey: key });
+  const anthropic = clientFor(VENDOR);
   const result = await anthropic.messages.create({
     model: REVIEW_MODEL,
     max_tokens: 300,

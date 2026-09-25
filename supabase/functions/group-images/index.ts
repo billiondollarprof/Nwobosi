@@ -38,6 +38,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk@0.68.0";
+import { clientFor, modelFor, vendorFor, type Vendor } from "../_shared/brain.ts";
 
 /* The capable one. Telling seven pages of a price list from three
    unrelated logos is a judgement, and the cheap model is for naming a
@@ -48,8 +49,12 @@ import Anthropic from "npm:@anthropic-ai/sdk@0.68.0";
    read them would be paying twice to look at the same thing. That also
    means a grouped document is read as one piece rather than as pages
    stitched together afterwards, which is how a table that runs across a
-   page break survives. */
-const GROUPING_MODEL = "claude-sonnet-5";
+   page break survives.
+   ⚠️ The model now comes from _shared/brain.ts, the one place in the server
+   that names a real model. The company row replaces `null` when the
+   `brain_vendor` column lands; until then this is Anthropic. */
+const VENDOR: Vendor = vendorFor(null);
+const GROUPING_MODEL = modelFor(VENDOR, "standard");
 
 /* Matches the cap the admin screen enforces. Beyond this the request gets
    large and the judgement gets no better. */
@@ -257,7 +262,7 @@ Deno.serve(async (req: Request) => {
   if (!content.length) return json({ ok: false, reason: "None of those can be read as pictures." }, 400);
 
   try {
-    const anthropic = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY")! });
+    const anthropic = clientFor(VENDOR);
     const reply = await anthropic.messages.create({
       model: GROUPING_MODEL,
       /* Room for ten pages of dense text plus the grouping around it. */

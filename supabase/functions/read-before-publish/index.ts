@@ -60,6 +60,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk@0.68.0";
+import { centsRoundedUp, clientFor, hasKeyFor, keyNameFor, modelFor, vendorFor, type Vendor } from "../_shared/brain.ts";
 
 /* ==========================================================================
    1. PLUMBING
@@ -92,8 +93,11 @@ function json(body: unknown, status = 200) {
    customer's question, so it is not on any hot path.
    ========================================================================== */
 
-const READ_MODEL = "claude-sonnet-5";
-const READ_PRICE = { input: 2, output: 10 };
+/* ⚠️ Both the model and its price now come from _shared/brain.ts, the one
+   place in the server that names a real model and what it costs. The
+   company row replaces `null` when the `brain_vendor` column lands. */
+const VENDOR: Vendor = vendorFor(null);
+const READ_MODEL = modelFor(VENDOR, "standard");
 
 /* Enough to know what a document is. Private material announces itself
    early, in a header, an account line, a salary table, so reading further
@@ -152,13 +156,12 @@ type Reading = {
 };
 
 async function read(text: string, name: string, truncated: boolean): Promise<Reading | null> {
-  const key = Deno.env.get("ANTHROPIC_API_KEY");
-  if (!key) {
-    console.error("ANTHROPIC_API_KEY is not set, nothing read");
+  if (!hasKeyFor(VENDOR)) {
+    console.error(`${keyNameFor(VENDOR)} is not set, nothing read`);
     return null;
   }
 
-  const anthropic = new Anthropic({ apiKey: key });
+  const anthropic = clientFor(VENDOR);
   const result = await anthropic.messages.create({
     model: READ_MODEL,
     max_tokens: 300,
@@ -180,10 +183,10 @@ async function read(text: string, name: string, truncated: boolean): Promise<Rea
   const input = (call?.type === "tool_use" ? call.input : {}) as Record<string, unknown>;
 
   const usage = result.usage;
-  const cents = Math.ceil(
-    (((usage?.input_tokens ?? 0) / 1_000_000) * READ_PRICE.input +
-      ((usage?.output_tokens ?? 0) / 1_000_000) * READ_PRICE.output) * 100,
-  );
+  const cents = centsRoundedUp(VENDOR, "standard", {
+    fresh: usage?.input_tokens ?? 0,
+    output: usage?.output_tokens ?? 0,
+  });
 
   /* Anything that is not an explicit all clear is treated as a warning,
      including a verdict this function does not recognise. A model that

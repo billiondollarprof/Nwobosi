@@ -25,6 +25,52 @@ built and checked, not when it is planned.
 
 ### Open
 
+0000000000000000. **2026-09-25, THE BRAIN IS SWAPPABLE: THE SEAM IS BUILT, THE
+                   DEEPSEEK ADAPTER IS NEXT. Read this before touching any
+                   model call.**
+
+                   Anthony: "the first thing is to make that possible before
+                   adding DeepSeek as the brain so that the infrastructure will
+                   exist already so I can always switch... this project is not
+                   a SaaS, it is on demand deployment. So a company might prefer
+                   OpenAI."
+
+                   BUILT, ON `testing`, NOT DEPLOYED. A new shared module,
+                   `supabase/functions/_shared/brain.ts`, is now the ONE place
+                   in the server that names a real model and what it costs. All
+                   eight functions that reach a model read from it:
+                   assistant, support-ask, read-image, describe-source,
+                   group-images, add-link, canva-design, read-before-publish.
+                   Each had its own hardwired client and its own model string.
+
+                   The table is per VENDOR and per LEVEL, so one vendor can
+                   carry more than one model. That is the cost efficiency he
+                   asked for: a company on Anthropic pays for the cheap model
+                   on support and the capable one for office work.
+
+                   ⚠️ STEP ONE IS BEHAVIOUR-NEUTRAL BY CONSTRUCTION. Anthropic
+                   is still the only adapter, and the numbers reproduce what
+                   shipped: the same models, the same rates, the same two
+                   rounding rules. Verified: type check clean, all 21 test files
+                   at zero failures, lint at zero errors.
+
+                   ⚠️ THE VENDOR IS STILL HARDWIRED TO ANTHROPIC IN EFFECT.
+                   Every call site reads `vendorFor(null)`, which returns
+                   Anthropic. The `brain_vendor` column does NOT exist yet. That
+                   column plus one line per call site is step three, and it
+                   needs Anthony's approval in the chat before it runs.
+
+                   ⚠️ OPENAI IS DELIBERATELY EMPTY in the table, and
+                   `clientFor` refuses it, so choosing it fails loudly rather
+                   than quietly spending on prices nobody has checked. Its
+                   models and rates have to be chosen before it can be used.
+
+                   NEXT: the OpenAI-format adapter, which natively covers both
+                   OpenAI and DeepSeek, then the column, then DeepSeek on his
+                   own company. `DEEPSEEK_API_KEY` is already in Supabase
+                   secrets, and `keyNameFor("deepseek")` already returns that
+                   exact name.
+
 00000000000000. **2026-09-23, THE LOGS READ, AND THE SEARCH IS NOT WHAT WE
                 THOUGHT. READ THIS BEFORE TOUCHING THE SEARCH.**
 

@@ -40,6 +40,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk@0.68.0";
+import { clientFor, modelFor, rateFor, supportsAdaptiveThinking, vendorFor, type Vendor } from "../_shared/brain.ts";
 
 /* --------------------------------------------------------------------------
    CAPABILITY LEVELS, AND THE ONE PLACE A MODEL IS NAMED
@@ -99,23 +100,30 @@ type Tier = (typeof LADDER)[number];
 /* THE MAPPING. The only vendor names in the product, and they are on the
    server, in a function, behind an API key. Swapping provider is this
    table and the PRICE table below it. */
+/* ⚠️ THE ONE PLACE A MODEL IS NAMED IS NOW _shared/brain.ts, NOT THIS FILE.
+   Anthony's design was that moving a deployment to another provider is one
+   table. That table is now shared by all eight functions instead of living
+   here, and it carries the price beside the model.
+
+   ⚠️ THE COMPANY ROW GOES IN WHERE `null` IS when the `brain_vendor` column
+   lands. Until that column exists this resolves to Anthropic, which is what
+   every deployment runs today, so nothing about this function changes. */
+const VENDOR: Vendor = vendorFor(null);
+
 const MODEL_ID: Record<Tier, string> = {
-  conversational: "claude-haiku-4-5",
-  standard: "claude-sonnet-5",
+  conversational: modelFor(VENDOR, "conversational"),
+  standard: modelFor(VENDOR, "standard"),
 };
 
-/* Dollars per million tokens, per level. Used to turn real usage into a
-   real number of cents to take off the company's budget.
+/* Dollars per million tokens, per level, now held per VENDOR in
+   _shared/brain.ts and read through rateFor below. Used to turn real usage
+   into a real number of cents to take off the company's budget.
 
-   THIS TABLE IS NO LONGER MIRRORED IN THE BROWSER. It used to be duplicated
+   THE RATES ARE STILL NOT MIRRORED IN THE BROWSER. They used to be duplicated
    in src/shared/config.js so an admin screen could print a rate card in
    dollars per million tokens. That is a vendor's pricing and a token count,
    which is exactly the plumbing an admin should never have to read, so the
-   screen shows outputs remaining and this table stays here. */
-const PRICE: Record<Tier, { input: number; output: number }> = {
-  conversational: { input: 1, output: 5 },
-  standard: { input: 2, output: 10 },
-};
+   screen shows outputs remaining and this stays on the server. */
 
 /* ONE LEVEL FOR THE STAFF SIDE, AND IT IS STANDARD
    There used to be a picker here: cheap for the interview, capable for the
@@ -142,8 +150,8 @@ const STAFF_TIER: Tier = "standard";
    conversational predates it and rejects it with a 400; everything above
    expects it. A property of the model, so it belongs beside the mapping. */
 const ADAPTIVE_THINKING: Record<Tier, boolean> = {
-  conversational: false,
-  standard: true,
+  conversational: supportsAdaptiveThinking(VENDOR, "conversational"),
+  standard: supportsAdaptiveThinking(VENDOR, "standard"),
 };
 
 /* REVERTED 2026-09-23, LATER THE SAME DAY, AND THE REASON IS THE POINT.
@@ -174,7 +182,7 @@ const ADAPTIVE_THINKING: Record<Tier, boolean> = {
 
    Six decimal places, because that is what the column holds. */
 function centsFor(tier: Tier, inputTokens: number, outputTokens: number) {
-  const { input, output } = PRICE[tier];
+  const { input, output } = rateFor(VENDOR, tier);
   const dollars = (inputTokens / 1_000_000) * input + (outputTokens / 1_000_000) * output;
   return Math.round(dollars * 100 * 1e6) / 1e6;
 }
@@ -1646,7 +1654,7 @@ Deno.serve(async (req: Request) => {
      the chat can show words arriving rather than a spinner.
      ---------------------------------------------------------------------- */
 
-  const anthropic = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY")! });
+  const anthropic = clientFor(VENDOR);
 
   /* The model behind conversational predates adaptive thinking and effort,
      and rejects both with a 400. Everything above wants them. A lookup

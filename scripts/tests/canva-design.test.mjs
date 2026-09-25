@@ -22,6 +22,7 @@ import { build } from "esbuild";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { BRAIN_IMPORT_RE, BRAIN_STUB } from "./_brain-stub.mjs";
 
 const dir = mkdtempSync(join(tmpdir(), "canva-design-"));
 await build({
@@ -54,6 +55,7 @@ code = code
      is a second thing this container cannot reach. */
   .replace(/import Anthropic from "[^"]+";/,
            "class Anthropic { constructor(...a) { return new globalThis.__anthropic(...a); } }");
+code = code.replace(BRAIN_IMPORT_RE, BRAIN_STUB);
 fs.writeFileSync(join(dir, "fn2.mjs"), code);
 
 globalThis.__reviewSays = { matches: true, note: "A poster with the logo top left." };

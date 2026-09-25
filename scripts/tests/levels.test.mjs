@@ -147,10 +147,34 @@ const wanted = sorted(LEVEL_ORDER);
 
 check("the assistant's LADDER is the same list",
   sorted(arrayLiteral(assistant, "LADDER") ?? []) === wanted);
-for (const table of ["MODEL_ID", "PRICE", "ADAPTIVE_THINKING"]) {
+for (const table of ["MODEL_ID", "ADAPTIVE_THINKING"]) {
   check(`${table} covers exactly those levels`,
     sorted(recordKeys(assistant, table) ?? []) === wanted);
 }
+
+/* THE MODEL AND PRICE TABLES MOVED, SO THE ASSERTION MOVED WITH THEM.
+   They used to live in assistant/index.ts, which is why PRICE was checked
+   there. They now live in _shared/brain.ts, keyed by VENDOR as well as by
+   level, because the vendor became a per-company setting.
+
+   The assertion is the same one it always was and it is now stronger: not
+   only must every level be present, every VENDOR must be present too, so a
+   vendor row cannot be left half filled in. That matters, because a vendor
+   whose models are missing would otherwise fail only when a company chose
+   it. */
+const brain = readFileSync("supabase/functions/_shared/brain.ts", "utf8");
+const VENDORS = ["anthropic", "deepseek", "openai"];
+
+check("the brain names every vendor",
+  sorted(recordKeys(brain, "BRAIN") ?? []) === sorted(VENDORS));
+
+for (const vendor of VENDORS) {
+  const at = brain.indexOf("\n  " + vendor + ": {");
+  const body = at < 0 ? "" : brain.slice(at, at + 900);
+  check(`${vendor} covers exactly those levels`,
+    LEVEL_ORDER.every((lv) => body.includes(lv + ":")));
+}
+
 check("staff work is pinned to the default level",
   /const STAFF_TIER: Tier = "standard";/.test(assistant));
 
@@ -173,7 +197,10 @@ check("an invite with no level named falls back to a live one",
    -------------------------------------------------------------------------- */
 
 const support = readFileSync("supabase/functions/support-ask/index.ts", "utf8");
-const supportLevel = support.match(/const LEVEL = "([^"]+)"/);
+/* The type annotation is optional in the pattern because LEVEL is now typed
+   as a Tier, so its model can come from the brain table by level. The level
+   STRING is still required to be exact, which is the point of the check. */
+const supportLevel = support.match(/const LEVEL(?::\s*Tier)?\s*=\s*"([^"]+)"/);
 check("support-ask runs at the support level",
   supportLevel != null && supportLevel[1] === SUPPORT_LEVEL);
 

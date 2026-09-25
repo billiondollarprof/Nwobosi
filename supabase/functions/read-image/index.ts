@@ -41,7 +41,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import Anthropic from "npm:@anthropic-ai/sdk@0.68.0";
+import { clientFor, modelFor, vendorFor, type Vendor } from "../_shared/brain.ts";
 
 /* --------------------------------------------------------------------------
    1. WHAT READS THE PICTURE
@@ -54,8 +54,15 @@ import Anthropic from "npm:@anthropic-ai/sdk@0.68.0";
    This is the only place in this file that names a model, the same rule
    the assistant function follows, so moving a deployment to another
    provider is this one line.
-   -------------------------------------------------------------------------- */
-const READING_MODEL = "claude-sonnet-5";
+
+   ⚠️ THE MODEL NOW COMES FROM _shared/brain.ts, which is the ONE place in
+   the server that names a real model. This file keeps its own constant so
+   the call below does not move.
+   ⚠️ THE COMPANY ROW GOES IN WHERE `null` IS when the `brain_vendor` column
+   lands. Until that column exists this resolves to Anthropic, which is what
+   every deployment runs today, so nothing about this function changes. */
+const VENDOR: Vendor = vendorFor(null);
+const READING_MODEL = modelFor(VENDOR, "standard");
 
 /* Enough for a dense screenshot of a full page of text. A picture that
    genuinely holds more than this is a document, and a document should be
@@ -254,7 +261,7 @@ Deno.serve(async (req: Request) => {
 
   let text = "";
   try {
-    const anthropic = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY")! });
+    const anthropic = clientFor(VENDOR);
     const bytes = new Uint8Array(await file.arrayBuffer());
 
     const reply = await anthropic.messages.create({

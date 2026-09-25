@@ -31,6 +31,7 @@ import { build } from "esbuild";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { BRAIN_IMPORT_RE, BRAIN_STUB } from "./_brain-stub.mjs";
 
 let passed = 0, failed = 0;
 function check(name, cond) {
@@ -57,6 +58,7 @@ let code = readFileSync(join(dir, "fn.mjs"), "utf8")
 if (!/export function withoutOurLines/.test(code)) {
   code = code.replace("function withoutOurLines", "export function withoutOurLines");
 }
+code = code.replace(BRAIN_IMPORT_RE, BRAIN_STUB);
 writeFileSync(join(dir, "fn2.mjs"), code);
 globalThis.Deno = { serve: () => {}, env: { get: () => "" } };
 

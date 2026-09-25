@@ -52,6 +52,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk@0.68.0";
+import { clientFor, hasKeyFor, keyNameFor, specialFor, vendorFor, type Vendor } from "../_shared/brain.ts";
 
 /* ==========================================================================
    1. PLUMBING
@@ -86,7 +87,16 @@ function json(body: unknown, status = 200) {
    makes this feel worse than typing it themselves.
    ========================================================================== */
 
-const DESCRIBE_MODEL = "claude-haiku-4-5-20251001";
+/* ⚠️ THIS ONE DOES NOT RUN AT A LEVEL, AND THAT IS DELIBERATE.
+   It asks the SMALL model to describe a document, because that is a short
+   job, and it PINS the dated snapshot rather than floating on the bare name.
+   A pinned snapshot and a floating name are different request strings, so
+   deriving this from a level would quietly change which model answers.
+   The name now lives in _shared/brain.ts, per vendor, so the exception
+   survives a company changing vendor. Anthony's call whether this job
+   should move onto a level like the rest. */
+const VENDOR: Vendor = vendorFor(null);
+const DESCRIBE_MODEL = specialFor(VENDOR, "describeSource");
 
 /* Enough to know what a document is and what it is called. A document
    announces itself in the first page or two: a title, a header, a purpose
@@ -140,13 +150,12 @@ type Described = { title: string; description: string };
 async function describe(
   content: Anthropic.MessageParam["content"],
 ): Promise<Described | null> {
-  const key = Deno.env.get("ANTHROPIC_API_KEY");
-  if (!key) {
-    console.error("ANTHROPIC_API_KEY is not set, nothing described");
+  if (!hasKeyFor(VENDOR)) {
+    console.error(`${keyNameFor(VENDOR)} is not set, nothing described`);
     return null;
   }
 
-  const anthropic = new Anthropic({ apiKey: key });
+  const anthropic = clientFor(VENDOR);
   const result = await anthropic.messages.create({
     model: DESCRIBE_MODEL,
     max_tokens: 300,

@@ -13,6 +13,7 @@ import { readFileSync, mkdtempSync, writeFileSync } from "node:fs";
 import { build } from "esbuild";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { BRAIN_IMPORT_RE, BRAIN_STUB } from "./_brain-stub.mjs";
 
 let passed = 0, failed = 0;
 function check(name, cond) {
@@ -30,6 +31,12 @@ await build({
   format: "esm", platform: "neutral", bundle: false,
 });
 let code = readFileSync(join(dir, "fn.mjs"), "utf8")
+  /* ⚠️ THE BRAIN STUB GOES FIRST, BEFORE THE BLANKET STRIP BELOW.
+     Three imports are stubbed by name and then line 37 deletes every import
+     that is left. Replacing the brain import with a const has to happen
+     before that sweep, or the sweep removes it and the module then refers to
+     vendorFor without declaring it. That was a real failure, not a theory. */
+  .replace(BRAIN_IMPORT_RE, BRAIN_STUB)
   .replace(/import \{ createClient \} from "[^"]+";/, "const createClient = () => ({});")
   .replace(/import Anthropic from "[^"]+";/, "class Anthropic {}")
   .replace(/import "[^"]*edge-runtime[^"]*";/, "")

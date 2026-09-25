@@ -13,6 +13,7 @@ import { build } from "esbuild";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { BRAIN_IMPORT_RE, BRAIN_STUB } from "./_brain-stub.mjs";
 
 let passed = 0, failed = 0;
 function check(name, cond) {
@@ -32,6 +33,7 @@ code = code
   .replace(/import \{ createClient \} from "[^"]+";/, "const createClient = () => ({});")
   .replace(/import Anthropic from "[^"]+";/, "class Anthropic {}")
   .replace(/import "[^"]*edge-runtime[^"]*";/, "");
+code = code.replace(BRAIN_IMPORT_RE, BRAIN_STUB);
 writeFileSync(join(dir, "fn2.mjs"), code);
 
 globalThis.Deno = { serve: () => {}, env: { get: () => "" } };

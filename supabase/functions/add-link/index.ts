@@ -32,6 +32,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk@0.68.0";
+import { centsRoundedUp, clientFor, hasKeyFor, keyNameFor, modelFor, vendorFor, type Vendor } from "../_shared/brain.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -157,8 +158,11 @@ function splitIntoChunks(text: string) {
    said then.
    -------------------------------------------------------------------------- */
 
-const UNDERSTAND_MODEL = "claude-sonnet-5";
-const UNDERSTAND_PRICE = { input: 2, output: 10 };
+/* ⚠️ The model and its price now come from _shared/brain.ts, the one place
+   in the server that names a real model and what it costs. The company row
+   replaces `null` when the `brain_vendor` column lands. */
+const VENDOR: Vendor = vendorFor(null);
+const UNDERSTAND_MODEL = modelFor(VENDOR, "standard");
 
 /* Enough of the page to know what it is. A summary does not get better for
    having read the footer of a long document. */
@@ -186,14 +190,13 @@ const DESCRIBE_TOOL: Anthropic.Tool = {
 };
 
 async function understand(text: string, url: string, fallbackName: string) {
-  const key = Deno.env.get("ANTHROPIC_API_KEY");
-  if (!key) {
-    console.error("ANTHROPIC_API_KEY is not set, link stored without understanding it");
+  if (!hasKeyFor(VENDOR)) {
+    console.error(`${keyNameFor(VENDOR)} is not set, link stored without understanding it`);
     return { name: fallbackName, description: "", cents: 0 };
   }
 
   try {
-    const anthropic = new Anthropic({ apiKey: key });
+    const anthropic = clientFor(VENDOR);
     const result = await anthropic.messages.create({
       model: UNDERSTAND_MODEL,
       max_tokens: 300,
@@ -214,10 +217,10 @@ async function understand(text: string, url: string, fallbackName: string) {
     const input = (call?.type === "tool_use" ? call.input : {}) as Record<string, unknown>;
 
     const usage = result.usage;
-    const cents = Math.ceil(
-      (((usage?.input_tokens ?? 0) / 1_000_000) * UNDERSTAND_PRICE.input +
-        ((usage?.output_tokens ?? 0) / 1_000_000) * UNDERSTAND_PRICE.output) * 100,
-    );
+    const cents = centsRoundedUp(VENDOR, "standard", {
+      fresh: usage?.input_tokens ?? 0,
+      output: usage?.output_tokens ?? 0,
+    });
 
     return {
       name: String(input.name ?? "").trim().slice(0, 120) || fallbackName,
