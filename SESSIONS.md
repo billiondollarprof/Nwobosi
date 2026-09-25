@@ -143,14 +143,23 @@ functions can take money. **FOUR can**: `assistant`, `support-ask`,
 I also told him support "got none of the cheap rate", and one number cannot
 prove that. Both were guesses stated as findings.
 
-⚠️ **AND ONE HE HAS TO DECIDE, WHICH IS NOT MINE.** At 10:32 the support bot told
-a WhatsApp customer: "Essential is Amara's starter plan, and it's **free right
-now**. Sign up, choose Essential, and you can start using it straight away. **No
-card needed, nothing to pay**". The pricing page says Essential is ₦26,100 a
-month, and the bot also described three plans, Essential, Premier and Signature,
-which is the structure he is about to change. **A false claim about price on a
-public channel.** Reported, not touched. It comes out of the knowledge base,
-which already holds two contradictory price sets.
+⚠️ **I RAISED A FALSE ALARM AND HE CORRECTED IT.** I reported that the support
+bot was making a false claim when it told a customer "Essential is... free right
+now". Anthony: "essential is free, that's correct". So the bot was right and the
+flag was mine. Do not re-raise it.
+
+**What matters instead is where the material comes from.** `Amara Product
+Overview & Pricing` is ONE source holding 59,837 characters across 16 chunks,
+and it is a scrape of the whole website in no order: homepage, pitch, feature
+list, Privacy Policy, Terms, Partner Programme payouts, login page text, in-app
+UI strings, and an outreach email template. There is no ordering column, every
+chunk shares one `created_at`, and the ids are random uuids. A second source,
+`Amara partners`, carries its own separate set of rates, which is where the two
+contradictory price sets the assistant reported actually come from. Both bots
+send nearly all of it on every turn: support's prompt is 64,381 characters,
+about 18,000 tokens, to answer "tell me about the essential plan". THAT is the
+cost. Caching would hide it, not fix it. The fix is one source per document, and
+it is a design decision, so it is his.
 
 **`main` was published on his instruction.** `ce9e8e9..f6362f6`, a clean fast
 forward, both branches level afterwards. Checked first: no file under `src/`

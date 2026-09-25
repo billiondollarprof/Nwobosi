@@ -25,26 +25,40 @@ built and checked, not when it is planned.
 
 ### Open
 
-000000000. **2026-09-25, THE SUPPORT BOT TOLD A CUSTOMER THAT ESSENTIAL IS
-              FREE. HIS DECISION, NOT TOUCHED.**
+000000000. **2026-09-25, WHAT THE KNOWLEDGE BASE ACTUALLY CONTAINS, AND WHY IT
+              COSTS SO MUCH. READ BEFORE TOUCHING ANY PROMPT.**
 
-              At 10:32:46 a WhatsApp customer asked "tell me about the essential
-              plan" and the bot answered: "Essential is Amara's starter plan,
-              and it's free right now. Sign up, choose Essential, and you can
-              start using it straight away. No card needed, nothing to pay, and
-              you can stop any time."
+              ⚠️ WITHDRAWN: an earlier entry here claimed the support bot was
+              making a false claim when it said "Essential is free right now".
+              Anthony, 2026-09-25: "essential is free, that's correct". The flag
+              was mine and it was wrong. Do not re-raise it.
 
-              The pricing page says Essential is 26,100 naira a month. The bot
-              also described three plans, Essential, Premier and Signature,
-              which is the structure the coming pricing restructure removes.
-              Both come out of the knowledge base, which already holds two
-              contradictory price sets (26,100 / 33,300 / 62,100 against 29,000 /
-              37,000 / 69,000) and a Terms line about a "Founding Businesses
-              programme" offering temporary full access, which is where a "free"
-              idea most likely comes from.
+              What IS wrong is the source the claim comes out of, and it affects
+              both the support bot and the assistant.
 
-              A claim about price on a public channel. Reported and left alone,
-              because the wording is his to choose.
+              `Amara Product Overview & Pricing` is ONE knowledge source holding
+              **59,837 characters across 16 chunks, and it is a scrape of the
+              whole website in no order**: the homepage and its navigation, the
+              pitch, the feature list, the Privacy Policy, the Terms, the Partner
+              Programme and its payout rules, the login page text, in-app UI
+              strings, and an outreach email template. Its chunks carry no
+              ordering column at all, every chunk shares one `created_at`, and
+              the ids are random uuids, so nothing in the database states what
+              order they belong in.
+
+              A SECOND source, `Amara partners` (2,614 characters, one chunk),
+              holds its own separate set of partner rates. That is where the two
+              contradictory price sets come from, which the assistant reported
+              unprompted: 26,100 / 33,300 / 62,100 from the overview scrape
+              against 29,000 / 37,000 / 69,000 from the partner material.
+
+              Both the support bot and the assistant send essentially all of it
+              on EVERY turn. Support's prompt is 64,381 characters, about 18,000
+              tokens, to answer "tell me about the essential plan". That is the
+              cost, and caching would only hide it.
+
+              THE FIX IS THE KNOWLEDGE BASE, ONE SOURCE PER DOCUMENT, and it is
+              a design decision so it is his. NOT DONE.
 
 000. **2026-09-25, SUPPORT'S CACHING IS UNPROVEN, AND ONE TEST SETTLES IT.**
 
