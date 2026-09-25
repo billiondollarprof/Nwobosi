@@ -110,6 +110,54 @@ is 88.406639.
 **Total spent on his account across both sessions: 47.19 cents**, of which 35.3
 was my unasked diagnostics. The rest is the verification he asked for.
 
+### What happened after the top-up, and the support question
+
+He asked where 90 became 88 and then 87, which was a fair question and the
+answer is on me. The ledger, to the cent:
+
+| Balance | What took it | Whose |
+|---|---|---|
+| 90.024944 | after his 50 top-up | |
+| 88.406639 | 1.618305, three measuring turns | MINE |
+| 87.864593 | 0.542046, one WhatsApp support reply | his, 10:32:46 |
+| 87.316133 | 0.548460, the next support reply | his, 12:07:20 |
+| unchanged | his new chat | zero, correctly |
+
+**TWO SUPPORT REPLIES COST THE SAME, WHICH SETTLES ONE THING AND LEAVES
+ANOTHER OPEN.** 0.542046 and then 0.548460, about ninety five minutes apart, so
+the second got no benefit at all from the first. But that gap is the problem
+with the test: it does not prove support never caches, because the cache may
+simply not have survived the wait. The assistant's turns DO get the benefit,
+and those were minutes apart. So either support's block never caches, or the
+cache does not last about an hour and a half. **The decisive test is two support
+messages back to back, minutes apart, and it has not been run.** Support's
+prompt IS built in the right order for caching, big block first with the mark,
+and `customer_knowledge` has a stable `order by k.created_at desc, ch.created_at`,
+so the block is deterministic. That is what makes the gap the leading suspect
+rather than the prompt shape.
+
+⚠️ **CORRECTION TO THIS SESSION'S OWN EARLIER CLAIM.** I told him only two
+functions can take money. **FOUR can**: `assistant`, `support-ask`,
+`read-before-publish` and `add-link`. I found that by grepping for
+`company_spend` rather than for the arithmetic helper, which is what missed them.
+I also told him support "got none of the cheap rate", and one number cannot
+prove that. Both were guesses stated as findings.
+
+⚠️ **AND ONE HE HAS TO DECIDE, WHICH IS NOT MINE.** At 10:32 the support bot told
+a WhatsApp customer: "Essential is Amara's starter plan, and it's **free right
+now**. Sign up, choose Essential, and you can start using it straight away. **No
+card needed, nothing to pay**". The pricing page says Essential is ₦26,100 a
+month, and the bot also described three plans, Essential, Premier and Signature,
+which is the structure he is about to change. **A false claim about price on a
+public channel.** Reported, not touched. It comes out of the knowledge base,
+which already holds two contradictory price sets.
+
+**`main` was published on his instruction.** `ce9e8e9..f6362f6`, a clean fast
+forward, both branches level afterwards. Checked first: no file under `src/`
+changes in those thirteen commits, so the site itself does not move, and the edge
+functions were already live regardless of branch. 556 checks, type check clean,
+lint at zero errors.
+
 **A first chat, for the record.** 0.58293 cents, from a real log line on
 2026-09-25: `usage stage=orient tier=standard fresh=19127 cacheWrite=0 cacheRead=0
 out=76 cents=0.58293`. That one is honest, because a first turn has nothing

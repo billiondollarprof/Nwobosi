@@ -25,6 +25,57 @@ built and checked, not when it is planned.
 
 ### Open
 
+000000000. **2026-09-25, THE SUPPORT BOT TOLD A CUSTOMER THAT ESSENTIAL IS
+              FREE. HIS DECISION, NOT TOUCHED.**
+
+              At 10:32:46 a WhatsApp customer asked "tell me about the essential
+              plan" and the bot answered: "Essential is Amara's starter plan,
+              and it's free right now. Sign up, choose Essential, and you can
+              start using it straight away. No card needed, nothing to pay, and
+              you can stop any time."
+
+              The pricing page says Essential is 26,100 naira a month. The bot
+              also described three plans, Essential, Premier and Signature,
+              which is the structure the coming pricing restructure removes.
+              Both come out of the knowledge base, which already holds two
+              contradictory price sets (26,100 / 33,300 / 62,100 against 29,000 /
+              37,000 / 69,000) and a Terms line about a "Founding Businesses
+              programme" offering temporary full access, which is where a "free"
+              idea most likely comes from.
+
+              A claim about price on a public channel. Reported and left alone,
+              because the wording is his to choose.
+
+000. **2026-09-25, SUPPORT'S CACHING IS UNPROVEN, AND ONE TEST SETTLES IT.**
+
+              Two support replies measured 0.542046 and 0.548460 cents, about
+              ninety five minutes apart, so the second gained nothing from the
+              first. That does NOT prove support never caches: the cache may not
+              survive ninety five minutes, and the assistant's own turns, minutes
+              apart, DO get the cheap rate. Support's prompt is built in the
+              right order for caching and its knowledge block is deterministic,
+              so the gap is the leading suspect.
+
+              The decisive test: two support messages back to back, minutes
+              apart. A cheaper second reply means it caches and the gap was the
+              cause. The same price means it never caches. NOT YET RUN.
+
+              Worth a look rather than urgent: half a cent per customer message
+              is affordable, and the money is in the assistant's search.
+
+0000. **2026-09-25, WHAT CAN TAKE HIS MONEY, AND WHAT I GOT WRONG ABOUT IT.**
+
+              FOUR functions spend from the company budget, not two:
+              `assistant`, `support-ask`, `read-before-publish` and `add-link`.
+              Each calls the `company_spend` RPC. There is NO per-call record
+              anywhere: `company_spend` only decrements `budget_cents_remaining`,
+              so the only way to price one turn is the difference in the balance
+              before and after it.
+
+              Said here because it was stated wrongly in the chat first, and
+              because the next person to ask "what did that cost" needs to know
+              there is no ledger to read.
+
 000000000000000. **2026-09-25, THE SEARCH IS OURS NOW, AND IT NEEDS A KEY
                    BEFORE IT CAN SEARCH. Read this before touching the search,
                    the research stage, or anything a vendor provides.**
