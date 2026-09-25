@@ -42,6 +42,7 @@
    ========================================================================== */
 
 import Anthropic from "npm:@anthropic-ai/sdk@0.68.0";
+import { createClient } from "jsr:@supabase/supabase-js@2";
 import { makeOpenAiClient } from "./wire.ts";
 
 /* --------------------------------------------------------------------------
@@ -88,6 +89,24 @@ function asVendor(value: unknown): Vendor {
     : DEFAULT_VENDOR;
 }
 
+/* ⚠️ IT BUILDS ITS OWN SERVICE ROLE CLIENT, AND THAT IS NOT A DETAIL.
+   `company_brain` has row level security ON and NO policies, so only the
+   service role can read it. A caller that passed its own client would very
+   often pass the USER scoped one, the read would be refused, and this would
+   quietly return Anthropic for ever. A silent fallback that never switches is
+   the worst version of this feature, so the client that is guaranteed to work
+   is created here rather than trusted from the caller. */
+function serviceReader(): TableReader | null {
+  try {
+    const url = Deno.env.get("SUPABASE_URL");
+    const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!url || !key) return null;
+    return createClient(url, key) as unknown as TableReader;
+  } catch (_) {
+    return null;
+  }
+}
+
 /* --------------------------------------------------------------------------
    WHICH VENDOR, PER COMPANY, AT REQUEST TIME
 
@@ -104,10 +123,11 @@ function asVendor(value: unknown): Vendor {
    today's behaviour, never a broken turn.
    -------------------------------------------------------------------------- */
 export async function vendorForCompany(
-  sb: TableReader | null | undefined,
   companyId: string | null | undefined,
 ): Promise<Vendor> {
-  if (!sb || !companyId) return DEFAULT_VENDOR;
+  if (!companyId) return DEFAULT_VENDOR;
+  const sb = serviceReader();
+  if (!sb) return DEFAULT_VENDOR;
   try {
     const { data, error } = await sb
       .from("company_brain")
@@ -121,14 +141,15 @@ export async function vendorForCompany(
   }
 }
 
-/* For the one function that never looked a company up. It resolves the
-   company from the caller's own staff row first, which is the same lookup
+/* For the one function that never looked a company up. It resolves the company
+   from the caller's own staff row first, which is the same lookup
    read-before-publish already does. */
 export async function vendorForUser(
-  sb: TableReader | null | undefined,
   userId: string | null | undefined,
 ): Promise<Vendor> {
-  if (!sb || !userId) return DEFAULT_VENDOR;
+  if (!userId) return DEFAULT_VENDOR;
+  const sb = serviceReader();
+  if (!sb) return DEFAULT_VENDOR;
   try {
     const { data, error } = await sb
       .from("staff")
@@ -137,7 +158,7 @@ export async function vendorForUser(
       .maybeSingle();
     if (error) return DEFAULT_VENDOR;
     const companyId = (data as { company_id?: string } | null)?.company_id;
-    return await vendorForCompany(sb, companyId ?? null);
+    return await vendorForCompany(companyId ?? null);
   } catch (_) {
     return DEFAULT_VENDOR;
   }

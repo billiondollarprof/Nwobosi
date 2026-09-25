@@ -50,7 +50,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk@0.68.0";
 import { canvaAccessToken } from "../_shared/canva.ts";
-import { clientFor, hasKeyFor, keyNameFor, modelFor, vendorFor, type Vendor } from "../_shared/brain.ts";
+import { clientFor, hasKeyFor, keyNameFor, modelFor, vendorForCompany, type Vendor } from "../_shared/brain.ts";
 
 /* ==========================================================================
    1. PLUMBING
@@ -196,10 +196,9 @@ async function waitForJob(
    ========================================================================== */
 
 /* ⚠️ The model now comes from _shared/brain.ts, the one place in the server
-   that names a real model. The company row replaces `null` when the
-   `brain_vendor` column lands; until then this is Anthropic. */
-const VENDOR: Vendor = vendorFor(null);
-const REVIEW_MODEL = modelFor(VENDOR, "standard");
+   that names a real model. The vendor is resolved inside the request handler
+   below, never at module level: one isolate serves several companies at once,
+   so a module level vendor could answer for the wrong one. */
 
 const REVIEW_TOOL: Anthropic.Tool = {
   name: "verdict",
@@ -238,15 +237,15 @@ DO NOT fail it for taste. A layout you would have done differently is not a brok
 
 Write in British English, in plain words, for somebody who is not a designer.`;
 
-async function review(imageUrl: string, title: string, brief: string) {
-  if (!hasKeyFor(VENDOR)) {
-    console.error(`${keyNameFor(VENDOR)} is not set, design not checked`);
+async function review(vendor: Vendor, imageUrl: string, title: string, brief: string) {
+  if (!hasKeyFor(vendor)) {
+    console.error(`${keyNameFor(vendor)} is not set, design not checked`);
     return null;
   }
 
-  const anthropic = clientFor(VENDOR);
+  const anthropic = clientFor(vendor);
   const result = await anthropic.messages.create({
-    model: REVIEW_MODEL,
+    model: modelFor(vendor, "standard"),
     max_tokens: 300,
     system: REVIEW_INSTRUCTIONS,
     tools: [REVIEW_TOOL],
@@ -316,6 +315,11 @@ Deno.serve(async (req: Request) => {
   if (staffError || !staff) {
     return json({ ok: false, reason: "Your account is not set up on a company yet." }, 403);
   }
+
+  /* WHICH BRAIN, READ PER REQUEST. Never cached, because one isolate serves
+     several companies at once. Falls back to Anthropic on any error, including
+     the table not being there, so this can ship before the migration does. */
+  const vendor = await vendorForCompany(staff.company_id);
 
   let body: Record<string, unknown>;
   try {
@@ -470,7 +474,7 @@ Deno.serve(async (req: Request) => {
   let reviewed: { matches: boolean; note: string } | null = null;
   if (exportUrl) {
     try {
-      reviewed = await review(exportUrl, title, brief);
+      reviewed = await review(vendor, exportUrl, title, brief);
     } catch (err) {
       console.error("could not check the design", err);
     }

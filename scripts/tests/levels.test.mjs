@@ -147,10 +147,22 @@ const wanted = sorted(LEVEL_ORDER);
 
 check("the assistant's LADDER is the same list",
   sorted(arrayLiteral(assistant, "LADDER") ?? []) === wanted);
-for (const table of ["MODEL_ID", "ADAPTIVE_THINKING"]) {
-  check(`${table} covers exactly those levels`,
-    sorted(recordKeys(assistant, table) ?? []) === wanted);
-}
+
+/* ⚠️ MODEL_ID AND ADAPTIVE_THINKING ARE GONE FROM THIS FILE ON PURPOSE, and
+   the assertion they carried did not disappear with them. Those two tables
+   used to map a level to a model and to thinking, and the check was that they
+   covered exactly the live levels. Both now live in `_shared/brain.ts`, keyed
+   by VENDOR as well as by level, and the block below asserts that instead. It
+   is the same guarantee against the table that now holds it.
+
+   ⚠️ WHAT REPLACES THEM HERE IS A DIFFERENT AND MORE USEFUL GUARD: the vendor
+   must be resolved PER REQUEST. A module level vendor is shared between the
+   companies an edge function isolate serves at the same time, so one company's
+   turn could be answered by another company's brain. That is a silent fault
+   and this catches it. */
+check("the assistant resolves the vendor per request, not at module level",
+  /vendorForCompany\(staff\.company_id\)/.test(assistant) &&
+  !/^const VENDOR\b/m.test(assistant));
 
 /* THE MODEL AND PRICE TABLES MOVED, SO THE ASSERTION MOVED WITH THEM.
    They used to live in assistant/index.ts, which is why PRICE was checked

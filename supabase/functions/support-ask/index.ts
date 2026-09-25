@@ -41,7 +41,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk@0.68.0";
-import { centsExact, clientFor, modelFor, vendorFor, type Tier, type Vendor } from "../_shared/brain.ts";
+import { centsExact, clientFor, modelFor, vendorForCompany, type Tier } from "../_shared/brain.ts";
 
 /* --------------------------------------------------------------------------
    SECTION: Constants
@@ -68,11 +68,8 @@ const LEVEL: Tier = "conversational";
    the server that names a real model. Everything the comment above says
    about support staying at this level still holds: the level decides, and
    the brain decides what sits behind it.
-   ⚠️ THE COMPANY ROW GOES IN WHERE `null` IS when the `brain_vendor` column
-   lands. Until that column exists this resolves to Anthropic, which is what
-   every deployment runs today, so nothing about this function changes. */
-const VENDOR: Vendor = vendorFor(null);
-const MODEL = modelFor(VENDOR, LEVEL);
+   ⚠️ The vendor is resolved inside the request handler below, never at module
+   level: one isolate serves several companies at once. */
 
 /* ⚠️ The rate for this level now comes from _shared/brain.ts, which holds
    one rate per vendor per level, so a company moving vendor reprices with
@@ -694,6 +691,11 @@ Deno.serve(async (req) => {
     return json({ ok: false, reason: "unknown company" }, 404);
   }
 
+  /* WHICH BRAIN, READ PER REQUEST. Never cached, because one isolate serves
+     several companies at once. Falls back to Anthropic on any error, including
+     the table not being there, so this can ship before the migration does. */
+  const vendor = await vendorForCompany(company.id);
+
   /* ------------------------------------------------------------------
      The thread, and the message going into it.
      ------------------------------------------------------------------ */
@@ -929,7 +931,7 @@ Deno.serve(async (req) => {
     systemBlocks.push({ type: "text", text: openQuestionsBlock });
   }
 
-  const anthropic = clientFor(VENDOR);
+  const anthropic = clientFor(vendor);
 
   let reply: string | null = null;
   let needsPerson = false;
@@ -951,7 +953,7 @@ Deno.serve(async (req) => {
 
   try {
     const result = await anthropic.messages.create({
-      model: MODEL,
+      model: modelFor(vendor, LEVEL),
       max_tokens: 700,
       system: systemBlocks,
       tools: [REPLY_TOOL],
@@ -1162,7 +1164,7 @@ Deno.serve(async (req) => {
       const fresh = usage.input_tokens ?? 0;
       const out = usage.output_tokens ?? 0;
 
-      const cents = centsExact(VENDOR, LEVEL, {
+      const cents = centsExact(vendor, LEVEL, {
         fresh, cacheWrite, cacheRead, output: out,
       }, "short");
 

@@ -41,7 +41,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { clientFor, modelFor, vendorFor, type Vendor } from "../_shared/brain.ts";
+import { clientFor, modelFor, vendorForCompany } from "../_shared/brain.ts";
 
 /* --------------------------------------------------------------------------
    1. WHAT READS THE PICTURE
@@ -51,18 +51,12 @@ import { clientFor, modelFor, vendorFor, type Vendor } from "../_shared/brain.ts
    naming a logo is not a judgement. Transcribing a table of prices is,
    and getting a digit wrong there is the worst thing this product can do.
 
-   This is the only place in this file that names a model, the same rule
-   the assistant function follows, so moving a deployment to another
-   provider is this one line.
-
    ⚠️ THE MODEL NOW COMES FROM _shared/brain.ts, which is the ONE place in
-   the server that names a real model. This file keeps its own constant so
-   the call below does not move.
-   ⚠️ THE COMPANY ROW GOES IN WHERE `null` IS when the `brain_vendor` column
-   lands. Until that column exists this resolves to Anthropic, which is what
-   every deployment runs today, so nothing about this function changes. */
-const VENDOR: Vendor = vendorFor(null);
-const READING_MODEL = modelFor(VENDOR, "standard");
+   the server that names a real model, and WHICH VENDOR comes from the
+   company's own row. It is resolved inside the request handler below, never
+   at module level: one isolate serves several companies at once, so a module
+   level vendor would be shared between them and one company's answer could be
+   produced by another company's brain. */
 
 /* Enough for a dense screenshot of a full page of text. A picture that
    genuinely holds more than this is a document, and a document should be
@@ -227,6 +221,11 @@ Deno.serve(async (req: Request) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
+  /* WHICH BRAIN, READ PER REQUEST. Never cached, because one isolate serves
+     several companies at once. Falls back to Anthropic on any error, including
+     the table not being there, so this can ship before the migration does. */
+  const vendor = await vendorForCompany(source.company_id as string);
+
   /* EVERY WAY OUT OF HERE LEAVES THE ROW READY. The picture still works in
      a design even when the reading failed, so leaving it on "being read"
      would hide a usable asset behind a status that never changes. */
@@ -261,11 +260,11 @@ Deno.serve(async (req: Request) => {
 
   let text = "";
   try {
-    const anthropic = clientFor(VENDOR);
+    const anthropic = clientFor(vendor);
     const bytes = new Uint8Array(await file.arrayBuffer());
 
     const reply = await anthropic.messages.create({
-      model: READING_MODEL,
+      model: modelFor(vendor, "standard"),
       max_tokens: MAX_OUTPUT,
       system: INSTRUCTIONS,
       messages: [{

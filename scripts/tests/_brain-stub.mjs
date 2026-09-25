@@ -42,6 +42,7 @@ export const BRAIN_STUB = [
   "const {",
   "  vendorFor, modelFor, specialFor, rateFor, supportsAdaptiveThinking,",
   "  billableDollars, centsExact, centsRoundedUp, hasKeyFor, keyNameFor, clientFor,",
+  "  vendorForCompany, vendorForUser,",
   "} = {",
   '  vendorFor: () => "anthropic",',
   '  modelFor: () => "stub-model",',
@@ -54,5 +55,11 @@ export const BRAIN_STUB = [
   "  hasKeyFor: () => true,",
   '  keyNameFor: () => "ANTHROPIC_API_KEY",',
   "  clientFor: (...a) => (globalThis.__anthropic ? new globalThis.__anthropic(...a) : {}),",
+  /* ⚠️ THESE TWO ARE ASYNC AND ALWAYS ANSWER ANTHROPIC. They are the per
+     company lookup. A test that reached a real database would be testing
+     Postgres rather than this code, so they stand in for it, and answering
+     Anthropic is exactly what every function did before the lookup existed. */
+  '  vendorForCompany: async () => "anthropic",',
+  '  vendorForUser: async () => "anthropic",',
   "};",
 ].join("\n");

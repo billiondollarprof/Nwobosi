@@ -40,7 +40,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk@0.68.0";
-import { clientFor, modelFor, rateFor, supportsAdaptiveThinking, vendorFor, type Vendor } from "../_shared/brain.ts";
+import { clientFor, modelFor, rateFor, supportsAdaptiveThinking, vendorForCompany, type Vendor } from "../_shared/brain.ts";
 
 /* --------------------------------------------------------------------------
    CAPABILITY LEVELS, AND THE ONE PLACE A MODEL IS NAMED
@@ -57,10 +57,11 @@ import { clientFor, modelFor, rateFor, supportsAdaptiveThinking, vendorFor, type
    vendor was in the client, and moving a deployment to another provider
    meant editing the product rather than editing a config.
 
-   Now the levels are named for what they are FOR, and MODEL_ID below is
-   the only place in the entire codebase that names a real model. Moving to
-   another provider is that one table. Nothing else moves, and no screen
-   changes at all.
+   Now the levels are named for what they are FOR, and the mapping from level
+   to a real model lives in `_shared/brain.ts`, which is the only place in the
+   server that names one. Moving a deployment to another provider is that one
+   table plus the company's row in `company_brain`. Nothing else moves, and no
+   screen changes at all.
 
    THE LADDER CAME DOWN FROM FOUR RUNGS TO TWO ON 2026-09-21. Anthony:
 
@@ -81,8 +82,8 @@ import { clientFor, modelFor, rateFor, supportsAdaptiveThinking, vendorFor, type
    company and I say, oh, they should be able to use even one more higher
    model, like Opus. No problem."
 
-   So it is one line of MODEL_ID, set when that company is deployed, and it
-   lifts everybody in the company at once. It is never a per person setting
+   So it is one row in `company_brain`, set when that company is deployed, and
+   it lifts everybody in the company at once. It is never a per person setting
    and never a screen, because the right answer is the same for all of them
    on every job they do.
 
@@ -98,22 +99,17 @@ const LADDER = ["conversational", "standard"] as const;
 type Tier = (typeof LADDER)[number];
 
 /* THE MAPPING. The only vendor names in the product, and they are on the
-   server, in a function, behind an API key. Swapping provider is this
-   table and the PRICE table below it. */
+   server, in a function, behind an API key. Swapping provider is now the
+   table in `_shared/brain.ts` plus the company's own row. */
 /* ⚠️ THE ONE PLACE A MODEL IS NAMED IS NOW _shared/brain.ts, NOT THIS FILE.
    Anthony's design was that moving a deployment to another provider is one
    table. That table is now shared by all eight functions instead of living
    here, and it carries the price beside the model.
 
-   ⚠️ THE COMPANY ROW GOES IN WHERE `null` IS when the `brain_vendor` column
-   lands. Until that column exists this resolves to Anthropic, which is what
-   every deployment runs today, so nothing about this function changes. */
-const VENDOR: Vendor = vendorFor(null);
-
-const MODEL_ID: Record<Tier, string> = {
-  conversational: modelFor(VENDOR, "conversational"),
-  standard: modelFor(VENDOR, "standard"),
-};
+   ⚠️ THE VENDOR IS RESOLVED PER REQUEST, further down, and never here. One
+   isolate serves several companies at once, so a module level vendor would be
+   shared between them and one company's turn could be answered by another
+   company's brain. */
 
 /* Dollars per million tokens, per level, now held per VENDOR in
    _shared/brain.ts and read through rateFor below. Used to turn real usage
@@ -148,11 +144,9 @@ const STAFF_TIER: Tier = "standard";
 
 /* Which levels take adaptive thinking. The small fast model behind
    conversational predates it and rejects it with a 400; everything above
-   expects it. A property of the model, so it belongs beside the mapping. */
-const ADAPTIVE_THINKING: Record<Tier, boolean> = {
-  conversational: supportsAdaptiveThinking(VENDOR, "conversational"),
-  standard: supportsAdaptiveThinking(VENDOR, "standard"),
-};
+   expects it. A property of the MODEL, so it lives beside the mapping in
+   _shared/brain.ts and is asked for per request below, for whichever vendor
+   this company actually runs on. */
 
 /* REVERTED 2026-09-23, LATER THE SAME DAY, AND THE REASON IS THE POINT.
 
@@ -181,8 +175,8 @@ const ADAPTIVE_THINKING: Record<Tier, boolean> = {
    to go. It is numeric now.
 
    Six decimal places, because that is what the column holds. */
-function centsFor(tier: Tier, inputTokens: number, outputTokens: number) {
-  const { input, output } = rateFor(VENDOR, tier);
+function centsFor(vendor: Vendor, tier: Tier, inputTokens: number, outputTokens: number) {
+  const { input, output } = rateFor(vendor, tier);
   const dollars = (inputTokens / 1_000_000) * input + (outputTokens / 1_000_000) * output;
   return Math.round(dollars * 100 * 1e6) / 1e6;
 }
@@ -1420,6 +1414,11 @@ Deno.serve(async (req: Request) => {
     return json({ ok: false, reason: "Could not load your company." }, 403);
   }
 
+  /* WHICH BRAIN, READ PER REQUEST. Never cached, because one isolate serves
+     several companies at once. Falls back to Anthropic on any error, including
+     the table not being there, so this can ship before the migration does. */
+  const vendor = await vendorForCompany(staff.company_id);
+
   /* ----------------------------------------------------------------------
      RULE 3: HOW MUCH, checked before spending anything
      Shown to people as outputs remaining. Never as cents, never as tokens.
@@ -1654,7 +1653,7 @@ Deno.serve(async (req: Request) => {
      the chat can show words arriving rather than a spinner.
      ---------------------------------------------------------------------- */
 
-  const anthropic = clientFor(VENDOR);
+  const anthropic = clientFor(vendor);
 
   /* The model behind conversational predates adaptive thinking and effort,
      and rejects both with a 400. Everything above wants them. A lookup
@@ -1668,7 +1667,7 @@ Deno.serve(async (req: Request) => {
      the model behind standard actually takes. Nothing else in the request
      needs loosening, so this is cast on its own rather than over the whole
      call. */
-  const thinkingExtras = ADAPTIVE_THINKING[tier]
+  const thinkingExtras = supportsAdaptiveThinking(vendor, tier)
     ? {
         thinking: { type: "adaptive" } as unknown as Anthropic.ThinkingConfigParam,
         output_config: { effort: "high" as const },
@@ -1799,7 +1798,7 @@ Deno.serve(async (req: Request) => {
 
           for (let round = 0; round < 4; round += 1) {
             const reply = await anthropic.messages.create({
-              model: MODEL_ID[tier],
+              model: modelFor(vendor, tier),
               max_tokens: MAX_OUTPUT.research,
               system: [...stable, { type: "text", text: stageInstruction }],
               messages: convo,
@@ -1862,7 +1861,7 @@ Deno.serve(async (req: Request) => {
           final = await streamWithRoomToWrite(
             anthropic,
             {
-              model: MODEL_ID[tier],
+              model: modelFor(vendor, tier),
               max_tokens: MAX_OUTPUT[stage] ?? MAX_OUTPUT.generate,
               system: [...stable, { type: "text", text: stageInstruction }],
               messages,
@@ -1895,7 +1894,7 @@ Deno.serve(async (req: Request) => {
            undercharged by a third of every write, which is our money, and
            their budget outlives what they actually spent. */
         const inputTokens = freshInput + cacheWrite * 2 + cacheRead * 0.1;
-        const cents = centsFor(tier, inputTokens, outputTokens);
+        const cents = centsFor(vendor, tier, inputTokens, outputTokens);
 
         /* If cacheRead stays at zero over a conversation, the cache is not
            holding and something above the prompt is changing between
