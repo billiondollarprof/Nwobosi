@@ -51,7 +51,7 @@ import MarketingNav from "../shared/MarketingNav.jsx";
 
 const ME = {
   name: "Anthony Nwobosi",
-  title: "AI Automation Specialist",
+  title: "AI Automation Specialist | AI-native Full Stack Developer",
   email: "anthony@stellaxafe.com",
   /* International format, because the reader is usually not in Nigeria. A
      local 0902 number is undiallable from abroad and some parsers will not
@@ -108,7 +108,7 @@ const EXPERIENCE = [
     org: "StellaXafe",
     place: "Port Harcourt, Nigeria",
     dates: "2026 – Present",
-    lead: "Design and ship complete AI automation systems: architecture, data model, access control, integrations, interface and deployment. Four products taken from a business problem to working software inside a year, built with AI coding agents (Claude Code and a DeepSeek harness), which is how one person ships at the pace of a team.",
+    lead: "Design and ship complete AI automation systems: architecture, data model, access control, integrations, interface and deployment. Four products taken from a business problem to working software inside a year, front end to back end, built AI-native with coding agents (Claude Code and a DeepSeek harness), which is how one person ships at the pace of a team: hours or days for an automation, weeks for a platform.",
     items: [
       {
         name: "Amara",
@@ -118,7 +118,7 @@ const EXPERIENCE = [
       {
         name: "StellaXafe",
         note: null,
-        body: "Private, company-scoped AI for organisations that cannot risk a data leak. Staff ask for a report, proposal or deck, and it works from the company's approved files, reads back what it understood, and builds the finished Word, PDF, Slides or Excel file, charts included. Multi-tenant isolation enforced in the database rather than in application code, retrieval restricted to admin-approved sources, staged model routing to control cost, a model layer that runs on Claude or DeepSeek per company, and a human checkpoint before anything is sent or spent. One month from start to finished product, most of it spent on testing on top of getting the product thinking and design right. A deployment for a company can take longer still, because testing edge cases takes time and waiting on API access is sometimes part of that too.",
+        body: "Private, company-scoped AI for organisations that cannot risk a data leak. Staff ask for a report, proposal or deck, and it works from the company's approved files, reads back what it understood, and builds the finished Word, PDF, Slides or Excel file, charts included. Multi-tenant isolation enforced in the database rather than in application code, retrieval restricted to admin-approved sources, staged model routing to control cost, a language model layer that can switch provider per company and is built for AWS Bedrock, and a human checkpoint before anything is sent or spent. One month from start to finished product, most of it spent on testing on top of getting the product thinking and design right. A deployment for a company can take longer still, because testing edge cases takes time and waiting on API access is sometimes part of that too.",
       },
       {
         name: "XALOM",
@@ -199,7 +199,7 @@ const SKILLS = [
   {
     group: "AI and automation",
     items:
-      "AI orchestration, agents, workflow automation, RAG and knowledge systems, prompt engineering, human-in-the-loop design, staged model routing, model-agnostic backends (Claude and DeepSeek, switched per company), LLM tooling (Claude, DeepSeek, ChatGPT, Gemini), on-device speech recognition (Whisper, Moonshine)",
+      "AI orchestration, agents, workflow automation, RAG and knowledge systems, prompt engineering, human-in-the-loop design, staged model routing, provider-agnostic LLM backends built for AWS Bedrock, LLM tooling (Claude, DeepSeek, ChatGPT, Gemini), on-device speech recognition (Whisper, Moonshine)",
   },
   {
     group: "AI-assisted development",

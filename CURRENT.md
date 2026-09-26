@@ -25,8 +25,12 @@ built and checked, not when it is planned.
 
 ### Open
 
-0000000000000. **2026-09-26, OPEN: portfolio fixes, then push to main; then
-               two new pages.** Anthony, in his words (voice note, cleaned):
+0000000000000. **2026-09-26, PORTFOLIO FIXES DONE AND PUBLISHED to main
+               (items 1 to 8 below). OPEN: items 9, 10 and 11, the two new
+               pages and the agent count.** One line kept honest on purpose:
+               the "Built on" line says "provider-agnostic and built for AWS
+               Bedrock", not "via AWS Bedrock", because Bedrock is not wired
+               yet; change it to "via" the day it is. Anthony, in his words (voice note, cleaned):
                1. "There's a part that says in weeks. I want it to be in days
                   / weeks, depending on the scope of the work... if the work is
                   end-to-end platform, it can be weeks. But if it is just a

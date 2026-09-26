@@ -21,8 +21,13 @@
 
    THE MESSAGE, SET BY ANTHONY
    He solves business problems. He makes sophisticated tools easy for people
-   to use. He takes it from product thinking to production, and he moves
-   fast. Every section says one of those, in his voice: plain words, the
+   to use, and good to look at. He takes it from product thinking to
+   production, front end to back end, AI-native (he builds with coding
+   agents, not by hand), and he moves fast: hours or days for an
+   automation, weeks for a platform. Prebuilt tools (Make, Zapier) are
+   named once, as "if needed", because he prefers custom integrations and
+   the page implies why rather than explaining it. No language model vendor
+   is named in a "Built on" line. Every section says one of those, in his voice: plain words, the
    question and then the answer, the "so" and "because" said out loud.
 
    THE RULE THIS PAGE IS WRITTEN UNDER
@@ -42,8 +47,8 @@
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, ArrowUpRight, FileText, Linkedin, Mail, PlayCircle } from "lucide-react";
 
-import { BRAND, FONTS } from "../shared/tokens";
-import { GlassPanel, PrimaryButton, StatusPill } from "../shared/ui.jsx";
+import { BRAND, FONTS, GRADIENTS } from "../shared/tokens";
+import { GlassPanel, StatusPill } from "../shared/ui.jsx";
 import { MarketingPage, GradientText, Eyebrow } from "../shared/marketing.jsx";
 import Photo from "../shared/Photo.jsx";
 
@@ -91,8 +96,8 @@ const WORK = [
     linkLabel: "Open stellaxafe.com",
     status: { tone: "ok", label: "Live" },
     line: "A private AI assistant that already knows the company it works for.",
-    body: "A staff member asks for a report, a proposal or a deck. It works from the company's own approved files, asks only what it still needs, reads back what it understood, and then builds a finished file in Word, PDF, Slides or Excel, charts included. Each company's data is walled off from every other one in the database itself, and it can run on Claude or DeepSeek, chosen per company.",
-    stack: "Claude API, DeepSeek, retrieval over approved sources, Postgres row-level security, edge functions, human in the loop",
+    body: "A staff member asks for a report, a proposal or a deck. It works from the company's own approved files, asks only what it still needs, reads back what it understood, and then builds a finished file in Word, PDF, Slides or Excel, charts included. Each company's data is walled off from every other one in the database itself, and the language model behind it can be switched per company.",
+    stack: "LLMs, provider-agnostic and built for AWS Bedrock, retrieval over approved sources, Postgres row-level security, edge functions, human in the loop",
   },
   {
     name: "Amara",
@@ -170,8 +175,8 @@ const METHOD = [
   },
   {
     step: "03",
-    title: "Make it easy to use",
-    body: "The person using it should not need to know how it works. If a screen needs explaining, I change the screen.",
+    title: "Make it easy to use, and good to look at",
+    body: "I design the interface myself, so the person using it never needs to know how it works, and it looks as good as it works. If a screen needs explaining, I change the screen.",
   },
   {
     step: "04",
@@ -181,7 +186,7 @@ const METHOD = [
   {
     step: "05",
     title: "Build it fast",
-    body: "I build with AI coding agents, Claude Code and a DeepSeek harness, on patterns I have already proven. So the work is fitting rather than inventing, and quarters become weeks.",
+    body: "I build AI-native, with coding agents (Claude Code and a DeepSeek harness), on patterns I have already proven. So the work is fitting rather than inventing: hours or days for an automation, weeks for a platform.",
   },
   {
     step: "06",
@@ -211,13 +216,16 @@ export default function Anthony() {
           <div className="lg:col-start-1 lg:col-span-7 lg:row-start-1">
             <Eyebrow>Anthony Nwobosi</Eyebrow>
 
-            {/* The role the application is for, word for word, because the
-                posting is called this and a screener matches on it. */}
+            {/* The roles the applications are for, word for word, because a
+                screener matches on the posting's own title. "AI-native" is
+                the word that matters in the second one: he builds end to end
+                with AI coding agents rather than writing code by hand, and
+                says so up front rather than leaving a reader to assume. */}
             <p
               className="text-[12px] font-semibold uppercase tracking-[0.12em] mt-4"
               style={{ color: BRAND.accentSoft }}
             >
-              AI Automation Specialist | Agents, Workflows &amp; Custom Integrations
+              AI Automation Specialist | AI-native Full Stack Developer
             </p>
 
             <h1
@@ -250,35 +258,40 @@ export default function Anthony() {
 
           <div className="lg:col-start-1 lg:col-span-7 lg:row-start-2">
             <p className="text-[16.5px] leading-[1.65] mb-6" style={{ color: "var(--text-2)" }}>
-              I build AI systems that make sophisticated tools easy for people to use: the
-              workflows, agents and internal tools a business runs on. I move fast, so it goes from
-              the first conversation to live production in weeks.
+              I build AI systems that make sophisticated tools easy for people to use, from a single
+              automation to a whole platform, front end to back end. I move fast: a simple
+              automation can be live in hours or days, and a full platform in weeks.
             </p>
 
             {/* The scan row. Written for the eye that moves at speed, and for
                 the filter a recruiter types into, so it is allowed to be dense
                 in a way no other line on the page is. Strongest first. */}
             <p className="text-[13.5px] leading-[1.6] mb-8" style={{ color: "var(--text-3)" }}>
-              AI agents and orchestration, workflow automation, RAG and knowledge systems, Claude
-              Code, Claude API, DeepSeek, custom integrations, APIs and webhooks, WhatsApp Business
-              API, edge functions, multi-tenant isolation, human-in-the-loop design.
+              AI agents and orchestration, workflow automation, RAG and knowledge systems, full stack
+              with Claude Code, custom integrations, APIs and webhooks, WhatsApp Business API, edge
+              functions, multi-tenant isolation, human-in-the-loop design. Make or Zapier if
+              needed.
             </p>
 
             <div className="flex flex-col sm:flex-row items-stretch gap-3">
-              <PrimaryButton
-                onClick={() => navigate("/contact")}
-                className="flex items-center justify-center gap-2 px-6 py-3.5 text-[15px]"
+              {/* An email to anthony@stellaxafe.com, already started. Not the
+                  contact form: the form's inbox is a server setting, and this
+                  is the one door that must land with him every time. */}
+              <a
+                href={MAILTO}
+                className="inline-flex items-center justify-center gap-2 rounded-[12px] px-6 py-3.5 text-[15px] font-semibold transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                style={{ background: GRADIENTS.action, color: "#fff" }}
               >
                 Work with me
                 <ArrowRight size={16} />
-              </PrimaryButton>
+              </a>
               <a
                 href="#walkthrough"
                 className="inline-flex items-center justify-center gap-2 rounded-[12px] border px-6 py-3.5 text-[15px] font-medium transition-transform hover:scale-[1.02]"
                 style={{ borderColor: "var(--border-2)", backgroundColor: "var(--surface)", color: "var(--text-1)" }}
               >
                 <PlayCircle size={16} style={{ color: BRAND.accentSoft }} />
-                Watch the walkthrough
+                Watch the demo video
               </a>
             </div>
 
@@ -436,11 +449,10 @@ export default function Anthony() {
             <span className="font-semibold" style={{ color: "var(--text-2)" }}>
               How I build
             </span>{" "}
-            Claude Code and a DeepSeek agent harness for the building, the Claude API and DeepSeek
-            inside the products, Postgres with row-level security, edge functions, webhooks,
-            WhatsApp Business API, OAuth connectors, Cloudflare. n8n, Make and Zapier where one of
-            them is the right answer, though most of what I ship is custom, because it fits exactly
-            and costs less to run.
+            Claude Code and a DeepSeek agent harness for the building, LLMs inside the products,
+            React, Postgres with row-level security, edge functions, webhooks, WhatsApp Business
+            API, OAuth connectors, Cloudflare. Custom integrations first; Make or Zapier if
+            needed.
           </p>
         </div>
       </section>
@@ -489,8 +501,8 @@ export default function Anthony() {
             How do I move this fast? The same six steps, every time.
           </h2>
           <p className="text-[15.5px] leading-relaxed max-w-2xl mb-10" style={{ color: "var(--text-3)" }}>
-            The method does not change from one project to the next, so the delivery is measured in
-            weeks, not quarters.
+            The method does not change from one project to the next, so delivery is measured in
+            days or weeks, depending on the scope, not in quarters.
           </p>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -544,13 +556,14 @@ export default function Anthony() {
               <FileText size={16} style={{ color: BRAND.accentSoft }} />
               Read the CV
             </button>
-            <PrimaryButton
-              onClick={() => navigate("/contact")}
-              className="order-1 sm:order-2 flex items-center justify-center gap-2 px-7 py-3.5 text-[15px]"
+            <a
+              href={MAILTO}
+              className="order-1 sm:order-2 inline-flex items-center justify-center gap-2 rounded-[12px] px-7 py-3.5 text-[15px] font-semibold transition-transform hover:scale-[1.02] active:scale-[0.98]"
+              style={{ background: GRADIENTS.action, color: "#fff" }}
             >
               Get in touch
               <ArrowRight size={16} />
-            </PrimaryButton>
+            </a>
           </div>
         </div>
       </section>

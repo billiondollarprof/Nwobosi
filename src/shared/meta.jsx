@@ -50,14 +50,14 @@ const PAGES = {
     index: true,
   },
   "/anthony": {
-    title: "Anthony Nwobosi | AI Automation Specialist",
+    title: "Anthony Nwobosi | AI Automation Specialist, AI-native Full Stack Developer",
     description:
-      "I take a business problem from product thinking to production, and I make sophisticated AI tools easy for people to use. AI agents, workflow automation, RAG knowledge systems and custom integrations, built with Claude Code and DeepSeek and shipped in weeks. Open to remote roles and contract work.",
+      "I take a business problem from product thinking to production, and I make sophisticated AI tools easy for people to use. AI agents, workflow automation, RAG knowledge systems, custom integrations and full stack platforms, built AI-native with Claude Code: hours or days for an automation, weeks for a platform. Open to remote roles and contract work.",
     index: true,
     person: true,
   },
   "/anthony/cv": {
-    title: "Anthony Nwobosi | CV | AI Automation Specialist",
+    title: "Anthony Nwobosi | CV | AI Automation Specialist, AI-native Full Stack Developer",
     description:
       "Experience, publications, education and skills. AI orchestration, workflow automation, RAG and knowledge systems, integrations and APIs, human-in-the-loop design.",
     index: true,
@@ -167,7 +167,7 @@ function setPersonSchema(on) {
     "@context": "https://schema.org",
     "@type": "Person",
     name: "Anthony Nwobosi",
-    jobTitle: "AI Automation Specialist",
+    jobTitle: "AI Automation Specialist and AI-native Full Stack Developer",
     url: `${SITE}/anthony`,
     email: "mailto:anthony@stellaxafe.com",
     address: {
@@ -200,8 +200,9 @@ function setPersonSchema(on) {
       "Multi-tenant architecture",
       "Postgres row level security",
       "Claude Code",
-      "Claude API",
-      "DeepSeek",
+      "Full stack development",
+      "React",
+      "AWS Bedrock",
       "AI coding agents",
       "On-device speech recognition",
     ],
