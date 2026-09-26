@@ -630,7 +630,11 @@ built and checked, not when it is planned.
                  above is in service of it, and the credit ran out before it
                  was recorded.
 
-00000000000. **2026-09-23, OPEN: convert a document, no interview.**
+00000000000. **2026-09-23, BUILT, convert a document, no interview.**
+             STATUS 2026-09-26: live. `assistant` v51 has the CONVERT lines,
+             `convert-document` is deployed (v3). The browser way works today.
+             The exact way needs the converter service on Cloud Run and two
+             secrets (converter/README.md); not verifiable from here.
              Anthony, word for word: "someone can actually upload any
              document and ask for PDF version or word version. since these
              two are usually inter invertible. maybe the assistant just sees
@@ -654,7 +658,8 @@ built and checked, not when it is planned.
              be thrown away. this only happens if they say it."
              (DOCUMENT-HARNESS.md, section 9.)
 
-0000000000. **2026-09-23, OPEN: pictures with sources, figure numbers,
+0000000000. **2026-09-23, BUILT (layout lines await the redeploy): pictures
+            with sources, figure numbers,
             charts, skip means skip, and a harness the staff can rely on.**
             Anthony, word for word:
             "all staffs can read and use what's already in the knowledge

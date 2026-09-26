@@ -13,6 +13,27 @@ repo". Nothing here goes out any other way.
 
 ---
 
+## 2026-09-26: `assistant`, 13 layout lines, a REDEPLOY waiting for Anthony
+
+Checked against the live project on 2026-09-26, by pulling the deployed
+source and comparing every text literal of 20 characters or more:
+
+| file | literals in repo | missing from live | in live but not repo |
+|---|---|---|---|
+| `assistant/index.ts` | 740 | **13** | 0 |
+| `_shared/brain.ts` | 6 | 0 | 0 |
+| `_shared/wire.ts` | 12 | 0 | 0 |
+| `_shared/search.ts` | 25 | 0 | 0 |
+
+Live is `assistant` **v51**. It already carries everything from
+DOCUMENT-HARNESS.md sections 1 to 8 (skip means skip, picture credits,
+figure numbers, charts, conversion). The 13 missing lines are exactly the
+section 9 layout lines ("LAID OUT LIKE AN UPLOAD, ONLY IF THEY ASKED" in the
+read back, the "Layout: like <file>" line in the brief, and the writing rule
+that follows it). Nothing is deleted. Nothing live is missing from the repo.
+
+Anthony said on 2026-09-23 he redeploys this himself. Not deployed.
+
 ## 2026-09-25, later: the first real turn, and the bug it found
 
 **The staff side worked on DeepSeek, first try.** Anthony typed hello and got a
