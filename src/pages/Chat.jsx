@@ -86,6 +86,7 @@ import { labelledImageBlocks, imagesInMessages } from "../shared/docs/images.js"
 import { readDocument, notesAsText } from "../shared/docs/documentModel.js";
 import { briefSaysNoPictures, stripPictures, fixTotals, numbersNotInSources, numberFindings } from "../shared/docs/checkDocument.js";
 import { convertFromReply, withoutConvertLine, kindOfFile } from "../shared/convert/convertAsked.js";
+import { readLayout, layoutFromBrief } from "../shared/convert/layoutOf.js";
 import { BRAND, GRADIENTS, FONTS } from "../shared/tokens";
 import {
   PageShell,
@@ -264,6 +265,11 @@ function buildTurnContent(text, attachments) {
         `${slice}\n` +
         "--- END FILE ---"
     );
+    /* Its shape, for "lay it out like this one". Only to be followed when
+       they ask for it (DOCUMENT-HARNESS.md, section 9). */
+    if (a.outline) {
+      blocks.push(`--- LAYOUT OF ${a.name} (follow it only if they ask for this layout) ---\n${a.outline}\n--- END LAYOUT ---`);
+    }
   }
 
   const written = [text, ...blocks].filter(Boolean).join("\n\n");
@@ -1958,6 +1964,18 @@ export default function Chat() {
           console.warn("the checker could not read this document", error);
         }
 
+        /* LAID OUT LIKE AN UPLOAD, ONLY WHEN THE AGREED BRIEF SAYS SO
+           (DOCUMENT-HARNESS.md, section 9). The style read from that file
+           (its font, heading colour and margins) rides on this result, so
+           every download of it uses that style instead of the house one. */
+        const layoutName = layoutFromBrief(brief);
+        if (layoutName) {
+          const source = (convo ?? []).flatMap((m) => m.attachments ?? []).find((a) => a.name?.toLowerCase() === layoutName.toLowerCase());
+          if (source?.style) {
+            updateMessages((prev) => prev.map((m) => (m.id === resultId ? { ...m, style: source.style, layoutFrom: source.name } : m)));
+          }
+        }
+
         setDailyUsed((n) => Math.min(n + 1, DAILY_LIMIT));
 
         /* THE FINISHED DOCUMENT IS SAVED INTO THE CONVERSATION NOW, not
@@ -2441,7 +2459,11 @@ export default function Chat() {
       if (kind === "pdf" || kind === "docx") originalFilesRef.current.set(id, file);
 
       if (isDocument) {
-        readFileAsText(file, { maxChars: MAX_FILE_CHARS }).then((result) => {
+        /* The layout is read alongside the words (convert/layoutOf.js), so
+           it is there if they ask for "one like this". It is only USED when
+           they do. A layout that cannot be read is simply left out. */
+        const layout = kind === "pdf" || kind === "docx" ? readLayout(file) : Promise.resolve(null);
+        Promise.all([readFileAsText(file, { maxChars: MAX_FILE_CHARS }), layout]).then(([result, shape]) => {
           if (!result.ok) {
             showUploadError(result.reason);
             setPendingAttachments((prev) => prev.filter((a) => a.id !== id));
@@ -2450,7 +2472,7 @@ export default function Chat() {
           setPendingAttachments((prev) =>
             prev.map((a) =>
               a.id === id
-                ? { ...a, status: "ready", text: result.text, truncated: result.truncated }
+                ? { ...a, status: "ready", text: result.text, truncated: result.truncated, outline: shape?.outline || "", style: shape?.style ?? null }
                 : a
             )
           );
@@ -2645,7 +2667,10 @@ export default function Chat() {
      middle one: connected and unreachable. Pressing a button and seeing
      nothing happen sends somebody away believing their document is filed,
      and they find out when somebody asks them for it. */
-  async function handleFile(format, title, content) {
+  /* `style` is set when the agreed brief said to lay the work out like an
+     upload (DOCUMENT-HARNESS.md, section 9). It rides with the company's
+     brand, and buildFile uses it instead of the house style. */
+  async function handleFile(format, title, content, style = null) {
     /* Nothing connected: say so plainly. The card does not offer this
        button then, so this is only reached if the connection was dropped
        since the page opened. */
@@ -2657,7 +2682,7 @@ export default function Chat() {
 
     setToast(`Putting it in ${where.name}`);
     try {
-      const file = await buildFile(format, title, content, companyBrand, messagesRef.current);
+      const file = await buildFile(format, title, content, style ? { ...companyBrand, layoutStyle: style } : companyBrand, messagesRef.current);
       const result = await fileInDrive(file);
       if (!result?.ok) {
         setToast(result?.reason ?? storageMessage({ state: "unreachable", name: where.name }));
@@ -2685,14 +2710,15 @@ export default function Chat() {
     }
   }
 
-  async function handleDownload(format, title, content) {
+  async function handleDownload(format, title, content, style = null) {
     setToast(MAKING[format] ?? "Making the file");
     try {
       const convo = messagesRef.current;
-      if (format === "pdf") await downloadPdf(title, content, companyBrand, convo);
-      else if (format === "pptx") await downloadPptx(title, content, companyBrand, convo);
-      else if (format === "xlsx") await downloadXlsx(title, content, companyBrand);
-      else await downloadDocx(title, content, companyBrand, convo);
+      const brand = style ? { ...companyBrand, layoutStyle: style } : companyBrand;
+      if (format === "pdf") await downloadPdf(title, content, brand, convo);
+      else if (format === "pptx") await downloadPptx(title, content, brand, convo);
+      else if (format === "xlsx") await downloadXlsx(title, content, brand);
+      else await downloadDocx(title, content, brand, convo);
       setToast("Saved to your downloads");
 
       /* THE JOB IS FINISHED THE MOMENT THE FILE IS ON THEIR MACHINE.
@@ -3246,8 +3272,8 @@ export default function Chat() {
                 onHideText={() => revealText(m.id, false)}
                 storageName={linkedStorageName}
                 chatImages={chatImages}
-                onFile={() => handleFile(m.format ?? buildFormat, titleOf(m.content, m.title), m.content)}
-                onDownload={(format) => handleDownload(format, titleOf(m.content, m.title), m.content)}
+                onFile={() => handleFile(m.format ?? buildFormat, titleOf(m.content, m.title), m.content, m.style)}
+                onDownload={(format) => handleDownload(format, titleOf(m.content, m.title), m.content, m.style)}
                 converted={m.type === "converted" ? convertedRef.current.has(m.id) : false}
                 onDownloadConverted={() => downloadConverted(m.id)}
                 onArrange={() => arrangeConverted(m)}

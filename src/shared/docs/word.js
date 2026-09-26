@@ -52,6 +52,12 @@ const NUMERIC = /^[₦$€£¥]?\s?-?[\d,]+(\.\d+)?\s?%?$/;
    cards to the width of their words. */
 const CONTENT_TWIPS = 11906 - 1250 * 2;
 
+/* The same, when the work is laid out like an upload with its own margins
+   (download.js puts them on the theme). */
+function contentTwips(t) {
+  return t?.margins ? 11906 - t.margins.left - t.margins.right : CONTENT_TWIPS;
+}
+
 /* A table with no lines: the shading does the work. Used for every design
    block below, because a Word table is the one thing that keeps boxes side
    by side and the same height on every copy of Word. */
@@ -87,7 +93,7 @@ function cardsTable(docx, block, t, numbered) {
   const { Paragraph, TextRun, Table, TableRow, TableCell, WidthType, ShadingType } = docx;
   const per = block.items.length > 3 ? 2 : block.items.length;
   const GAP = 180;
-  const cardW = Math.floor((CONTENT_TWIPS - GAP * (per - 1)) / per);
+  const cardW = Math.floor((contentTwips(t) - GAP * (per - 1)) / per);
   const columnWidths = [];
   for (let c = 0; c < per; c += 1) {
     if (c) columnWidths.push(GAP);
@@ -120,7 +126,7 @@ function cardsTable(docx, block, t, numbered) {
       rows.push(new TableRow({ children: [new TableCell({ columnSpan: cells.length, children: [new Paragraph({ children: [], spacing: { after: 0 } })] })] }));
     }
   }
-  return new Table({ width: { size: CONTENT_TWIPS, type: WidthType.DXA }, columnWidths, borders: noBorders(docx), rows });
+  return new Table({ width: { size: contentTwips(t), type: WidthType.DXA }, columnWidths, borders: noBorders(docx), rows });
 }
 
 /* A short figure ("20%") can be huge; a longer one ("30 days",
@@ -132,10 +138,10 @@ function figureSize(value) {
 
 function statTable(docx, block, t) {
   const { Paragraph, TextRun, Table, TableRow, TableCell, WidthType, ShadingType, AlignmentType, VerticalAlign } = docx;
-  const panel = Math.round(CONTENT_TWIPS * 0.38);
+  const panel = Math.round(contentTwips(t) * 0.38);
   return new Table({
-    width: { size: CONTENT_TWIPS, type: WidthType.DXA },
-    columnWidths: [panel, CONTENT_TWIPS - panel],
+    width: { size: contentTwips(t), type: WidthType.DXA },
+    columnWidths: [panel, contentTwips(t) - panel],
     borders: noBorders(docx),
     rows: [new TableRow({
       cantSplit: true,
@@ -151,7 +157,7 @@ function statTable(docx, block, t) {
           ],
         }),
         new TableCell({
-          width: { size: CONTENT_TWIPS - panel, type: WidthType.DXA },
+          width: { size: contentTwips(t) - panel, type: WidthType.DXA },
           margins: { top: 120, bottom: 120, left: 280, right: 100 },
           verticalAlign: VerticalAlign.CENTER,
           children: innerParagraphs(docx, block.blocks),
@@ -164,13 +170,13 @@ function statTable(docx, block, t) {
 function takeawayTable(docx, block, t) {
   const { Table, TableRow, TableCell, WidthType, ShadingType, Paragraph } = docx;
   return new Table({
-    width: { size: CONTENT_TWIPS, type: WidthType.DXA },
-    columnWidths: [CONTENT_TWIPS],
+    width: { size: contentTwips(t), type: WidthType.DXA },
+    columnWidths: [contentTwips(t)],
     borders: noBorders(docx),
     rows: [new TableRow({
       cantSplit: true,
       children: [new TableCell({
-        width: { size: CONTENT_TWIPS, type: WidthType.DXA },
+        width: { size: contentTwips(t), type: WidthType.DXA },
         shading: { type: ShadingType.CLEAR, fill: t.accent, color: "auto" },
         margins: { top: 160, bottom: 160, left: 220, right: 220 },
         children: [new Paragraph({ children: runsOf(docx, block.runs, { bold: true, color: "FFFFFF" }) })],
@@ -437,7 +443,7 @@ export async function wordBlob(doc, t = themeFor(), images = null, charts = null
 
   const heading = (id, name, size, color, before, after) => ({
     id, name, basedOn: "Normal", next: "Normal", quickFormat: true,
-    run: { size: half(size), bold: true, color, font: THEME.officeFont },
+    run: { size: half(size), bold: true, color, font: t.headingFont ?? t.officeFont ?? THEME.officeFont },
     paragraph: { spacing: { before, after }, keepNext: true },
   });
 
@@ -446,7 +452,7 @@ export async function wordBlob(doc, t = themeFor(), images = null, charts = null
     styles: {
       default: {
         document: {
-          run: { font: THEME.officeFont, size: half(THEME.size.body + 0.5), color: THEME.body },
+          run: { font: (t.officeFont ?? THEME.officeFont), size: half(THEME.size.body + 0.5), color: THEME.body },
           /* The rule is said out loud. Word reads a missing rule as "auto",
              LibreOffice reads it as an exact height, and an exact height
              cuts an inline picture down to one line of text. */
@@ -455,10 +461,10 @@ export async function wordBlob(doc, t = themeFor(), images = null, charts = null
       },
       paragraphStyles: [
         { id: "DocTitle", name: "Document title", basedOn: "Normal", next: "Normal",
-          run: { size: half(THEME.size.title + 2), bold: true, color: THEME.ink, font: THEME.officeFont },
+          run: { size: half(THEME.size.title + 2), bold: true, color: THEME.ink, font: t.headingFont ?? t.officeFont ?? THEME.officeFont },
           paragraph: { spacing: { after: 80 } } },
         { id: "DocSubtitle", name: "Document subtitle", basedOn: "Normal", next: "Normal",
-          run: { size: half(THEME.size.subtitle + 1), color: THEME.muted, font: THEME.officeFont },
+          run: { size: half(THEME.size.subtitle + 1), color: THEME.muted, font: (t.officeFont ?? THEME.officeFont) },
           paragraph: { spacing: { after: 320 } } },
         heading("Heading1", "Heading 1", THEME.size.h1 + 1, t.accent, 360, 120),
         heading("Heading2", "Heading 2", THEME.size.h2 + 0.5, THEME.ink, 280, 100),
@@ -476,7 +482,8 @@ export async function wordBlob(doc, t = themeFor(), images = null, charts = null
     },
     sections: [
       {
-        properties: { page: { margin: { top: 1300, bottom: 1300, left: 1250, right: 1250 } } },
+        /* An upload's own margins when the work is laid out like it. */
+        properties: { page: { margin: t.margins ?? { top: 1300, bottom: 1300, left: 1250, right: 1250 } } },
         footers: plain ? undefined : {
           default: new Footer({
             children: [

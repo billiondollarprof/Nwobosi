@@ -66,6 +66,22 @@ async function logoData(url) {
 }
 
 async function brandFor(brand) {
+  /* LAID OUT LIKE AN UPLOAD (DOCUMENT-HARNESS.md, section 9). When the
+     agreed brief said so, the upload's own heading colour, fonts and page
+     margins replace the house style for this one piece of work. */
+  const layout = brand?.layoutStyle;
+  if (layout) {
+    const theme = themeFor(layout.accent ?? brand?.color);
+    return {
+      theme: {
+        ...theme,
+        ...(layout.font ? { officeFont: layout.font } : {}),
+        ...(layout.headingFont ? { headingFont: layout.headingFont } : {}),
+        ...(layout.margins ? { margins: layout.margins } : {}),
+      },
+      brand: brand?.name ? { name: brand.name, logoData: await logoData(brand.logoUrl) } : null,
+    };
+  }
   return {
     theme: themeFor(brand?.color),
     brand: brand?.name ? { name: brand.name, logoData: await logoData(brand.logoUrl) } : null,

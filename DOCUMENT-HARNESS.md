@@ -204,7 +204,12 @@ It checks:
    (pdfjs-dist 6) failed on PDFs made by Word or LibreOffice in browsers
    without the newest JavaScript, which also broke ordinary PDF uploads in
    the chat. Both readers now use its legacy build.
-5. Layout from an upload, only when asked (section 9).
+5. Layout from an upload, only when asked (section 9). **BUILT 2026-09-23**
+   (layout.cjs 11, layout 12). What each file takes from the upload: its
+   sections and their order in every format; its heading colour in every
+   format; its fonts and page margins in the Word file. The PDF keeps its
+   own embedded font (it carries the font inside the file so ₦ always
+   prints), and the slides keep theirs.
 6. Then v27 is handed over once, with all of it, and Anthony redeploys.
 
 Each step is built, used by hand, and looked at in all four file formats

@@ -312,7 +312,7 @@ function keepHeadingsWithFigures(out) {
     const node = out[i];
     const next = out[i + 1];
     if (node?.headlineLevel && next?.unbreakable && next.stack) {
-      const { headlineLevel, ...heading } = node;
+      const { headlineLevel: _joined, ...heading } = node;
       joined.push({ stack: [heading, ...next.stack], unbreakable: true, margin: next.margin });
       i += 1;
     } else {

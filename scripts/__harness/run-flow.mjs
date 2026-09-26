@@ -94,6 +94,9 @@ for (const walk of [
   /* Added 2026-09-23. A file converted with no interview, both ways, the
      exact converter and the browser, with the word check said as a fact. */
   "scripts/__harness/convert.cjs",
+  /* Added 2026-09-23. Laid out like an upload only when the agreed brief
+     says so: its font, heading colour and margins in the Word file. */
+  "scripts/__harness/layout.cjs",
 ]) {
   const run = spawn("node", [walk], { stdio: "inherit" });
   const code = await new Promise((resolve) => run.on("close", resolve));
