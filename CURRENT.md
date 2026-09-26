@@ -25,6 +25,17 @@ built and checked, not when it is planned.
 
 ### Open
 
+00000000000000. **2026-09-26, OPEN: the video on the portfolio.** Anthony: "the
+                embed that video, there's no preview, but... the video will
+                play on that page when you click... using demo, I think demo
+                is used for sales page. I thought walkthrough... find a better
+                combination of words... if it's difficult for you to get a
+                preview, you can write a prompt for me... to design the
+                thumbnail... I have my own image that could be on the
+                thumbnail... it should be obvious that it's a video thumbnail...
+                blue with the play sign in white on it... if demo is the right
+                word then use it."
+
 0000000000000. **2026-09-26, PORTFOLIO FIXES DONE AND PUBLISHED to main
                (items 1 to 8 below). OPEN: items 9, 10 and 11, the two new
                pages and the agent count.** One line kept honest on purpose:
