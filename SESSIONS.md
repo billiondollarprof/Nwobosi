@@ -4,6 +4,27 @@ Log of each work session. Newest at the top. Keep entries short.
 
 ---
 
+## Session 17: 2026-09-23 to 26, the document harness
+
+Built DOCUMENT-HARNESS.md end to end, on `testing`:
+- skip means skip, picture credits, figure numbers counted by code
+- charts in every file: nine kinds, one SVG drawing for preview, PDF and
+  Word; real editable PowerPoint charts; the spreadsheet gets the numbers
+  and a picture of the chart
+- the checker: wrong totals put right, numbers found in no source listed
+  in "Worth checking", skipped pictures kept out
+- conversion with no interview, both ways (converter/ on Cloud Run, or the
+  browser), with a word by word check said as a fact
+- layout from an upload, only when the brief says so
+- admin sees a short summary only: `work_content` SQL ran with his yes
+
+Found on the way: pdfjs-dist 6 failed on PDFs made by Word or LibreOffice
+in most browsers, which also dropped ordinary PDF uploads; both readers
+now use its legacy build.
+
+Merged with the DeepSeek session's 32 commits. Live `assistant` v51 lacks
+only the 13 layout lines; Anthony redeploys it himself.
+
 ## Session 16: 2026-09-25, the walkthrough died thinking, and one log line found it
 
 Anthony: "my walk through stopped working. both Whatsapp and assistant stopped
