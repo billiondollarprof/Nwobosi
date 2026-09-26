@@ -25,6 +25,40 @@ built and checked, not when it is planned.
 
 ### Open
 
+000000000000. **2026-09-26, OPEN, FIRST PRIORITY: the portfolio, ready to
+              submit for an "AI automation specialist" role.** Anthony, word
+              for word (voice note, lightly cleaned):
+              "let's focus on arranging the portfolio because I want to submit
+              the link right away... If there are things in the CV that need
+              to be updated in the portfolio, like the SHOMEA Bible display app
+              that I'm working on for my church, you can also show it there,
+              then a little bit of the description, then Xalom, I want to
+              include the link to it... even though it's in deployment, you can
+              say that it's mobile first, while the desktop is still coming...
+              It's a trust platform for the digital market, especially in
+              Africa where trust is deficient. Then Amara.ng... the better
+              description is there [in the CV]... I want the portfolio to look
+              very much more professional. Then I have the Loom video link...
+              a walkthrough video, so you can embed it... a preview to display
+              on that page. And I want the messaging to revolve around solving
+              business problems, making sophisticated tools easy for people to
+              use... from product thinking to production... that I move fast.
+              Also the CV should include my familiarity with Claude Code and
+              DeepSeek harness... check professional portfolios... what
+              recruiters' eyes would easily spot comes first, and the language
+              more natural to my tone."
+              Links he gave: xalom.stellaxafe.com; https://shomea.pages.dev/dev;
+              Loom https://www.loom.com/share/e8ed2275d90243318f498db728bfdbd8
+              Copy he pasted (Amara): "...before they leave a one-star review.
+              Let unhappy guests scan a QR code and tell you privately what went
+              wrong, while they are still there. An instant WhatsApp alert lets
+              you fix it before it becomes a bad review or a lost guest."
+              Role: "AI automation specialist".
+              ALSO, same message: "You can do the redeploy yourself. just make
+              sure only the new lines are added... after that you can compare
+              the repo with the server." Then: "Okay, I think you need to stop.
+              let's get to what matters." Redeploy held until he confirms.
+
 000000000. **2026-09-25, WHAT THE KNOWLEDGE BASE ACTUALLY CONTAINS, AND WHY IT
               COSTS SO MUCH. READ BEFORE TOUCHING ANY PROMPT.**
 
