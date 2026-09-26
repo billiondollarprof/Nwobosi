@@ -13,7 +13,15 @@ repo". Nothing here goes out any other way.
 
 ---
 
-## 2026-09-26: `assistant`, 13 layout lines, a REDEPLOY waiting for Anthony
+## 2026-09-26: `assistant` v52, DEPLOYED by Anthony, checked
+
+Anthony redeployed it himself on 2026-09-26. Checked by pulling v52: its
+`index.ts` is line for line the repo copy, which is v51 plus the 13 layout
+lines and nothing removed, and `_shared/brain.ts`, `wire.ts` and
+`search.ts` are identical to the repo. Nothing left pending here. The
+section below is kept as the record of what went in.
+
+### Before it went out: the 13 layout lines
 
 Checked against the live project on 2026-09-26, by pulling the deployed
 source and comparing every text literal of 20 characters or more:
