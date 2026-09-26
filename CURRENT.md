@@ -25,6 +25,52 @@ built and checked, not when it is planned.
 
 ### Open
 
+0000000000000. **2026-09-26, OPEN: portfolio fixes, then push to main; then
+               two new pages.** Anthony, in his words (voice note, cleaned):
+               1. "There's a part that says in weeks. I want it to be in days
+                  / weeks, depending on the scope of the work... if the work is
+                  end-to-end platform, it can be weeks. But if it is just a
+                  simple automation, it can be days... Even hours."
+               2. "mention prebuilt too... just mention Make / Zapier... if
+                  needed... the message should just show that I prefer custom
+                  integrations because they are more flexible, easy to change,
+                  easy to iterate... no subscription... we don't need to be
+                  explaining all of that. We can imply." Put it in the row
+                  above the buttons, "more like an afterthought".
+               3. "Work with me... the email that it goes to is
+                  Anthony@Stellaxafe.com."
+               4. "There's no point mentioning the LLM providers. Just say
+                  built on LLM... put LLM via AWS Bedrock or something like
+                  that. We would eventually... set that up."
+               5. Six steps: "not just make it easy to use, make it look
+                  good... I design interfaces that people can actually use...
+                  UI/UX is good."
+               6. "Maybe we should have even mentioned Full Stack, AI-native
+                  Full Stack Developer should be part of the AI automation
+                  specialist... say AI-native, so that they don't think that
+                  I'm writing the code by hand." Next application is a full
+                  stack engineer role that uses Claude Code to ship fast.
+               7. Button label "Watch the walkthrough": compare the options.
+               8. "push to main", then advise whether the page sells him for
+                  the role, "for someone like me that started off just about
+                  four months ago".
+               NEXT, after the portfolio:
+               9. A page on how he works through hard problems: "explain all
+                  the logs... the back and forth, explaining it with some text
+                  in my voice, and the rules that I use, CLAUDE.md... agent.md.
+                  So the architecture that I use to ensure that my production
+                  is enterprise-grade and to fix errors, bugs". Branches,
+                  testing branch, idempotency, checking logs.
+               10. A workflow diagram page: "how I connect the different
+                   endpoints, different pages together, different APIs...
+                   StellaXafe... using the actual icon of those platforms...
+                   Canva, Google Drive... Short explanation to different
+                   areas". Pages 9 and 10 linked to each other.
+               11. "how many agents am I using inside StellaXafe... they ask me
+                   how many agents".
+               DONE by him, 2026-09-26: "I have redeployed it now [assistant].
+               You can confirm it... record it."
+
 000000000000. **2026-09-26, BUILT ON TESTING, waiting for his "publish": the
               portfolio, ready to submit for an "AI automation specialist"
               role.** /anthony rearranged (who, walkthrough video, four
