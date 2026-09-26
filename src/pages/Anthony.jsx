@@ -44,8 +44,9 @@
      SHOMEA says it was built for his church because that is where it runs.
    ========================================================================== */
 
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, ArrowUpRight, FileText, Linkedin, Mail, PlayCircle } from "lucide-react";
+import { ArrowRight, ArrowUpRight, FileText, Linkedin, Mail, Play, PlayCircle } from "lucide-react";
 
 import { BRAND, FONTS, GRADIENTS } from "../shared/tokens";
 import { GlassPanel, StatusPill } from "../shared/ui.jsx";
@@ -79,9 +80,117 @@ const MAILTO =
    anybody presses play and the video streams from Loom, not from us. */
 
 const WALKTHROUGH = {
-  embed: "https://www.loom.com/embed/e8ed2275d90243318f498db728bfdbd8?hideEmbedTopBar=true",
+  /* autoplay, because the player only loads once somebody has pressed
+     play on our poster, so it should start straight away rather than
+     make them press play a second time. */
+  embed: "https://www.loom.com/embed/e8ed2275d90243318f498db728bfdbd8?hideEmbedTopBar=true&autoplay=1",
   share: "https://www.loom.com/share/e8ed2275d90243318f498db728bfdbd8",
 };
+
+/* THE POSTER, 2026-09-26. Anthony: "there's no preview... it should be
+   obvious that it's a video thumbnail... blue with the play sign in white."
+   Loom's embed shows nothing until it loads, so the page draws its own
+   poster: the title on the left, his photo on the right, and a round blue
+   play button in the middle. Pressing it swaps the poster for Loom's
+   player, playing, on this page. If Anthony sends a designed thumbnail,
+   it goes in POSTER_IMAGE and replaces the drawn background; the play
+   button stays drawn by the page so it is always crisp. */
+const POSTER_IMAGE = null;
+
+function WalkthroughVideo({ playing, onPlay }) {
+  if (playing) {
+    return (
+      <iframe
+        src={WALKTHROUGH.embed}
+        title="StellaXafe product walkthrough"
+        allow="autoplay; fullscreen; picture-in-picture"
+        allowFullScreen
+        className="absolute inset-0 h-full w-full"
+        style={{ border: 0 }}
+      />
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={onPlay}
+      aria-label="Play the StellaXafe product walkthrough"
+      className="group absolute inset-0 h-full w-full text-left"
+      style={{
+        background: POSTER_IMAGE
+          ? `center / cover no-repeat url(${POSTER_IMAGE})`
+          : `radial-gradient(120% 90% at 0% 0%, ${BRAND.navy}66, transparent 60%), radial-gradient(90% 90% at 100% 100%, ${BRAND.purple}55, transparent 60%), #05060C`,
+      }}
+    >
+      {!POSTER_IMAGE && (
+        <>
+          {/* His photo on the right, fading into the poster, so the video
+              reads as his walkthrough before a word is read. */}
+          <div
+            className="absolute inset-y-0 right-0 w-[44%]"
+            style={{
+              /* A mask, not an overlay: the photo fades out to nothing, so
+                 whatever colour the poster is behind it, there is no edge. */
+              WebkitMaskImage: "linear-gradient(90deg, transparent 0%, #000 45%)",
+              maskImage: "linear-gradient(90deg, transparent 0%, #000 45%)",
+            }}
+          >
+            <Photo
+              name="anthony-nwobosi"
+              alt=""
+              widths={[640, 1024]}
+              sizes="(max-width: 1024px) 45vw, 400px"
+              fill
+              imgClassName="object-top"
+            />
+          </div>
+
+          {/* The words keep to the left 40%, and on a phone to the top, so
+              the play button in the middle never sits on them. */}
+          <div className="absolute left-0 top-0 bottom-0 w-[70%] sm:w-[40%] flex flex-col justify-start sm:justify-center pt-4 pl-4 pr-3 sm:pt-0 sm:pl-10">
+            <span
+              className="text-[10px] sm:text-[12px] font-semibold uppercase tracking-[0.14em] mb-2 sm:mb-3"
+              style={{ color: BRAND.accentSoft }}
+            >
+              Product walkthrough
+            </span>
+            <span
+              className="text-[16px] sm:text-[22px] lg:text-[30px] font-medium leading-[1.15] tracking-tight"
+              style={{ fontFamily: FONTS.display, color: "#F5F6FA", textWrap: "balance" }}
+            >
+              <span className="sm:hidden">StellaXafe walkthrough</span>
+              <span className="hidden sm:inline">StellaXafe, from a request to a finished document</span>
+            </span>
+            <span className="hidden lg:block text-[14.5px] leading-relaxed mt-3 max-w-md" style={{ color: "#A6ACC2" }}>
+              A private AI assistant, walked through by the person who built it.
+            </span>
+          </div>
+        </>
+      )}
+
+      {/* The play button. Blue, with a white play sign, in the middle, so
+          it is obvious at a glance that this is a video. */}
+      <span className="absolute inset-0 flex items-center justify-center">
+        <span
+          className="flex items-center justify-center rounded-full h-14 w-14 sm:h-20 sm:w-20 transition-transform duration-200 group-hover:scale-110"
+          style={{
+            backgroundColor: BRAND.navyLift,
+            boxShadow: `0 0 0 8px ${BRAND.navyLift}33, 0 12px 40px ${BRAND.navyLift}88`,
+          }}
+        >
+          <Play size={26} fill="#FFFFFF" color="#FFFFFF" className="ml-1 sm:scale-125" />
+        </span>
+      </span>
+
+      <span
+        className="absolute left-4 bottom-3 sm:left-10 sm:bottom-6 text-[11px] sm:text-[12.5px] font-medium"
+        style={{ color: "#A6ACC2" }}
+      >
+        Video · plays here
+      </span>
+    </button>
+  );
+}
 
 /* The work. What each one solves, then what it does, then what it is built
    on. Evidence, never ownership, and never how far along the build is. */
@@ -197,6 +306,9 @@ const METHOD = [
 
 export default function Anthony() {
   const navigate = useNavigate();
+  /* The walkthrough plays on this page. The hero button starts it too, so
+     one press both scrolls to it and plays it. */
+  const [playing, setPlaying] = useState(false);
 
   return (
     <MarketingPage>
@@ -287,11 +399,12 @@ export default function Anthony() {
               </a>
               <a
                 href="#walkthrough"
+                onClick={() => setPlaying(true)}
                 className="inline-flex items-center justify-center gap-2 rounded-[12px] border px-6 py-3.5 text-[15px] font-medium transition-transform hover:scale-[1.02]"
                 style={{ borderColor: "var(--border-2)", backgroundColor: "var(--surface)", color: "var(--text-1)" }}
               >
                 <PlayCircle size={16} style={{ color: BRAND.accentSoft }} />
-                Watch the demo video
+                Watch the product walkthrough
               </a>
             </div>
 
@@ -360,15 +473,7 @@ export default function Anthony() {
             className="relative w-full overflow-hidden rounded-[18px] border"
             style={{ borderColor: "var(--card-edge)", backgroundColor: "#05060C", aspectRatio: "16 / 9" }}
           >
-            <iframe
-              src={WALKTHROUGH.embed}
-              title="StellaXafe walkthrough"
-              loading="lazy"
-              allow="fullscreen; picture-in-picture"
-              allowFullScreen
-              className="absolute inset-0 h-full w-full"
-              style={{ border: 0 }}
-            />
+            <WalkthroughVideo playing={playing} onPlay={() => setPlaying(true)} />
           </div>
           <a
             href={WALKTHROUGH.share}

@@ -25,7 +25,12 @@ built and checked, not when it is planned.
 
 ### Open
 
-00000000000000. **2026-09-26, OPEN: the video on the portfolio.** Anthony: "the
+00000000000000. **2026-09-26, DONE AND PUBLISHED: the video on the portfolio.**
+                A drawn poster (title, his photo, round blue play button)
+                shows until play is pressed, then Loom plays on the page. The
+                hero button says "Watch the product walkthrough" and starts
+                it. A designed thumbnail can replace the poster background:
+                set POSTER_IMAGE in src/pages/Anthony.jsx. Anthony: "the
                 embed that video, there's no preview, but... the video will
                 play on that page when you click... using demo, I think demo
                 is used for sales page. I thought walkthrough... find a better
