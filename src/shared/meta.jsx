@@ -50,14 +50,14 @@ const PAGES = {
     index: true,
   },
   "/anthony": {
-    title: "Anthony Nwobosi — AI Automation Engineer",
+    title: "Anthony Nwobosi | AI Automation Specialist",
     description:
-      "I design and ship AI automation: AI agents, RAG knowledge systems, workflow automation and custom integrations, deployed to production. APIs and webhooks, WhatsApp Business API, edge functions, multi-tenant isolation. Open to remote roles and contract work.",
+      "I take a business problem from product thinking to production, and I make sophisticated AI tools easy for people to use. AI agents, workflow automation, RAG knowledge systems and custom integrations, built with Claude Code and DeepSeek and shipped in weeks. Open to remote roles and contract work.",
     index: true,
     person: true,
   },
   "/anthony/cv": {
-    title: "Anthony Nwobosi — CV | AI Automation Engineer",
+    title: "Anthony Nwobosi | CV | AI Automation Specialist",
     description:
       "Experience, publications, education and skills. AI orchestration, workflow automation, RAG and knowledge systems, integrations and APIs, human-in-the-loop design.",
     index: true,
@@ -167,7 +167,7 @@ function setPersonSchema(on) {
     "@context": "https://schema.org",
     "@type": "Person",
     name: "Anthony Nwobosi",
-    jobTitle: "AI Automation Engineer",
+    jobTitle: "AI Automation Specialist",
     url: `${SITE}/anthony`,
     email: "mailto:anthony@stellaxafe.com",
     address: {
@@ -199,6 +199,11 @@ function setPersonSchema(on) {
       "Edge functions",
       "Multi-tenant architecture",
       "Postgres row level security",
+      "Claude Code",
+      "Claude API",
+      "DeepSeek",
+      "AI coding agents",
+      "On-device speech recognition",
     ],
     worksFor: { "@type": "Organization", name: "StellaXafe", url: SITE },
   };

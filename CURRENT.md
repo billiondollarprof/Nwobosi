@@ -25,8 +25,14 @@ built and checked, not when it is planned.
 
 ### Open
 
-000000000000. **2026-09-26, OPEN, FIRST PRIORITY: the portfolio, ready to
-              submit for an "AI automation specialist" role.** Anthony, word
+000000000000. **2026-09-26, BUILT ON TESTING, waiting for his "publish": the
+              portfolio, ready to submit for an "AI automation specialist"
+              role.** /anthony rearranged (who, walkthrough video, four
+              projects with links, what I do, how I work, contact) and
+              /anthony/cv updated. Confirmed by him: the Loom video is the
+              StellaXafe walkthrough; publish only after he looks at testing.
+              The `assistant` redeploy (13 layout lines) is approved but
+              blocked: no Supabase token in this environment. Anthony, word
               for word (voice note, lightly cleaned):
               "let's focus on arranging the portfolio because I want to submit
               the link right away... If there are things in the CV that need

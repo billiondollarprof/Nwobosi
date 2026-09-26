@@ -79,7 +79,7 @@ const ME = {
 
    Anything longer than this stops being read and starts being skimmed. */
 const SUMMARY =
-  "I turn the work a business repeats by hand into systems that run on their own. The result is simple: someone in their first week produces work to the standard of the best person in the room. I scope to what matters now, build with what is already there, design the interface people actually use, and ship inside the timeframe rather than after it.";
+  "I turn the work a business repeats by hand into systems that run on their own, and I make sophisticated AI tools easy for people to use. The result is simple: someone in their first week produces work to the standard of the best person in the room. I scope to what matters now, build with what is already there, design the interface people actually use, and ship inside the timeframe rather than after it.";
 
 /* One role, four products beneath it.
 
@@ -108,27 +108,27 @@ const EXPERIENCE = [
     org: "StellaXafe",
     place: "Port Harcourt, Nigeria",
     dates: "2026 – Present",
-    lead: "Design and ship complete AI automation systems: architecture, data model, access control, integrations, interface and deployment. Three products taken from problem to production inside a year.",
+    lead: "Design and ship complete AI automation systems: architecture, data model, access control, integrations, interface and deployment. Four products taken from a business problem to working software inside a year, built with AI coding agents (Claude Code and a DeepSeek harness), which is how one person ships at the pace of a team.",
     items: [
       {
         name: "Amara",
         note: "amara.ng",
-        body: "Guest experience and automated CRM for hospitality, live with businesses today. It catches unhappy guests before they become 1-star reviews, because private feedback reaches management while the guest is still on site rather than appearing publicly a week later. Returning guest records, an authenticated check-in webhook a property management system can call, and automated WhatsApp messaging on arrival and departure. Each property runs as an isolated workspace. The whole product, interface included, went from first line to live production in under three months.",
+        body: "Guest experience and automated CRM for hospitality, live with businesses today. It catches unhappy guests before they leave a one-star review: they scan a QR code and say privately what went wrong while they are still on site, and an instant WhatsApp alert lets the manager fix it before it becomes a bad review or a lost guest. Returning guest records, an authenticated check-in webhook a property management system can call, and automated WhatsApp messaging on arrival and departure. Each property runs as an isolated workspace. The whole product, interface included, went from first line to live production in under three months.",
       },
       {
         name: "StellaXafe",
         note: null,
-        body: "Private, company-scoped AI for organisations that cannot risk a data leak. Multi-tenant isolation enforced in the database rather than in application code, retrieval restricted to admin-approved sources, staged model routing to control cost, and a human checkpoint before anything is sent or spent. One month from start to finished product, most of it spent on testing on top of getting the product thinking and design right. A deployment for a company can take longer still, because testing edge cases takes time and waiting on API access is sometimes part of that too.",
+        body: "Private, company-scoped AI for organisations that cannot risk a data leak. Staff ask for a report, proposal or deck, and it works from the company's approved files, reads back what it understood, and builds the finished Word, PDF, Slides or Excel file, charts included. Multi-tenant isolation enforced in the database rather than in application code, retrieval restricted to admin-approved sources, staged model routing to control cost, a model layer that runs on Claude or DeepSeek per company, and a human checkpoint before anything is sent or spent. One month from start to finished product, most of it spent on testing on top of getting the product thinking and design right. A deployment for a company can take longer still, because testing edge cases takes time and waiting on API access is sometimes part of that too.",
       },
       {
         name: "XALOM",
-        note: null,
-        body: "Digital trust and identity infrastructure for Africa. Conceived 2024. Deployed, and still in active development with a team since 2026, built as its own codebase and deployment so the identity layer stays isolated from anything beside it.",
+        note: "xalom.stellaxafe.com",
+        body: "A trust passport for the digital market in Africa, where buying from a stranger online still runs on screenshots. A seller verifies once and gets an XID, a trust record that grows with every closed deal and honest review, which a buyer checks in seconds before paying. Conceived 2024, deployed mobile first with the desktop version to follow, and in active development with a team since 2026, as its own codebase and deployment so the identity layer stays isolated from anything beside it.",
       },
       {
-        name: "Automated verse display",
-        note: "(in progress)",
-        body: "A church automation in build and test. It listens for the pastor's spoken Bible reference during a sermon and puts the matching verse on screen, which removes the person who used to do it by hand.",
+        name: "SHOMEA",
+        note: "shomea.pages.dev (in testing)",
+        body: "An automated Bible verse display, built for my church. It listens to the sermon with on-device speech recognition, hears a Bible reference the moment the preacher says it, and puts that verse on screen, switching versions on request. It runs offline with nobody operating it, which removes the person who used to do it by hand.",
       },
     ],
   },
@@ -199,12 +199,12 @@ const SKILLS = [
   {
     group: "AI and automation",
     items:
-      "AI orchestration, agents, workflow automation, RAG and knowledge systems, prompt engineering, human-in-the-loop design, staged model routing, LLM tooling (Claude, ChatGPT, Gemini)",
+      "AI orchestration, agents, workflow automation, RAG and knowledge systems, prompt engineering, human-in-the-loop design, staged model routing, model-agnostic backends (Claude and DeepSeek, switched per company), LLM tooling (Claude, DeepSeek, ChatGPT, Gemini), on-device speech recognition (Whisper, Moonshine)",
   },
   {
     group: "AI-assisted development",
     items:
-      "Builds and ships production systems using AI coding tools, without writing code by hand",
+      "Claude Code and DeepSeek agent harnesses. Builds and ships production systems with AI coding agents, without writing code by hand, with written rules, tests and deploy checks that keep the agents' output safe to ship",
   },
   {
     group: "Integration",
