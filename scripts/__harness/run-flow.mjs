@@ -97,6 +97,10 @@ for (const walk of [
   /* Added 2026-09-23. Laid out like an upload only when the agreed brief
      says so: its font, heading colour and margins in the Word file. */
   "scripts/__harness/layout.cjs",
+  /* Added 2026-09-23. Anthony: "couldn't search the Internet and couldn't
+     skip the search." A failed search has to give the permission card back,
+     both answers with it, or the person is trapped in it. */
+  "scripts/__harness/search-skip.cjs",
 ]) {
   const run = spawn("node", [walk], { stdio: "inherit" });
   const code = await new Promise((resolve) => run.on("close", resolve));

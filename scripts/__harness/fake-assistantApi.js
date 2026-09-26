@@ -11,13 +11,36 @@
 
 export { toApiMessages } from "../../src/shared/assistantApi.js";
 
-export function sendTurn({ stage = "orient", messages = [], onMeta, onText, onDone }) {
+export function sendTurn({ stage = "orient", messages = [], onMeta, onText, onDone, onError }) {
   window.__TURNS = window.__TURNS || [];
   window.__TURNS.push(stage);
   /* What each stage was actually sent, so a walk can check the model was
      told something, not just that the screen shows it. */
   window.__SENT = window.__SENT || [];
   window.__SENT.push({ stage, messages });
+
+  /* A TURN THAT FAILS, WHICH THIS STUB COULD NOT DO BEFORE.
+
+     Added 2026-09-23. Every route in here ended in onDone, so a walk could
+     only ever see turns that finished. The failure that took Anthony's
+     search away was a turn that threw, and the screen's answer to a thrown
+     turn was the one thing nobody could walk. That is why the missing
+     permission card went unnoticed.
+
+     window.__ERRORS sets it per stage:
+
+       window.__ERRORS = { research: { reason: "stream", message: "..." } }
+
+     Same shape the real onError receives, so the page cannot tell the
+     difference. */
+  const failure = window.__ERRORS && window.__ERRORS[stage];
+  if (failure) {
+    setTimeout(() => {
+      onMeta?.({ tier: "standard", stage });
+      onError?.(failure);
+    }, 30);
+    return () => {};
+  }
 
   const queue = (window.__SCRIPT && window.__SCRIPT[stage]) || [];
   const reply = queue.length > 1 ? queue.shift() : (queue[0] ?? "(nothing scripted)");

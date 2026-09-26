@@ -60,6 +60,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk@0.68.0";
+import { centsRoundedUp, clientFor, hasKeyFor, keyNameFor, modelFor, vendorForCompany, type Vendor } from "../_shared/brain.ts";
 
 /* ==========================================================================
    1. PLUMBING
@@ -92,8 +93,10 @@ function json(body: unknown, status = 200) {
    customer's question, so it is not on any hot path.
    ========================================================================== */
 
-const READ_MODEL = "claude-sonnet-5";
-const READ_PRICE = { input: 2, output: 10 };
+/* ⚠️ The model, its price, and WHICH VENDOR all come from _shared/brain.ts.
+   The vendor is resolved inside the request handler below and never here: one
+   isolate serves several companies at once, so a module level vendor could
+   answer for the wrong one. */
 
 /* Enough to know what a document is. Private material announces itself
    early, in a header, an account line, a salary table, so reading further
@@ -151,16 +154,15 @@ type Reading = {
   cents: number;
 };
 
-async function read(text: string, name: string, truncated: boolean): Promise<Reading | null> {
-  const key = Deno.env.get("ANTHROPIC_API_KEY");
-  if (!key) {
-    console.error("ANTHROPIC_API_KEY is not set, nothing read");
+async function read(vendor: Vendor, text: string, name: string, truncated: boolean): Promise<Reading | null> {
+  if (!hasKeyFor(vendor)) {
+    console.error(`${keyNameFor(vendor)} is not set, nothing read`);
     return null;
   }
 
-  const anthropic = new Anthropic({ apiKey: key });
+  const anthropic = clientFor(vendor);
   const result = await anthropic.messages.create({
-    model: READ_MODEL,
+    model: modelFor(vendor, "standard"),
     max_tokens: 300,
     system: INSTRUCTIONS,
     tools: [VERDICT_TOOL],
@@ -180,10 +182,10 @@ async function read(text: string, name: string, truncated: boolean): Promise<Rea
   const input = (call?.type === "tool_use" ? call.input : {}) as Record<string, unknown>;
 
   const usage = result.usage;
-  const cents = Math.ceil(
-    (((usage?.input_tokens ?? 0) / 1_000_000) * READ_PRICE.input +
-      ((usage?.output_tokens ?? 0) / 1_000_000) * READ_PRICE.output) * 100,
-  );
+  const cents = centsRoundedUp(vendor, "standard", {
+    fresh: usage?.input_tokens ?? 0,
+    output: usage?.output_tokens ?? 0,
+  });
 
   /* Anything that is not an explicit all clear is treated as a warning,
      including a verdict this function does not recognise. A model that
@@ -252,6 +254,11 @@ Deno.serve(async (req) => {
     return json({ ok: false, reason: "Only an admin can do this." }, 403);
   }
 
+  /* WHICH BRAIN, READ PER REQUEST. Never cached, because one isolate serves
+     several companies at once. Falls back to Anthropic on any error, including
+     the table not being there, so this can ship before the migration does. */
+  const vendor = await vendorForCompany(staff.company_id);
+
   let body: Record<string, unknown>;
   try {
     body = await req.json();
@@ -273,7 +280,7 @@ Deno.serve(async (req) => {
 
   let reading: Reading | null = null;
   try {
-    reading = await read(text, name, truncated);
+    reading = await read(vendor, text, name, truncated);
   } catch (err) {
     console.error("read-before-publish failed", err);
     reading = null;

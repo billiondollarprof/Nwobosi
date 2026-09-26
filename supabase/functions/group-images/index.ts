@@ -38,6 +38,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk@0.68.0";
+import { clientFor, modelFor, vendorForUser } from "../_shared/brain.ts";
 
 /* The capable one. Telling seven pages of a price list from three
    unrelated logos is a judgement, and the cheap model is for naming a
@@ -48,8 +49,12 @@ import Anthropic from "npm:@anthropic-ai/sdk@0.68.0";
    read them would be paying twice to look at the same thing. That also
    means a grouped document is read as one piece rather than as pages
    stitched together afterwards, which is how a table that runs across a
-   page break survives. */
-const GROUPING_MODEL = "claude-sonnet-5";
+   page break survives.
+   ⚠️ The model now comes from _shared/brain.ts, the one place in the server
+   that names a real model. The vendor is resolved inside the request handler
+   below, never at module level: one isolate serves several companies at once.
+   This is also the one function that never looked a company up, so it resolves
+   it from the caller's own staff row. */
 
 /* Matches the cap the admin screen enforces. Beyond this the request gets
    large and the judgement gets no better. */
@@ -225,6 +230,11 @@ Deno.serve(async (req: Request) => {
   const { data: { user }, error: userError } = await asUser.auth.getUser();
   if (userError || !user) return json({ ok: false, reason: "Sign in to keep going." }, 401);
 
+  /* WHICH BRAIN, READ PER REQUEST. Never cached, because one isolate serves
+     several companies at once. Falls back to Anthropic on any error, including
+     the table not being there, so this can ship before the migration does. */
+  const vendor = await vendorForUser(user.id);
+
   let body: Record<string, unknown>;
   try {
     body = await req.json();
@@ -257,9 +267,9 @@ Deno.serve(async (req: Request) => {
   if (!content.length) return json({ ok: false, reason: "None of those can be read as pictures." }, 400);
 
   try {
-    const anthropic = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY")! });
+    const anthropic = clientFor(vendor);
     const reply = await anthropic.messages.create({
-      model: GROUPING_MODEL,
+      model: modelFor(vendor, "standard"),
       /* Room for ten pages of dense text plus the grouping around it. */
       max_tokens: 16000,
       system: INSTRUCTIONS,

@@ -52,6 +52,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk@0.68.0";
+import { clientFor, hasKeyFor, keyNameFor, specialFor, vendorForCompany, type Vendor } from "../_shared/brain.ts";
 
 /* ==========================================================================
    1. PLUMBING
@@ -86,7 +87,16 @@ function json(body: unknown, status = 200) {
    makes this feel worse than typing it themselves.
    ========================================================================== */
 
-const DESCRIBE_MODEL = "claude-haiku-4-5-20251001";
+/* ⚠️ THIS ONE DOES NOT RUN AT A LEVEL, AND THAT IS DELIBERATE.
+   It asks the SMALL model to describe a document, because that is a short
+   job, and it PINS the dated snapshot rather than floating on the bare name.
+   A pinned snapshot and a floating name are different request strings, so
+   deriving this from a level would quietly change which model answers.
+   The name now lives in _shared/brain.ts, per vendor, so the exception
+   survives a company changing vendor. Anthony's call whether this job
+   should move onto a level like the rest.
+   ⚠️ The vendor is resolved inside the request handler below, never at module
+   level: one isolate serves several companies at once. */
 
 /* Enough to know what a document is and what it is called. A document
    announces itself in the first page or two: a title, a header, a purpose
@@ -138,17 +148,17 @@ Judge what is actually in front of you, not what the file name suggests.`;
 type Described = { title: string; description: string };
 
 async function describe(
+  vendor: Vendor,
   content: Anthropic.MessageParam["content"],
 ): Promise<Described | null> {
-  const key = Deno.env.get("ANTHROPIC_API_KEY");
-  if (!key) {
-    console.error("ANTHROPIC_API_KEY is not set, nothing described");
+  if (!hasKeyFor(vendor)) {
+    console.error(`${keyNameFor(vendor)} is not set, nothing described`);
     return null;
   }
 
-  const anthropic = new Anthropic({ apiKey: key });
+  const anthropic = clientFor(vendor);
   const result = await anthropic.messages.create({
-    model: DESCRIBE_MODEL,
+    model: specialFor(vendor, "describeSource"),
     max_tokens: 300,
     system: INSTRUCTIONS,
     tools: [DESCRIBE_TOOL],
@@ -218,6 +228,11 @@ Deno.serve(async (req) => {
     return json({ ok: false, reason: "Only an admin can do this." }, 403);
   }
 
+  /* WHICH BRAIN, READ PER REQUEST. Never cached, because one isolate serves
+     several companies at once. Falls back to Anthropic on any error, including
+     the table not being there, so this can ship before the migration does. */
+  const vendor = await vendorForCompany(staff.company_id);
+
   let body: Record<string, unknown>;
   try {
     body = await req.json();
@@ -264,7 +279,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const described = await describe(content);
+    const described = await describe(vendor, content);
     if (!described) return json({ ok: true, title: null, description: null });
     return json({ ok: true, title: described.title, description: described.description });
   } catch (err) {

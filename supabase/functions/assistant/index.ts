@@ -40,6 +40,8 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk@0.68.0";
+import { centsExact, clientFor, modelFor, supportsAdaptiveThinking, vendorForCompany, type Vendor } from "../_shared/brain.ts";
+import { readPage, SEARCH_TOOL_SCHEMAS, webSearch, MAX_FETCHES, MAX_SEARCHES } from "../_shared/search.ts";
 
 /* --------------------------------------------------------------------------
    CAPABILITY LEVELS, AND THE ONE PLACE A MODEL IS NAMED
@@ -56,10 +58,11 @@ import Anthropic from "npm:@anthropic-ai/sdk@0.68.0";
    vendor was in the client, and moving a deployment to another provider
    meant editing the product rather than editing a config.
 
-   Now the levels are named for what they are FOR, and MODEL_ID below is
-   the only place in the entire codebase that names a real model. Moving to
-   another provider is that one table. Nothing else moves, and no screen
-   changes at all.
+   Now the levels are named for what they are FOR, and the mapping from level
+   to a real model lives in `_shared/brain.ts`, which is the only place in the
+   server that names one. Moving a deployment to another provider is that one
+   table plus the company's row in `company_brain`. Nothing else moves, and no
+   screen changes at all.
 
    THE LADDER CAME DOWN FROM FOUR RUNGS TO TWO ON 2026-09-21. Anthony:
 
@@ -80,8 +83,8 @@ import Anthropic from "npm:@anthropic-ai/sdk@0.68.0";
    company and I say, oh, they should be able to use even one more higher
    model, like Opus. No problem."
 
-   So it is one line of MODEL_ID, set when that company is deployed, and it
-   lifts everybody in the company at once. It is never a per person setting
+   So it is one row in `company_brain`, set when that company is deployed, and
+   it lifts everybody in the company at once. It is never a per person setting
    and never a screen, because the right answer is the same for all of them
    on every job they do.
 
@@ -97,25 +100,31 @@ const LADDER = ["conversational", "standard"] as const;
 type Tier = (typeof LADDER)[number];
 
 /* THE MAPPING. The only vendor names in the product, and they are on the
-   server, in a function, behind an API key. Swapping provider is this
-   table and the PRICE table below it. */
-const MODEL_ID: Record<Tier, string> = {
-  conversational: "claude-haiku-4-5",
-  standard: "claude-sonnet-5",
-};
+   server, in a function, behind an API key. Swapping provider is now the
+   table in `_shared/brain.ts` plus the company's own row. */
+/* ⚠️ THE ONE PLACE A MODEL IS NAMED IS NOW _shared/brain.ts, NOT THIS FILE.
+   Anthony's design was that moving a deployment to another provider is one
+   table. That table is now shared by all eight functions instead of living
+   here, and it carries the price beside the model.
 
-/* Dollars per million tokens, per level. Used to turn real usage into a
-   real number of cents to take off the company's budget.
+   ⚠️ THE VENDOR IS RESOLVED PER REQUEST, further down, and never here. One
+   isolate serves several companies at once, so a module level vendor would be
+   shared between them and one company's turn could be answered by another
+   company's brain. */
 
-   THIS TABLE IS NO LONGER MIRRORED IN THE BROWSER. It used to be duplicated
+/* Dollars per million tokens, per level, held per VENDOR in
+   _shared/brain.ts and applied by `centsExact` from there. Used to turn real
+   usage into a real number of cents to take off the company's budget.
+
+   ⚠️ THE ARITHMETIC IS NOT DONE IN THIS FILE, AND THAT IS DELIBERATE. It used
+   to be, with Anthropic's cache multipliers hardcoded, which quietly overpriced
+   every DeepSeek turn. One place applies the rates so one place can be wrong.
+
+   THE RATES ARE STILL NOT MIRRORED IN THE BROWSER. They used to be duplicated
    in src/shared/config.js so an admin screen could print a rate card in
    dollars per million tokens. That is a vendor's pricing and a token count,
    which is exactly the plumbing an admin should never have to read, so the
-   screen shows outputs remaining and this table stays here. */
-const PRICE: Record<Tier, { input: number; output: number }> = {
-  conversational: { input: 1, output: 5 },
-  standard: { input: 2, output: 10 },
-};
+   screen shows outputs remaining and this stays on the server. */
 
 /* ONE LEVEL FOR THE STAFF SIDE, AND IT IS STANDARD
    There used to be a picker here: cheap for the interview, capable for the
@@ -140,26 +149,29 @@ const STAFF_TIER: Tier = "standard";
 
 /* Which levels take adaptive thinking. The small fast model behind
    conversational predates it and rejects it with a 400; everything above
-   expects it. A property of the model, so it belongs beside the mapping. */
-const ADAPTIVE_THINKING: Record<Tier, boolean> = {
-  conversational: false,
-  standard: true,
-};
+   expects it. A property of the MODEL, so it lives beside the mapping in
+   _shared/brain.ts and is asked for per request below, for whichever vendor
+   this company actually runs on. */
 
-/* NO ROUNDING UP. Anthony, 2026-09-10: "why do you suppose to be rounding up
-   numbers? That's real money."
+/* REVERTED 2026-09-23, LATER THE SAME DAY, AND THE REASON IS THE POINT.
 
-   Math.ceil charged a whole cent for a message that truly cost a fraction of
-   one, every time, always in our favour. The cause was the column rather than
-   this line: budget_cents_remaining was an integer, so a fraction had nowhere
-   to go. It is numeric now.
+   An agent working in this repository turned thinking off for orient and
+   interview on its own. It had found that the interview stage can spend its
+   whole 1100 token ceiling thinking and write nothing, and it decided that
+   was a fault to fix.
 
-   Six decimal places, because that is what the column holds. */
-function centsFor(tier: Tier, inputTokens: number, outputTokens: number) {
-  const { input, output } = PRICE[tier];
-  const dollars = (inputTokens / 1_000_000) * input + (outputTokens / 1_000_000) * output;
-  return Math.round(dollars * 100 * 1e6) / 1e6;
-}
+   Anthony did not ask for it, and he was right to be angry about it. The
+   interview REASONS. It has to weigh the answers it has just been given and
+   work out what is still missing or wrong before it asks the next question.
+   Removing that to buy back tokens was a design decision, and design
+   decisions here are his.
+
+   So the code is back exactly as he built it. If the ceiling ever does need
+   changing, it is asked for first, explained in plain words, and left alone
+   until he answers. See CLAUDE.md, "Never change what Anthony designed
+   without asking first". */
+
+
 
 /* --------------------------------------------------------------------------
    THE COMPANY'S VOICE
@@ -513,7 +525,27 @@ async function streamWithRoomToWrite(
     `stage=${stage} spent its whole ceiling thinking and wrote nothing, asking again without thinking`,
   );
 
-  const second = await once({});
+  /* SAID OUT LOUD RATHER THAN LEFT OUT. Anthony, 2026-09-23, choosing this
+     from four options: "you can do D."
+
+     This line used to pass an empty object, which only OMITS the thinking
+     setting and hopes the model reads that as off. It does not. His own logs
+     proved it: the retry fired four times and failed twice, and a failed
+     retry is billed at exactly twice the stage's ceiling, so the second go
+     spent its whole allowance thinking too and wrote nothing either. The
+     person then got "ran out of room" after being charged for two attempts.
+
+     disabled is the shape 0.68.0 knows, so the intent written above is now
+     what is actually sent, and the whole ceiling goes to the words.
+
+     WHAT DID NOT CHANGE, on purpose: thinking is still ON for the first
+     attempt on every stage, including the interview. The interview reasons,
+     which is what makes it able to weigh the answers it has just been given
+     and work out what is still missing. This is the rescue, not the rule. It
+     fires only when a turn spent everything thinking and wrote nothing, and
+     nothing had reached the screen, so the person never sees the first
+     attempt and never has to type anything. They just get their answer. */
+  const second = await once({ thinking: { type: "disabled" } });
   const a = first.usage ?? ({} as Anthropic.Usage);
   const b = second.usage ?? ({} as Anthropic.Usage);
   return {
@@ -1386,6 +1418,11 @@ Deno.serve(async (req: Request) => {
     return json({ ok: false, reason: "Could not load your company." }, 403);
   }
 
+  /* WHICH BRAIN, READ PER REQUEST. Never cached, because one isolate serves
+     several companies at once. Falls back to Anthropic on any error, including
+     the table not being there, so this can ship before the migration does. */
+  const vendor = await vendorForCompany(staff.company_id);
+
   /* ----------------------------------------------------------------------
      RULE 3: HOW MUCH, checked before spending anything
      Shown to people as outputs remaining. Never as cents, never as tokens.
@@ -1620,7 +1657,7 @@ Deno.serve(async (req: Request) => {
      the chat can show words arriving rather than a spinner.
      ---------------------------------------------------------------------- */
 
-  const anthropic = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY")! });
+  const anthropic = clientFor(vendor);
 
   /* The model behind conversational predates adaptive thinking and effort,
      and rejects both with a 400. Everything above wants them. A lookup
@@ -1628,17 +1665,55 @@ Deno.serve(async (req: Request) => {
      comparison against it reads as dead code to the type checker while
      still being the right shape for the day routing comes back.
 
+
      The cast is the SDK's typings being behind the API. 0.68.0 knows
      thinking as enabled or disabled and not as adaptive, which is the shape
      the model behind standard actually takes. Nothing else in the request
      needs loosening, so this is cast on its own rather than over the whole
      call. */
-  const thinkingExtras = ADAPTIVE_THINKING[tier]
-    ? {
+  /* ⚠️ THESE TWO STAGES DO NOT ASK FOR THINKING, AND HERE IS WHY. 2026-09-25.
+
+     Anthony's walkthrough died at the first interview question. His logs:
+
+       stage=orient spent its whole ceiling thinking and wrote nothing,
+       asking again without thinking
+
+     `orient` and `interview` are capped at 1100 tokens on purpose, so the
+     model cannot write the document instead of asking a question. Thinking is
+     counted INSIDE that same 1100. DeepSeek's documentation says thinking is
+     ON by default with effort high, so the reasoning took the whole allowance
+     and there was nothing left to write a question with, on EVERY turn. The
+     rescue below caught it and asked again with thinking off, which worked.
+     But it meant every orient and interview turn was two model calls, the
+     first one paid for in full and thrown away. The reasoning was never used.
+     It was only ever bought and discarded.
+
+     ⚠️ ASKING FOR LOW EFFORT WAS TRIED FIRST AND IT DID NOT WORK. Deployed at
+     13:36 on 2026-09-25 and the rescue fired again eleven seconds later,
+     proven from the log rather than assumed. DeepSeek's "low" is still more
+     thinking than a 1100 token cap can hold.
+
+     ⚠️ THINKING IS TURNED OFF HERE ON ANTHONY'S INSTRUCTION, not an agent's
+     judgement. 2026-09-25: "maybe turning off thinking for those stages is
+     best. but if it doesn't lead to producing good work, then I will ask you
+     to turn it on." An earlier agent made this same change unasked on
+     2026-09-23 and he refused it, correctly, because the interview reasons.
+     THE REASON IT IS RIGHT NOW AND WAS NOT THEN: on a vendor whose thinking is
+     on by default, the reasoning never survives these two stages anyway. It is
+     bought and thrown away on every single turn, so nothing is lost by not
+     buying it. It is one line to put back.
+
+     ⚠️ AND THE RESCUE BELOW STAYS, for every other stage and for any vendor
+     where a small-cap stage still starves. It is the net, not the rule. */
+  const TIGHT_STAGES = ["orient", "interview"];
+  const thinkingForStage = TIGHT_STAGES.includes(stage)
+    ? { thinking: { type: "disabled" } as unknown as Anthropic.ThinkingConfigParam }
+    : {
         thinking: { type: "adaptive" } as unknown as Anthropic.ThinkingConfigParam,
         output_config: { effort: "high" as const },
-      }
-    : {};
+      };
+
+  const thinkingExtras = supportsAdaptiveThinking(vendor, tier) ? thinkingForStage : {};
 
   /* ----------------------------------------------------------------------
      THE FIRST GATE, AND IT IS CODED RATHER THAN ASKED FOR
@@ -1656,7 +1731,15 @@ Deno.serve(async (req: Request) => {
      the page, fetch reads it properly. Fetch will only open an address that
      is already in the conversation, so it cannot wander on its own.
 
-     max_uses is a ceiling on one turn, not a leash on the searching itself.
+     THE CEILINGS ARE ENFORCED BY THIS FUNCTION NOW. They used to be passed
+     to Anthropic as `max_uses` on its hosted tools, and Anthropic counted
+     them. The tools are ours as of 2026-09-25, so the counting is ours too:
+     `MAX_SEARCHES` and `MAX_FETCHES` in `_shared/search.ts`, applied in the
+     research loop below. A ceiling that is only a sentence in a prompt is a
+     suggestion, and the whole reason these tools are declared here rather
+     than in `_shared` is that this stage is the only place allowed to have
+     them.
+
      Anthony: "once the human gives it the go-ahead, it is never limited."
      and, 2026-09-14: "equip the agent with enough instruments so it can be
      very intelligent."
@@ -1671,16 +1754,9 @@ Deno.serve(async (req: Request) => {
      these in a circle, and every one of them is his money. Twenty and twelve
      is a thorough piece of research. It is not a budget to be spent for the
      sake of it, and the prompt says so.
-
-     NOT code_execution. These tool versions do their own filtering with it
-     underneath, and declaring a second execution environment confuses the
-     model about which one it is in.
      ---------------------------------------------------------------------- */
   const searchTools = stage === "research"
-    ? [
-        { type: "web_search_20260209", name: "web_search", max_uses: 20 },
-        { type: "web_fetch_20260209", name: "web_fetch", max_uses: 12 },
-      ] as unknown as Anthropic.ToolUnion[]
+    ? (SEARCH_TOOL_SCHEMAS as unknown as Anthropic.ToolUnion[])
     : undefined;
 
   const encoder = new TextEncoder();
@@ -1750,21 +1826,39 @@ Deno.serve(async (req: Request) => {
              spinner and then the findings, which is honest about what is
              happening.
 
-             PAUSE_TURN IS NOT AN ERROR. A long server tool run comes back
-             with stop_reason "pause_turn" and the work half done. The
-             answer is to hand the response back and ask it to carry on.
-             Left unhandled it looks exactly like a model that stopped
-             mid sentence. Three continuations is enough for a real search
-             and stops a loop from running forever.
+             THE TOOLS ARE OURS NOW, AND THAT IS THE WHOLE POINT. Until
+             2026-09-25 `web_search` and `web_fetch` were Anthropic's hosted
+             tools, so Anthropic ran them on its side and handed back
+             `web_search_tool_result` blocks. That worked on Anthropic and did
+             NOTHING AT ALL on DeepSeek, silently: the stop reason was never
+             `pause_turn`, so the loop below gave up on its first round and no
+             result block ever arrived. Anthony's instruction: "can't there be
+             a search tool usable for any model not just anthropic or
+             DeepSeek". Now the model asks, `_shared/search.ts` runs it, and
+             the answer goes back as an ordinary tool result. One path, every
+             vendor, and the search cannot work on one company's brain and
+             quietly fail on the next one's.
+
+             A FAILED SEARCH IS NOT AN EMPTY ONE. "That search failed" and
+             "nothing is published on this" are different facts. Reporting the
+             first as the second is how a document ends up carrying a number
+             nobody published, so the reason is passed through in words and
+             the model is told which of the two it is holding.
              ------------------------------------------------------------ */
           const convo = [...messages];
           let fresh = 0, cWrite = 0, cRead = 0, out = 0;
           let text = "";
+          let searches = 0, fetches = 0;
           const sourcesFound: { url: string; title: string }[] = [];
 
-          for (let round = 0; round < 4; round += 1) {
+          /* THE ROUND CAP IS A BACKSTOP, NOT THE BUDGET. The budget is the
+             search and fetch ceilings below, because those are the numbers
+             the prompt promises the person and the numbers that cost money.
+             Rounds exist only so a model that keeps asking forever cannot
+             hold the request open past the plan's time limit. */
+          for (let round = 0; round < 12; round += 1) {
             const reply = await anthropic.messages.create({
-              model: MODEL_ID[tier],
+              model: modelFor(vendor, tier),
               max_tokens: MAX_OUTPUT.research,
               system: [...stable, { type: "text", text: stageInstruction }],
               messages: convo,
@@ -1776,37 +1870,99 @@ Deno.serve(async (req: Request) => {
             cWrite += reply.usage?.cache_creation_input_tokens ?? 0;
             cRead += reply.usage?.cache_read_input_tokens ?? 0;
             out += reply.usage?.output_tokens ?? 0;
+            final = reply;
 
-            for (const block of reply.content as unknown as Record<string, unknown>[]) {
+            const blocks = reply.content as unknown as Record<string, unknown>[];
+            const asked: Record<string, unknown>[] = [];
+
+            for (const block of blocks) {
               if (block.type === "text") text += String(block.text ?? "");
-
-              /* THE SOURCES COME FROM THE TOOL, NOT FROM THE MODEL. A model
-                 asked to list where it looked can write a plausible address
-                 that never existed. These are the addresses it actually
-                 opened, read off the result blocks, so they cannot be
-                 invented.
-
-                 A FAILED SEARCH DOES NOT THROW. It comes back as a normal
-                 success with an error object where the list should be. On
-                 success this content is an array; on failure it is an
-                 object. Indexing without checking would make a search that
-                 failed read exactly like a search that found nothing, and
-                 the model would fill the gap itself. */
-              if (block.type === "web_search_tool_result" && Array.isArray(block.content)) {
-                for (const r of block.content as Record<string, unknown>[]) {
-                  const url = String(r.url ?? "").trim();
-                  if (url && !sourcesFound.some((x) => x.url === url)) {
-                    sourcesFound.push({ url, title: String(r.title ?? url).slice(0, 160) });
-                  }
-                }
-              }
+              if (block.type === "tool_use") asked.push(block);
             }
 
-            if (reply.stop_reason !== "pause_turn") { final = reply; break; }
+            /* Nothing asked for means it has finished looking and is writing
+               up. The stop reason is deliberately not consulted: it differs
+               by vendor, and the presence of a tool call does not. */
+            if (!asked.length) break;
+
             convo.push({ role: "assistant", content: reply.content });
-            final = reply;
+
+            /* EVERY CALL GETS AN ANSWER, INCLUDING THE REFUSED ONES. A vendor
+               speaking OpenAI's format rejects the NEXT request outright if an
+               assistant turn carries tool calls with no tool results after
+               them, so one skipped answer breaks the whole turn rather than
+               the one call. */
+            const results: Record<string, unknown>[] = [];
+
+            for (const call of asked) {
+              const id = String(call.id ?? "");
+              const name = String(call.name ?? "");
+              const input = (call.input ?? {}) as Record<string, unknown>;
+              let content: string;
+
+              if (name === "web_search") {
+                if (searches >= MAX_SEARCHES) {
+                  content =
+                    "The ceiling on searches for this turn has been reached. Use web_fetch on an address you already have, or write up what you have found.";
+                } else {
+                  searches += 1;
+                  const found = await webSearch(String(input.query ?? ""));
+                  console.log(
+                    `research search=${searches} fetches=${fetches} provider=${found.provider} ` +
+                      `ok=${found.ok} hits=${found.hits.length}${found.reason ? ` reason=${found.reason}` : ""}`,
+                  );
+
+                  if (!found.ok) {
+                    content = `That search failed (${found.reason}). This is a failure, not an absence of information: do not treat the subject as having nothing published on it, and do not fill the gap from memory.`;
+                  } else if (!found.hits.length) {
+                    content = "That search found nothing at all. Try different words, or a different angle on it.";
+                  } else {
+                    for (const hit of found.hits) {
+                      if (!sourcesFound.some((x) => x.url === hit.url)) {
+                        sourcesFound.push({ url: hit.url, title: hit.title.slice(0, 160) });
+                      }
+                    }
+                    content = found.hits
+                      .map((hit, i) =>
+                        `${i + 1}. ${hit.title}\n   ${hit.url}${hit.snippet ? `\n   ${hit.snippet}` : ""}`)
+                      .join("\n\n");
+                  }
+                }
+              } else if (name === "web_fetch") {
+                if (fetches >= MAX_FETCHES) {
+                  content =
+                    "The ceiling on opening pages for this turn has been reached. Write up what you have.";
+                } else {
+                  fetches += 1;
+                  const page = await readPage(String(input.url ?? ""));
+                  console.log(
+                    `research fetch=${fetches} ok=${page.ok}${page.ok ? ` chars=${page.text.length}` : ` reason=${page.reason}`}`,
+                  );
+
+                  if (!page.ok) {
+                    content = `That page could not be read (${page.reason}). That is the page failing to load, not the page disagreeing with you.`;
+                  } else {
+                    if (!sourcesFound.some((x) => x.url === page.url)) {
+                      sourcesFound.push({ url: page.url, title: page.title });
+                    }
+                    content = `${page.title}\n${page.url}\n\n${page.text}`;
+                  }
+                }
+              } else {
+                content = `There is no tool called ${name}. The only two are web_search and web_fetch.`;
+              }
+
+              results.push({ type: "tool_result", tool_use_id: id, content });
+            }
+
+            convo.push({ role: "user", content: results });
           }
 
+          /* THE SOURCES COME FROM WHAT THIS FUNCTION RECEIVED, NOT FROM THE
+             MODEL. A model asked to list where it looked can write a
+             plausible address that never existed. These are the addresses it
+             actually searched and actually opened, read off the results
+             above, so they cannot be invented. */
           if (sourcesFound.length) {
             text += "\n\nWhere this came from\n" +
               sourcesFound.slice(0, 12).map((x) => `- ${x.title}\n  ${x.url}`).join("\n");
@@ -1827,7 +1983,7 @@ Deno.serve(async (req: Request) => {
           final = await streamWithRoomToWrite(
             anthropic,
             {
-              model: MODEL_ID[tier],
+              model: modelFor(vendor, tier),
               max_tokens: MAX_OUTPUT[stage] ?? MAX_OUTPUT.generate,
               system: [...stable, { type: "text", text: stageInstruction }],
               messages,
@@ -1854,13 +2010,26 @@ Deno.serve(async (req: Request) => {
         const freshInput = final.usage?.input_tokens ?? 0;
         const outputTokens = final.usage?.output_tokens ?? 0;
 
-        /* A one hour cache write costs twice the base input rate. A five
-           minute one costs 1.25. We ask for an hour above, so this is 2.
-           Getting it wrong is not a rounding error: at 1.25 the company is
-           undercharged by a third of every write, which is our money, and
-           their budget outlives what they actually spent. */
-        const inputTokens = freshInput + cacheWrite * 2 + cacheRead * 0.1;
-        const cents = centsFor(tier, inputTokens, outputTokens);
+        /* ⚠️ THE RATE TABLE WAS MADE PER VENDOR AND THIS LINE KEPT ANTHROPIC'S
+           NUMBERS HARDCODED. It read `fresh + cacheWrite * 2 + cacheRead * 0.1`
+           whatever vendor was answering. Two is Anthropic's one hour cache
+           write, and a tenth is Anthropic's cache read. DeepSeek charges ONE
+           for a write and a FIFTIETH for a read, and `_shared/brain.ts` has
+           held both of those since the table was built, with
+           `billableDollars` applying them.
+
+           So the arithmetic is no longer done here at all. `centsExact` takes
+           the four counts and applies the right vendor's numbers, which is
+           also what `support-ask` has always done, so the two now agree.
+
+           `long` because the assistant is the one stage that asks for a one
+           hour cache. It is ignored by vendors that bill a write as a miss. */
+        const cents = centsExact(vendor, tier, {
+          fresh: freshInput,
+          cacheWrite,
+          cacheRead,
+          output: outputTokens,
+        }, "long");
 
         /* If cacheRead stays at zero over a conversation, the cache is not
            holding and something above the prompt is changing between

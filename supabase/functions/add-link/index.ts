@@ -32,6 +32,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk@0.68.0";
+import { centsRoundedUp, clientFor, hasKeyFor, keyNameFor, modelFor, vendorForCompany, type Vendor } from "../_shared/brain.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -157,8 +158,10 @@ function splitIntoChunks(text: string) {
    said then.
    -------------------------------------------------------------------------- */
 
-const UNDERSTAND_MODEL = "claude-sonnet-5";
-const UNDERSTAND_PRICE = { input: 2, output: 10 };
+/* ⚠️ The model, its price, and WHICH VENDOR all come from _shared/brain.ts.
+   The vendor is resolved inside the request handler below and never here: one
+   isolate serves several companies at once, so a module level vendor could
+   answer for the wrong one. */
 
 /* Enough of the page to know what it is. A summary does not get better for
    having read the footer of a long document. */
@@ -185,17 +188,16 @@ const DESCRIBE_TOOL: Anthropic.Tool = {
   },
 };
 
-async function understand(text: string, url: string, fallbackName: string) {
-  const key = Deno.env.get("ANTHROPIC_API_KEY");
-  if (!key) {
-    console.error("ANTHROPIC_API_KEY is not set, link stored without understanding it");
+async function understand(vendor: Vendor, text: string, url: string, fallbackName: string) {
+  if (!hasKeyFor(vendor)) {
+    console.error(`${keyNameFor(vendor)} is not set, link stored without understanding it`);
     return { name: fallbackName, description: "", cents: 0 };
   }
 
   try {
-    const anthropic = new Anthropic({ apiKey: key });
+    const anthropic = clientFor(vendor);
     const result = await anthropic.messages.create({
-      model: UNDERSTAND_MODEL,
+      model: modelFor(vendor, "standard"),
       max_tokens: 300,
       tools: [DESCRIBE_TOOL],
       tool_choice: { type: "tool", name: "describe" },
@@ -214,10 +216,10 @@ async function understand(text: string, url: string, fallbackName: string) {
     const input = (call?.type === "tool_use" ? call.input : {}) as Record<string, unknown>;
 
     const usage = result.usage;
-    const cents = Math.ceil(
-      (((usage?.input_tokens ?? 0) / 1_000_000) * UNDERSTAND_PRICE.input +
-        ((usage?.output_tokens ?? 0) / 1_000_000) * UNDERSTAND_PRICE.output) * 100,
-    );
+    const cents = centsRoundedUp(vendor, "standard", {
+      fresh: usage?.input_tokens ?? 0,
+      output: usage?.output_tokens ?? 0,
+    });
 
     return {
       name: String(input.name ?? "").trim().slice(0, 120) || fallbackName,
@@ -347,6 +349,11 @@ Deno.serve(async (req) => {
     return json({ ok: false, reason: "Only an admin can add to the knowledge base." }, 403);
   }
 
+  /* WHICH BRAIN, READ PER REQUEST. Never cached, because one isolate serves
+     several companies at once. Falls back to Anthropic on any error, including
+     the table not being there, so this can ship before the migration does. */
+  const vendor = await vendorForCompany(staff.company_id);
+
   /* ------------------------------------------------------------------
      READ THE PAGE
      ------------------------------------------------------------------ */
@@ -418,7 +425,7 @@ Deno.serve(async (req) => {
      model reading one page, so their words win. */
   const read = description
     ? { name: titleFrom(html, url), description, cents: 0 }
-    : await understand(text, url, titleFrom(html, url));
+    : await understand(vendor, text, url, titleFrom(html, url));
 
   const name = read.name;
   /* Never empty. The description is what the assistant reads when it

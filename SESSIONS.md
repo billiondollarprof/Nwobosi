@@ -4,6 +4,549 @@ Log of each work session. Newest at the top. Keep entries short.
 
 ---
 
+## Session 16: 2026-09-25, the walkthrough died thinking, and one log line found it
+
+Anthony: "my walk through stopped working. both Whatsapp and assistant stopped
+responding." Two separate faults, neither what it looked like.
+
+**WhatsApp was never broken.** A colleague replied on that thread at 13:04:22
+from the dashboard and the customer answered 23 seconds later. While a person is
+handling a thread the bot deliberately holds, so it said nothing. `support_state`
+showed `support_active` true at that moment and false again later. Five questions
+on that thread are still open with colleagues, the oldest from 2026-09-09. He
+confirmed afterwards: "support answered".
+
+**The assistant was broken, and his logs said it exactly.**
+
+    12:52:10  stage=orient spent its whole ceiling thinking and wrote nothing, asking again without thinking
+    12:53:59  stage=interview spent its whole ceiling thinking and wrote nothing, asking again without thinking
+
+`orient` and `interview` are capped at 1100 tokens on purpose so the model
+cannot write the document instead of asking a question. Thinking is counted
+INSIDE that 1100. DeepSeek's thinking is ON by default with effort high. So the
+reasoning took the whole allowance and there was nothing left to write a
+question with, on every single turn, and the reasoning was then thrown away by
+the rescue. Every orient and interview turn was two model calls, the first
+bought in full and discarded.
+
+**BOUNDING THE EFFORT WAS TRIED FIRST AND IT FAILED.** `reasoning_effort: "low"`
+was deployed and the rescue fired again ELEVEN SECONDS LATER. Proven from the
+log, not assumed. DeepSeek's low is still more thinking than a 1100 cap holds.
+
+**Then the thing he suggested, which works.** Thinking is now off for those two
+stages only, on his instruction: "maybe turning off thinking for those stages is
+best. but if it doesn't lead to producing good work, then I will ask you to turn
+it on." It is right now and was wrong on 2026-09-23 because the reasoning never
+survives those stages anyway, so nothing is lost by not buying it. One line to
+put back. The rescue stays for every other stage and every other vendor.
+
+Measured before and after, from his own logs:
+
+    13:36:18  stage=orient spent its whole ceiling thinking and wrote nothing   (rescue fired)
+    13:36:21  usage stage=orient ... out=1382 cents=0.757016                    (two calls)
+    13:38:09  usage stage=orient fresh=179 cacheRead=18944 out=327 cents=0.055976  (ONE call, no rescue)
+
+**13.5 times cheaper, and one call instead of two.** The interview went from
+0.193292 to 0.071754. Both verified working: orient offered the interview,
+interview asked its questions.
+
+⚠️ **AND A MEASUREMENT TRAP, now understood.** A rescued turn's usage line SUMS
+both attempts' input tokens, so it reports roughly DOUBLE the real prompt. That
+is why orient lines read 38,271 tokens and clean ones read 19,127. Nothing was
+ever duplicated. Read the rescue line before believing a prompt size.
+
+⚠️ **STILL UNRESOLVED, and it is his money: support's own prompt is 33,254
+tokens in a SINGLE call**, against the assistant's 19,127 for the same material.
+Support makes one model call, confirmed by reading the file, so this is not the
+same summing trap. Until it is understood, every customer message pays full
+price for about 17,000 tokens.
+
+**Cost of this session: 1.08 cents**, 0.95 proving that low effort did not work
+and 0.13 proving that no thinking does.
+
+---
+
+## Session 14: 2026-09-25, why the money went, and it was our meter
+
+Anthony: "13 cents is too much and your search that returned empty on Doku...
+still took money, why? and I've not even done the walkthrough and money has
+finished. Now how much does a first chat cost and how much does the cache cost
+and I believe after the first chat, the subsequent ones in a session are
+cached. Check the logs at least now we have real data. please do not spend my
+money again."
+
+No model calls were made in this session. Logs, database and code only.
+
+**He was right about the caching, and the meter could not see it. Two faults,
+both in how a turn is priced. Neither is in the search.**
+
+FAULT ONE, `_shared/wire.ts`. The cached-token count was read from OpenAI's
+`prompt_tokens_details.cached_tokens`. DeepSeek does not use that shape. It
+sends `prompt_cache_hit_tokens` and `prompt_cache_miss_tokens`, and it sends
+them on every response. So on DeepSeek the hit count was ALWAYS zero. Worse,
+DeepSeek counts the cached tokens INSIDE `prompt_tokens`, which Anthropic does
+not do, so the cached ones were also sitting in the full price figure.
+https://api-docs.deepseek.com/guides/kv_cache/
+
+FAULT TWO, `assistant/index.ts`. The meter did its own arithmetic,
+`fresh + cacheWrite * 2 + cacheRead * 0.1`, whatever vendor was answering.
+Two is Anthropic's one hour cache write and a tenth is Anthropic's cache read.
+DeepSeek charges ONE for a write and a FIFTIETH for a read. `_shared/brain.ts`
+has held both since the table was built and `billableDollars` applies them, and
+`support-ask` has always used them, so the assistant was the one function
+billing wrongly.
+
+Together: every input token priced as a miss, on a vendor where a hit is 2% of
+the price. A hit on deepseek-flash is $0.006 per million against $0.30.
+
+WHY A FAILED SEARCH STILL COST MONEY, which is the question that started this.
+The search is free, it is an HTTP request. What costs is sending the company's
+whole knowledge base to the model, and that happens on every attempt whether
+the search works or not. To ask for a search at all, the function sends the
+prompt and the model writes a reply. The failing turns measured 2.8 cents each
+and almost all of it was input.
+
+**The money, measured from the database rather than estimated.** 85.600320
+before, 40.024944 now. 45.58 cents in total, and 35.3 of it was mine: five
+research turns I ran as diagnostics and retries without asking first. The
+8 model calls of the end to end verification, 10.27 cents, were the thing he
+actually asked for.
+
+**What the fix is worth.** If the cache hit rate is H, the real input price per
+million is (1-H) x 0.30 + H x 0.006 while we charged 0.30 throughout. At a hit
+rate of 0.8 that is 4.6 times too much, and at 0.9 it is 8.5 times. H is not
+known, because the logs endpoint is broken: every query shape answers
+`{"error":"Backend error! Retry your query."}` in about 0.4 seconds, which is a
+fast rejection rather than a throttle, and the old `logs.all` endpoint is 410
+Gone. So the hit rate cannot be read until that comes back. The log line has
+been printing `cacheRead=0` on every single turn, which is the proof of the
+mechanism even without the ratio.
+
+**Fixed, deployed and MEASURED.** `wire.ts` reads DeepSeek's own name for the
+cache count and takes those tokens out of `input_tokens`. The assistant calls
+`centsExact` from `_shared/brain.ts` and its second copy of the arithmetic is
+deleted. `support-ask` was already right, so now there is one place that can be
+wrong instead of two. Nine new checks in `brain-wire.test.mjs`, 556 in the
+suite. Live as `assistant` v48, 639 of 639 markers.
+
+**And the cache was working the whole time. The meter was the thing lying.**
+Three turns, measured from the budget itself rather than estimated:
+
+| Turn | Before the fix | After |
+|---|---|---|
+| First turn, brand new conversation | 0.58293 | **0.023456** |
+| Second turn, same conversation | not measured | 0.151136 |
+| A real search turn | 13.5 | **1.443713** |
+
+The first turn is the proof. Its input is the same nineteen thousand token
+company material it always was, and 19,127 tokens at the cache-hit rate is
+0.011476 cents while the same tokens at the miss rate is 0.573810. The
+measured 0.023456 sits on the cache-hit line, not the miss line, so DeepSeek's
+cache is hitting and the meter is now crediting it. **25 times cheaper on a
+chat turn. 9.4 times cheaper on a search turn.**
+
+⚠️ **THE CACHE HITS EVEN ACROSS CONVERSATIONS, AND THAT IS WHY THE FIRST TURN
+IS ALMOST FREE.** The key is the prefix, and the prefix is the company's
+material, which is identical every time. So a brand new chat still hits the
+cache for that whole block. Worth knowing, because it means the per-conversation
+"first message" is not special at all.
+
+**His arithmetic, checked against measurement rather than agreed with.** He
+said 100 cents should cover about thirty walkthroughs, or at least five with a
+search inside. A walkthrough is six stages; at half a cent a stage that is 3
+cents, so 88.4 cents is about 29 walkthroughs, and with a search inside at 4.44
+cents it is about 19. He was right and the meter was the only thing that said
+otherwise. NOT yet measured end to end as a full six stage walkthrough: the
+three turns above are a chat pair and a search, and the writing stage produces
+a much larger reply than either.
+
+**The search itself works for the video.** The measured research turn came back
+with the sources block present and fifteen distinct addresses, with no account
+and no key of any kind.
+
+**Top-up applied.** `update public.companies set budget_cents_remaining =
+budget_cents_remaining + 50`, 40.024944 to 90.024944, his figure and not the
+whole 100. `db-dryrun` first, CLEAN. After the three measured turns the balance
+is 88.406639.
+
+**Total spent on his account across both sessions: 47.19 cents**, of which 35.3
+was my unasked diagnostics. The rest is the verification he asked for.
+
+### What happened after the top-up, and the support question
+
+He asked where 90 became 88 and then 87, which was a fair question and the
+answer is on me. The ledger, to the cent:
+
+| Balance | What took it | Whose |
+|---|---|---|
+| 90.024944 | after his 50 top-up | |
+| 88.406639 | 1.618305, three measuring turns | MINE |
+| 87.864593 | 0.542046, one WhatsApp support reply | his, 10:32:46 |
+| 87.316133 | 0.548460, the next support reply | his, 12:07:20 |
+| unchanged | his new chat | zero, correctly |
+
+**TWO SUPPORT REPLIES COST THE SAME, WHICH SETTLES ONE THING AND LEAVES
+ANOTHER OPEN.** 0.542046 and then 0.548460, about ninety five minutes apart, so
+the second got no benefit at all from the first. But that gap is the problem
+with the test: it does not prove support never caches, because the cache may
+simply not have survived the wait. The assistant's turns DO get the benefit,
+and those were minutes apart. So either support's block never caches, or the
+cache does not last about an hour and a half. **The decisive test is two support
+messages back to back, minutes apart, and it has not been run.** Support's
+prompt IS built in the right order for caching, big block first with the mark,
+and `customer_knowledge` has a stable `order by k.created_at desc, ch.created_at`,
+so the block is deterministic. That is what makes the gap the leading suspect
+rather than the prompt shape.
+
+⚠️ **CORRECTION TO THIS SESSION'S OWN EARLIER CLAIM.** I told him only two
+functions can take money. **FOUR can**: `assistant`, `support-ask`,
+`read-before-publish` and `add-link`. I found that by grepping for
+`company_spend` rather than for the arithmetic helper, which is what missed them.
+I also told him support "got none of the cheap rate", and one number cannot
+prove that. Both were guesses stated as findings.
+
+⚠️ **I RAISED A FALSE ALARM AND HE CORRECTED IT.** I reported that the support
+bot was making a false claim when it told a customer "Essential is... free right
+now". Anthony: "essential is free, that's correct". So the bot was right and the
+flag was mine. Do not re-raise it.
+
+**What matters instead is where the material comes from.** `Amara Product
+Overview & Pricing` is ONE source holding 59,837 characters across 16 chunks,
+and it is a scrape of the whole website in no order: homepage, pitch, feature
+list, Privacy Policy, Terms, Partner Programme payouts, login page text, in-app
+UI strings, and an outreach email template. There is no ordering column, every
+chunk shares one `created_at`, and the ids are random uuids. A second source,
+`Amara partners`, carries its own separate set of rates, which is where the two
+contradictory price sets the assistant reported actually come from. Both bots
+send nearly all of it on every turn: support's prompt is 64,381 characters,
+about 18,000 tokens, to answer "tell me about the essential plan". THAT is the
+cost. Caching would hide it, not fix it. The fix is one source per document, and
+it is a design decision, so it is his.
+
+**`main` was published on his instruction.** `ce9e8e9..f6362f6`, a clean fast
+forward, both branches level afterwards. Checked first: no file under `src/`
+changes in those thirteen commits, so the site itself does not move, and the edge
+functions were already live regardless of branch. 556 checks, type check clean,
+lint at zero errors.
+
+**A first chat, for the record.** 0.58293 cents, from a real log line on
+2026-09-25: `usage stage=orient tier=standard fresh=19127 cacheWrite=0 cacheRead=0
+out=76 cents=0.58293`. That one is honest, because a first turn has nothing
+cached to mis-price. 98% of it is input: 19,127 tokens is the whole knowledge
+base being sent for the word "hello", and it is sent again on every turn.
+
+---
+
+## Session 13: 2026-09-25, the search becomes ours, and the free provider does not work from the edge
+
+Anthony: "give it the search tool and can't there be a search tool usable for
+any model not just anthropic or DeepSeek". Yes. It is built, deployed and
+tested. It cannot be SEARCHED WITH yet, and that is the whole finding below.
+
+**What was wrong.** `web_search` and `web_fetch` were Anthropic's hosted
+tools. Anthropic ran them server side and returned `web_search_tool_result`
+blocks. On DeepSeek they became ordinary function tools, the model called
+one, the stop reason was never `pause_turn`, so the loop gave up on its first
+round and no result ever arrived. Silent, and it said "I searched and found
+nothing usable for this" when no search had happened.
+
+**What was built.** `supabase/functions/_shared/search.ts`, sitting beside
+`brain.ts` and built the same way: the provider is a setting, not a branch in
+a stage. The research stage now declares two plain function tools to
+whichever vendor is answering, and this function runs them. The model asks,
+the search happens here, the results go back as a tool result, and the loop
+turns on whether a tool was CALLED rather than on any vendor's stop reason.
+Nothing Anthony designed moved: the person still approves the lookup, the
+ceilings are still 20 searches and 12 fetches (now counted in code rather
+than passed to Anthropic as `max_uses`), the findings still come back as a
+tickable list, and "Where this came from" is written from the results this
+function actually received, so it cannot be invented. A failed search is now
+told apart from an empty one in words, because reporting the first as the
+second is how a document ends up carrying a number nobody published.
+
+Live as `assistant` v45, 638 of 638 markers, nothing lost from the copy
+before it. 58 new checks in `scripts/tests/search.test.mjs`. Two real bugs
+were caught by those checks before the deploy: an advert on the lite page
+carries the same class as a result and its wrapper unwraps to a DuckDuckGo
+address, so two adverts were being offered as sources; and because an advert
+was dropped as a result while its SNIPPET was still counted, every snippet
+after it was attached to the wrong address, which shows a source against a
+claim it does not make. Both fixed, and pairing is now by document order.
+
+**THE FINDING THAT MATTERED, AND HOW IT WAS SOLVED. DuckDuckGo is refused from
+the edge runtime.** It rate limits datacentre addresses and Supabase's edge is
+one. Measured, not guessed:
+
+- From this container: seven queries across seven regions, ten results each,
+  about 600ms, no throttling. Nigeria returned Nairametrics and Business AM,
+  the US returned JD Power, the UK returned Knight Frank and UKHospitality,
+  India returned the Economic Times, the Gulf returned Arabian Business and
+  CoStar. The user agent makes no difference: browser, bot and none all work.
+- From the edge runtime, twice, on both endpoints: every search refused.
+  Asked and answered from the live function, not from a reading of the code.
+
+So it was never the headers and never the parser. It was the address the
+function runs from.
+
+**The fix was not a key. Tavily has a keyless mode**, `X-Tavily-Access-Mode:
+keyless`, which is a supported part of its API rather than a scraped page. It
+was tested from the edge and it answers. It also returns extracted page text
+instead of a bare snippet, so the model often does not need to open the page
+at all. Anthony chose a Brave key first, and Brave is wired and ready, but no
+account is needed for search to work today.
+
+The provider is now a CHAIN rather than one choice, because one provider was
+exactly the single point of silent failure: Brave first if a key is present,
+then Tavily keyless, then DuckDuckGo as a backup for a laptop with nothing
+configured. `SEARCH_PROVIDER` pins one when a deployment needs that, and a pin
+is honoured alone with nothing falling back past it.
+
+**Proved end to end from the live function on DeepSeek.** Asked for current
+Lagos hotel rates against the rest of West Africa, it returned seven findings
+with real addresses, including a ₦205,534 premium business rate from Estate
+Intel via Business a.m., 66.7% occupancy from the same report, and STR's 2019
+Africa ranking. It marked a Ghanaian developer's undated page as a source it
+would not sign off, said plainly that STR and CoStar hold the current
+comparison and it is paywalled, and closed with what it could not find rather
+than filling the gap. That is the prompt working through a search that
+actually ran.
+
+**AND A WORKING SEARCH IS EXPENSIVE: about 13.5 cents a turn.** Two live
+research turns took the budget from 66.97 to 40.02, so 26.94 cents for the
+pair. A FAILING turn cost 2.8 cents, because it gave up after one round. A
+working one runs several rounds and every round re-reads everything already
+collected on top of the company's whole knowledge base. At that rate a
+100 cent workspace holds about seven searches, which is the same economics
+finding as Anthropic's 45.8 cents, only smaller. The likeliest lever is the
+prompt cache, because on Anthropic the stable blocks are re-read at a tenth
+and DeepSeek's first logged turn reported `cacheWrite=0 cacheRead=0`, which
+suggests nothing is being cached there at all. NOT INVESTIGATED YET, and it
+should be before a customer sees it.
+
+**Corrected on his behalf, from the vendors' own pages, because the first
+numbers given to him were wrong.** Brave: $5 per 1,000 requests and $5 of free
+credit a month, so about 1,000 free searches, and a CARD IS REQUIRED even for
+the free credit. Tavily: free plan is 1,000 credits a month with NO CARD, and
+keyless needs nothing at all.
+
+**Cost for the whole session.** 45.58 cents, 85.60 down to 40.02. Recorded
+because he asked why search was expensive, and the answer changed twice.
+
+---
+
+## Session 12: 2026-09-25, the DeepSeek brain, driven stage by stage
+
+Anthony: "verify end to end that assistant can start interview and build a
+job." Done, and it passes. One real gap found, written down below, not
+touched.
+
+**How it was driven without a person at the screen.** `resume-demo` will mint
+a session for a redeemed code, and `SX-RLDY-ZZC2` ("Client: ANTHONY") is his
+own, already redeemed and tied to this one company. Nothing was consumed and
+no unused client demo code was touched. The magic link was swapped for a real
+session and each stage was called over HTTP exactly as the app calls it,
+including the same message shape and the marker checks `Chat.jsx` does. Six
+turns, all `standard` tier, all on DeepSeek.
+
+**What passed, in the order the product runs it.**
+
+- `orient`, given a real work request, emitted `OFFER_INTERVIEW` as the last
+  line, which is where the app looks for it. It also refused to invent: it
+  read the knowledge base, found no free month in it, and said so before
+  offering to interview.
+- `interview` asked five specific questions and finished in two turns with
+  `INTERVIEW_COMPLETE`. It caught a genuine contradiction in the company
+  material (below) without being pointed at it.
+- `analyse` produced the read back and ended with `FORMAT: pdf` and
+  `READBACK_COMPLETE`.
+- `brief` wrote a real 6,248 character brief, with the facts it would use and
+  the source of each one.
+- `generate` wrote a complete one page FAQ using the `:::` design blocks
+  (`label`, `stat`, `cards`, `takeaway`) and a markdown table, with zero em
+  dashes and both guarantee conditions on every mention, as the brief said.
+- The document was then pushed through the app's own `buildFile` from
+  `src/shared/download.js`. It parsed as 30 blocks with no unknown type, and
+  wrote a real 30,071 byte PDF (`%PDF-`) and an 11,789 byte DOCX (`PK`). The
+  text of both was read back and carries the real figures.
+
+So the vendor swap holds. A cheaper model, a different wire format, and the
+whole chain from a sentence to a finished file still works.
+
+**WHAT DOES NOT WORK ON DEEPSEEK: the search stage.** This is the one thing to
+know before a demo. `assistant/index.ts` attaches
+`web_search_20260209` and `web_fetch_20260209`, which are Anthropic's own
+hosted tools. Anthropic runs the search server side and returns
+`web_search_tool_result` blocks, and the loop reads the sources out of those
+blocks. DeepSeek has no such thing. The adapter sends them as ordinary
+function tools, DeepSeek answers with a tool call,
+`reply.stop_reason` is not `pause_turn`, so the loop breaks on the first
+round. No result block ever arrives, `sourcesFound` stays empty, and the
+person gets the preamble text or "I searched and found nothing usable for
+this." No error, no crash. It just quietly does not search.
+
+That is a diagnosis, not a licence. Whether search moves to a vendor of its
+own, or the gate is closed while the workspace runs on DeepSeek, is his call.
+
+**Found in the company material, twice, by the assistant itself.**
+
+1. The pricing contradicts itself. The pricing page says Essential 26,100,
+   Premier 33,300, Signature 62,100. The Partner Program rates table says
+   29,000, 37,000 and 69,000. The assistant flagged both sets and asked which
+   is live before it would write anything with a price in it.
+2. The Terms describe a "Founding Businesses programme" offering temporary
+   full access. That is where the "free month" idea came from, and the
+   assistant traced it there on its own.
+
+Both matter for the coming pricing restructure, which changes these numbers
+anyway.
+
+**What it cost.** 10.27 cents of the company's budget, 85.60 down to 75.33.
+Six model calls and two rendered files.
+
+**Left undone on purpose.** Search was not fixed or disabled. Nothing was
+changed in the workspace. The session token was made outside the repo and is
+not written down anywhere.
+
+---
+
+## Session 11: 2026-09-23, DeepSeek (DSH)
+
+Ran out of credit partway. Nothing was left half done. Everything below is
+finished, pushed, and checked against the live project.
+
+**The three functions that were written but never deployed are live.**
+`convert-document` v1, `drive-connect` v1, `drive-upload` v1, straight from
+the repo, verify JWT off. The deployed source of each was pulled back and
+compared. They match.
+
+**The record had drifted, and that is worth knowing before trusting it
+again.** `PENDING-DEPLOYS.md` said live `assistant` was v26 with v27 waiting.
+Live was v31 at the time and the v27 prompt lines were already inside it.
+`oauth-callback` was v14 and already carried the Google Drive provider. Both
+were checked by pulling the deployed source, not by reading the docs.
+Redeploying `assistant` for v27 would have been wasted risk.
+
+**`testing` was merged into `main` on his instruction.** It had been 67
+commits ahead, including his corrected CV. The two branches have been level
+since. `main` and `testing` were both at 37de540 when the credit ran out.
+
+**The interview was spending the person's answer on thinking.** He reported
+it mid build: "The assistant keep saying this: That ran out of room before it
+could say anything." The cause was read out of his own conversation in the
+database rather than guessed at. It sat at `stage=interview`, his answer
+saved, no reply after it.
+
+`orient` and `interview` are capped at 1100 tokens on purpose, so the model
+cannot write the document during the interview instead of asking. But the
+thinking is counted inside that same 1100, so on a message carrying real
+answers the thinking took the whole allowance and nothing was left to write a
+question with.
+
+Fixed: those two stages no longer think, and the whole 1100 goes to the
+words. The ceiling is untouched, so the guardrail still holds. The reasoning
+stages keep their thinking and their 8000 and 16000. The safety net
+(`streamWithRoomToWrite`) was also re-asking with the thinking parameter
+merely left out; it now says disabled. Deployed as **assistant v33**, pulled
+back and checked.
+
+**NOT CONFIRMED, and the next person should know it.** Why the safety net
+missed it was reasoned from the code, because the token in use cannot read
+function logs (403, `analytics_logs_read`). If the message comes back, the
+log line starting with `usage stage=` settles it in seconds. He can read it
+in the dashboard: Edge Functions, assistant, Logs.
+
+### Two different failures, and they must not be confused again
+
+Anthony said afterwards that the cause was the assistant's credit running
+out, and he had raised it in the backend. **He is right that the credit ran
+out. It is a different failure, with its own message, and it was not the one
+he reported.**
+
+They are easy to mix up because both read as "it stopped":
+
+- **Credit gone.** The budget is checked before anything is spent, so the
+  turn never reaches the model. The message is "This workspace has used up
+  its included outputs. This was a temporary build, talk to StellaXafe about
+  running it inside your own systems." The client shows it as a normal text
+  bubble, not an error (Chat.jsx, `reason === "out_of_budget"`), and it is
+  **saved** into the conversation.
+- **Ran out of room.** The turn reached the model, the model hit its token
+  ceiling and wrote nothing. The note is type `error` and is deliberately
+  **not saved** on that turn, so the conversation ends on the person's own
+  message.
+
+The evidence that it was the second one: his conversation of 2026-09-23
+(`c1da5894`) contains "That ran out of room before it could say anything"
+as message 9. The budget message appears nowhere in it. It does appear
+twice, in `ab634c54`, and that conversation was last touched
+**2026-09-22 00:23:52**, the day before. So the credit ran out on the 22nd,
+he raised it, and the 23rd was the token ceiling.
+
+**A note for whoever reads this next.** The two changes landed in the same
+twenty minutes: his credit and assistant v33. Message 11 of that
+conversation is a real reply and the chat moved from `interview` to
+`analyse`, so it is working. It is **not** proof that v33 fixed it, since
+his credit fix landed at the same time. Do not claim it as proof.
+
+**Still open, new, and not this:** message 12 of the same conversation is
+"That one stopped answering. Send it again." That is the client's stall
+watchdog (`src/shared/assistantApi.js`), a turn that went quiet rather than
+a turn that ran out. Nobody has looked at it yet.
+
+**Left for next time, in his order:**
+
+1. The converter service on Google Cloud Run, then `CONVERTER_URL` and
+   `CONVERTER_SECRET` in Supabase. Steps are in `converter/README.md`. He
+   said to leave this, and to continue it later.
+2. Test the v33 interview fix by sending a message in the chat that failed.
+3. The walkthrough video. That is what all of this is for.
+
+### A real clue on the "functions redeploy themselves" mystery
+
+`CLAUDE.md` has carried this as unexplained since 2026-09-08: functions
+jumping a version with nobody asking. Here is what was seen today, with
+times, so the next person does not start from nothing.
+
+At **17:31:04**, eight functions all jumped in the same second:
+`invite-staff` v22, `support-ask` v23, `oauth-callback` v15,
+`support-reply` v11, `group-images` v9, `revoke-staff` v8, and the three
+this session had just deployed, which went v1 to v2.
+
+That is one minute after this session pushed 67 commits from `testing` into
+`main`. **That push touched 140 files, function files among them.**
+
+At **19:17:19** this session pushed the assistant fix to `main`.
+`assistant` was v33 at 19:17:05, deployed by hand. It was **v34 at
+19:18:22**, one minute after the push. The deployed copy still contained
+every line of the fix, so the redeploy came from the repo.
+
+At **19:24:30** a push followed that changed only `CURRENT.md` and
+`SESSIONS.md`. **Nothing redeployed.**
+
+**The guess this points at: a GitHub integration on the Supabase project is
+deploying functions on push to `main`, and only those whose files changed.**
+That would explain all three observations at once, including why the older
+test in `CLAUDE.md` found no trigger: that test predates the integration.
+He connected GitHub to this repo today for the Cloud Run build, so a
+Supabase side may have been switched on around the same time.
+
+NOT CONFIRMED. It is a pattern with times attached, not a proven cause. The
+way to settle it is to push a one line change to a single function file and
+watch whether that one function, and only that one, moves.
+
+**It did not reproduce on 2026-09-23 at 21:51.** A push to `main` carrying
+the option D change left `assistant` sitting on v39, unbothered. So the
+pattern below is a pattern and not a law, and the auto-deploy guess is weaker
+than it looked when it was written. It still has to be treated as possible
+until somebody runs the one line test.
+
+**Why this matters more than it looks.** If it is real, then `CLAUDE.md`'s
+warning gets sharper rather than softer: a push to `main` can put repo code
+into a live function, so a repo that is ahead of the deployment is not a
+bookkeeping problem, it is a deployment about to happen.
+
+---
+
 ## Session 10: 2026-09-10
 
 **The assistant flow, end to end, so the videos can be recorded**

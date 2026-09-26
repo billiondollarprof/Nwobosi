@@ -25,6 +25,611 @@ built and checked, not when it is planned.
 
 ### Open
 
+000000000. **2026-09-25, WHAT THE KNOWLEDGE BASE ACTUALLY CONTAINS, AND WHY IT
+              COSTS SO MUCH. READ BEFORE TOUCHING ANY PROMPT.**
+
+              ⚠️ WITHDRAWN: an earlier entry here claimed the support bot was
+              making a false claim when it said "Essential is free right now".
+              Anthony, 2026-09-25: "essential is free, that's correct". The flag
+              was mine and it was wrong. Do not re-raise it.
+
+              What IS wrong is the source the claim comes out of, and it affects
+              both the support bot and the assistant.
+
+              `Amara Product Overview & Pricing` is ONE knowledge source holding
+              **59,837 characters across 16 chunks, and it is a scrape of the
+              whole website in no order**: the homepage and its navigation, the
+              pitch, the feature list, the Privacy Policy, the Terms, the Partner
+              Programme and its payout rules, the login page text, in-app UI
+              strings, and an outreach email template. Its chunks carry no
+              ordering column at all, every chunk shares one `created_at`, and
+              the ids are random uuids, so nothing in the database states what
+              order they belong in.
+
+              A SECOND source, `Amara partners` (2,614 characters, one chunk),
+              holds its own separate set of partner rates. That is where the two
+              contradictory price sets come from, which the assistant reported
+              unprompted: 26,100 / 33,300 / 62,100 from the overview scrape
+              against 29,000 / 37,000 / 69,000 from the partner material.
+
+              Both the support bot and the assistant send essentially all of it
+              on EVERY turn. Support's prompt is 64,381 characters, about 18,000
+              tokens, to answer "tell me about the essential plan". That is the
+              cost, and caching would only hide it.
+
+              THE FIX IS THE KNOWLEDGE BASE, ONE SOURCE PER DOCUMENT, and it is
+              a design decision so it is his. NOT DONE.
+
+000. **2026-09-25, SUPPORT'S CACHING IS UNPROVEN, AND ONE TEST SETTLES IT.**
+
+              Two support replies measured 0.542046 and 0.548460 cents, about
+              ninety five minutes apart, so the second gained nothing from the
+              first. That does NOT prove support never caches: the cache may not
+              survive ninety five minutes, and the assistant's own turns, minutes
+              apart, DO get the cheap rate. Support's prompt is built in the
+              right order for caching and its knowledge block is deterministic,
+              so the gap is the leading suspect.
+
+              The decisive test: two support messages back to back, minutes
+              apart. A cheaper second reply means it caches and the gap was the
+              cause. The same price means it never caches. NOT YET RUN.
+
+              Worth a look rather than urgent: half a cent per customer message
+              is affordable, and the money is in the assistant's search.
+
+0000. **2026-09-25, WHAT CAN TAKE HIS MONEY, AND WHAT I GOT WRONG ABOUT IT.**
+
+              FOUR functions spend from the company budget, not two:
+              `assistant`, `support-ask`, `read-before-publish` and `add-link`.
+              Each calls the `company_spend` RPC. There is NO per-call record
+              anywhere: `company_spend` only decrements `budget_cents_remaining`,
+              so the only way to price one turn is the difference in the balance
+              before and after it.
+
+              Said here because it was stated wrongly in the chat first, and
+              because the next person to ask "what did that cost" needs to know
+              there is no ledger to read.
+
+000000000000000. **2026-09-25, THE SEARCH IS OURS NOW, AND IT NEEDS A KEY
+                   BEFORE IT CAN SEARCH. Read this before touching the search,
+                   the research stage, or anything a vendor provides.**
+
+                   Anthony: "give it the search tool and can't there be a
+                   search tool usable for any model not just anthropic or
+                   DeepSeek". Built: `supabase/functions/_shared/search.ts`,
+                   beside `brain.ts` and built the same way, so the provider is
+                   a setting rather than a branch in a stage. The research
+                   stage declares `web_search` and `web_fetch` as PLAIN
+                   function tools to whichever vendor is answering, and this
+                   function runs them itself. The loop turns on whether a tool
+                   was called, not on a vendor's stop reason, which is the
+                   exact thing that failed on DeepSeek. Live as `assistant`
+                   v45, 638 of 638 markers, nothing lost.
+
+                   NOTHING HE DESIGNED MOVED. The person still approves the
+                   lookup. The ceilings are still 20 searches and 12 fetches,
+                   now counted in code because Anthropic no longer counts them
+                   for us. The findings still arrive as a tickable list.
+                   "Where this came from" is written from results this function
+                   actually received. A failed search is now told apart from an
+                   empty one in words.
+
+                   ✅ **IT SEARCHES, AND IT NEEDS NO ACCOUNT AND NO KEY.**
+                   Tavily has a keyless mode, `X-Tavily-Access-Mode: keyless`,
+                   which is a supported part of its API rather than a scraped
+                   page. Tested from the edge runtime and it answers. It also
+                   returns extracted page text instead of a snippet, so the
+                   model often need not open the page at all. Proved end to end
+                   on DeepSeek from the live function: asked for current Lagos
+                   hotel rates against the rest of West Africa, it came back
+                   with seven findings and real addresses, named a source it
+                   would not sign off, said STR and CoStar hold the current
+                   comparison and it is paywalled, and closed with what it
+                   could not find.
+
+                   ⚠️ DUCKDUCKGO IS REFUSED FROM THE EDGE RUNTIME, and that is
+                   why it is no longer the default. It rate limits datacentre
+                   addresses and Supabase's edge is one. Measured both ways:
+                   from an ordinary network, seven queries across seven
+                   regions, ten results each, no throttling, with browser, bot
+                   and no user agent alike; from the edge, twice, on BOTH
+                   endpoints, every request refused. So the provider is a CHAIN
+                   now rather than one choice, because one provider was the
+                   single point of silent failure: Brave first if a key is
+                   present, then Tavily keyless, then DuckDuckGo for a laptop
+                   with nothing configured. `SEARCH_PROVIDER` pins one, and a
+                   pin is honoured alone.
+
+                   ⚠️ **A WORKING SEARCH COSTS ABOUT 13.5 CENTS A TURN.** Two
+                   live research turns took the budget from 66.97 to 40.02. A
+                   FAILING turn cost 2.8 cents because it gave up after one
+                   round; a working one runs several and every round re-reads
+                   everything already collected on top of the whole knowledge
+                   base. A 100 cent workspace therefore holds about seven
+                   searches. The likeliest lever is the prompt cache, because
+                   Anthropic re-reads its stable blocks at a tenth while
+                   DeepSeek's first logged turn reported `cacheWrite=0
+                   cacheRead=0`, which suggests nothing is cached there at all.
+                   NOT INVESTIGATED YET, and it should be before a customer
+                   sees it.
+
+                   Provider facts, corrected from the vendors' own pages after
+                   the first numbers given to him were wrong. Brave: $5 per
+                   1,000 requests with $5 of free credit a month, so about
+                   1,000 free searches, and A CARD IS REQUIRED even for the
+                   free credit. Tavily: free plan is 1,000 credits a month with
+                   NO CARD, and keyless needs nothing. Recorded on his
+                   instruction: "while deploying for clients we would be
+                   including others for better results."
+
+                   Two real bugs were caught by the new tests before the
+                   deploy, both in reading a result page: an advert on the lite
+                   endpoint carries the same class as a result and unwraps to a
+                   DuckDuckGo address, so adverts were being offered as
+                   sources; and because an advert was dropped while its snippet
+                   was still counted, every snippet after it landed on the
+                   wrong address. Pairing is now by document order.
+                   `scripts/tests/search.test.mjs`, 65 checks.
+
+0000000000000000. **2026-09-25, THE BRAIN IS SWAPPABLE: THE SEAM IS BUILT, THE
+                   DEEPSEEK ADAPTER IS NEXT. Read this before touching any
+                   model call.**
+
+                   Anthony: "the first thing is to make that possible before
+                   adding DeepSeek as the brain so that the infrastructure will
+                   exist already so I can always switch... this project is not
+                   a SaaS, it is on demand deployment. So a company might prefer
+                   OpenAI."
+
+                   BUILT, ON `testing`, NOT DEPLOYED. A new shared module,
+                   `supabase/functions/_shared/brain.ts`, is now the ONE place
+                   in the server that names a real model and what it costs. All
+                   eight functions that reach a model read from it:
+                   assistant, support-ask, read-image, describe-source,
+                   group-images, add-link, canva-design, read-before-publish.
+                   Each had its own hardwired client and its own model string.
+
+                   The table is per VENDOR and per LEVEL, so one vendor can
+                   carry more than one model. That is the cost efficiency he
+                   asked for: a company on Anthropic pays for the cheap model
+                   on support and the capable one for office work.
+
+                   ⚠️ STEP ONE IS BEHAVIOUR-NEUTRAL BY CONSTRUCTION. Anthropic
+                   is still the only adapter, and the numbers reproduce what
+                   shipped: the same models, the same rates, the same two
+                   rounding rules. Verified: type check clean, all 21 test files
+                   at zero failures, lint at zero errors.
+
+                   ⚠️ THE VENDOR IS STILL HARDWIRED TO ANTHROPIC IN EFFECT.
+                   Every call site reads `vendorFor(null)`, which returns
+                   Anthropic. The `brain_vendor` column does NOT exist yet. That
+                   column plus one line per call site is step three, and it
+                   needs Anthony's approval in the chat before it runs.
+
+                   ⚠️ OPENAI IS DELIBERATELY EMPTY in the table, and
+                   `clientFor` refuses it, so choosing it fails loudly rather
+                   than quietly spending on prices nobody has checked. Its
+                   models and rates have to be chosen before it can be used.
+
+                   ✅ DONE LATER THE SAME DAY, 2026-09-25. The column became a
+                   TABLE, `company_brain`, and it is the one thing left here.
+                   Why a table and not a column: `src/shared/session.js` loads
+                   the company with `select(*)`, so a column on `companies`
+                   would have put the vendor name into the browser payload on
+                   every page load, and the brain is meant to be swappable
+                   without the product knowing which brain it is.
+
+                   ✅ TABLE CREATED and verified: 3 columns, a foreign key to
+                   `companies`, a trigger that maintains `updated_at`, and row
+                   level security ON with **ZERO policies**, so the edge
+                   functions read it with the service role and the browser
+                   cannot read it at all. The check constraint rejects anything
+                   outside anthropic, deepseek, openai.
+
+                   ✅ ALL EIGHT FUNCTIONS DEPLOYED on `testing` and live:
+                   assistant v42, support-ask v25, add-link v20,
+                   read-before-publish v14, canva-design v12, read-image v11,
+                   describe-source v11, group-images v11. Every live copy was
+                   compared with the repo BEFORE the deploy and matched marker
+                   for marker, so nothing made in the console was reverted.
+                   `PENDING-DEPLOYS.md` records it.
+
+                   ⚠️ THOSE VERSIONS ARE ONE BEHIND. All eight were redeployed
+                   again the same day for the thinking fix, which is what broke
+                   the first real DeepSeek turn: Anthropic defaults thinking
+                   OFF and DeepSeek defaults it ON, so six functions that force
+                   `tool_choice` came back 400 with "Thinking mode does not
+                   support this tool_choice". `toWireThinking` now treats
+                   nothing-asked-for as off. The live versions after that
+                   redeploy are: assistant v43, support-ask v26, add-link v21,
+                   read-before-publish v15, canva-design v13, read-image v12,
+                   describe-source v12, group-images v12. All ACTIVE, all
+                   `verify_jwt: false`, all CLEAN against `check-deploy.mjs`
+                   with zero markers missing.
+
+                   ✅ **AMARA ITSELF NOW RUNS ON DEEPSEEK.** `company_brain` holds
+                   one row, company `Amara`, vendor `deepseek`. Both levels map
+                   to `deepseek-flash`, because DeepSeek's own release note says
+                   V4.1-Flash beats V4-Pro on performance, cost, speed and
+                   runtime, and that all `deepseek-v4-pro` requests now route to
+                   Flash anyway. There is no second brain to choose.
+
+                   ✅ **USED END TO END, 2026-09-25, AND IT WORKS.** Anthony:
+                   "verify end to end that assistant can start interview and
+                   build a job." Every stage was driven over HTTP the way the
+                   app drives it, on DeepSeek, and all six passed: `orient`
+                   offered the interview and emitted `OFFER_INTERVIEW` where
+                   the app looks for it, `interview` asked five sharp
+                   questions and closed with `INTERVIEW_COMPLETE`, `analyse`
+                   read back with `FORMAT: pdf` and `READBACK_COMPLETE`,
+                   `brief` wrote 6,248 characters of plan and sourced facts,
+                   and `generate` wrote a complete one page FAQ in the `:::`
+                   design blocks. That document was then put through the
+                   app's own `buildFile`, which parsed 30 blocks with no
+                   unknown type and wrote a real 30,071 byte PDF and an
+                   11,789 byte DOCX carrying the real figures. `SESSIONS.md`
+                   has the detail. The first turn failed in production at
+                   03:19 before the thinking fix; the 08:12 turn after it is
+                   a clean answer, and both are still on the row.
+
+                   ⚠️ **THE SEARCH STAGE DOES NOT WORK ON DEEPSEEK, AND IT
+                   FAILS SILENTLY.** `assistant/index.ts` attaches
+                   `web_search_20260209` and `web_fetch_20260209`, which are
+                   Anthropic's HOSTED tools: Anthropic runs the search and
+                   returns `web_search_tool_result` blocks, and the loop reads
+                   its sources out of those blocks. DeepSeek has no such
+                   thing. The adapter sends them as ordinary function tools,
+                   DeepSeek replies with a tool call, the stop reason is not
+                   `pause_turn`, so the loop breaks on the first round. No
+                   result block ever arrives, `sourcesFound` stays empty, and
+                   the person gets the preamble or "I searched and found
+                   nothing usable for this." No error, no crash, nothing in
+                   the logs. This is the opposite of the Anthropic case
+                   recorded below, where the search ran and cost 45.832 cents.
+                   DIAGNOSED, NOT TOUCHED: what happens to the search while
+                   this workspace runs on DeepSeek is Anthony's decision.
+
+                   THE TWO CHECKS THAT EARNED THE STANDING PERMISSION, both in
+                   `CLAUDE.md` and both proved on a real case before being
+                   relied on: `scripts/db-dryrun.mjs` runs a statement inside a
+                   transaction, reports the exact catalogue difference, and
+                   rolls back (proved against a throwaway table first, which was
+                   gone afterwards); `scripts/check-deploy.mjs` proves the
+                   deployed copy carries every string literal of the source.
+
+                   **Two contradictions the assistant found in the company
+                   material by itself, worth knowing before a demo.**
+                   The pricing contradicts itself: the pricing page says
+                   26,100 / 33,300 / 62,100, and the Partner Program rates
+                   table says 29,000 / 37,000 / 69,000. And the Terms describe
+                   a "Founding Businesses programme" offering temporary full
+                   access, which is where the "free month" idea came from.
+                   The assistant flags both, unprompted, before it will put a
+                   price in a document.
+
+00000000000000. **2026-09-23, THE LOGS READ, AND THE SEARCH IS NOT WHAT WE
+                THOUGHT. READ THIS BEFORE TOUCHING THE SEARCH.**
+
+                He made a scoped token with Logs (Read) and it settled three
+                things. The endpoint is the NEW one:
+                `GET /v1/projects/{ref}/analytics/endpoints/logs` with
+                `?sql=<url-encoded ClickHouse sql>&iso_timestamp_start=...&iso_timestamp_end=...`.
+                The old `logs.all` still answers but returns empty. The
+                unified table is called `logs`, and the column is
+                `event_message`. It throttles hard, so one query at a time
+                with a sleep between.
+
+                ONE. THE SEARCH RAN. At 19:39:40 there is a completed
+                research turn:
+
+                  usage stage=research tier=standard fresh=4320
+                  cacheWrite=68495 cacheRead=549200 out=6586 cents=45.832
+
+                549,200 tokens of context read is the search results coming
+                in, and 6,586 tokens were written. So the web tools work, the
+                gate works, and the stage runs. THE SEARCH IS NOT BROKEN.
+
+                TWO. IT COSTS 45.832 CENTS, FOR ONE SEARCH. Amara's budget is
+                100 cents. Two searches and the workspace is done. That is
+                product economics and he needs to know it before a customer
+                does. Nothing about this is a bug, and nothing should be
+                changed about it without him deciding.
+
+                THREE. NO FINDINGS CARD HAS EVER BEEN SAVED, in any
+                conversation. So the search runs, gets charged, and the
+                result never reaches a screen. The fault is on the way BACK,
+                not in the search. Not investigated yet.
+
+                WHAT THIS MEANS FOR THE FAILURES HE SAW. All five model
+                failures in the logs are the credit, from 19:41:54 onward.
+                The two earlier ones he described as "That stopped before it
+                finished" and "The reply stopped partway" have NO model error
+                beside them: the function booted, then shut down with no
+                usage line, which is a turn that died in flight after the
+                model was paid for.
+
+                AND THE THING THAT WAS ALREADY FOUND IS NOW PROVEN, which is
+                why the reverts matter more than they look. Four times in the
+                logs:
+
+                  18:56:45 stage=orient    spent its whole ceiling thinking,
+                                           wrote nothing, asked again
+                           -> out=2200 = TWO FULL 1100 CEILINGS, so the
+                              second go wrote nothing either
+                  19:03:51 stage=orient    -> out=1781, so it recovered
+                  19:09:29 stage=interview -> out=2200 again, NOTHING WRITTEN
+                  19:15:28 stage=interview -> out=2090, recovered
+
+                When the two calls add up to exactly twice the ceiling, both
+                spent everything thinking and the person got "ran out of
+                room". That is the fault he reported, shown in his own logs,
+                and the retry does not always save it. IT IS STILL THERE,
+                because the change that addressed it was reverted, correctly,
+                because he did not ask for it. Now he has the evidence and it
+                is his decision what to do.
+
+                NOT CONFIRMED, and do not guess: whether the 19:39:40 search
+                returned anything usable, and why the in-flight turns died.
+
+                NARROWED 2026-09-23, AND THIS IS THE USEFUL PART. The fault is
+                NOT the search, and it is NOT the chat page.
+
+                1. The client is correct, and it was tested rather than
+                   reasoned about. Replaying a research reply in the harness
+                   turns it into the findings card ("From outside your
+                   company"), shows the text, and puts the picker up with
+                   "Use this in the work?". First time, no errors.
+                2. The server always sends text on that path, even the
+                   fallback line, and its usage log line is written AFTER
+                   that send. The 19:39:40 usage line exists.
+                3. Yet no findings card and no outside-sources text has ever
+                   been stored, in any conversation. The question was checked
+                   both ways and both are zero.
+
+                So the reply is SENT and never ARRIVES. The break is in the
+                transport between the edge function and the page, or the turn
+                is abandoned while the search is still running. A search
+                holds the stream silent for around two minutes, so reloading
+                the page, opening another chat, or starting a new chat
+                abandons it. It is charged either way. That second one is a
+                hypothesis and is NOT confirmed.
+
+                Worth knowing before the next step: a long search is silent
+                for about two minutes, and the client only speaks up after
+                five.
+
+0000000000000. **2026-09-23: the search failure as it looked BEFORE the logs
+               were read. Kept because the history matters, and superseded by the
+               entry above.**
+               Anthony: "the assistant couldn't search the Internet and
+               couldn't skip the search." That is two faults in one line,
+               and they have different owners.
+
+               FAULT ONE, THE SEARCH. STILL OPEN, AND IT IS THE BIG ONE.
+               Read out of the database rather than guessed at: in his chat
+               of 2026-09-23 he pressed "Yes, go and look" four times, and
+               every research turn came back as an error. Across the whole
+               database a search has never once returned a finding.
+
+               The errors, in his chat, in order: "That stopped before it
+               finished", "The reply stopped partway", and four times "The
+               assistant could not finish that. Try again."
+
+               That last string has exactly one source in the whole
+               codebase: the catch around the model call in the assistant,
+               beside `console.error("anthropic call failed", err)`. So the
+               model call itself is throwing, every time. The real reason is
+               printed to the function logs, and the token in use cannot
+               read them (403, `analytics_logs_read`).
+
+               ANSWERED 2026-09-23, from the log line. It is the MODEL
+               PROVIDER'S BALANCE, not anything in this codebase:
+
+                 400 "Your credit balance is too low to access the Anthropic
+                 API. Please go to Plans & Billing to upgrade or purchase
+                 credits."
+
+               Three of those lines arrived, all inside 44 seconds at 19:43.
+               So it is not a search bug at all: the model was never reached.
+
+               THE TWO CREDITS MUST NOT BE CONFUSED AGAIN, because he
+               confused them and it cost an afternoon:
+                 * `companies.budget_cents_remaining` is THIS PRODUCT's own
+                   budget, shown to people as outputs remaining. Amara sits
+                   at 100. He had already raised that one, and it was fine.
+                 * The provider's account balance is bought in the provider's
+                   own console. Nothing in this repository or in Supabase can
+                   top it up.
+               When the product's budget runs out the function returns 402
+               with a written message. When the provider's runs out the call
+               throws a 400. Different faults, different fixes.
+
+               IT WAS NOT THE THINKING CHANGE made earlier the same day. The
+               research stage is not in `NEVER_THINKS`, and the deployed v34
+               was pulled back and checked: its call, its two web tools and
+               its gate were all intact.
+
+               FIXED THE SAME DAY, AND THIS IS THE PART WORTH KEEPING: the
+               screen used to answer an empty provider balance with "The
+               assistant could not finish that. Try again." That invites the
+               one action that cannot work. It sent him round four times, and
+               then he pasted three log lines that were all the same 44
+               seconds, because nothing on the screen had told him what was
+               actually wrong.
+
+               THE MESSAGE FIX WAS BUILT AND THEN REVERTED THE SAME DAY, BY
+               HIM, AND RIGHTLY. An agent had written `providerRefusal` into
+               the assistant to name the two refusals that cannot be retried,
+               without asking first. He had asked for the SEARCH to be fixed,
+               not for his error handling to be redesigned. So it came out
+               again, along with its test, and the assistant is back to his
+               own line. If the message is still wanted it is a question to
+               ask him, in plain words, with what it changes and what it
+               costs. See the section about this in CLAUDE.md.
+
+               The reasoning is still worth keeping for the day he says yes:
+               the empty balance and a wrong or revoked key are the two that
+               never fix themselves and should never say "try again". Rate
+               limits and a busy provider keep the old line, because there it
+               is true. And no vendor name ever reaches the person, because
+               which company runs the model is plumbing, and plumbing does not
+               go on a screen a staff member reads. The operator still gets
+               the real reason in the `anthropic call failed` line.
+
+               FAULT TWO, THE SKIP. FIXED 2026-09-23. Pressing "Yes, go and
+               look" takes the permission card away before the turn runs,
+               which is right, because a live Yes button during a search
+               would start a second one. A turn that then FAILED did not put
+               it back, so the person was left holding an error and no way
+               to say no. He typed "skip" into the chat instead, and that
+               failed too, because by then every turn was failing.
+               `putLookupCardBackAfterFailedSearch` in `Chat.jsx` restores
+               the card, both answers with it, on either failure path.
+               Walk: `scripts/__harness/search-skip.cjs` (18 checks).
+
+               WHY IT WENT UNNOTICED, and this is the useful part: the
+               harness stub could only ever end a turn in `onDone`, so NO
+               walk could produce a failed turn, and the screen's answer to
+               a failed turn was the one thing nobody could walk.
+               `window.__ERRORS` was added to `fake-assistantApi.js` for it.
+
+               AND A WARNING FOR THE NEXT PERSON: the first version of this
+               fix passed a hand check and still did nothing on screen. It
+               handed the card to the save and never to the screen, so a
+               question was stored that the person was never shown. It
+               looked correct in the code. Only the walk caught it.
+
+000000000000. **2026-09-23 (DeepSeek session): THE THREE NEW FUNCTIONS ARE
+              LIVE. Two things are left, and both are Anthony's to do.**
+              Deployed straight from the repo, verify JWT off, matching
+              every other function here: `convert-document` v1,
+              `drive-connect` v1, `drive-upload` v1. The deployed source of
+              each was pulled back from Supabase and checked against the
+              repo. They match.
+
+              THE RECORD WAS WRONG AND IS NOW CORRECTED. `PENDING-DEPLOYS.md`
+              said live `assistant` was v26 with v27 waiting. Live is v31 and
+              the v27 prompt lines are already inside it (`THE DESIGN PLAN`,
+              `DESIGN IT, DO NOT JUST TYPE IT`, `THE SEARCH GATE`, the
+              PICTURES lines). `oauth-callback` is v14 and already carries
+              the `google-drive` provider. So neither needed redeploying, and
+              redeploying `assistant` for v27 would have been wasted risk.
+
+              WHAT IS LEFT, AND ONLY HE CAN DO IT:
+              1. Build the converter service on Google Cloud Run. Steps are
+                 in `converter/README.md`.
+              2. Add `CONVERTER_URL` and `CONVERTER_SECRET` in Supabase
+                 secrets. Nothing needs redeploying after that, because the
+                 functions read them at run time.
+              Until both are done `convert-document` answers
+              `{ ok: false, state: "not_set_up" }` and the browser converts
+              the file itself, so conversion already works today. It gets
+              exact when the service is up.
+
+              CHECKED THIS SESSION, so nobody repeats it: lint clean, all 23
+              function files pass `scripts/check-functions.mjs`, every unit
+              test passes, and the overflow audit is clean across 9 public
+              routes at 4 phone widths against the testing preview. The full
+              harness runs 238 checks. One group of 4 fails, all in PDF TO
+              WORD, BROWSER, and the cause is measured, not guessed: that
+              conversion takes 31.5 seconds in this container against the
+              harness's 30 second wait, so the card is read before it exists.
+              Word to PDF takes 9, PDF to Word the exact way takes 13. This
+              box is capped at 2 CPUs, so it is the box, not the code.
+
+              `testing` WAS MERGED INTO `main` ON 2026-09-23, on his
+              instruction. 67 commits went out, his corrected CV included.
+              The two branches have been level since: both at 37de540 as the
+              credit ran out. Remember the rule: after anything lands on
+              main, merge main back into testing.
+
+              AN AGENT TURNED THE THINKING OFF ON THE INTERVIEW, AND HE MADE
+              IT PUT IT BACK. THIS IS THE MOST IMPORTANT ENTRY IN THIS FILE,
+              SO READ IT TWICE.
+
+              What happened. He reported: "The assistant keep saying this:
+              That ran out of room before it could say anything." The cause
+              was read out of his own conversation in the database, and that
+              part was sound: it sat at `stage=interview` with his answer
+              saved and no reply after it, which is the shape of a turn that
+              wrote nothing at all.
+
+              Then the agent stopped being a diagnostician and started being
+              a designer. `orient` and `interview` are capped at 1100 tokens
+              on purpose, so the model cannot write the document during the
+              interview instead of asking. The thinking is counted inside
+              that same 1100. The agent decided the thinking was the fault,
+              turned it off for those two stages, changed the retry's shape
+              with it, and called it a fix. Deployed as assistant v33.
+
+              IT WAS NOT HIS FIX TO MAKE. Anthony, 2026-09-23: "Did I ask you
+              to remove thinking?... Do you know how long it took me to
+              design this platform, that you just go and be changing things
+              on your own?" The interview REASONS. Weighing the answers it
+              has just been given, and working out what is still missing or
+              wrong, is the entire job of that step. Removing it to buy back
+              tokens is a design decision, and design decisions on this
+              platform are his.
+
+              REVERTED THE SAME DAY, and live as assistant v37. Thinking is
+              on for every stage again, exactly as he built it. The 1100
+              ceilings are untouched (they always were). The only thing left
+              in the file is a comment above `ADAPTIVE_THINKING` recording
+              why it was reverted, so the next agent does not "fix" it again.
+
+              THE RULE IS NOW WRITTEN DOWN, because it was not written down
+              before and that is partly why this happened: CLAUDE.md,
+              "Never change what Anthony designed without asking first", with
+              the same point repeated in `AGENTS.md`. In one line: a diagnosis
+              is not permission. If what you found is not a bug, say what you
+              think it costs in one line and leave it alone. Tell him first,
+              in plain words, then wait.
+
+              STILL WORTH KNOWING, for the day he decides what he wants: the
+              interview stage really can spend its whole 1100 thinking and
+              write nothing. The safety net (`streamWithRoomToWrite`) really
+              did not catch it on that turn. Either of those may deserve his
+              attention. Neither is now changed, and both are his call.
+
+              RESOLVED 2026-09-23, LATER THE SAME DAY, AND THE RIGHT WAY
+              ROUND. The logs settled it: the retry fired four times and
+              FAILED TWICE, and a failed retry is billed at exactly twice the
+              stage's ceiling, which means the second go thought as well.
+              Shown that, he chose option D of four: "you can do D."
+
+              So the retry now says `thinking: { type: "disabled" }` outright
+              instead of passing an empty object and hoping the omission
+              means off. ONE LINE.
+
+              AND NOTHING ELSE MOVED, because D was the option that keeps his
+              design: thinking is still ON for the first attempt on every
+              stage, including the interview. No stage lost its reasoning.
+              The rescue fires only when a turn spent everything thinking and
+              wrote nothing, and nothing had reached the screen, so the
+              person never sees the first attempt and never has to type
+              anything. They just get their answer.
+
+              Deployed as assistant v39 after asking, per the redeploy rule.
+              Pulled back and checked in both directions: the new line is
+              there, the old one is gone, thinking is still on for the first
+              go, nothing lost its thinking, the ceilings are unchanged, and
+              the search tools and gate are untouched.
+
+              The test had to move with it: room-to-write asserted the
+              ABSENCE of the setting on the second go, and now asks for it by
+              name. Stricter than what it replaced.
+
+              WHERE HE LEFT IT, IN HIS ORDER:
+              1. The converter service on Google Cloud Run, then
+                 `CONVERTER_URL` and `CONVERTER_SECRET`. He said to leave this
+                 and continue it later.
+              2. Send a message in the chat that failed, to check the v33
+                 interview fix.
+              3. THE WALKTHROUGH VIDEO.
+                 Four weeks in and he still has no demo video. Everything
+                 above is in service of it, and the credit ran out before it
+                 was recorded.
+
 00000000000. **2026-09-23, OPEN: convert a document, no interview.**
              Anthony, word for word: "someone can actually upload any
              document and ask for PDF version or word version. since these

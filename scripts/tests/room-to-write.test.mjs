@@ -13,6 +13,7 @@ import { readFileSync, mkdtempSync, writeFileSync } from "node:fs";
 import { build } from "esbuild";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { BRAIN_IMPORT_RE, BRAIN_STUB } from "./_brain-stub.mjs";
 
 let passed = 0, failed = 0;
 function check(name, cond) {
@@ -30,6 +31,12 @@ await build({
   format: "esm", platform: "neutral", bundle: false,
 });
 let code = readFileSync(join(dir, "fn.mjs"), "utf8")
+  /* ⚠️ THE BRAIN STUB GOES FIRST, BEFORE THE BLANKET STRIP BELOW.
+     Three imports are stubbed by name and then line 37 deletes every import
+     that is left. Replacing the brain import with a const has to happen
+     before that sweep, or the sweep removes it and the module then refers to
+     vendorFor without declaring it. That was a real failure, not a theory. */
+  .replace(BRAIN_IMPORT_RE, BRAIN_STUB)
   .replace(/import \{ createClient \} from "[^"]+";/, "const createClient = () => ({});")
   .replace(/import Anthropic from "[^"]+";/, "class Anthropic {}")
   .replace(/import "[^"]*edge-runtime[^"]*";/, "")
@@ -84,7 +91,15 @@ const used = (i, o) => ({ input_tokens: i, cache_creation_input_tokens: 0, cache
 
   check("IT ASKS AGAIN instead of handing back nothing", model.requests.length === 2);
   check("the first go had thinking on", "thinking" in model.requests[0]);
-  check("THE SECOND GO HAS THINKING OFF", !("thinking" in model.requests[1]));
+  /* ASKS FOR THE SETTING NOW, RATHER THAN FOR ITS ABSENCE. Anthony approved
+     this on 2026-09-23, option D of four. The second go used to pass an empty
+     object and simply leave the thinking setting out, which only HOPES the
+     model reads that as off. His logs showed it does not: the retry failed
+     twice out of four, and a failed retry is billed at twice the ceiling, so
+     the second go thought as well. It now says disabled outright, so this
+     check is stricter than the one it replaces rather than weaker. */
+  check("THE SECOND GO HAS THINKING OFF, SAID OUT LOUD",
+    model.requests[1].thinking?.type === "disabled");
   check("and no effort setting either", !("output_config" in model.requests[1]));
   check("the second go keeps the same ceiling", model.requests[1].max_tokens === 2000);
   check("the person gets the brief", shown === "# Brief\nAudience: finance");
@@ -144,6 +159,36 @@ check("the streamed call goes through the retry",
   /final = await streamWithRoomToWrite\(/.test(src));
 check("no bare stream call is left outside the helper",
   (src.match(/anthropic\.messages\.stream\(/g) ?? []).length === 1);
+
+/* --------------------------------------------------------------------------
+   7. THE EFFORT IS SET PER STAGE, WHICH IS WHAT STOPPED THE 2026-09-25 OUTAGE
+
+   His walkthrough died at the first interview question, and the log said it
+   twice in five minutes: "stage=orient spent its whole ceiling thinking and
+   wrote nothing, asking again without thinking". Thinking is counted INSIDE
+   the 1100 token cap those two stages carry, and the effort asked for was
+   high, so the reasoning took the whole allowance every turn and was then
+   thrown away. Every orient and interview turn was two model calls, the first
+   bought in full and discarded.
+
+   These checks hold the shape of the fix: low where the cap is tight, high
+   everywhere else, and THINKING STILL ON. A later agent "fixing" this by
+   switching thinking off would break the rule Anthony set on 2026-09-23:
+   "Did I ask you to remove thinking?"
+   -------------------------------------------------------------------------- */
+check("the two tight stages are named",
+  /TIGHT_STAGES = \["orient", "interview"\]/.test(src));
+check("and those two do NOT ask for thinking, on Anthony's instruction",
+  /TIGHT_STAGES\.includes\(stage\)[\s\S]{0,80}type: "disabled"/.test(src));
+/* Thinking is asked for on the FIRST attempt and disabled only in the rescue.
+   Exactly one "disabled" is right: a second one would mean somebody had turned
+   the first attempt off, which is the change Anthony refused. */
+check("every other stage still asks for adaptive thinking at high effort",
+  /thinking: \{ type: "adaptive" \}/.test(src) && /effort: "high"/.test(src));
+check("high effort is named once, so no stage lost it by accident",
+  (src.match(/effort: "high"/g) ?? []).length === 1);
+check("and the rescue stays as the safety net",
+  src.includes("asking again without thinking"));
 
 console.warn = realWarn;
 console.log(`\n${passed} passed, ${failed} failed`);

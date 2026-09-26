@@ -13,63 +13,140 @@ repo". Nothing here goes out any other way.
 
 ---
 
-## Conversion (2026-09-23)
+## 2026-09-25, later: the first real turn, and the bug it found
 
-- `convert-document`: NEW. Straight from the repo. Verify JWT off.
-- The converter service on Google Cloud Run: NEW. Steps in
-  `converter/README.md`.
-- Secrets it reads: CONVERTER_URL, CONVERTER_SECRET.
-- Until both are live, conversion still works in the browser; the card
-  says the look is not the original's.
-
-## Google Drive (2026-09-23)
-
-- `drive-connect`: NEW. Straight from the repo.
-- `drive-upload`: NEW. Straight from the repo.
-- `oauth-callback`: REDEPLOY. Live v8 matched the repo before the change
-  (checked by pulling it). The change adds the "google-drive" entry to
-  PROVIDERS (8 lines) and changes one line so the return marker names the
-  service; for Canva it is still "canva".
-- Secrets it reads: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET.
-- In Google Cloud, the OAuth client needs this exact Authorised redirect
-  URI: https://cbunsqzkhidwjtxdsmxd.supabase.co/functions/v1/oauth-callback
-  and the Google Drive API enabled.
-
-## assistant, v27, a REDEPLOY (2026-09-23)
-
-Live v26 matches the repo as it was before this change (checked by pulling
-the deployed source). v27 adds prompt lines only, and deletes nothing:
-
-- brief: "THE DESIGN PLAN for that file", slide by slide for decks, and
-  where cards, a stat, a table and takeaways go in documents
-- generate: "DESIGN IT, DO NOT JUST TYPE IT", the ::: layout blocks the
-  file writers draw (label, cards, steps, stat, takeaway) and their rules
-- THE SEARCH GATE: the research stage is refused (403) unless the
-  person's last message is exactly "Yes, go and look.", so the web is
-  never reached without their yes, whatever the browser sends.
-  search-gate.test.mjs keeps the chat's words and the server's the same.
-- PICTURES: the interview asks once where a picture would help (their own
-  photos, a written prompt for an image generator, or stock photos with
-  the search yes), the read back says which picture goes where, and the
-  writer places them with `:::image name | caption`.
-
-Checked again 2026-09-23 after the pictures lines: live is still v26 with
-the same ezbr_sha256, and the diff against the repo before this change
-deletes nothing.
-
-## Before that: nothing pending
-
-The money fix and both ceilings went out on 2026-09-10 and are confirmed
-working against live traffic:
+**The staff side worked on DeepSeek, first try.** Anthony typed hello and got a
+reply. The usage line, verbatim:
 
 ```
-support usage fresh=1157 cacheWrite=22739 cacheRead=0 out=163 cents=3.039575
+usage stage=orient tier=standard fresh=19127 cacheWrite=0 cacheRead=0 out=76 cents=0.58293
 ```
 
-`cents=3.039575` rather than a whole number, and `cacheWrite=22739` against
-the old `11009`, which is the raised ceiling reading all 82,178 characters
-Amara has published instead of stopping at 40,000.
+**0.58 of one cent.** 19,127 input at $0.30 per million plus 76 output at $1.20
+per million is exactly that, so DeepSeek answered and the meter is right.
+`cacheWrite=0` is correct for this vendor: a write bills as an ordinary miss and
+is already inside `fresh`.
 
-Amara's budget went from 76.000000 to 72.960425. Exact.
+**The WhatsApp side did not answer, and the log said why:**
 
-`support-ask` version 11. `assistant` version 7.
+```
+support model call failed Error: 400
+"Thinking mode does not support this tool_choice"
+```
+
+⚠️ **SIX OF THE EIGHT FUNCTIONS WERE BROKEN ON DEEPSEEK, AND THE ASSISTANT HID
+IT.** Anthropic leaves thinking OFF unless a request turns it on. DeepSeek turns
+it ON unless a request says otherwise. The adapter sent nothing when nothing was
+asked for, so the same request meant "no thinking" on Anthropic and "all the
+thinking" on DeepSeek, and DeepSeek refuses thinking together with a forced tool.
+
+Six of the eight force a tool by name and none of them sets thinking, so all six
+were broken. The assistant worked because it DOES set thinking and does not force
+a tool, which is exactly why the fault was invisible until a customer-facing
+function was used.
+
+Fixed in `_shared/wire.ts`: asking for nothing now means OFF, out loud, which is
+parity with the vendor this code was written against.
+
+**Redeployed, every one verified:**
+
+| function | now |
+|---|---|
+| `assistant` | **v43** |
+| `support-ask` | **v26** |
+| `add-link` | **v21** |
+| `canva-design` | **v13** |
+| `read-image` | **v12** |
+| `describe-source` | **v12** |
+| `group-images` | **v12** |
+| `read-before-publish` | **v15** |
+
+⚠️ **`support-ask` HAS STILL NOT ANSWERED A REAL MESSAGE.** It is fixed and
+deployed, and the shape that failed is now a test, but a person has to send one
+before this is finished.
+
+## Checked against the live project, 2026-09-25 (DeepSeek session)
+
+**Eight functions were deployed, and every version written below was stale.**
+The 2026-09-23 check recorded `assistant` at v31 and three functions at v1.
+Before deploying, every live copy was compared against the repo and all eight
+carried it marker for marker, so nothing had been changed in the console and
+left out of git. The versions had moved; the code had not.
+
+| function | was | now | markers checked | lost |
+|---|---|---|---|---|
+| `assistant` | v41 | **v42** | 623 | 0 |
+| `support-ask` | v24 | **v25** | 67 | 0 |
+| `add-link` | v19 | **v20** | 13 | 0 |
+| `read-before-publish` | v13 | **v14** | 9 | 0 |
+| `canva-design` | v11 | **v12** | 9 | 0 |
+| `read-image` | v10 | **v11** | 28 | 0 |
+| `describe-source` | v10 | **v11** | 10 | 0 |
+| `group-images` | v10 | **v11** | 52 | 0 |
+
+All eight are ACTIVE with `verify_jwt` off, unchanged. Each was checked with
+`node scripts/check-deploy.mjs` before and after, which is the standing
+permission in `CLAUDE.md` being used for the first time.
+
+⚠️ **Not yet used.** Nothing here has been exercised by a person since the
+deploy, so it is verified structurally and not by use.
+
+## Checked against the live project, 2026-09-23 (DeepSeek session)
+
+Everything below was pulled from Supabase and compared with the repo. The
+record had drifted, so what follows replaces what was written here before.
+
+### assistant is v31, and v27 is already inside it
+
+The old note said live was v26 and that v27 was waiting. Live is **v31**.
+The v27 prompt lines are all present in the deployed copy:
+
+- `THE DESIGN PLAN` (brief)
+- `DESIGN IT, DO NOT JUST TYPE IT` and the `:::` layout blocks (generate)
+- `THE SEARCH GATE` (research is refused unless the person said yes)
+- the PICTURES lines and `:::image`
+
+Nothing to do. Do not redeploy it for v27, because v27 is live already.
+
+### oauth-callback is v14, and google-drive is already inside it
+
+The old note said this one needed a REDEPLOY to add the Drive provider. It
+does not. The deployed v14 already carries the `google-drive` provider entry.
+
+### The three new functions went out on 2026-09-23
+
+Deployed by the DeepSeek session, straight from the repo, verify JWT off,
+matching every other function here.
+
+| function | version | state |
+|---|---|---|
+| `convert-document` | v1 | ACTIVE |
+| `drive-connect` | v1 | ACTIVE |
+| `drive-upload` | v1 | ACTIVE |
+
+The deployed source of all three was pulled back and checked against the
+repo. They match.
+
+## Still waiting, and none of it is a code deploy
+
+### 1. The converter service on Google Cloud Run
+
+`converter/` is written and was tested here with LibreOffice 24.2 and
+pdf2docx 0.5.13. The service itself is not built. The steps are in
+`converter/README.md`.
+
+Until it exists, `convert-document` answers `{ ok: false, state:
+"not_set_up" }` and the browser converts the file itself, saying the look is
+not the original's. So conversion already works. It gets exact when the
+service is up.
+
+### 2. Two secrets in Supabase
+
+Add these once the converter service has a URL. Nothing needs redeploying
+afterwards, because the functions read them at run time.
+
+- `CONVERTER_URL`
+- `CONVERTER_SECRET`
+
+The Google pair, `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`, are already
+stored, which is what `drive-connect` assumes in its header.

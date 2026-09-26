@@ -1,13 +1,25 @@
 # CLAUDE.md
 
-This file tells Claude how to work on this project. The product is StellaXafe.
+The rules for working on this project. The product is StellaXafe.
+
+**These rules are not for Claude alone. Every agent working in this repo
+follows them: Claude, DeepSeek, Codex, Gemini, Copilot, and whatever comes
+after them.** Anthony, 2026-09-23: "if I'm giving you the token I want you
+to see CLAUDE.md as your rule and follow it... add in it, that this rule is
+also for DeepSeek agents."
+
+What differs from one agent to the next is only the filename its tool opens.
+It is never the rules once they are open. So this file is written to be read
+by any of them, and the name of the agent reading it is not a reason to skip
+a rule inside it.
 
 **This is the one real rules file, and it is deliberately the only one.**
-`AGENTS.md` sits beside it as a short signpost, because that is the name
-most other coding agents look for. It points here and holds no rules of its
-own, so the two cannot drift apart. If another tool needs its own name, such
-as `GEMINI.md` or `COPILOT.md`, add another signpost like that one. Never
-copy this file.
+Beside it sit short signposts, because each tool looks for its own name:
+`AGENTS.md`, `GEMINI.md`, and `.github/copilot-instructions.md`. They point
+here and hold no rules of their own, so none of them can drift apart from
+this one. The DeepSeek harness reads this file and `AGENTS.md` directly, so
+it needs no signpost of its own. If another tool needs its own name, such as
+`.cursorrules`, add another signpost like those. Never copy this file.
 
 ## How to talk to the user
 
@@ -152,6 +164,52 @@ Anthony is in charge. That is not a formality, it is the working rule.
   exceptions. A green build is not evidence a page renders, and neither is
   reading the markup. Look at it on a phone width and a desktop width, in
   both themes, before the word "done" appears.
+
+## Never change what Anthony designed without asking first
+
+Anthony, 2026-09-23, after an agent turned thinking off for the `orient` and
+`interview` stages on its own:
+
+> "Did I ask you to remove thinking? You only do what I ask you to do. And
+> apart from that, if you decided to fix any bug, and that will cause you to
+> change anything that I've already built, you have to tell me first and
+> explain it to me in plain and simple language before you carry out the
+> task. You don't go and change something that I did not ask you."
+
+> "Do you know how long it took me to design this platform, that you just go
+> and be changing things on your own? You have no volition to break anything
+> that I worked and put there."
+
+What happened, so nobody repeats it. An agent found that the interview stage
+could spend its whole token ceiling thinking and write nothing. That part was
+true and worth knowing. Then it decided the thinking itself was the fault,
+turned it off for two stages, and called it a fix.
+
+It was not a fix. **The interview reasons.** Weighing the answers it has just
+been given, and working out what is still missing or wrong, is the job. The
+agent removed that to buy back tokens, which is a design decision, and design
+decisions on this platform are his. He had to find out from a review rather
+than from a question.
+
+So, from now on, and this is not advice:
+
+- **A diagnosis is not permission.** Finding the cause of something is the
+  job. Changing what you found is a separate job, and it belongs to him.
+- **If what you found is not a bug, you do not touch it.** A design choice
+  you disagree with is not a fault. Say what you think it costs, in one line,
+  and leave it exactly as it is.
+- **Tell him first, in plain words, then stop and wait.** What you want to
+  change, what it does today, what it would do instead, and what it costs.
+  Waiting means waiting, even when you are certain.
+- **Keep the change to the thing he asked for.** Do not carry a second
+  improvement along because you were already in the file.
+- **If you already changed something without asking, undo it, then ask.**
+  Put it back to what he built, say plainly what you did, and offer the change
+  as a question. Do not defend it, and do not keep half of it.
+
+The one exception is unchanged and narrow: a request that would break the live
+site, lose data, or put a false claim on a public page. Say so plainly and
+wait. This is not that.
 
 ## Start of every session
 
@@ -476,6 +534,136 @@ So the honest version of the rule is now:
 
 The paste rule exists because the repo and the deployment drift. It was never
 about the pasting. It was about not knowing. Now it can be known, so know it.
+
+### A redeploy is asked for. Every time, including a one line change.
+
+Anthony, 2026-09-23: "According to the rules, a redeploy is something that
+you should normally ask me to do... if care is not taken, something can be
+broken. So you must make sure that you are accurate by all means. Otherwise
+ask me to go to the repo and copy and paste it myself."
+
+He is right, and this was not explicit enough. A function that is already
+live is a working thing. Redeploying it puts new code in front of real
+people, so it is a live change, and live changes are asked for.
+
+**Even when he asked for the fix.** The fix is his request. The deploy is a
+separate yes, and it is his too. Say what will be deployed, say which
+function and which version it is now, and wait.
+
+### Standing permission to run SQL and deploy, once a check has proved it
+
+Anthony, 2026-09-25: *"if you can build a way to verify your SQL to ensure that
+nothing is broken, that everything is clean, then I can give you a standing
+approval to run the SQL yourself... and at the end of the build you give me
+final reports so that every process will be fast."*
+
+He is trading a round trip for a mechanism. The mechanism is two commands, and
+they must have proved themselves on a real case before they carry any authority.
+A rule that lets an agent act unverified, written before the verification
+exists, is the exact mistake the rest of this file was written to prevent.
+
+**Before any SQL:**
+```
+node scripts/db-dryrun.mjs <file.sql> --expect "<object>" --additive-only
+```
+Postgres runs DDL inside a transaction, so this runs the statement for real,
+takes a snapshot of the database's shape before and after, prints the exact
+catalogue difference, and **rolls back**. It is a dry run and nothing persists.
+The check was proved on 2026-09-25 against a throwaway table first: the table
+was created inside the transaction and was gone afterwards, which is what shows
+the rollback is real rather than assumed.
+
+**Before and after any redeploy:**
+```
+node scripts/check-deploy.mjs <slug> [--from <gitref>] [--no-loss <oldfile>]
+```
+The deployed body comes back as a transpiled bundle, so a byte comparison is
+impossible, exactly as this file already says. What survives transpiling is
+every string literal, so the check requires that **every long string literal in
+the source appears in the deployed body**. It reported 623 of 623 for the
+assistant on 2026-09-25. `--no-loss` then requires that nothing the previous
+copy had is gone, which is how a silently deleted line gets caught.
+
+**The permission, and its exact edges.**
+
+- It covers **execution of a plan Anthony has already approved**, where both
+  checks come back CLEAN. Nothing else.
+- **It never covers a design decision.** What to build, what a prompt says, what
+  a price is, whether to turn thinking off: all still his, all still asked first.
+- **Anything a check cannot prove is still asked.** A dry run proves a statement
+  is valid, additive, and does only what was intended. It does **not** prove
+  runtime behaviour, so a behaviour change still gets used by hand afterwards.
+- **SQL and deploys only.** A migration that drops or alters an existing object
+  is not covered by `--additive-only`, and anything destructive is asked for in
+  plain words first, whatever the check says.
+- **The brief is the price of the permission.** Every run ends with a short
+  report: what ran, what the checks said, and what it means. Plain words, with
+  the technical term and its meaning in brackets the first time. No narration of
+  what was tried.
+- **It is his to withdraw, per task and at any time.** If a check ever fails,
+  stop and say so rather than working around it.
+
+**When the check says the live copy is not the repo copy, the live copy wins.**
+Say it, paste it, and wait. That is not a formality: on 2026-09-25 the assistant
+was live at v41 while the register recorded v39, and `oauth-callback`,
+`convert-document`, `drive-connect` and `drive-upload` had all moved two
+versions beyond what was written down. The code turned out to match, 623 markers
+of 623, but nobody could have known that without looking.
+
+### How a redeploy actually happens here, so nobody has to guess
+
+**Nobody retypes the function. Not ever.** The tooling edits the file in the
+repo using exact text replacement, old text in and new text out, so nothing
+else in the file moves. Then the Supabase CLI uploads **that whole file** and
+bundles it.
+
+That last part is the part that matters. The whole file goes up, so anything
+sitting in the repo file at that moment becomes live. The risk is therefore
+never "a typing mistake". The risk is that the repo file is not what Anthony
+built. That is why the comparison below comes before the edit, not after.
+
+### The order, and it is not optional
+
+1. **Pull the deployed body and compare it with the repo, BEFORE editing.**
+   The technique that works: the deployed body is a transpiled bundle with
+   the types stripped and the whitespace collapsed, so a byte comparison is
+   impossible. What does work is taking every long string literal out of the
+   repo file and checking each one is present in the deployed bundle. If all
+   of them are there, the deployment is that source, and the repo is safe to
+   edit. Say the count out loud: "655 of 655".
+2. **Edit by exact replacement only.** Never rewrite the file, never tidy
+   something on the way past, never reformat.
+3. **grep the file for the thing you just added.** A script that printed "ok"
+   and a file that contains the change are two different facts.
+4. **Run `node scripts/check-functions.mjs`.**
+5. **Count the deletions in the diff.** Adding to a working function should
+   delete nothing. If something had to be replaced, list every removed line
+   in the reply.
+6. **Deploy.**
+7. **Pull the deployed body back and check it landed.** The new lines are
+   present, and the things you did not touch are still there. Both, not just
+   the first.
+8. **Say plainly what was checked, and what was not.** If the check was
+   limited, say how. "The deployed copy contains all 655 markers and the new
+   lines" is honest. "It is byte for byte the same" is not, and cannot be,
+   because of the transpiling.
+
+### When to hand it back instead
+
+Any of these means stop and give it to Anthony:
+
+- The deployed copy and the repo differ, and the difference is not yours.
+- The change is not a small addition, it is a rewrite.
+- He has asked for something you cannot verify, and the check you can do is
+  weak.
+- Anything at all where you are not sure.
+
+Then the fallback is the one he has always had, and it always works: **he
+pastes the currently deployed source into the chat, you add only the new
+lines to that, and you hand the whole function back in one copyable block**
+for him to paste into the console and deploy himself. Slow, and completely
+safe, which is the right trade when the alternative is breaking a live
+function he depends on.
 
 ### An edit that was not written to disk is not an edit
 

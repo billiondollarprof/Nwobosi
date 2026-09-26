@@ -11,6 +11,10 @@
    the copy on the site and the copy in the document drift apart. This is one
    source. Edit it here and both the live page and the PDF are current.
 
+   This file is also the source the job search reads. Anything that has to
+   match a posting against this CV reads the constants below rather than a
+   pasted copy, so there is still only one place to edit.
+
    HOW THE PDF IS MADE, AND THE TRAP THAT WAS AVOIDED
    Print the page and save as PDF. That is a real text PDF: selectable,
    parseable, single column.
@@ -47,7 +51,7 @@ import MarketingNav from "../shared/MarketingNav.jsx";
 
 const ME = {
   name: "Anthony Nwobosi",
-  title: "AI Automation Engineer",
+  title: "AI Automation Specialist",
   email: "anthony@stellaxafe.com",
   /* International format, because the reader is usually not in Nigeria. A
      local 0902 number is undiallable from abroad and some parsers will not
@@ -64,61 +68,67 @@ const ME = {
 /* The first thing anyone reads, and the only part of a CV that gets a
    reader's full attention rather than a scan.
 
-   It opens on the belief rather than on the job title, because "I make
-   complicated work simple to do" is a position somebody can agree with
-   before they have assessed anything, and every line under it is then read
-   as evidence for a claim already accepted. Opening on a list of
-   technologies gets the opposite: assessment first, and the rest of the
-   page read sceptically.
+   It opens on what he does rather than on a list of technologies, and the
+   order of the four sentences is the argument. What he does, what that
+   produces for the company, how he scopes the work, and what the finished
+   thing is like to use. A position the reader can agree with is accepted
+   before anything has been assessed, so every line under it is then read as
+   evidence for a claim already accepted. Opening on a list of technologies
+   gets the opposite: assessment first, and the rest of the page read
+   sceptically.
 
-   Three sentences. What he is for, what that produces for the company, and
-   how he works. Anything longer stops being read and starts being skimmed. */
+   Anything longer than this stops being read and starts being skimmed. */
 const SUMMARY =
-  "I make complicated work simple to do. I turn the processes a business repeats by hand into systems that run on their own, so someone in their first week produces work to the standard of the best person in the room. I scope to what matters now, build with what is already there, and ship inside the timeframe rather than after it.";
+  "I turn the work a business repeats by hand into systems that run on their own. The result is simple: someone in their first week produces work to the standard of the best person in the room. I scope to what matters now, build with what is already there, design the interface people actually use, and ship inside the timeframe rather than after it.";
 
-/* One role, three products beneath it.
+/* One role, four products beneath it.
 
-   Listing the products as three separate positions would read as three short
-   stints of two to four months each, which is the first thing a recruiter
-   would notice and the last thing worth noticing. Held together under one
-   heading, the same facts read as a continuous body of work, and the speed
-   becomes the argument rather than the weakness: production in under three
-   months, a full product in two weeks. That framing only survives scrutiny
-   because Amara is live and a stranger can open it.
+   Listing the products as separate positions would read as four short stints
+   of a few months each, which is the first thing a recruiter would notice and
+   the last thing worth noticing. Held together under one heading, the same
+   facts read as a continuous body of work, and the speed becomes the argument
+   rather than the weakness: production in under three months, most of it
+   spent on testing. That framing only survives scrutiny because Amara is live
+   and a stranger can open it.
 
-   The StellaXafe line deliberately says two weeks rather than the four days
-   the build itself took. Four days is true of the coding and invites the
-   obvious interview question, and the honest answer is the better one:
-   the product thinking is the work and the build falls out of it. Claiming
-   the smaller number would trade a strong answer for a weak boast. */
+   The StellaXafe line says one month, and the month is the honest number.
+   Most of it went on testing and on getting the product thinking right, which
+   is a better answer to "why did that take a month" than a smaller number
+   would be. The last product is marked in progress because it is not
+   finished, and a CV that says so is worth more than one that does not. */
 const EXPERIENCE = [
   {
     /* The searched title first, "Founder" second. An applicant tracking
        system weights the role headings in Experience as heavily as the one
-       at the top, so a CV that says Engineer in the header and Builder in
+       at the top, so a CV that says Specialist in the header and Builder in
        every role scores worse than it should. Both words are true of this
        job, so the order is the only decision, and the order that helps is
        the one that leads with what the posting is called. */
-    role: "AI Automation Engineer and Founder",
+    role: "AI Automation Specialist and Founder",
     org: "StellaXafe",
     place: "Port Harcourt, Nigeria",
     dates: "2026 – Present",
-    lead: "Design and ship AI automation end to end: architecture, data model, access control, integrations, interface and deployment. Three products taken from problem to production inside a year.",
+    lead: "Design and ship complete AI automation systems: architecture, data model, access control, integrations, interface and deployment. Three products taken from problem to production inside a year.",
     items: [
       {
         name: "Amara",
         note: "amara.ng",
-        body: "Guest experience and automated CRM for hospitality. From first line to live production in under three months, and businesses run on it today. Private guest feedback reaches management while the guest is still on site rather than appearing publicly a week later, alongside returning guest records, an authenticated check-in webhook a property management system can call, and automated WhatsApp messaging on arrival and departure. Each property runs as an isolated workspace.",
+        body: "Guest experience and automated CRM for hospitality, live with businesses today. It catches unhappy guests before they become 1-star reviews, because private feedback reaches management while the guest is still on site rather than appearing publicly a week later. Returning guest records, an authenticated check-in webhook a property management system can call, and automated WhatsApp messaging on arrival and departure. Each property runs as an isolated workspace. The whole product, interface included, went from first line to live production in under three months.",
       },
       {
         name: "StellaXafe",
         note: null,
-        body: "Private, company-scoped AI for organizations that cannot risk a data leak. Multi-tenant isolation enforced in the database rather than in application code, retrieval restricted to admin-approved sources, staged model routing to control cost, and a human checkpoint before anything is sent or spent. Two weeks from start to finished product, most of it spent on product thinking and design rather than on building. A deployment for a company is faster again, where the long pole is getting API access approved rather than the work itself.",
+        body: "Private, company-scoped AI for organisations that cannot risk a data leak. Multi-tenant isolation enforced in the database rather than in application code, retrieval restricted to admin-approved sources, staged model routing to control cost, and a human checkpoint before anything is sent or spent. One month from start to finished product, most of it spent on testing on top of getting the product thinking and design right. A deployment for a company can take longer still, because testing edge cases takes time and waiting on API access is sometimes part of that too.",
       },
       {
         name: "XALOM",
         note: null,
-        body: "Digital trust and identity infrastructure for Africa. Conceived 2024, in development with a team since 2026, built as its own codebase and deployment so the identity layer stays isolated from anything beside it.",
+        body: "Digital trust and identity infrastructure for Africa. Conceived 2024. Deployed, and still in active development with a team since 2026, built as its own codebase and deployment so the identity layer stays isolated from anything beside it.",
+      },
+      {
+        name: "Automated verse display",
+        note: "(in progress)",
+        body: "A church automation in build and test. It listens for the pastor's spoken Bible reference during a sermon and puts the matching verse on screen, which removes the person who used to do it by hand.",
       },
     ],
   },
@@ -131,7 +141,7 @@ const EXPERIENCE = [
     items: [],
     bullets: [
       "Taught final year students and prepared them for the WASSCE examination.",
-      "Rebuilt explanations around what students were actually getting wrong rather than around the syllabus order.",
+      "Rebuilt explanations around the exact points students were getting wrong rather than around the syllabus order.",
     ],
   },
   {
@@ -142,9 +152,20 @@ const EXPERIENCE = [
     lead: null,
     items: [],
     bullets: [
-      "Led community outreach projects, managed funding, and organized hospital and school campaigns.",
+      "Led community outreach projects, managed funding, and organised hospital and school campaigns.",
+      "Also served as overall chairman for community projects during the same period.",
     ],
   },
+];
+
+/* Leadership held separately from Education, because the two answer different
+   questions. One says what he studied, the other says what he was trusted
+   with while he studied, and a reader scanning for the second should not have
+   to find it inside the first. */
+const LEADERSHIP = [
+  "Chairman, Technical Interest Group (TIG), Federal University Otuoke, 2018 – 2022. Led engineering students to national competition wins and prepared the next team before graduation.",
+  "Best Student Representative, Faculty of Engineering, 2022.",
+  "Assistant leader, church facilities unit (declined full leadership due to relocation plans).",
 ];
 
 /* Published work and original research. Both predate the tech work and both
@@ -154,8 +175,8 @@ const EXPERIENCE = [
 const WRITING = [
   {
     title: "Organic Nomenclature Simplified: IUPAC System Made Easy",
-    meta: "Co-author · Dozie Prints & Publishing, 2019",
-    body: "A guide to organic nomenclature for students, approved by the Delta State Ministry of Education and available on Amazon (ASIN B07N7CV3BY).",
+    meta: "Co-author with Edet Odokwo · Dozie Prints & Publishing, 2019",
+    body: "A guide to organic nomenclature for students, approved by the Delta State Ministry of Education and available on Amazon (ASIN B07N7CV3BY). Students still use it, and it carries strong feedback online and offline.",
   },
   {
     title: "Methane emissions from abandoned oil and gas wells",
@@ -168,11 +189,7 @@ const EDUCATION = {
   degree: "B.Eng Civil Engineering",
   school: "Federal University Otuoke, Bayelsa State, Nigeria",
   dates: "Graduated February 2023",
-  detail: "CGPA 4.11 / 5.0 (Second Class Upper)",
-  extra: [
-    "Best Student Representative, Faculty of Engineering, 2022.",
-    "Chairman, Technical Interest Group, 2018 – 2022. Led a team of engineering students to national competition wins and handed over a group that continued after graduation.",
-  ],
+  detail: "CGPA 4.21 / 5.0 (Second Class Upper)",
 };
 
 /* Grouped rather than listed flat, because a parser reads the whole line and
@@ -183,6 +200,11 @@ const SKILLS = [
     group: "AI and automation",
     items:
       "AI orchestration, agents, workflow automation, RAG and knowledge systems, prompt engineering, human-in-the-loop design, staged model routing, LLM tooling (Claude, ChatGPT, Gemini)",
+  },
+  {
+    group: "AI-assisted development",
+    items:
+      "Builds and ships production systems using AI coding tools, without writing code by hand",
   },
   {
     group: "Integration",
@@ -398,6 +420,23 @@ export default function CV() {
             </Section>
 
             {/* ============================================================
+                LEADERSHIP
+                ============================================================ */}
+            <Section title="Leadership">
+              <ul className="cv-list list-disc pl-5 flex flex-col gap-1">
+                {LEADERSHIP.map((l) => (
+                  <li
+                    key={l}
+                    className="cv-body text-[14.5px] leading-[1.6]"
+                    style={{ color: "var(--text-3)" }}
+                  >
+                    {l}
+                  </li>
+                ))}
+              </ul>
+            </Section>
+
+            {/* ============================================================
                 PUBLICATION AND RESEARCH
                 ============================================================ */}
             <Section title="Publication and research">
@@ -436,17 +475,6 @@ export default function CV() {
                 <div className="cv-body text-[14px] mt-0.5" style={{ color: "var(--text-3)" }}>
                   {EDUCATION.detail}
                 </div>
-                <ul className="cv-list list-disc pl-5 mt-2.5 flex flex-col gap-1">
-                  {EDUCATION.extra.map((e) => (
-                    <li
-                      key={e}
-                      className="cv-body text-[14.5px] leading-[1.6]"
-                      style={{ color: "var(--text-3)" }}
-                    >
-                      {e}
-                    </li>
-                  ))}
-                </ul>
               </div>
             </Section>
 

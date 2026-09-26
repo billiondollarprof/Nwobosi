@@ -984,8 +984,13 @@ export default function Chat() {
             { id: nextId(), role: "assistant", type: "error", content: why },
           ]);
           /* What they typed is saved, the note is not. A saved note would
-             sit at the bottom of the conversation when it is reopened. */
-          persist(withNote.filter((m) => m.type !== "error"), restingStage(stage));
+             sit at the bottom of the conversation when it is reopened. The
+             permission card, when the search is what failed, IS saved: it is
+             a question still waiting for an answer, not a note. */
+          persist(
+            putLookupCardBackAfterFailedSearch(withNote, stage).filter((m) => m.type !== "error"),
+            restingStage(stage),
+          );
           return;
         }
 
@@ -1334,15 +1339,18 @@ export default function Chat() {
 
         /* Running out is not a failure, it is the end of a trial, and the
            message that comes back with it is written to say so. */
-        const next = updateMessages((prev) => [
-          ...prev,
-          {
-            id: nextId(),
-            role: "assistant",
-            type: reason === "out_of_budget" ? "text" : "error",
-            content: message,
-          },
-        ]);
+        const next = putLookupCardBackAfterFailedSearch(
+          updateMessages((prev) => [
+            ...prev,
+            {
+              id: nextId(),
+              role: "assistant",
+              type: reason === "out_of_budget" ? "text" : "error",
+              content: message,
+            },
+          ]),
+          stage,
+        );
 
         /* Saved even though the turn failed. What somebody typed is
            theirs, and losing it because the answer never arrived punishes
@@ -2152,6 +2160,41 @@ export default function Chat() {
     return list.filter(
       (m) => m.type !== "lookup" && m.type !== "offer" && m.type !== "build" && m.type !== "useFinding",
     );
+  }
+
+  /* A FAILED SEARCH PUTS THE PERMISSION CARD BACK.
+
+     Anthony, 2026-09-23: "the assistant couldn't search the Internet and
+     couldn't skip the search."
+
+     That was two faults in one sentence, and this is the second one.
+     Pressing "Yes, go and look" takes the card away before the turn runs,
+     which is right while the search is happening: a live Yes button during
+     a search would start a second one. The fault was that a turn which
+     FAILED did not put it back. The person got an error message and nothing
+     else, so there was no way to say no any more, and no way to say yes
+     again either. He typed "skip" into the chat instead, and that failed
+     too, because by then every turn was failing.
+
+     What he is left with after a failed search has to be the same two
+     answers he had before it: yes once more, or no thanks. Anything else
+     traps him in the search he cannot complete.
+
+     Only after a failed research turn. A failed turn on any other step has
+     no permission card to give back.
+
+     IT PUTS THE CARD ON SCREEN, not only into the list it returns. The
+     first version of this appended the card to a copy and handed that copy
+     to persist, which saved a question the person was never shown. It
+     looked right in the code and did nothing on the screen. updateMessages
+     sets both state and the ref, so the card appears and the save agrees
+     with the screen. */
+  function putLookupCardBackAfterFailedSearch(list, turnStage) {
+    if (turnStage !== "research") return list;
+    return updateMessages([
+      ...list,
+      { id: nextId(), role: "assistant", type: "lookup", from: lookupFromRef.current },
+    ]);
   }
 
   function allowLookup(from) {

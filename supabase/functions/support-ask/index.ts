@@ -41,6 +41,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk@0.68.0";
+import { centsExact, clientFor, modelFor, vendorForCompany, type Tier } from "../_shared/brain.ts";
 
 /* --------------------------------------------------------------------------
    SECTION: Constants
@@ -61,19 +62,20 @@ import Anthropic from "npm:@anthropic-ai/sdk@0.68.0";
    Support stays at this level on purpose. It answers a customer's question
    from material an admin approved. It does not reason its way anywhere, so
    paying for a model that can is paying for nothing. */
-const LEVEL = "conversational";
-const MODEL_FOR_LEVEL: Record<string, string> = {
-  conversational: "claude-haiku-4-5",
-};
-const MODEL = MODEL_FOR_LEVEL[LEVEL];
+const LEVEL: Tier = "conversational";
 
-/* Dollars per million tokens for that level, for turning real usage into
-   cents off the company's budget. Matches the conversational row of the
-   table in assistant/index.ts. It is no longer mirrored in the browser
-   bundle: src/shared/config.js used to carry a copy so an admin screen
-   could print a rate card, and both the vendor names and the token prices
-   have been taken off that screen. */
-const PRICE = { input: 1, output: 5 };
+/* ⚠️ The model now comes from _shared/brain.ts, which is the ONE place in
+   the server that names a real model. Everything the comment above says
+   about support staying at this level still holds: the level decides, and
+   the brain decides what sits behind it.
+   ⚠️ The vendor is resolved inside the request handler below, never at module
+   level: one isolate serves several companies at once. */
+
+/* ⚠️ The rate for this level now comes from _shared/brain.ts, which holds
+   one rate per vendor per level, so a company moving vendor reprices with
+   it. Still not mirrored in the browser bundle: src/shared/config.js used to
+   carry a copy so an admin screen could print a rate card, and both the
+   vendor names and the token prices have been taken off that screen. */
 
 /* A conversation's worth of history, not a lifetime's. Long enough that
    somebody can say "the second one" and be understood. */
@@ -689,6 +691,11 @@ Deno.serve(async (req) => {
     return json({ ok: false, reason: "unknown company" }, 404);
   }
 
+  /* WHICH BRAIN, READ PER REQUEST. Never cached, because one isolate serves
+     several companies at once. Falls back to Anthropic on any error, including
+     the table not being there, so this can ship before the migration does. */
+  const vendor = await vendorForCompany(company.id);
+
   /* ------------------------------------------------------------------
      The thread, and the message going into it.
      ------------------------------------------------------------------ */
@@ -924,7 +931,7 @@ Deno.serve(async (req) => {
     systemBlocks.push({ type: "text", text: openQuestionsBlock });
   }
 
-  const anthropic = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY")! });
+  const anthropic = clientFor(vendor);
 
   let reply: string | null = null;
   let needsPerson = false;
@@ -946,7 +953,7 @@ Deno.serve(async (req) => {
 
   try {
     const result = await anthropic.messages.create({
-      model: MODEL,
+      model: modelFor(vendor, LEVEL),
       max_tokens: 700,
       system: systemBlocks,
       tools: [REPLY_TOOL],
@@ -1157,27 +1164,9 @@ Deno.serve(async (req) => {
       const fresh = usage.input_tokens ?? 0;
       const out = usage.output_tokens ?? 0;
 
-      const inputTokens = fresh + cacheWrite * 1.25 + cacheRead * 0.1;
-
-      /* NO ROUNDING UP. Anthony, 2026-09-10: "why do you suppose to be
-         rounding up numbers? That's real money."
-
-         He was right and it was worse than untidy. Math.ceil turned a message
-         that truly cost 0.26 of a cent into a whole cent charged against the
-         company. Nearly four times over, on every message, and always in our
-         favour, never theirs.
-
-         The cause was the column, not the arithmetic: budget_cents_remaining
-         was an integer, so a fraction of a cent had nowhere to go. It is
-         numeric now, so the real number is sent.
-
-         Six decimal places, because that is what the column holds. Rounded
-         there rather than sent raw, so a float's fifteenth digit does not
-         travel across the wire pretending to be money. */
-      const cents =
-        Math.round(
-          ((inputTokens / 1_000_000) * PRICE.input + (out / 1_000_000) * PRICE.output) * 100 * 1e6,
-        ) / 1e6;
+      const cents = centsExact(vendor, LEVEL, {
+        fresh, cacheWrite, cacheRead, output: out,
+      }, "short");
 
       console.log(
         `support usage fresh=${fresh} cacheWrite=${cacheWrite} cacheRead=${cacheRead} out=${out} cents=${cents}`,
