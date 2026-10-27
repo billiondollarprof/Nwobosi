@@ -23,6 +23,11 @@ So: when he asks for something and it is not built in that same turn, it
 goes here, in his words, with the date. It comes off the list when it is
 built and checked, not when it is planned.
 
+**2026-10-27, StellaXafe is down: "it's currently inactive... I tried to log
+in and it's not able to reach the server... we'll fix it later."** The
+Supabase project `stellaxafe` (cbunsqzkhidwjtxdsmxd) shows status INACTIVE,
+which means paused. Found during the RHEMA session. Not yet looked into.
+
 ### Open
 
 00000000000000. **2026-09-26, DONE AND PUBLISHED: the video on the portfolio.**
