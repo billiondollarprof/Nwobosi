@@ -14,8 +14,9 @@ StellaXafe is a private AI assistant built for your company. Your staff ask
 for a document in normal language. The assistant already knows your files,
 asks a few short questions, confirms what it understood, and produces the
 finished work in your format. Every fact points back to its source so a
-person can check it. Your data stays inside your boundary, and nothing is
-used to train a model.
+person can check it. Your customers can ask it questions on WhatsApp, and
+it answers from your approved information only. Your data stays inside your
+own private cloud, and nothing is used to train a model.
 
 ## The problem you already have
 
@@ -84,10 +85,10 @@ calculation, a contract clause, a regulatory filing.
   shown to another.
 - **Files are encrypted** in storage and while they travel.
 - **Nothing you do trains a model.** Your chats and files stay yours.
-- **The link to the AI model is private.** On AWS, the assistant reaches the
-  model over a private link inside your own cloud network (a VPC, a network
-  space only your company uses). That traffic does not cross the public
-  internet.
+- **It runs in your own private cloud.** We build it inside a private AWS
+  account for your company, in a VPC (a network space only your company
+  uses). The assistant reaches the AI model over a private link inside that
+  network, so that traffic does not cross the public internet.
 - **Your admin controls what it can read.** A file that is not approved does
   not exist as far as the assistant is concerned.
 
@@ -118,6 +119,24 @@ You stay in charge.
    any of it goes into your document.
 
 You never open a finished document and find data you did not approve.
+
+## Your customers can use it on WhatsApp
+
+The assistant also lives where your customers already are. They message your
+WhatsApp number, and the assistant answers.
+
+- **It answers only from what you approved**, and only about your business.
+  If your admin has not put it in, the assistant does not know it.
+- **It is a front desk.** Customers can ask questions. They cannot upload
+  files, change what the assistant knows, or ask it to do staff work.
+- **A person can step in at any time.** If a customer asks for a human, or
+  asks something the assistant should not answer alone, it says so in the
+  same chat and your team is notified. Your team replies from the place they
+  already answer from. While they are in the conversation, the assistant
+  stays quiet, and it comes back after a few minutes of silence.
+
+Your customers get an instant answer at any hour. Your staff only see the
+conversations that need a person.
 
 ## You are not locked to one AI model
 
@@ -160,26 +179,22 @@ anthony@stellaxafe.com
 
 ## Notes for Anthony only. Do not send.
 
-Checked against the repo. Four claims need your decision before this goes out.
+Position, as you set it: this is the demo and the blueprint. The client gets
+the full build under contract, in their own private AWS account and VPC, with
+WhatsApp for their customers. The text is written that way, as a description
+of the deployment they will receive. The repo's own rule says the same
+(DIRECTION.md: describe what a deployment does, not what the demo wires).
 
-1. **AWS PrivateLink and VPC.** The repo says a deployment is built inside
-   the customer's own cloud, and Bedrock is listed as a planned route
-   (SUPPORT.md). Bedrock is not wired yet. The private link sentence is true
-   of the deployment you would build for this client, so present it as part
-   of their build. If they ask "is that live today?", the answer is "it is
-   part of your deployment."
-2. **The free 20 GB cloud account.** I found nothing about this in the repo,
-   so I left out "free" and "20 GB". I kept "a few cents per 10 GB". Tell me
-   the exact offer and I will add it. A number in a client document becomes
-   a promise.
-3. **Gmail, Slack, Notion.** HOW-IT-WORKS.md calls them examples. Google
-   Drive and Canva were registered but not fully wired when that file was
-   written. The text says "examples" and "agreed at the start", which is
-   true. Do not tell the client any of them is connected today unless you
-   have checked.
-4. **Internet research.** The ask first, show, then ask again flow is the
-   rule in DIRECTION.md. Search exists in the code now, but test it before
-   the call. You said search is next week's job.
+Two things to keep straight on the call.
+
+1. **The demo is not the deployment.** If the client drives the demo, they
+   are seeing the shape of it. Say so before they ask. Drive and Canva were
+   registered but not fully wired, and Gmail, Slack and Notion are
+   connectors we agree at the start, so describe them as part of the build.
+2. **The storage offer.** I kept "a few cents per 10 GB" and left out "free"
+   and "20 GB", because the repo holds no such offer. Give me the exact
+   terms and I will add them. A number in a client document becomes a
+   promise.
 
 Wording choices you may want to change.
 
@@ -189,10 +204,8 @@ Wording choices you may want to change.
   claim. This version you can defend.
 - **"Encrypted".** Cloud storage encrypts by default, so this is safe. Only
   promise a specific key arrangement if the contract includes one.
+- **WhatsApp.** The customer side is read only by design (ARCHITECTURE.md).
+  If this client wants customers to do more than ask questions, that is a
+  scope conversation, not a promise to make in the brief.
 - **No price, setup time or start date.** Add them only if you want to be
   held to them.
-
-Changes in this version: a one paragraph summary at the top that can go
-straight onto a one-pager, an opening that shows the leak as it really
-happens (a good employee doing their job), and the invented project name
-removed.
