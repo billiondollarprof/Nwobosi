@@ -42,8 +42,8 @@ built and checked, not when it is planned.
 00000000000000. **2026-10-31, DREEF: the client brief and the build plan.**
                 Both live on branch `claude/merge-stellaxafe-nwobosi-blewyb`,
                 not on `main` or `testing`: `CLIENT-BRIEF.md` (what Dreef
-                reads, costs, sources, and notes for Anthony at the bottom
-                that must be cut before sending) and `DREEF-PLAN.md` (setup
+                reads, ready to send as it is), `BRIEF-NOTES.md` (research,
+                costs and sources, never sent) and `DREEF-PLAN.md` (setup
                 fee tiers, the two week build, AWS, GitHub OIDC, MCP).
 
 00000000000000. **2026-10-31, DROPPED: the portfolio page and its video.**
