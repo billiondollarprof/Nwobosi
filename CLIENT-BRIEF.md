@@ -98,9 +98,9 @@ The software does not become another place your data lives. It reads from
 where you already keep files, and it saves finished work back to the same
 place.
 
-Each company gets a private cloud storage account on AWS, locked to that
-company. Storage on AWS costs a few cents per 10 GB. Staff can also save a
-finished file straight to their own Google Drive.
+Each company gets its own private AWS account, locked to that company, and
+your files are stored there. Staff can also save a finished file straight to
+their own Google Drive.
 
 ## It fits the tools you already use
 
@@ -166,6 +166,29 @@ and every reference can be checked.
 
 **Any firm whose files cannot go into a public chatbot.**
 
+## What it costs to run
+
+You pay for what you use, straight to AWS, on your own account. There is no
+seat fee and no per user charge.
+
+- **Storage.** About 2 US cents per GB per month. 100 GB of company files
+  costs about $2.30 a month.
+- **The AI model.** You pay for usage only, billed by AWS each month. The
+  cost follows how much your team uses it and which model you choose. You
+  set a monthly budget and get an alert before you reach it.
+- **The private network link.** A small fixed charge, about $15 a month,
+  for the connection that keeps your traffic off the public internet.
+- **Starting credit.** A new AWS account comes with up to $200 in AWS
+  credits, which covers the first months of running costs.
+
+## Support and maintenance
+
+- **The first six months of maintenance are included.** Fixes, updates and
+  adjustments as your team settles in.
+- **After that, you choose.** A maintenance review every three months, or a
+  retainer agreed with you, where I look after the system as part of your
+  team.
+
 ## Next step
 
 A short call. We create one real document together, from your kind of files,
@@ -191,10 +214,9 @@ Two things to keep straight on the call.
    are seeing the shape of it. Say so before they ask. Drive and Canva were
    registered but not fully wired, and Gmail, Slack and Notion are
    connectors we agree at the start, so describe them as part of the build.
-2. **The storage offer.** I kept "a few cents per 10 GB" and left out "free"
-   and "20 GB", because the repo holds no such offer. Give me the exact
-   terms and I will add them. A number in a client document becomes a
-   promise.
+2. **Costs, checked on 2026-10-31.** Full figures and sources are below,
+   under "The AWS numbers". Recheck them before the contract, AWS changes
+   prices and plans.
 
 Wording choices you may want to change.
 
@@ -209,3 +231,55 @@ Wording choices you may want to change.
   scope conversation, not a promise to make in the brief.
 - **No price, setup time or start date.** Add them only if you want to be
   held to them.
+
+## The AWS numbers (for Anthony)
+
+Researched 2026-10-31. Sources at the end.
+
+**The free offer is 6 months now, not 12.** AWS changed it on 15 July 2025.
+A new account gets $100 in credits at sign up, and up to $100 more for
+trying certain services. Up to $200 in total.
+
+**Do not leave the client on the Free plan.** A new account picks a Free
+plan or a Paid plan. Both get the credits. But the Free plan ends after 6
+months or when the credits run out, and then AWS suspends the account. If it
+is not upgraded within 90 days, AWS erases the account and everything in it.
+The Free plan also blocks some services. So: open the client's account on the
+Paid plan from day one. The credits still apply to the bills. AWS's own FAQ
+says in one place the credits expire 6 months after the account opens, and in
+another 12 months. Check the date in the account's billing console.
+
+**Storage (S3 Standard).** $0.023 per GB per month for the first 50 TB.
+10 GB is about 23 cents a month, not a few cents per 10 GB. Still small.
+100 GB is about $2.30 a month. Requests and data going out of AWS are
+charged separately, and are small at this size.
+
+**The model (Bedrock).** Paid per use, on the AWS bill, every month. There
+is no package of prepaid credits to buy on Bedrock itself. The AWS credits
+above can cover it. If a client ever uses a provider directly instead
+(Anthropic or DeepSeek), that is where prepaid credit packs exist. Example
+rate from a third party guide, not AWS: Claude Sonnet at $3 per million
+tokens in and $15 per million tokens out (a token is a piece of a word,
+roughly three quarters of one). At that rate a long document that reads 50
+pages of company files and writes 10 pages costs roughly 20 to 50 US cents,
+more if it goes through several rounds. That is why the client text says
+"follows usage" and names no per document figure. Check the Bedrock pricing
+page for the exact model before quoting anything.
+
+**PrivateLink (the private network link).** About $0.01 per hour for each
+availability zone (a separate data centre inside one AWS region) the
+endpoint runs in, plus $0.01 per GB that passes through. Two zones, which is
+the normal setup for reliability, is about $14.60 a month before data. This
+is the one fixed monthly cost, so it is in the client text.
+
+**Maintenance.** Written as you said: six months included, then a review
+every three months or a retainer. I read "we cannot discuss a retainer" as
+"we can discuss a retainer". Tell me if you meant otherwise.
+
+Sources:
+- AWS Free Tier FAQs: https://aws.amazon.com/free/free-tier-faqs/
+- AWS announcement, July 2025: https://aws.amazon.com/about-aws/whats-new/2025/07/aws-free-tier-credits-month-free-plan/
+- AWS Billing, choosing a plan: https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/free-tier-plans.html
+- S3 pricing: https://aws.amazon.com/s3/pricing/
+- PrivateLink pricing: https://aws.amazon.com/privatelink/pricing/
+- Bedrock pricing guide (third party): https://cloudchipr.com/blog/amazon-bedrock-pricing
