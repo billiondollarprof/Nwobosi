@@ -168,26 +168,61 @@ and every reference can be checked.
 
 ## What it costs to run
 
-You pay for what you use, straight to AWS, on your own account. There is no
-seat fee and no per user charge.
+You pay for what you use. There is no seat fee and no per user charge. The
+screens your staff use are hosted on Cloudflare at no cost. Everything that
+touches your data and the AI model runs inside your private AWS account.
 
-- **Storage.** About 2 US cents per GB per month. 100 GB of company files
-  costs about $2.30 a month.
-- **The AI model.** You pay for usage only, billed by AWS each month. The
-  cost follows how much your team uses it and which model you choose. You
-  set a monthly budget and get an alert before you reach it.
-- **The private network link.** A small fixed charge, about $15 a month,
-  for the connection that keeps your traffic off the public internet.
-- **Starting credit.** A new AWS account comes with up to $200 in AWS
-  credits, which covers the first months of running costs.
+- **The AI model.** Billed by usage. The cost follows how much your team
+  uses it.
+- **Database and server.** The small running system that holds your
+  workspace.
+- **The private network link.** A fixed monthly charge for the connection
+  that keeps your traffic off the public internet.
+- **File storage.** About 2 US cents per GB per month.
+
+### A typical month, after setup
+
+For a team of about 20 people, 100 GB of files, around 300 documents and
+2,000 customer WhatsApp messages a month:
+
+| | Per month |
+|---|---|
+| AI model usage | about $33 |
+| Database and server | about $15 to $30 |
+| Private network link | about $15 |
+| File storage | about $2 |
+| **Total** | **about $65 to $80** |
+
+Your bill follows your usage. A quieter month costs less, a busier one more.
+You set a monthly budget and get an alert before you reach it. A new AWS
+account also comes with up to $200 in AWS credits, which covers the first
+months.
+
+### Billing: your card or ours
+
+- **On your own card.** AWS bills you directly. You pay the figures above
+  and nothing else.
+- **On our card.** We pay AWS, watch the billing for you, and send you one
+  monthly invoice: the AWS bill line by line, plus a 20% management fee.
+
+Either way the AWS account belongs to your company, and so does everything
+in it.
 
 ## Support and maintenance
 
-- **The first six months of maintenance are included.** Fixes, updates and
-  adjustments as your team settles in.
-- **After that, you choose.** A maintenance review every three months, or a
-  retainer agreed with you, where I look after the system as part of your
-  team.
+**The first three months are included.** Fixes, updates and adjustments
+while your team settles in.
+
+**After that, a retainer.** We look after the system as part of your team:
+
+- **Automatic health checks** run on a schedule. If something is wrong, we
+  are alerted and it gets fixed, often before your team notices.
+- **A separate test copy** of your system. Every change is tried there
+  first, so your live system only gets changes that already work.
+- **Updates and improvements** as your needs change, and new sources or
+  connections when you add them.
+
+The retainer is agreed with you, based on how much you use the system.
 
 ## Next step
 
@@ -272,9 +307,23 @@ endpoint runs in, plus $0.01 per GB that passes through. Two zones, which is
 the normal setup for reliability, is about $14.60 a month before data. This
 is the one fixed monthly cost, so it is in the client text.
 
-**Maintenance.** Written as you said: six months included, then a review
-every three months or a retainer. I read "we cannot discuss a retainer" as
-"we can discuss a retainer". Tell me if you meant otherwise.
+**Maintenance.** Three months included, then a retainer. You asked which is
+better, three or six. Three: the setup bugs show up in the first weeks, and
+at three months the client has seen the value, so the retainer talk happens
+while they are happy. Six months of free monitoring teaches them it is free.
+If you need a closing lever, offer six only in exchange for signing now.
+It is one word to change in the client text.
+
+**Management fee vs retainer.** Kept separate in the text. The 20%
+management fee only applies when the AWS bill runs on your card. The
+retainer is for looking after the system, whoever pays AWS.
+
+**The cost table.** Assumes the design without the NAT gateway (the door
+that lets private servers reach the internet): the functions that only talk
+to WhatsApp, search and Google run outside the private network. With a NAT
+gateway, add about $33 a month. Costs exclude the 20% fee, which is shown
+under billing instead, so a client on their own card reads the right total.
+Setup fee is not in the document, by design.
 
 Sources:
 - AWS Free Tier FAQs: https://aws.amazon.com/free/free-tier-faqs/
