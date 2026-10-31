@@ -25,6 +25,18 @@ built and checked, not when it is planned.
 
 ### Open
 
+00000000000000. **2026-09-26, ON HOLD (his words): the video is slow to start.**
+                "once you click on that thumbnail, it takes a few seconds
+                again before the actual video loads... The video is supposed
+                to just start playing, you know, maybe load its own
+                preview... Hold on this for now."
+                Cause: the Loom player is only fetched after the click, so
+                the wait is Loom loading. Options when he picks it up again:
+                warm the connection to Loom on hover or when the poster
+                scrolls into view, or load the player behind the poster
+                before the click. Nothing changed yet. Do not touch it until
+                he asks.
+
 00000000000000. **2026-09-26, DONE AND PUBLISHED: the video on the portfolio.**
                 A drawn poster (title, his photo, round blue play button)
                 shows until play is pressed, then Loom plays on the page. The
