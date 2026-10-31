@@ -25,6 +25,34 @@ built and checked, not when it is planned.
 
 ### Open
 
+00000000000000. **2026-10-31, NEXT: MAKE THE DEMO FLOW WORK, STEP BY STEP.**
+                Starting this weekend (Sunday or Monday, or this evening).
+                The first client, Dreef, may book a call to see it. What they
+                need to see, and nothing else:
+                1. Start a request in the existing Amara knowledge base.
+                2. It runs the stages and produces a finished document.
+                3. If they want it, show it searching the internet.
+                The plan: go through each stage of the assistant one at a
+                time, find where it fails, fix it, and make each step
+                simpler while keeping the output at its best. The demo stays
+                on Supabase on purpose: it is there to close a client, not to
+                run one. AWS, PrivateLink and the rest are the client build,
+                and are not shown in the demo.
+
+00000000000000. **2026-10-31, DREEF: the client brief and the build plan.**
+                Both live on branch `claude/merge-stellaxafe-nwobosi-blewyb`,
+                not on `main` or `testing`: `CLIENT-BRIEF.md` (what Dreef
+                reads, costs, sources, and notes for Anthony at the bottom
+                that must be cut before sending) and `DREEF-PLAN.md` (setup
+                fee tiers, the two week build, AWS, GitHub OIDC, MCP).
+
+00000000000000. **2026-10-31, DROPPED: the portfolio page and its video.**
+                His words: "forget about my portfolio page... I'll close it.
+                I have another one". His portfolio is now
+                anthony.stellaxafe.com. The /anthony page, its Loom video and
+                the slow start entry below are no longer work. Do not change
+                or remove the page until he says so.
+
 00000000000000. **2026-09-26, ON HOLD (his words): the video is slow to start.**
                 "once you click on that thumbnail, it takes a few seconds
                 again before the actual video loads... The video is supposed
