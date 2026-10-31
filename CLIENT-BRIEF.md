@@ -253,6 +253,15 @@ Two things to keep straight on the call.
    under "The AWS numbers". Recheck them before the contract, AWS changes
    prices and plans.
 
+**The build plan.** Everything for Dreef's build, week by week, is in
+`DREEF-PLAN.md`: setup fee tiers, the two week plan, AWS, GitHub, MCP.
+
+**Connections use one MCP layer.** One StellaXafe app per vendor (Slack,
+Notion, Canva), registered once, approved by each client's admin. Google is
+an Internal app inside each client's Workspace for now. Each client gets its
+own running copy and keeps its own keys. The client text needs no change:
+"connects to the tools you already use, agreed at the start" is still true.
+
 Wording choices you may want to change.
 
 - **"Nothing is trained on your data."** I did not write "nothing ever leaves
