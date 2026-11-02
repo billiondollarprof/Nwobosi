@@ -4,7 +4,13 @@
 # Cloudflare builds testing and main on its own. "Build finished" is not the
 # same as "the site works", so this asks the address itself:
 #   testing -> https://testing.stellaxafe01.pages.dev
-#   main    -> https://stellaxafe.com
+#   main    -> https://stellaxafe01.pages.dev (the production build that
+#              stellaxafe.com serves)
+#
+# Why not stellaxafe.com itself: Cloudflare's bot protection on the domain
+# answers GitHub's computers with a "Just a moment..." challenge (HTTP 403),
+# found 2026-11-02. The pages.dev address is the same production build
+# without that protection in front.
 #
 # How it knows the new build is up: every build writes /version.txt with its
 # commit (scripts/stamp-version.mjs). This waits until /version.txt shows the
@@ -17,7 +23,7 @@ on:
   workflow_dispatch:
     inputs:
       site:
-        description: "Address to check, e.g. https://stellaxafe.com (blank = the branch's own site)"
+        description: "Address to check, e.g. https://stellaxafe01.pages.dev (blank = the branch's own site)"
         required: false
       sha:
         description: "Commit the site should be serving (blank = this run's commit)"
@@ -35,7 +41,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
-      SITE: ${{ inputs.site || (github.ref_name == 'main' && 'https://stellaxafe.com' || 'https://testing.stellaxafe01.pages.dev') }}
+      SITE: ${{ inputs.site || (github.ref_name == 'main' && 'https://stellaxafe01.pages.dev' || 'https://testing.stellaxafe01.pages.dev') }}
       SHA: ${{ inputs.sha || github.sha }}
     steps:
       # ===== 1. Wait for Cloudflare to publish this commit =====

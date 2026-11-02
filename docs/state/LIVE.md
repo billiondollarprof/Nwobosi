@@ -14,7 +14,12 @@ The old deploy log, up to 2026-11-02: `docs/history/DEPLOYS-to-2026-11-02.md`.
 - **stellaxafe.com** is whatever is on `main`. Every push to `main` publishes.
 - **testing.stellaxafe01.pages.dev** is whatever is on `testing`. Built
   noindex.
-- Hosting: Cloudflare Pages, project `stellaxafe01`.
+- Hosting: Cloudflare Pages. The project is named `stellaxafe` in the
+  dashboard and its addresses are `*.stellaxafe01.pages.dev`; the production
+  build is `stellaxafe01.pages.dev`, which stellaxafe.com serves.
+- stellaxafe.com has Cloudflare bot protection: automated visitors (GitHub's
+  checks, scripts) get a "Just a moment..." page, HTTP 403. People are not
+  affected.
 
 ## 2. Edge functions
 

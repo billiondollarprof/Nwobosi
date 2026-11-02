@@ -53,6 +53,17 @@ How this file works:
 - Notes behind it, never sent: `docs/clients/dreef/NOTES.md`
 - Build plan, two weeks: `docs/clients/dreef/PLAN.md`
 
+## 3. Found 2026-11-02, needs his decision
+
+- **Supabase's own GitHub link is switched on** (a "Supabase Preview" check
+  runs on every commit). It can deploy functions and apply migrations by
+  itself when `main` changes, around our guard and around his SQL approval.
+  It is the likeliest cause of the "redeployed without being asked" mystery:
+  `assistant` went to v53 48 seconds after a push to `main` on 2026-09-26.
+  Not proven. His check: Supabase dashboard, project settings, Integrations,
+  GitHub. If "deploy to production" is on, turn it off, because GitHub
+  Actions now deploys the functions, guarded.
+
 ## 3. Open from before, not yet done
 
 Each was open when last written down. **Check the code before building any of

@@ -27,7 +27,7 @@ added, on the model of the Rhema repo. The earlier text is in
 | Workflow | When | What it proves |
 |---|---|---|
 | `ci.yml` | every push to testing and main, every pull request | `npm run verify` is green: lint, function type checks, tests, the flow walks in a real browser, the build |
-| `smoke.yml` | every push to testing and main | the site is really serving THIS commit (`/version.txt`), and its pages answer |
+| `smoke.yml` | every push to testing and main | the site is really serving THIS commit (`/version.txt`), and its pages answer. On main it checks `stellaxafe01.pages.dev`, the production build behind stellaxafe.com, because the domain's bot protection blocks GitHub |
 | `functions.yml` | a push to main that touches a function | each changed function passes the guard (live is the previous repo copy), deploys, and is checked after |
 
 `functions.yml` can also be run by hand in compare mode: it compares every
