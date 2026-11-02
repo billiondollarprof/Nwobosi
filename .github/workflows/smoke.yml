@@ -4,7 +4,13 @@
 # Cloudflare builds testing and main on its own. "Build finished" is not the
 # same as "the site works", so this asks the address itself:
 #   testing -> https://testing.stellaxafe01.pages.dev
-#   main    -> https://stellaxafe.com
+#   main    -> https://stellaxafe01.pages.dev (the production build that
+#              stellaxafe.com serves)
+#
+# Why not stellaxafe.com itself: Cloudflare's bot protection on the domain
+# answers GitHub's computers with a "Just a moment..." challenge (HTTP 403),
+# found 2026-11-02. The pages.dev address is the same production build
+# without that protection in front.
 #
 # How it knows the new build is up: every build writes /version.txt with its
 # commit (scripts/stamp-version.mjs). This waits until /version.txt shows the
@@ -15,6 +21,13 @@ on:
   push:
     branches: [testing, main]
   workflow_dispatch:
+    inputs:
+      site:
+        description: "Address to check, e.g. https://stellaxafe01.pages.dev (blank = the branch's own site)"
+        required: false
+      sha:
+        description: "Commit the site should be serving (blank = this run's commit)"
+        required: false
 
 permissions:
   contents: read
@@ -28,16 +41,18 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
-      SITE: ${{ github.ref_name == 'main' && 'https://stellaxafe.com' || 'https://testing.stellaxafe01.pages.dev' }}
-      SHA: ${{ github.sha }}
+      SITE: ${{ inputs.site || (github.ref_name == 'main' && 'https://stellaxafe01.pages.dev' || 'https://testing.stellaxafe01.pages.dev') }}
+      SHA: ${{ inputs.sha || github.sha }}
     steps:
       # ===== 1. Wait for Cloudflare to publish this commit =====
       - name: Wait until the site serves this commit
         run: |
           for i in $(seq 1 90); do
-            served="$(curl -fsS "$SITE/version.txt?nocache=$i" 2>/dev/null | tr -d '[:space:]' || true)"
-            if [ "$served" = "$SHA" ]; then echo "Serving $SHA"; exit 0; fi
-            echo "Waiting: site says '${served:-nothing yet}'"
+            code="$(curl -sS -o body.txt -w '%{http_code}' "$SITE/version.txt?nocache=$i" 2>err.txt || true)"
+            served="$(head -c 200 body.txt 2>/dev/null | tr -d '[:space:]')"
+            if [ "$code" = "200" ] && [ "$served" = "$SHA" ]; then echo "Serving $SHA"; exit 0; fi
+            # Say what came back, so a wrong answer is not mistaken for a slow build.
+            echo "Waiting: HTTP $code, body '$(head -c 80 body.txt 2>/dev/null)' $(cat err.txt 2>/dev/null)"
             sleep 10
           done
           echo "The site never served $SHA. Check the Cloudflare build for this commit."

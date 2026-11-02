@@ -56,14 +56,19 @@ A file in `supabase/functions/` means it is written, not that it is live.
 Something has also redeployed functions without anybody asking, cause never
 found (2026-09-08). So never assume. Always compare.
 
-### 2.2 A redeploy is asked for
+### 2.2 GitHub deploys, and the yes comes first
 
-Every time, including a one line change, and even when he asked for the fix.
-The fix is one yes; putting it live is a second one. Say which function, which
-version it is now, and what goes out, then wait.
+Since 2026-11-02, GitHub deploys edge functions from `main`
+(`.github/workflows/functions.yml`, `scripts/deploy-functions.mjs`). Each
+changed function is guarded (the live copy must be the previous repo copy, or
+it is not deployed and the run goes red), deployed with `verify_jwt` off, and
+checked after. Supabase's own GitHub deploy is switched off, so this is the
+only automatic path.
 
-A brand new function has nothing to break. It still gets a yes, but needs no
-comparison first.
+**A change to an edge function is asked for before it starts**: which
+function, what changes, in plain words. Merging to `main` deploys it, so that
+yes covers the deploy. The steps below are for checking by hand, and for the
+rare deploy the pipeline cannot do.
 
 ### 2.3 The order
 

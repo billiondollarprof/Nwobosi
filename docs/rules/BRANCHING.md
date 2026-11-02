@@ -27,7 +27,7 @@ added, on the model of the Rhema repo. The earlier text is in
 | Workflow | When | What it proves |
 |---|---|---|
 | `ci.yml` | every push to testing and main, every pull request | `npm run verify` is green: lint, function type checks, tests, the flow walks in a real browser, the build |
-| `smoke.yml` | every push to testing and main | the site is really serving THIS commit (`/version.txt`), and its pages answer |
+| `smoke.yml` | every push to testing and main | the site is really serving THIS commit (`/version.txt`), and its pages answer. On main it checks `stellaxafe01.pages.dev`, the production build behind stellaxafe.com, because the domain's bot protection blocks GitHub |
 | `functions.yml` | a push to main that touches a function | each changed function passes the guard (live is the previous repo copy), deploys, and is checked after |
 
 `functions.yml` can also be run by hand in compare mode: it compares every
@@ -36,12 +36,7 @@ live function with the repo and changes nothing.
 ## 3. Going live
 
 Anthony's rule, 2026-11-02: **once everything on testing is green, merge
-`testing` into `main` without asking again.**
-
-**Not in force yet.** `CLAUDE.md` section 6 still says to ask before merging
-to `main`, and `CLAUDE.md` wins where the two disagree. This rule takes effect
-when Anthony updates `CLAUDE.md` to match. Until then, steps 1 to 4 run as
-written, and step 5 waits for his yes.
+`testing` into `main` without asking again.** Skill `ship` does these steps.
 
 1. Work on the feature branch. Run `npm run verify`, use the change by hand.
 2. Merge it into `testing` and push.
