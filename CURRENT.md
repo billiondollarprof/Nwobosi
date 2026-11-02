@@ -25,6 +25,17 @@ built and checked, not when it is planned.
 
 ### Open
 
+00000000000000. **2026-11-02, ASKED: SHRINK THE DOCS SO A SESSION READS LESS.**
+                His words: "let the Claude.md just be like a linking document,
+                so that when an agent needs to do a particular thing, it opens
+                a particular document... so it doesn't have to be reading
+                everything." Also: drop rules that stop agents doing their
+                best, keep the ones that make them work best. Then, in order:
+                check the demo flow step by step, research similar tools and
+                how they orchestrate agents to produce files, then MCP and the
+                browser, and cheaper web search. Audit done, plan shown to him,
+                waiting for his yes before anything moves.
+
 00000000000000. **2026-10-31, NEXT: MAKE THE DEMO FLOW WORK, STEP BY STEP.**
                 Starting this weekend (Sunday or Monday, or this evening).
                 The first client, Dreef, may book a call to see it. What they
