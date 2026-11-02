@@ -19,7 +19,11 @@ How this file works:
 
 ## 1. Now, in his order
 
-1. **Make the demo flow work, step by step.** 2026-10-31. Dreef may book a
+1. **Work the way Rhema works: its rules and its CI/CD.** 2026-11-02. "can
+   you see project rhema and how it uses rules and CI/CD? let's work in
+   similar way too". Rhema read; the plan and three decisions are with him.
+   Waiting for his answers before building.
+2. **Make the demo flow work, step by step.** 2026-10-31. Dreef may book a
    call to see it. They need to see three things and nothing else:
    1. Start a request in the existing Amara knowledge base.
    2. It runs the stages and produces a finished document.
@@ -28,9 +32,9 @@ How this file works:
    Go through each stage of the assistant one at a time, find where it fails,
    fix it, and make each step simpler while keeping the output at its best.
    The demo stays on Supabase on purpose: it is there to close a client.
-2. **Research similar tools**, and how they orchestrate agents to produce
+3. **Research similar tools**, and how they orchestrate agents to produce
    documents and files. Then recommend how to shape ours (security aside).
-3. **MCP and the browser**, and keeping web search cheap. He asked why an
+4. **MCP and the browser**, and keeping web search cheap. He asked why an
    online session costs so much, and about free search access such as Exa.
    Start from what exists: our search already runs on Tavily's free plan and
    DuckDuckGo (`docs/state/LIVE.md`).
