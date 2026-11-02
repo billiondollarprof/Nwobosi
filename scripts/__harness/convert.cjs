@@ -88,7 +88,7 @@ async function convertWalk(browser, label, { file, words, to, converter }) {
 }
 
 (async () => {
-  const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  const browser = await chromium.launch(require('./browser.cjs').launchOptions());
 
   const t1 = await convertWalk(browser, 'WORD TO PDF, BROWSER', { file: WORD, words: 'Make this a PDF', to: 'pdf' });
   check('WORD TO PDF, BROWSER: every word came across', t1.includes('Every word came across'));

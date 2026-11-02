@@ -39,8 +39,9 @@ looking.
 ## If the skill itself goes wrong
 
 - The browser will not start in a cloud session: Playwright in the repo may
-  want a different Chromium build than the one installed. Point the path it
-  asks for at `/opt/pw-browsers/chromium-*/chrome-linux64/chrome` with a
-  symlink. That is a local fix, never a repo change.
+  want a different Chromium build than the one installed. Set
+  `HARNESS_CHROME` to the installed one, for example
+  `HARNESS_CHROME=/opt/pw-browsers/chromium-1243/chrome-linux64/chrome`.
+  `scripts/__harness/browser.cjs` explains the order it looks in.
 - A harness screen shows nothing: the fake is missing data the screen waits
   for. Add it to the fake, never a delay.

@@ -56,7 +56,7 @@ const SOURCES = [
 const WIDTHS = [320, 360, 375, 390, 414, 430, 600, 768, 834, 1024, 1280, 1440, 1920];
 
 (async () => {
-  const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  const browser = await chromium.launch(require('./__harness/browser.cjs').launchOptions());
   const fails = [];
 
   console.log('width  theme  tiles  row  height  columns          label lines  upload starts');

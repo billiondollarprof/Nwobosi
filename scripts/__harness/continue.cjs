@@ -98,7 +98,7 @@ async function download(page, label) {
 }
 
 (async () => {
-  const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  const b = await chromium.launch(require('./browser.cjs').launchOptions());
 
   /* ---- 1. TONIGHT, EXACTLY. "Continue", and a reply made only of markers */
   {

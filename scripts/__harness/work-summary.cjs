@@ -42,7 +42,7 @@ const DOC = [
 ].join('\n');
 
 (async () => {
-  const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  const b = await chromium.launch(require('./browser.cjs').launchOptions());
   const page = await b.newPage({ viewport: { width: 1280, height: 900 } });
   page.on('pageerror', e => BAD.push('page error: ' + e.message));
   await page.goto('http://localhost:5301/?page=chat', { waitUntil: 'networkidle' });

@@ -36,7 +36,7 @@ async function built(browser, drive) {
 }
 
 (async () => {
-  const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  const b = await chromium.launch(require('./browser.cjs').launchOptions());
 
   /* 1. CONNECTED: offered by name, and it sends the real file. */
   {

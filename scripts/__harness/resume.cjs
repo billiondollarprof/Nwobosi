@@ -50,7 +50,7 @@ async function open(browser, { minutes, delivered }) {
 }
 
 (async () => {
-  const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  const b = await chromium.launch(require('./browser.cjs').launchOptions());
 
   /* 1. Ten minutes ago, nothing downloaded. He is still working on it. */
   let r = await open(b, { minutes: 10, delivered: false });

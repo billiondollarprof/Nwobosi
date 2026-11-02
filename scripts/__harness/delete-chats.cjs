@@ -58,7 +58,7 @@ const heading = (page, text) => page.locator('aside p', { hasText: text }).count
 const inList = (page, title) => page.locator('aside button', { hasText: title }).count();
 
 (async () => {
-  const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  const b = await chromium.launch(require('./browser.cjs').launchOptions());
 
   /* ---- 1. HOLD ONE, TAP ANOTHER, CANCEL, THEN DELETE ------------------- */
   {

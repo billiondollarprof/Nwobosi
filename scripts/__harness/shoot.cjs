@@ -10,7 +10,7 @@
    element edges rather than the document. */
 const { chromium } = require('playwright');
 (async () => {
-  const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  const browser = await chromium.launch(require('./browser.cjs').launchOptions());
   const errs = [];
   for (const [w, h, name] of [[390, 900, 'phone'], [1280, 900, 'desktop']]) {
     for (const theme of ['dark', 'light']) {
