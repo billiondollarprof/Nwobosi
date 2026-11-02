@@ -45,10 +45,10 @@ Supabase project `cbunsqzkhidwjtxdsmxd`. Read from the live project on
 | `accept-invite` | 14 | 2026-09-16 14:12 |
 | `canva-connect` | 15 | 2026-09-16 14:12 |
 
-**Not yet compared: `assistant` v53.** The last record checked v52 against the
-repo (2026-09-26, line for line). v53 went out later the same day and nobody
-wrote down why. Compare it with the repo before the next change to the
-assistant (`node scripts/check-deploy.mjs assistant`).
+**Compared 2026-11-02: every live function carries the repo copy**, all 21,
+including `assistant` v53 (648 of 648 markers). Run by GitHub
+(`functions.yml`, compare mode). From now on GitHub deploys the functions from
+`main` (`docs/rules/BRANCHING.md`), so this table is updated after each deploy.
 
 ## 3. Outside services
 
