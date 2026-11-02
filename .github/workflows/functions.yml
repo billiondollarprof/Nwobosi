@@ -1,0 +1,70 @@
+# functions.yml: deploys the edge functions to Supabase from the repo.
+# Anthony's decision, 2026-11-02: GitHub deploys the functions, not a person
+# in the dashboard. There is one Supabase project for testing and live, so
+# functions deploy ONLY from main, never from testing.
+#
+# On a push to main: deploys only the functions that changed, each one
+# guarded (the live copy must be the previous repo copy, or it is not
+# deployed and the run goes red) and checked after. scripts/deploy-functions.mjs
+# holds the logic and explains it.
+#
+# Run by hand ("Run workflow", mode compare): compares every live function
+# with the repo and changes nothing.
+#
+# Needs one GitHub secret: SUPABASE_ACCESS_TOKEN. Until it is added, this
+# says so and stops without failing.
+name: Edge functions
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - supabase/functions/**
+      - scripts/deploy-functions.mjs
+      - scripts/check-deploy.mjs
+      - .github/workflows/functions.yml
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "compare (change nothing) or deploy (the last commit's changes)"
+        required: true
+        default: compare
+        type: choice
+        options: [compare, deploy]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: edge-functions
+  cancel-in-progress: false
+
+jobs:
+  functions:
+    # Only from main, even when started by hand.
+    if: github.ref_name == 'main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The guard reads the repo as it was before this push.
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Compare every live function with the repo
+        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'compare'
+        run: node scripts/deploy-functions.mjs --compare-all
+
+      - name: Deploy the functions that changed
+        if: github.event_name == 'push' || inputs.mode == 'deploy'
+        run: |
+          base="${{ github.event.before }}"
+          if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ]; then
+            base="$(git rev-parse HEAD~1)"
+          fi
+          node scripts/deploy-functions.mjs "$base" "${{ github.sha }}"

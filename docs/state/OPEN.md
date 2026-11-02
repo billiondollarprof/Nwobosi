@@ -21,8 +21,16 @@ How this file works:
 
 1. **Work the way Rhema works: its rules and its CI/CD.** 2026-11-02. "can
    you see project rhema and how it uses rules and CI/CD? let's work in
-   similar way too". Rhema read; the plan and three decisions are with him.
-   Waiting for his answers before building.
+   similar way too". His answers: yes to auto go-live once testing is green,
+   yes to GitHub deploying the edge functions, and ONE database for testing
+   and live. Built and on testing: `ci.yml`, `smoke.yml`, `functions.yml`,
+   `scripts/deploy-functions.mjs`, `scripts/stamp-version.mjs`,
+   `scripts/wait-runs.sh`, skills `screens`, `new-migration`, `humanizer`,
+   and `docs/rules/BRANCHING.md`. STILL OPEN: (a) the `CLAUDE.md` update
+   (may do, must ask, never; auto go-live; one chat; skills) was blocked by
+   the session's safety check, so Anthony makes it or allows it; (b) the
+   `ship` skill file, blocked the same way; (c) the GitHub secret
+   `SUPABASE_ACCESS_TOKEN`, then one compare run of `functions.yml`.
 2. **Make the demo flow work, step by step.** 2026-10-31. Dreef may book a
    call to see it. They need to see three things and nothing else:
    1. Start a request in the existing Amara knowledge base.

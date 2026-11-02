@@ -1,0 +1,55 @@
+# smoke.yml: after a push, wait until Cloudflare is serving THAT commit, then
+# check the site really answers.
+#
+# Cloudflare builds testing and main on its own. "Build finished" is not the
+# same as "the site works", so this asks the address itself:
+#   testing -> https://testing.stellaxafe01.pages.dev
+#   main    -> https://stellaxafe.com
+#
+# How it knows the new build is up: every build writes /version.txt with its
+# commit (scripts/stamp-version.mjs). This waits until /version.txt shows the
+# commit that was pushed, for up to 15 minutes, then loads a few pages.
+name: Smoke test
+
+on:
+  push:
+    branches: [testing, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: smoke-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      SITE: ${{ github.ref_name == 'main' && 'https://stellaxafe.com' || 'https://testing.stellaxafe01.pages.dev' }}
+      SHA: ${{ github.sha }}
+    steps:
+      # ===== 1. Wait for Cloudflare to publish this commit =====
+      - name: Wait until the site serves this commit
+        run: |
+          for i in $(seq 1 90); do
+            served="$(curl -fsS "$SITE/version.txt?nocache=$i" 2>/dev/null | tr -d '[:space:]' || true)"
+            if [ "$served" = "$SHA" ]; then echo "Serving $SHA"; exit 0; fi
+            echo "Waiting: site says '${served:-nothing yet}'"
+            sleep 10
+          done
+          echo "The site never served $SHA. Check the Cloudflare build for this commit."
+          exit 1
+
+      # ===== 2. The pages answer =====
+      # The app is a single page application: these routes are served by
+      # the same index.html, so a 200 with the app's root element is the check.
+      - name: Load the main pages
+        run: |
+          for path in / /setup /demo /contact; do
+            body="$(curl -fsS "$SITE$path")" || { echo "FAILED: $path did not answer"; exit 1; }
+            echo "$body" | grep -q 'id="root"' || { echo "FAILED: $path is not the app"; exit 1; }
+            echo "ok  $path"
+          done
