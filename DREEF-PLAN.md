@@ -12,7 +12,8 @@ a private link. This file is how we get from one to the other.
 What it must never do: become a promise to the client. The client facing
 text is `CLIENT-BRIEF.md`. Dates and fees here are our internal plan.
 
-Related: `CLIENT-BRIEF.md` (what Dreef reads, plus costs and sources),
+Related: `CLIENT-BRIEF.md` (what Dreef reads), `BRIEF-NOTES.md` (research,
+costs and sources behind it),
 `ARCHITECTURE.md` (the isolation model, WhatsApp as the customer front desk).
 
 ---
