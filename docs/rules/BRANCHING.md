@@ -36,12 +36,7 @@ live function with the repo and changes nothing.
 ## 3. Going live
 
 Anthony's rule, 2026-11-02: **once everything on testing is green, merge
-`testing` into `main` without asking again.**
-
-**Not in force yet.** `CLAUDE.md` section 6 still says to ask before merging
-to `main`, and `CLAUDE.md` wins where the two disagree. This rule takes effect
-when Anthony updates `CLAUDE.md` to match. Until then, steps 1 to 4 run as
-written, and step 5 waits for his yes.
+`testing` into `main` without asking again.** Skill `ship` does these steps.
 
 1. Work on the feature branch. Run `npm run verify`, use the change by hand.
 2. Merge it into `testing` and push.

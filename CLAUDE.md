@@ -18,6 +18,9 @@ below or is kept here.)
 
 1. Read `docs/state/OPEN.md`. It is what he has asked for and decided.
 2. Stop reading. Open anything else only when the task needs it.
+3. **One chat.** Anthony works in one long chat. Do not suggest a new one.
+   The chat is summarised from time to time, so keep `OPEN.md` and `LIVE.md`
+   current as you go: they are what survives in full.
 
 ## 2. Where things are
 
@@ -28,7 +31,8 @@ below or is kept here.)
 | Call any screen change done | `docs/rules/UI-CHECKS.md` |
 | Run SQL, or touch an edge function | `docs/rules/DEPLOY.md` |
 | Check what is live, and at which version | `docs/state/LIVE.md` |
-| Merge or push | `docs/rules/BRANCHING.md` |
+| Merge, push, go live, or change a GitHub workflow | `docs/rules/BRANCHING.md`, `.github/workflows/`, skill `ship` |
+| Take screenshots, or make a database change | skills `screens`, `new-migration` in `.claude/skills/` |
 | Create a file or reshape one | `docs/rules/STRUCTURE.md` |
 | Understand what the product is for, and what public copy may claim | `docs/product/DIRECTION.md` |
 | Understand isolation, privacy, WhatsApp as the customer side | `docs/product/ARCHITECTURE.md` |
@@ -84,7 +88,45 @@ Anthony is in charge. That is the working rule, not a formality.
   data, or put a false claim on a public page. Say so plainly and wait. Taste is
   not this.
 
-## 5. How to work
+## 5. What an agent may do, must ask, and must never do
+
+So agents can work fast without guessing. Adapted from the Rhema repo,
+2026-11-02, with Anthony's yes.
+
+**May do without asking**
+- Read any code, run any local test, build.
+- Push to a feature branch and to `testing`.
+- Run read only SQL (SELECT), and say in the reply what it read.
+- **Merge `testing` into `main` once every check is green**, then merge
+  `main` back into `testing`, and report it in a few lines (skill `ship`,
+  `docs/rules/BRANCHING.md`).
+- Re-run a GitHub job once, only if it died before any test ran.
+- Fix a fault in its own unfinished work.
+- Update the docs, `OPEN.md`, `LIVE.md` and the session log.
+- Carry out a small, specific request straight away.
+
+**Must ask first, then wait**
+- **SQL that writes**: the whole batch for the piece of work at once, a plain
+  line per statement. One yes covers the batch (`docs/rules/DEPLOY.md`).
+- **A change to an edge function**: which one and what changes. Merging to
+  `main` deploys it, so the yes comes before it reaches `testing`.
+- Anything that deletes, drops, renames or removes data, whatever the checks
+  say. Ask in plain words.
+- Changing anything Anthony designed or built, even to fix a bug.
+- A new service, a change to the stack, or anything that costs money.
+- A big feature, or one that could be read two ways.
+
+**Never**
+- Put a secret in the code or the chat. Secrets go in GitHub secrets or the
+  Supabase dashboard. A secret that reached a commit is rotated.
+- Merge to `main` with a red check, or switch a check off, narrow it, or skip
+  a test to get green.
+- Force push or rewrite history on `main` or `testing`.
+- Deploy an edge function by hand when the pipeline can do it, or over a live
+  copy that failed the guard.
+- Say "done" before the thing has been used.
+
+## 6. How to work
 
 1. **Write his request into `docs/state/OPEN.md` the moment he makes it**, if it
    is not finished in the same turn. Listing it back in chat is not recording
@@ -97,29 +139,36 @@ Anthony is in charge. That is the working rule, not a formality.
 4. **Never break what works while fixing what does not.** Read the diff back.
    Ask of every deletion: was anybody relying on this?
 5. **Nothing is done until it has been used.** Click it, change it, refresh.
-   For anything a person sees: screenshot at phone and desktop width, both
-   themes, plus `scripts/overflow-audit.cjs` (`docs/rules/UI-CHECKS.md`).
-6. **Something new turns up mid task?** Write it in `OPEN.md` and carry on.
+   For anything a person sees: skill `screens` (`docs/rules/UI-CHECKS.md`).
+6. **`npm run verify` is green before the word "done".** GitHub runs the same
+   command. Never narrow a check to the errors you expected.
+7. **Something new turns up mid task?** Write it in `OPEN.md` and carry on.
+8. **Anything an agent does more than twice becomes a skill** in
+   `.claude/skills/`, so the next agent runs it instead of working it out.
+   A skill that fails stops at the failing step; fix the cause, or fix the
+   skill in the same change and say so. Never skip a step.
 
-## 6. The three rules that cannot be got wrong
+## 7. The three rules that cannot be got wrong
 
-- **Every push to `main` is a publish** to stellaxafe.com. Work goes through
-  `testing` first. Never merge to `main` without being asked. Pushing `testing`
-  needs no asking. (`docs/rules/BRANCHING.md`)
+- **Every push to `main` is a publish** to stellaxafe.com, and deploys any
+  changed edge function. Work goes through `testing` first, and reaches `main`
+  only when every check on `testing` is green. (`docs/rules/BRANCHING.md`)
 - **SQL:** read only queries run freely and are reported. Anything that writes
   goes to him as one batch, a short line per statement, and waits for his yes.
   (`docs/rules/DEPLOY.md`)
-- **Edge functions:** the repo is not the deployment. Compare the live copy
-  first, and a redeploy is always asked for. (`docs/rules/DEPLOY.md`)
+- **Edge functions:** GitHub deploys them from `main`, guarded: a function
+  whose live copy is not the previous repo copy is not deployed, and the run
+  goes red. A change to one is asked for before it starts.
+  (`docs/rules/DEPLOY.md`)
 
-## 7. Product rules in one breath
+## 8. Product rules in one breath
 
 The staff side has no settings. Admin setup never shows the plumbing. No
 technical words on any screen a client's staff use. The read back and the
 sources used always stay visible. **No passwords**: sign in is a code sent to
 email. Full text: `docs/rules/PRODUCT.md`.
 
-## 8. Model choice
+## 9. Model choice
 
 Only Anthony can switch the model, with `/model`. Before anything substantial,
 name the tier in one line: "Sonnet is enough for this" (building to an agreed
@@ -127,7 +176,7 @@ spec, forms, wiring a known API, docs, screenshot runs) or "this one is worth
 Opus" (architecture, security, auth, money, hard debugging, copy that has to
 land). Never switch in the middle of a task.
 
-## 9. Keeping the docs small
+## 10. Keeping the docs small
 
 The docs used to cost a new session 67,000 tokens before any work. Keep them
 lean:

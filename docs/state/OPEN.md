@@ -19,19 +19,7 @@ How this file works:
 
 ## 1. Now, in his order
 
-1. **Work the way Rhema works: its rules and its CI/CD.** 2026-11-02. "can
-   you see project rhema and how it uses rules and CI/CD? let's work in
-   similar way too". His answers: yes to auto go-live once testing is green,
-   yes to GitHub deploying the edge functions, and ONE database for testing
-   and live. Built and on testing: `ci.yml`, `smoke.yml`, `functions.yml`,
-   `scripts/deploy-functions.mjs`, `scripts/stamp-version.mjs`,
-   `scripts/wait-runs.sh`, skills `screens`, `new-migration`, `humanizer`,
-   and `docs/rules/BRANCHING.md`. STILL OPEN: (a) the `CLAUDE.md` update
-   (may do, must ask, never; auto go-live; one chat; skills) was blocked by
-   the session's safety check, so Anthony makes it or allows it; (b) the
-   `ship` skill file, blocked the same way; (c) the GitHub secret
-   `SUPABASE_ACCESS_TOKEN`, then one compare run of `functions.yml`.
-2. **Make the demo flow work, step by step.** 2026-10-31. Dreef may book a
+1. **Make the demo flow work, step by step.** 2026-10-31. Dreef may book a
    call to see it. They need to see three things and nothing else:
    1. Start a request in the existing Amara knowledge base.
    2. It runs the stages and produces a finished document.
@@ -40,9 +28,9 @@ How this file works:
    Go through each stage of the assistant one at a time, find where it fails,
    fix it, and make each step simpler while keeping the output at its best.
    The demo stays on Supabase on purpose: it is there to close a client.
-3. **Research similar tools**, and how they orchestrate agents to produce
+2. **Research similar tools**, and how they orchestrate agents to produce
    documents and files. Then recommend how to shape ours (security aside).
-4. **MCP and the browser**, and keeping web search cheap. He asked why an
+3. **MCP and the browser**, and keeping web search cheap. He asked why an
    online session costs so much, and about free search access such as Exa.
    Start from what exists: our search already runs on Tavily's free plan and
    DuckDuckGo (`docs/state/LIVE.md`).
@@ -52,17 +40,6 @@ How this file works:
 - Brief (ready to send): `docs/clients/dreef/BRIEF.md`
 - Notes behind it, never sent: `docs/clients/dreef/NOTES.md`
 - Build plan, two weeks: `docs/clients/dreef/PLAN.md`
-
-## 3. Found 2026-11-02, needs his decision
-
-- **Supabase's own GitHub link is switched on** (a "Supabase Preview" check
-  runs on every commit). It can deploy functions and apply migrations by
-  itself when `main` changes, around our guard and around his SQL approval.
-  It is the likeliest cause of the "redeployed without being asked" mystery:
-  `assistant` went to v53 48 seconds after a push to `main` on 2026-09-26.
-  Not proven. His check: Supabase dashboard, project settings, Integrations,
-  GitHub. If "deploy to production" is on, turn it off, because GitHub
-  Actions now deploys the functions, guarded.
 
 ## 3. Open from before, not yet done
 
