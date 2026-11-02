@@ -274,6 +274,6 @@ Do every one. A green build is not a working deployment.
 | The steps of a piece of work | `FLOW.md`, then `src/pages/Chat.jsx` |
 | Reopening a chat, which step and which button | `src/shared/resumeCards.js` |
 | The admin screen | `src/pages/Admin.jsx` |
-| What is live versus what is in the repo | `PENDING-DEPLOYS.md` |
+| What is live versus what is in the repo | `docs/state/LIVE.md` |
 | The rules for working on this project | `CLAUDE.md` |
-| What is open right now | `CURRENT.md` |
+| What is open right now | `docs/state/OPEN.md` |

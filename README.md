@@ -237,9 +237,11 @@ supabase/functions/     edge function sources, deployed by hand
 | File | What it is |
 | --- | --- |
 | `stellaxafe_project_plan.pdf` | The full system plan. First written 2026-08-22, updated since |
-| `CLAUDE.md` | Working rules for this project |
-| `CURRENT.md` | Full state of work in progress |
-| `SESSIONS.md` | Log of past work sessions |
+| `CLAUDE.md` | Working rules, and a map of every other document |
+| `docs/state/OPEN.md` | What is open and what has been decided |
+| `docs/state/LIVE.md` | What is deployed, and at which version |
+| `docs/product/` | What the product is, how it is designed |
+| `docs/history/` | Session log and earlier records |
 
 ## Running it
 
@@ -253,7 +255,7 @@ There is no public sign up. A company starts at `/setup` with an access code, wh
 
 ## Status
 
-**`CURRENT.md` is the blunt version, and it is the one to trust.** It is kept deliberately honest about what is real and what only looks real. This section is the summary.
+**`docs/state/OPEN.md` and `docs/state/LIVE.md` are the blunt version, and they are the ones to trust.** It is kept deliberately honest about what is real and what only looks real. This section is the summary.
 
 **Real, running against Supabase:**
 

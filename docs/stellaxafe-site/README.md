@@ -26,7 +26,7 @@ The writing was not superseded, and that is what is in this folder.
 
 - **`DECISIONS.md`** — 345 lines. The living record of what was decided
   about the public site, including reasons that never made it into code.
-  HISTORICAL. This repo's own record is `CURRENT.md`, and that is the one
+  HISTORICAL. This repo's own record is `docs/state/OPEN.md`, and that is the one
   to read and to keep current. Do not start updating this one again.
 
 - **`DESIGN-GUIDELINES.md`** — 77 lines. Copy, typography and theming rules

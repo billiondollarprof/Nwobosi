@@ -3,8 +3,8 @@
 How the thing actually works, in Anthony's own description, written down
 2026-09-06 because most of it is not what the demo currently does.
 
-`CURRENT.md` says what is built. **This file says what is designed.** Where
-they disagree, this file is the target and `CURRENT.md` is the truth.
+`docs/state/LIVE.md` says what is live. **This file says what is designed.** Where
+they disagree, this file is the target and `LIVE.md` is the truth.
 
 ---
 
