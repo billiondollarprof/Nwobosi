@@ -86,7 +86,7 @@ async function failASearch(browser, label, opts) {
 }
 
 (async () => {
-  const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  const browser = await chromium.launch(require('./browser.cjs').launchOptions());
 
   /* 1. The search ends with no words: the shape that produced "That stopped
         before it finished" in his chat. */

@@ -121,7 +121,7 @@ const isZip = (b) => b.length > 4 && b[0] === 0x50 && b[1] === 0x4b;       // "P
 const isPdf = (b) => b.length > 4 && b.slice(0, 4).toString() === '%PDF';
 
 (async () => {
-  const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  const b = await chromium.launch(require('./browser.cjs').launchOptions());
 
   /* ---- 1. THE WHOLE FLOW, TO A BUILT DOCUMENT ------------------------- */
   const { page, errs } = await walkToBuilt(b, DOCUMENT);

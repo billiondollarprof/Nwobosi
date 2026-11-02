@@ -86,7 +86,7 @@ async function build(browser, brief) {
 }
 
 (async () => {
-  const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  const browser = await chromium.launch(require('./browser.cjs').launchOptions());
 
   const asked = await build(browser, 'The letter for Mr Bello.\nLayout: like engagement.docx\nPictures: none');
   check('THE SHAPE REACHES THE MODEL, BESIDE THE WORDS', asked.said.includes('--- LAYOUT OF engagement.docx (follow it only if they ask for this layout) ---'));

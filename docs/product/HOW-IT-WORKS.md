@@ -61,14 +61,15 @@ built in the browser, and it is saved to the company's library.
 
 ## What makes it different
 
-**It cannot go and look.** The assistant has no search, no browsing, and
-cannot open a link. Not as a rule it follows, but as a capability it does
-not have. Facts reach a draft through exactly four routes, and a person
-opens every one:
+**It only looks online with permission.** The assistant can search the web
+and read pages, but only after the person says yes, and what it finds is shown
+as a list they tick before any of it enters the work. Every address shown comes
+from a result the search actually returned. Facts reach a draft through these
+routes, and a person opens every one:
 
 1. The company's approved sources
 2. What the person types, or a file they hand over
-3. Material they checked themselves and brought back
+3. Web findings they approved, each with its link
 4. Nothing
 
 **Missing information becomes a route, not a refusal.** When it lacks
@@ -116,31 +117,25 @@ is left.
 
 ## What it is built on
 
-React and Vite on Cloudflare. Supabase for Postgres, auth, row level
-security and edge functions. Claude for the models: Haiku for conversation,
-Sonnet for analysis and writing.
+React and Vite on Cloudflare. Supabase for Postgres, auth, row level security
+and edge functions. The model is a setting per company, not a fixed choice:
+the assistant runs on Anthropic or DeepSeek today, through one seam
+(`supabase/functions/_shared/brain.ts`). Web search is our own
+(`_shared/search.ts`), so it works the same for every model.
 
 ---
 
-## Honest limits of this demo
+## Limits of this demo
 
-Stated plainly, because a demo that oversells itself is the thing this
-product exists to avoid.
+- **Outputs:** PDF, Word, Slides and Excel files, built in the browser, plus a
+  straight conversion between PDF and Word.
+- **Storage:** Google Drive is the first connection built. Others are added
+  per company.
+- **Canva:** connecting works; laying a document out in Canva does not yet.
+- **Gmail, Slack and Notion** are examples of what a deployment connects.
+- **Sign in** is a code sent to email. No passwords.
+- **A scanned PDF cannot be read** as text, because it is pictures of words.
+  It says so and asks for the text.
 
-- **Output is a PDF or a Word file**, written in the browser, nothing
-  uploaded. A real `.pptx` deck and Canva designs are the next build, not
-  something this demo does.
-- **Canva and Google Drive are registered, not wired.** The accounts and
-  keys exist; the flows do not. The app says **Set up** rather than
-  Connected, and nothing in it claims Connected.
-- **Gmail, Slack and Notion are examples**, shown to say what a deployment
-  looks like.
-- **Sign in is a password.** Email codes are next.
-- **Higher models are held back** to keep demo costs down. A real
-  deployment runs whichever models the company chooses, including other
-  providers.
-- **A scanned PDF cannot be read**, because it is pictures of words rather
-  than words. It says so and asks for the text instead.
-
-Everything above is either working or named as not working. There is
-nothing in between.
+What a client receives is built for them, in their own cloud. See
+`docs/product/DIRECTION.md` and `docs/clients/`.

@@ -48,7 +48,7 @@ async function download(page, label) {
 }
 
 (async () => {
-  const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  const b = await chromium.launch(require('./browser.cjs').launchOptions());
   const page = await b.newPage({ viewport: { width: 1280, height: 1000 }, acceptDownloads: true });
   const errs = [];
   page.on('pageerror', (e) => errs.push(e.message));

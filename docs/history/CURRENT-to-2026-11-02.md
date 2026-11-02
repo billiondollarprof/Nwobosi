@@ -25,6 +25,57 @@ built and checked, not when it is planned.
 
 ### Open
 
+00000000000000. **2026-11-02, ASKED: SHRINK THE DOCS SO A SESSION READS LESS.**
+                His words: "let the Claude.md just be like a linking document,
+                so that when an agent needs to do a particular thing, it opens
+                a particular document... so it doesn't have to be reading
+                everything." Also: drop rules that stop agents doing their
+                best, keep the ones that make them work best. Then, in order:
+                check the demo flow step by step, research similar tools and
+                how they orchestrate agents to produce files, then MCP and the
+                browser, and cheaper web search. Audit done, plan shown to him,
+                waiting for his yes before anything moves.
+
+00000000000000. **2026-10-31, NEXT: MAKE THE DEMO FLOW WORK, STEP BY STEP.**
+                Starting this weekend (Sunday or Monday, or this evening).
+                The first client, Dreef, may book a call to see it. What they
+                need to see, and nothing else:
+                1. Start a request in the existing Amara knowledge base.
+                2. It runs the stages and produces a finished document.
+                3. If they want it, show it searching the internet.
+                The plan: go through each stage of the assistant one at a
+                time, find where it fails, fix it, and make each step
+                simpler while keeping the output at its best. The demo stays
+                on Supabase on purpose: it is there to close a client, not to
+                run one. AWS, PrivateLink and the rest are the client build,
+                and are not shown in the demo.
+
+00000000000000. **2026-10-31, DREEF: the client brief and the build plan.**
+                Both live on branch `claude/merge-stellaxafe-nwobosi-blewyb`,
+                not on `main` or `testing`: `CLIENT-BRIEF.md` (what Dreef
+                reads, ready to send as it is), `BRIEF-NOTES.md` (research,
+                costs and sources, never sent) and `DREEF-PLAN.md` (setup
+                fee tiers, the two week build, AWS, GitHub OIDC, MCP).
+
+00000000000000. **2026-10-31, DROPPED: the portfolio page and its video.**
+                His words: "forget about my portfolio page... I'll close it.
+                I have another one". His portfolio is now
+                anthony.stellaxafe.com. The /anthony page, its Loom video and
+                the slow start entry below are no longer work. Do not change
+                or remove the page until he says so.
+
+00000000000000. **2026-09-26, ON HOLD (his words): the video is slow to start.**
+                "once you click on that thumbnail, it takes a few seconds
+                again before the actual video loads... The video is supposed
+                to just start playing, you know, maybe load its own
+                preview... Hold on this for now."
+                Cause: the Loom player is only fetched after the click, so
+                the wait is Loom loading. Options when he picks it up again:
+                warm the connection to Loom on hover or when the poster
+                scrolls into view, or load the player behind the poster
+                before the click. Nothing changed yet. Do not touch it until
+                he asks.
+
 00000000000000. **2026-09-26, DONE AND PUBLISHED: the video on the portfolio.**
                 A drawn poster (title, his photo, round blue play button)
                 shows until play is pressed, then Loom plays on the page. The

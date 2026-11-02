@@ -3,7 +3,7 @@
 Why this exists, what it is actually for, and where it is going. Read this
 before working on product copy or on the assistant flow.
 
-`CURRENT.md` says what is built. This file says what it is meant to be.
+`docs/state/OPEN.md` and `docs/state/LIVE.md` say what is open and what is live. This file says what it is meant to be.
 They disagree in places on purpose.
 
 **The demo is a sample, not the specification.** It shows the shape of the

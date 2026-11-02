@@ -1146,3 +1146,10 @@ Also this session:
 **The lesson, again.** Every one of these was a rule written in a prompt
 where a limit belonged. A rule is a suggestion to a cheap model under
 pressure from a user instruction. Give it a ceiling instead.
+
+---
+
+## Finished items, one line each (from 2026-11-02, newest last)
+
+- 2026-10-31: Dreef client brief, notes and two week build plan written (`docs/clients/dreef/`).
+- 2026-11-02: Docs restructured. `CLAUDE.md` is now a short rule set and a map; state lives in `docs/state/OPEN.md` and `LIVE.md`; rules in `docs/rules/`; product docs in `docs/product/`; the old `CURRENT.md`, `NOW.md`, `PENDING-DEPLOYS.md` and full `CLAUDE.md` kept whole in `docs/history/`. Start of session reading fell from about 67,000 tokens to about 3,500. SQL rule changed: read only runs freely, writes go as one batch for approval.

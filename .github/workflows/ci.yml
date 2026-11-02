@@ -1,0 +1,33 @@
+# ci.yml: the checks that run on every push to testing and main, and on
+# every pull request. It runs `npm run verify`, the same command an agent runs
+# before saying "done", so what passes locally passes here.
+#
+# A red check here stops the agent merging testing into main (CLAUDE.md,
+# "Going live"). It must never be switched off or narrowed to get green.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [testing, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    # A stuck step fails after this many minutes, instead of 6 hours.
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # The flow walks drive a real browser, so it has to be installed here.
+      - name: Install the test browser
+        run: npx playwright install --with-deps chromium
+      - run: npm run verify

@@ -1,7 +1,7 @@
 # THE DOCUMENT HARNESS: CHARTS, FIGURES, PICTURE SOURCES, AND A CHECKER
 
 Spec, 2026-09-23. **Status: GO AHEAD given 2026-09-23. Being built in the order in
-section 7.** His words are in `CURRENT.md`, at the top.
+section 7.** His words are in `docs/history/CURRENT-to-2026-11-02.md`, at the top.
 
 He asked for four things and one idea behind them:
 

@@ -181,7 +181,7 @@ only then marked done, before the next starts.
 
 # ROUND 2, 2026-09-23 (after A was built)
 
-Anthony's answers and new asks are recorded word for word in `CURRENT.md`.
+Anthony's answers and new asks are recorded word for word in `docs/history/CURRENT-to-2026-11-02.md`.
 This is the plan for them. **Nothing below is built yet.**
 
 ## Decided

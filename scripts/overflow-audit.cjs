@@ -39,7 +39,7 @@ const routes = ['/', '/anthony', '/anthony/cv', '/insights', '/services', '/foun
 const widths = [320, 360, 390, 414];
 
 (async () => {
-  const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  const browser = await chromium.launch(require('./__harness/browser.cjs').launchOptions());
   let total = 0;
 
   for (const route of routes) {
