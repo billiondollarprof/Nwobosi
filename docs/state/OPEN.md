@@ -28,6 +28,22 @@ How this file works:
    Go through each stage of the assistant one at a time, find where it fails,
    fix it, and make each step simpler while keeping the output at its best.
    The demo stays on Supabase on purpose: it is there to close a client.
+
+   **Audit from the records, 2026-11-03** (conversations and budget, read
+   only). Last three real runs, 23 Sep to 1 Oct, all reached a document.
+   Faults found, to fix together after one live rehearsal:
+   a. Amara's budget is 67 cents. At zero the assistant refuses. Needs a
+      top up or exempt (SQL write, his yes).
+   b. The prompt never mentions Canva, so the model improvised: told him
+      "PDF or Word", then offered PowerPoint two messages later. Prompt
+      line needed (edge function change, his yes).
+   c. Two error texts on the staff screen say "Check the function logs" and
+      "answered with 500" (`src/shared/assistantApi.js`). Plain words.
+   d. 25 Sep: "Yes, ask me your questions" stalled ("That one stopped
+      answering"), then the next turn asked twice in a row. Cause unknown;
+      the rehearsal logs will show it.
+   e. The web search has no recorded successful run since it was rebuilt on
+      25 Sep. Both later runs were told "work with what you have".
 2. **Research similar tools**, and how they orchestrate agents to produce
    documents and files. Then recommend how to shape ours (security aside).
 3. **MCP and the browser**, and keeping web search cheap. He asked why an
