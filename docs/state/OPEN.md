@@ -44,9 +44,20 @@ How this file works:
       the rehearsal logs will show it.
    e. The web search has no recorded successful run since it was rebuilt on
       25 Sep. Both later runs were told "work with what you have".
-2. **Research similar tools**, and how they orchestrate agents to produce
+2. **Models for the demo: DeepSeek for the work, Gemini for support.**
+   2026-11-03. His words: "use the DeepSeek most capable model and then use a
+   simpler model for the WhatsApp chat... we can actually use Gemini, because
+   Gemini has free tier". No Claude credit left. Found: Amara already runs
+   wholly on DeepSeek (`deepseek-flash`, which DeepSeek says is its strongest
+   model; v4-pro routes to it). To build: a `gemini` vendor in
+   `_shared/brain.ts`, and a separate vendor setting for support (needs a
+   column, SQL his yes). His steps: fund $5 on DeepSeek, get a Gemini key
+   from Google AI Studio and put it in Supabase secrets as `GEMINI_API_KEY`.
+   Caution told to him: Gemini's free tier may use prompts to improve
+   Google's products; fine for Amara's demo, not for a client.
+3. **Research similar tools**, and how they orchestrate agents to produce
    documents and files. Then recommend how to shape ours (security aside).
-3. **MCP and the browser**, and keeping web search cheap. He asked why an
+4. **MCP and the browser**, and keeping web search cheap. He asked why an
    online session costs so much, and about free search access such as Exa.
    Start from what exists: our search already runs on Tavily's free plan and
    DuckDuckGo (`docs/state/LIVE.md`).
