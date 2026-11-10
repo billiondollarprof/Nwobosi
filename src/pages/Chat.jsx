@@ -1127,13 +1127,24 @@ export default function Chat() {
             return;
           }
           if (raw.includes(MARKER.offerInterview)) {
+            /* ONE QUESTION AT A TIME. Anthony, 2026-11-10: "No two prompts
+               are supposed to appear at the same time." When it also wants
+               to search, the search is asked first, alone, and the offer
+               waits in heldCardRef until that is answered. */
+            if (alsoAskedToLook) {
+              heldCardRef.current = { card: { type: "offer" }, stage: "offered" };
+              orientLookupsRef.current += 1;
+              const withLookup = updateMessages((prev) => [
+                ...prev,
+                { id: nextId(), role: "assistant", type: "lookup", from: "orient" },
+              ]);
+              persist(withLookup, "orient");
+              return;
+            }
             setFlowStage("offered");
             const withCards = updateMessages((prev) => [
               ...prev,
               { id: nextId(), role: "assistant", type: "offer" },
-              ...(alsoAskedToLook
-                ? [{ id: nextId(), role: "assistant", type: "lookup", from: "orient" }]
-                : []),
             ]);
             persist(withCards, "offered");
             return;
@@ -1298,11 +1309,19 @@ export default function Chat() {
             /* SAVED WITH ITS BUTTON, and with the file type on it. Before
                2026-09-23 this card was never saved, so a chat reopened
                after a read back had no button to press. */
+            /* ONE QUESTION AT A TIME (see the offer above): the search
+               first, the build card held until it is answered. */
+            if (alsoAskedToLook) {
+              heldCardRef.current = { card: { type: "build", format: formatRef.current }, stage: "analyse" };
+              const withLookup = updateMessages((prev) => [
+                ...prev,
+                { id: nextId(), role: "assistant", type: "lookup", from: "analyse" },
+              ]);
+              persist(withLookup, "analyse");
+              return;
+            }
             const withBuild = updateMessages((prev) => [
               ...prev,
-              ...(alsoAskedToLook
-                ? [{ id: nextId(), role: "assistant", type: "lookup", from: "analyse" }]
-                : []),
               { id: nextId(), role: "assistant", type: "build", format: formatRef.current },
             ]);
             persist(withBuild, "analyse");
@@ -1617,6 +1636,8 @@ export default function Chat() {
     const readbackOnTable = messagesRef.current.some((m) => m.type === "build");
 
     updateMessages((prev) => prev.filter((m) => m.type !== "build" && m.type !== "offer" && m.type !== "lookup" && m.type !== "useFinding"));
+    /* Typing answers whatever was on screen; nothing stays held behind it. */
+    heldCardRef.current = null;
 
     /* Never research, brief or generate. Typing is a conversation, and
        those three are only ever started by a button. */
@@ -2256,6 +2277,30 @@ export default function Chat() {
      sits inside the questions, and the search runs after the answers. */
   const searchAfterAnswersRef = useRef(false);
 
+  /* THE CARD WAITING BEHIND A SEARCH QUESTION. Anthony, 2026-11-10: only
+     one human in the loop question on screen at a time. When a turn wants
+     both a search and its own card (the offer, or the build card), the
+     search is asked first and the other waits here. Answering the search
+     brings it back: "No" at once, with no new turn; "Yes" by way of the
+     turn that follows the search, which puts up its own. */
+  const heldCardRef = useRef(null);
+
+  /* Puts the held card back on screen, alone. True when there was one. */
+  function restoreHeldCard(saidLine) {
+    const held = heldCardRef.current;
+    if (!held) return false;
+    heldCardRef.current = null;
+    const kept = clearActionCards(messagesRef.current);
+    const next = updateMessages([
+      ...kept,
+      ...(saidLine ? [{ id: nextId(), role: "user", type: "text", content: saidLine }] : []),
+      { id: nextId(), ...held.card, role: "assistant" },
+    ]);
+    setFlowStage(held.stage);
+    persist(next, held.stage);
+    return true;
+  }
+
   /* "Yes, after my answers": nothing runs yet. The card turns into a short
      note so they can see the yes was taken, and they answer the questions. */
   function armLookupAfterAnswers() {
@@ -2352,6 +2397,9 @@ export default function Chat() {
     if (typing || generating) return;
     lookupFromRef.current = from || "analyse";
     declinedRef.current += 1;
+    /* A card was waiting behind this question: it comes back, and nothing
+       else needs to run. */
+    if (restoreHeldCard("No, work with what you have.")) return;
     const kept = clearActionCards(messages);
     updateMessages(kept);
     addMessage({ role: "user", type: "text", content: "No, work with what you have." });
@@ -2387,6 +2435,9 @@ export default function Chat() {
     findingsRef.current = [...findingsRef.current, ...list];
     setFindings(findingsRef.current);
 
+    /* The turn that follows puts up its own card, with what was kept. */
+    heldCardRef.current = null;
+
     const said = list.length === 1
       ? "Use that."
       : `Use those ${list.length}.`;
@@ -2408,6 +2459,7 @@ export default function Chat() {
        Anthony: "if there is no go-ahead, it should not add it." */
     declinedRef.current += 1;
     updateMessages((prev) => prev.filter((m) => m.type !== "useFinding"));
+    if (restoreHeldCard()) return;
     setFlowStage("interview");
     textareaRef.current?.focus();
   }
@@ -2453,6 +2505,7 @@ export default function Chat() {
     conversationIdRef.current = null;
     lookupFromRef.current = "analyse";
     searchAfterAnswersRef.current = false;
+    heldCardRef.current = null;
     orientLookupsRef.current = 0;
     sourcesRef.current = null;
     setTyping(false);

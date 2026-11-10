@@ -38,6 +38,20 @@ GitHub).
 **The queue, everything he asked for on 2026-11-10, taken one after the
 other.** Nothing comes off until it is built, checked and live.
 
+0. **One human in the loop question at a time** (2026-11-10, his words):
+   "No two prompts are supposed to appear at the same time... once you
+   select one, the other one disappears." Seen: "ask me questions" beside
+   "may I search", and the read back's build card beside "may I search".
+   Fix: the search question comes first, alone; the other card waits and
+   comes back after it is answered. In progress.
+0a. **Check every step for anything broken or out of normal** (2026-11-10,
+   his words: "check each of the steps and look for any broken process, any
+   step that feels broken or out of normal, so we fix that"). A live walk of
+   every stage on Amara, findings fixed one by one.
+0b. **WhatsApp support went silent** (2026-11-10): Gemini's free tier
+   answered "high demand" (503). Fixed: one Gemini failure and support uses
+   DeepSeek. Shipping.
+
 3. **The waiting line.** Something on screen within about 2 seconds
    ("Responding in a bit"); the word shimmers with a pulsing mark, like
    Claude's "Musing..."; a failure says so and retries once; a usage limit
