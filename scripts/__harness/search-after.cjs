@@ -107,6 +107,23 @@ async function answer(page) {
     await page.close();
   }
 
+  /* 3. "If I understand" with the marker forgotten still gets the card.
+        Seen live 2026-11-10: the confirmation with no buttons under it. */
+  {
+    const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
+    await page.addInitScript(() => {
+      try { localStorage.setItem('stellaxafe.theme', 'dark'); } catch {}
+      window.__SCRIPT = { orient: ['If I understand, you want a reply to an unhappy hotel manager.'] };
+    });
+    await page.goto('http://localhost:5301/?page=chat', { waitUntil: 'networkidle' });
+    await page.waitForTimeout(900);
+    await page.locator('textarea').first().fill('Reply to an unhappy hotel');
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(1500);
+    check('NO MARKER: "If I understand" still puts the card up', (await page.locator('text=Is that right?').count()) === 1);
+    await page.close();
+  }
+
   await browser.close();
   console.log('');
   for (const n of OK) console.log('  ok   ' + n);
