@@ -199,6 +199,10 @@ function visibleText(raw) {
   let out = withoutConvertLine(withoutFormatLine(raw));
   for (const word of MARKER_WORDS) out = out.split(word).join("");
 
+  /* A model's own wrapper tags (<output>, </output>) are its plumbing too.
+     Seen live 2026-11-10 around a message it wrote. Never shown. */
+  out = out.replace(/<\/?(output|answer|response|document)>/gi, "");
+
   /* A marker arrives in pieces. Anything trailing that could still grow
      into one is held back for a beat rather than shown and yanked away. */
   const tail = out.match(/[A-Z_]+$/);
@@ -1265,6 +1269,20 @@ export default function Chat() {
               { id: nextId(), role: "assistant", type: "lookup", from: "interview", later: true },
             ]);
             persist(withLookup, "interview");
+            return;
+          }
+
+          /* NOTHING ASKED AND NO MARKER: IT HAS NOTHING LEFT TO ASK. Seen live
+             2026-11-10: after a correction the interview wrote the work
+             instead of handing off, and the person was left with text and
+             no button. A turn here that asks no question is done, so the
+             work moves on to the read back exactly as INTERVIEW_COMPLETE
+             would have moved it. */
+          if (!clean.includes("?")) {
+            interviewTurnsRef.current = 0;
+            persist(next, "interview");
+            setFlowStage("analyse");
+            runTurn("analyse", [...history, { role: "assistant", content: clean }]);
             return;
           }
 
