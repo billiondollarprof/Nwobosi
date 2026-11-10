@@ -362,7 +362,7 @@ job." Done, and it passes. One real gap found, written down below, not
 touched.
 
 **How it was driven without a person at the screen.** `resume-demo` will mint
-a session for a redeemed code, and `SX-RLDY-ZZC2` ("Client: ANTHONY") is his
+a session for a redeemed code, and `SX-XXXX-XXXX` ("Client: ANTHONY") is his
 own, already redeemed and tied to this one company. Nothing was consumed and
 no unused client demo code was touched. The magic link was swapped for a real
 session and each stage was called over HTTP exactly as the app calls it,
@@ -966,7 +966,7 @@ Next: connect the repo in Cloudflare, then Supabase.
 - Reworked the entry model. No sign in on the landing page. A company arrives with a single use access code, names itself, and gets its own workspace at /their-company plus /their-company/admin. Recorded in full in CURRENT.md.
 - Rebuilt the landing hero around an animated interlocked ring logo. Locked the H1 and subtext.
 - Built the logo twice. The first pass split navy from purple with dashed strokes, which left gaps and read as damage. Rebuilt it with a rotating SVG gradient, which keeps the tube unbroken and the colour seam soft. Verified the travel by comparing three frames three seconds apart.
-- Built setup screens 1 and 2: access code, then admin account. Three step progress bar, code auto formats as you type (sxa7k4m2pq becomes SX-A7K4-M2PQ), password rule shown inline, show password toggle, back walks the steps in reverse.
+- Built setup screens 1 and 2: access code, then admin account. Three step progress bar, code auto formats as you type (sxa7k4m2pq becomes SX-XXXX-XXXX), password rule shown inline, show password toggle, back walks the steps in reverse.
 - Nothing is created until the final step on purpose, so abandoning setup halfway does not burn someone's code.
 - `TextInput` now forwards its ref so the access code field can take focus on arrival.
 - All server calls for setup are isolated in `src/shared/setupApi.js`. `checkAccessCode` is the one function that becomes an edge function call.
@@ -1093,7 +1093,7 @@ would take.
 
 Could not reach `supabase.co`: the environment's network policy answers
 403 on connect. So nothing has been tested against the real backend, and
-the access code SX-4M8G-T4P3 is still unspent.
+the access code SX-XXXX-XXXX is still unspent.
 
 ---
 

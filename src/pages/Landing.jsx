@@ -149,17 +149,17 @@ const PROBLEMS = [
   {
     icon: ShieldCheck,
     title: "Nothing to paste",
-    body: "Everything it needs is already there. Nothing to upload, nothing to paste, and nowhere for it to go.",
+    body: "Everything it needs is already there, so there is nothing to upload or paste, and your material has nowhere else to go.",
   },
   {
     icon: Timer,
     title: "No thirty day ramp",
-    body: "No prompt course. No power user. Your newest staff member gets the same standard of work as your best one, on their first afternoon.",
+    body: "Nobody has to take a prompt course or become the office power user. Your newest staff member gets the same standard of work as your best one, on their first afternoon.",
   },
   {
     icon: FileCheck2,
     title: "It cannot invent your numbers",
-    body: "Every figure comes from a source your admin approved. When it does not have something, it says so. That gap is where hallucination gets in, and it is closed.",
+    body: "Every figure comes from a source your admin approved. When it does not have something, it says so instead of filling the gap, and the gap is where made up numbers usually come from.",
   },
 ];
 
@@ -177,7 +177,7 @@ const STEPS = [
   {
     icon: ListChecks,
     title: "It interviews you for the rest",
-    body: "It works out what is still missing and asks for that, and nothing else. This replaces prompt engineering outright.",
+    body: "It works out what is still missing and asks only for that. Those few questions do the job prompt engineering used to.",
   },
   {
     icon: FileCheck2,
@@ -204,7 +204,7 @@ const STEPS = [
        has decided not to build. */
     icon: Sparkles,
     title: "It keeps what you accepted",
-    body: "The work you took is remembered, for you. Ask for something like it next month and it starts from what you already approved rather than from nothing. Yours alone, never turned into a standard for anybody else.",
+    body: "The work you took is remembered, for you. Ask for something like it next month and it starts from what you already approved. That memory is yours alone and never becomes a standard for anybody else.",
     wide: true,
   },
 ];
@@ -244,7 +244,7 @@ const OUTCOMES = [
   {
     icon: ShieldCheck,
     title: "Nothing enters your work that you did not approve",
-    body: "Not a source, not a direction, not a number. The checkpoints are built in rather than offered as an option somebody can skip.",
+    body: "That covers every source, every direction and every number. The checkpoints are part of how it works, so nobody can switch them off or skip past them.",
   },
   {
     icon: Users,
@@ -330,7 +330,7 @@ const SERVICES = [
   {
     icon: GraduationCap,
     title: "Executive and staff AI training",
-    body: "Not prompt courses. How to judge AI output, and where it belongs in your operation.",
+    body: "How to judge what the AI gives you, and where it belongs in your operation. We skip the prompt courses.",
   },
 ];
 
@@ -813,7 +813,7 @@ export default function Landing() {
             className="text-[16px] text-center mb-10 max-w-xl mx-auto leading-relaxed"
             style={{ color: "var(--text-2)" }}
           >
-            Not because they are careless. Because it is the only way to get work that is any good.
+            They are not being careless. It is the only way they have found to get work that is any good.
           </p>
 
           {/* The scene, in the words people actually use. Set as quotes on
@@ -896,8 +896,7 @@ export default function Landing() {
             className="text-[14px] text-center mb-8 max-w-xl mx-auto"
             style={{ color: "var(--text-3)" }}
           >
-            Independent research on AI in the enterprise, cited directly rather than paraphrased
-            into house statistics.
+            Independent research on AI in the enterprise, quoted from the source.
           </p>
 
           <CardStack className="grid gap-4 sm:grid-cols-3" top={116} stackBelow={640}>
@@ -935,8 +934,8 @@ export default function Landing() {
             <p className="text-[14.5px] leading-relaxed" style={{ color: "var(--text-2)" }}>
               <strong style={{ color: "var(--text-1)" }}>Case in point.</strong> In 2023, Samsung
               banned internal AI tool use after employees shared proprietary source code with a
-              public chatbot. It is a policy response many enterprises are still repeating rather
-              than solving with private infrastructure.
+              public chatbot. Many enterprises still answer the problem with a ban, when private
+              infrastructure would let their people keep working.
             </p>
           </GlassPanel>
         </Reveal>
@@ -955,8 +954,8 @@ export default function Landing() {
         <Reveal className="max-w-5xl mx-auto">
           <SectionHead
             eyebrow="What this changes"
-            title="Four things your company gets from that loop"
-            sub="Each one comes out of a step above rather than standing on its own."
+            title="Four things your company gets"
+            sub="Each one comes from how the assistant works, step by step, further down the page."
             center
           />
 
@@ -1299,8 +1298,8 @@ Six steps. All your staff ever do is talk.
               <p className="text-[15px] leading-relaxed mb-4" style={{ color: "var(--text-3)" }}>
                 Your admin decides what goes into the knowledge base. Every company fact in an
                 output traces back to a source you approved. When something is missing it says so.
-                Isolation is enforced in the database rather than in the application, not left to
-                the code above it to remember.
+                Each company's data is kept apart by the database itself, so a mistake in the app
+                above it cannot show one company another's files.
               </p>
               {/* The storage boundary is the part a technical reviewer will
                   look for, and it is the strongest thing on this section:
@@ -1314,11 +1313,10 @@ Six steps. All your staff ever do is talk.
                 between conversations without one person's work ever reaching another's.
               </p>
               <p className="text-[15px] leading-relaxed mb-7" style={{ color: "var(--text-3)" }}>
-                And the model runs inside your own cloud account, through Amazon Bedrock or Azure
-                OpenAI, in the region you choose. The model provider has no access to the
-                infrastructure your prompts run on and never receives them. With a private
-                endpoint the traffic does not leave your cloud network at all. That is what lets
-                us say nothing leaves and mean it literally.
+                And the model runs inside your own cloud account, in the region you choose. The
+                model provider has no access to the infrastructure your prompts run on and never
+                receives them. With a private endpoint the traffic does not leave your cloud network
+                at all, which is why we can say nothing leaves.
               </p>
 
               <div className="flex flex-wrap gap-2.5">
@@ -1359,7 +1357,7 @@ Six steps. All your staff ever do is talk.
           </h2>
           <p className="text-[15px] leading-relaxed mt-5" style={{ color: "var(--text-2)" }}>
             Agents are given tools, and agents can extend themselves. So one can reach a tool it was
-            never granted, not by breaking in, but because the tool was reachable. Blocking every
+            never granted, simply because the tool was within reach. Blocking every
             call is not an option, because running unattended is the whole value. Written rules miss
             the case nobody thought of. What is needed is a checkpoint that carries its own rules
             inside it and adapts: two factor authentication for AI.
@@ -1367,7 +1365,8 @@ Six steps. All your staff ever do is talk.
           {/* Said plainly, because it is a thesis and the page should not
               read as though the product already does it. */}
           <p className="text-[13.5px] leading-relaxed mt-3.5" style={{ color: "var(--text-3)" }}>
-            Open research by our founder. It is an argument, not something StellaXafe ships today.
+            Open research by our founder. It is an argument StellaXafe is making, and the product
+            does not ship it today.
           </p>
           <div className="flex justify-center mt-5">
             <StatusPill tone="accent">Actively seeking research partners and funding</StatusPill>
@@ -1411,7 +1410,7 @@ Six steps. All your staff ever do is talk.
                   Anthony Nwobosi
                 </h2>
                 <p className="text-[15px] leading-relaxed mt-3" style={{ color: "var(--text-2)" }}>
-                  Anthony builds StellaXafe and the products above it. He takes a business problem
+                  Anthony builds StellaXafe and the products that run on it. He takes a business problem
                   from the first idea to a system people use every day, and he likes the tools he
                   builds to be easy for anyone to pick up.
                 </p>
@@ -1457,11 +1456,11 @@ Six steps. All your staff ever do is talk.
               asking for one. Deployment first, demo second, and the two
               buttons below say the same thing in the same order. */}
           <p className="text-[15px] leading-relaxed mb-3" style={{ color: "var(--text-3)" }}>
-            Tell us what your organization runs on and what it needs to stop leaking. Your
-            deployment is built into your own systems, not bought from a page.
+            Tell us what your organization runs on and what it needs to stop leaking. We build your
+            deployment into your own systems.
           </p>
           <p className="text-[14px] leading-relaxed mb-8 max-w-lg mx-auto" style={{ color: "var(--text-3)", opacity: 0.85 }}>
-            This is not software you subscribe to. What you can drive here is the blueprint: bring
+            What you can try here is the blueprint: bring
             an access code, name your company, answer three questions, and watch it produce
             something that already sounds like you. A deployment is fast because that architecture
             already exists and already works.

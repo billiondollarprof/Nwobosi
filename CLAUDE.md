@@ -119,6 +119,10 @@ So agents can work fast without guessing. Adapted from the Rhema repo,
 **Never**
 - Put a secret in the code or the chat. Secrets go in GitHub secrets or the
   Supabase dashboard. A secret that reached a commit is rotated.
+- **Write an access code or an API key in the repo, docs included.** Codes
+  are given to Anthony in the chat only. In a doc, write `SX-XXXX-XXXX` and
+  the code's label, never the code. (His rule, 2026-11-10. The repo is
+  public while GitHub minutes are short.)
 - Merge to `main` with a red check, or switch a check off, narrow it, or skip
   a test to get green.
 - Force push or rewrite history on `main` or `testing`.
