@@ -36,6 +36,9 @@ products section removed from the landing page; one page means one page
 **The queue, everything he asked for on 2026-11-10, taken one after the
 other.** Nothing comes off until it is built, checked and live.
 
+2b. **A page count they named** (2026-11-10): estimate whether it holds
+   what they want, say so once if not and suggest a number, then do what
+   they say if they insist. A one pager is never questioned. Shipping now.
 3. **The waiting line.** Something on screen within about 2 seconds
    ("Responding in a bit"); the word shimmers with a pulsing mark, like
    Claude's "Musing..."; a failure says so and retries once; a usage limit
