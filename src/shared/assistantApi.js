@@ -143,7 +143,7 @@ function endingOnTheirTurn(list) {
   return out.length ? out : list;
 }
 
-function sendTurnOnce({ stage = "orient", askedSoFar = 0, brief = "", findings = "", messages, onMeta, onText, onDone, onError, onStall }) {
+function sendTurnOnce({ stage = "orient", askedSoFar = 0, brief = "", findings = "", revision = false, sources = null, messages, onMeta, onText, onDone, onError, onStall }) {
   const controller = new AbortController();
   messages = endingOnTheirTurn(messages);
 
@@ -179,7 +179,7 @@ function sendTurnOnce({ stage = "orient", askedSoFar = 0, brief = "", findings =
           Authorization: `Bearer ${session.access_token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ stage, askedSoFar, brief, findings, messages }),
+        body: JSON.stringify({ stage, askedSoFar, brief, findings, revision, sources, messages }),
         signal: controller.signal,
       });
     } catch (err) {
@@ -194,7 +194,7 @@ function sendTurnOnce({ stage = "orient", askedSoFar = 0, brief = "", findings =
          answer anyway, and if it does not, its error says what is really
          wrong instead of blaming their wifi. */
       const { data, error } = await supabase.functions.invoke(FUNCTIONS.assistant, {
-        body: { stage, askedSoFar, brief, findings, messages },
+        body: { stage, askedSoFar, brief, findings, revision, sources, messages },
       });
 
       if (error) {

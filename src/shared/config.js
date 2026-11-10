@@ -125,7 +125,7 @@ export function assistantNameFor(companyName) {
    SECTION: Limits
    -------------------------------------------------------------------------- */
 
-export const DAILY_LIMIT = 5;
+export const DAILY_LIMIT = 20;
 
 /* Upload caps, split by what the file actually costs.
 

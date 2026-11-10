@@ -168,9 +168,10 @@ other.** Nothing comes off until it is built, checked and live.
 
 ## 2. Dreef, the first client
 
-- Brief (ready to send): `docs/clients/dreef/BRIEF.md`
-- Notes behind it, never sent: `docs/clients/dreef/NOTES.md`
-- Build plan, two weeks: `docs/clients/dreef/PLAN.md`
+Client papers live in his Google Drive, not in this repo (moved 2026-11-10,
+because the repo is public): folder "StellaXafe - Clients - Dreef", holding
+the brief (ready to send), the notes behind it (never sent) and the two
+week build plan. Anything about a client, a price or a contract goes there.
 
 ## 3. Open from before, not yet done
 
@@ -237,6 +238,24 @@ them**, because some may have been done since. Full detail is in
 - **On hold, 2026-09-26: the slow video start.** Superseded by the drop above.
 
 ## 5. Decided, so nobody reopens them
+
+- **2026-11-10: limits.** Admins have no document limits; the money meter
+  (the $2 on a client trial) is their only cap, and when it runs out it is
+  finished. Staff get 20 documents a day by default; the admin can lower it
+  at any time and the new number applies at once (done 10, cut to 12, so 2
+  left). A change to a finished document is not a new document: changes have
+  their own cap of 20 a day. On this platform the money cap belongs to the
+  admin, because admins are the clients. In a client's own build, the client
+  decides each user's cap, by number of documents or by usage.
+- **2026-11-10: Gemini runs support only, on this platform**, on the free
+  Flash tier, to save money. DeepSeek does the work. His key is in Supabase
+  secrets as `GEMINI_API_KEY`.
+- **2026-11-10: the knowledge map decides what a turn reads.** A turn reads
+  the map, then only the sources it needs; everything only when the task
+  needs everything.
+- **2026-11-10: client papers live in his Drive**, never the public repo.
+- **2026-11-10: connected tools are context for now.** Canva and Drive keys
+  are added; why they do not work yet is to be checked.
 
 - **2026-11-02: read only SQL runs without asking**; writes go to him as one
   batch with a short line each (`docs/rules/DEPLOY.md`).

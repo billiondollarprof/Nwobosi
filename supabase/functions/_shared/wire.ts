@@ -252,7 +252,12 @@ export function toWireThinking(thinking: unknown, outputConfig: unknown): Json {
    5. THE REQUEST BODY
    -------------------------------------------------------------------------- */
 
-export function toWireBody(params: Json, stream: boolean): Json {
+/* Gemini's OpenAI compatible endpoint rejects DeepSeek's `thinking` field and
+   any reasoning effort other than low, medium or high. So for it the field is
+   left out, and only a valid effort is passed. */
+export type Dialect = "standard" | "gemini";
+
+export function toWireBody(params: Json, stream: boolean, dialect: Dialect = "standard"): Json {
   const body: Json = {
     model: params.model,
     messages: toWireMessages(params.system, params.messages),
@@ -269,7 +274,12 @@ export function toWireBody(params: Json, stream: boolean): Json {
   const choice = toWireToolChoice(params.tool_choice);
   if (choice !== undefined) body.tool_choice = choice;
 
-  Object.assign(body, toWireThinking(params.thinking, params.output_config));
+  if (dialect === "gemini") {
+    const effort = ((params.output_config ?? {}) as Json).effort;
+    if (effort === "low" || effort === "medium" || effort === "high") body.reasoning_effort = effort;
+  } else {
+    Object.assign(body, toWireThinking(params.thinking, params.output_config));
+  }
 
   if (stream) {
     body.stream = true;
@@ -371,7 +381,7 @@ type TextHandler = (chunk: string) => void;
 /* Deliberately tiny: only the two things any caller uses.
    `messages.create` and `messages.stream(...).on("text").finalMessage()`.
    Confirmed by reading all eight functions rather than assumed. */
-export function makeOpenAiClient(baseUrl: string, apiKey: string) {
+export function makeOpenAiClient(baseUrl: string, apiKey: string, dialect: Dialect = "standard") {
   const url = baseUrl.replace(/\/$/, "") + "/chat/completions";
 
   const headers = {
@@ -383,7 +393,7 @@ export function makeOpenAiClient(baseUrl: string, apiKey: string) {
     const res = await fetch(url, {
       method: "POST",
       headers,
-      body: JSON.stringify(toWireBody(params, false)),
+      body: JSON.stringify(toWireBody(params, false, dialect)),
     });
     if (!res.ok) {
       const detail = await res.text().catch(() => "");
@@ -403,7 +413,7 @@ export function makeOpenAiClient(baseUrl: string, apiKey: string) {
       const res = await fetch(url, {
         method: "POST",
         headers,
-        body: JSON.stringify(toWireBody(params, true)),
+        body: JSON.stringify(toWireBody(params, true, dialect)),
       });
       if (!res.ok || !res.body) {
         const detail = await res.text().catch(() => "");

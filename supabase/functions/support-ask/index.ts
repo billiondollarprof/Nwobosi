@@ -41,7 +41,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk@0.68.0";
-import { centsExact, clientFor, modelFor, vendorForCompany, type Tier } from "../_shared/brain.ts";
+import { centsExact, clientFor, modelFor, vendorForSupport, type Tier } from "../_shared/brain.ts";
 
 /* --------------------------------------------------------------------------
    SECTION: Constants
@@ -694,7 +694,9 @@ Deno.serve(async (req) => {
   /* WHICH BRAIN, READ PER REQUEST. Never cached, because one isolate serves
      several companies at once. Falls back to Anthropic on any error, including
      the table not being there, so this can ship before the migration does. */
-  const vendor = await vendorForCompany(company.id);
+  /* Gemini's free tier when its key is set (this platform, Anthony
+     2026-11-10), otherwise the company's own vendor. See vendorForSupport. */
+  const vendor = await vendorForSupport(company.id);
 
   /* ------------------------------------------------------------------
      The thread, and the message going into it.

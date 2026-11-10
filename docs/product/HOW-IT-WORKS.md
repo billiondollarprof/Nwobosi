@@ -138,4 +138,4 @@ the assistant runs on Anthropic or DeepSeek today, through one seam
   It says so and asks for the text.
 
 What a client receives is built for them, in their own cloud. See
-`docs/product/DIRECTION.md` and `docs/clients/`.
+`docs/product/DIRECTION.md` and the client folders in his Google Drive.

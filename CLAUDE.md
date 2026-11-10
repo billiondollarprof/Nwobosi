@@ -40,7 +40,7 @@ below or is kept here.)
 | Work on documents, charts, conversion | `docs/product/DOCUMENT-HARNESS.md`, `docs/product/OUTPUT-QUALITY.md` |
 | Work on support | `docs/product/SUPPORT.md` |
 | Set up a new company | `docs/product/DEPLOY-A-COMPANY.md` |
-| Work for Dreef, the first client | `docs/clients/dreef/` |
+| Work for Dreef, the first client | His Google Drive, folder "StellaXafe - Clients - Dreef" (never the repo) |
 | Work on the marketing site | `docs/stellaxafe-site/` |
 | Find out why something was done, or what happened before | `docs/history/` (search it, do not read it whole) |
 

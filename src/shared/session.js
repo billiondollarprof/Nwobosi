@@ -559,7 +559,7 @@ export async function staffWork(companyId) {
   const weekAgo = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
   const { data, error } = await supabase
     .from("work_history")
-    .select("id, staff_id, title, skill, summary, created_at")
+    .select("id, staff_id, title, skill, summary, created_at, brief")
     .eq("company_id", companyId)
     .order("created_at", { ascending: false })
     .limit(500);
@@ -570,9 +570,12 @@ export async function staffWork(companyId) {
   for (const row of data ?? []) {
     const entry = out.get(row.staff_id) ?? { today: 0, week: 0, recent: [] };
     const at = new Date(row.created_at);
-    if (row.created_at >= weekAgo) entry.week += 1;
-    if (at >= startOfToday) entry.today += 1;
-    if (entry.recent.length < 8) entry.recent.push(row);
+    /* A change to a finished document is not a new document (Anthony,
+       2026-11-10), so it is listed but not counted. */
+    const change = row.brief?.revision === true;
+    if (!change && row.created_at >= weekAgo) entry.week += 1;
+    if (!change && at >= startOfToday) entry.today += 1;
+    if (entry.recent.length < 8) entry.recent.push({ ...row, change });
     out.set(row.staff_id, entry);
   }
   return out;
@@ -782,7 +785,10 @@ export async function listWork(companyId, staffId) {
   return rows.map((row) => ({ ...row, content: byId.get(row.id) ?? row.summary }));
 }
 
-export async function saveWork({ companyId, staffId, title, skill, content, sourcesUsed = [], credits = 0 }) {
+/* `revision` marks a change to a document already made in the same chat.
+   Anthony, 2026-11-10: a change does not count as a new document. The
+   assistant counts changes separately (20 a day), and reads this mark. */
+export async function saveWork({ companyId, staffId, title, skill, content, sourcesUsed = [], credits = 0, revision = false }) {
   const { data, error } = await supabase
     .from("work_history")
     .insert({
@@ -793,6 +799,7 @@ export async function saveWork({ companyId, staffId, title, skill, content, sour
       summary: summaryOf(content),
       sources_used: sourcesUsed,
       credits,
+      ...(revision ? { brief: { revision: true } } : {}),
     })
     .select("id, title, skill, summary, created_at")
     .single();
