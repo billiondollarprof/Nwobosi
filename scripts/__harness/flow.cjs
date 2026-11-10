@@ -81,9 +81,9 @@ function check(name, cond) { (cond ? OK : BAD).push(name); }
      A SEARCH RIDING ALONGSIDE A HANDSHAKE, asked for 2026-09-21.
 
      Anthony wants to be able to send it looking at any point, including
-     off the back of a read back. The rule that makes that safe is that a
-     marker moving the work forward is never swallowed, so both cards have
-     to be able to sit on screen together.
+     off the back of a read back. A marker moving the work forward is never
+     swallowed: since 2026-11-10 its card waits behind the search question
+     and comes back once that is answered, one question at a time.
      ------------------------------------------------------------------ */
   /* A FRESH PAGE, not a Start something new button. That button only
      exists once a document has been made, so clicking past it left the
@@ -108,42 +108,43 @@ function check(name, cond) { (cond ? OK : BAD).push(name); }
   await page.keyboard.press('Enter');
   await page.waitForTimeout(1400);
 
-  check('the offer and the search card can be on screen together',
+  /* ONE QUESTION AT A TIME. Anthony, 2026-11-10: "No two prompts are
+     supposed to appear at the same time... once you select one, the other
+     one disappears." So the search is asked first, alone, and the card
+     behind it comes back once it is answered. This replaced the 2026-09-21
+     rule that let both sit on screen together. */
+  const SEARCH = 'text=May I look this up online?';
+  check('ONE AT A TIME: the search is asked first, alone',
+    (await page.locator(SEARCH).count()) === 1 &&
+    (await page.locator('text=Is that right?').count()) === 0);
+
+  /* "No" brings the offer back at once, with no new turn. */
+  await page.locator('button', { hasText: 'No, work with what you have' }).first().click();
+  await page.waitForTimeout(800);
+  check('ONE AT A TIME: after No, the offer comes back, alone',
     (await page.locator('text=Is that right?').count()) > 0 &&
-    (await page.locator('text=May I look this up online?').count()) > 0);
+    (await page.locator(SEARCH).count()) === 0);
+  check('ONE AT A TIME: and nothing else ran',
+    (await page.evaluate(() => (window.__TURNS || []).join(','))) === 'orient');
 
   /* Take the interview, which lands on a read back that also suggests a
-     search. Both cards again, and this is the case he described. */
+     search: the search again comes first, and the Build card waits. */
   await page.locator('button', { hasText: 'Yes, ask what you need' }).first().click();
   await page.waitForTimeout(2400);
+  check('ONE AT A TIME: at the read back the search comes first, alone',
+    (await page.locator(SEARCH).count()) === 1 &&
+    (await page.locator('text=Did I get that right?').count()) === 0);
+  await page.screenshot({ path: '/tmp/claude-0/flow-one-at-a-time.png', fullPage: true });
 
-  const bothAfterReadback =
+  /* Yes: it searches, they keep the finding, and the read back comes back
+     with its Build card, alone. */
+  await page.locator('button', { hasText: 'Yes, go and look' }).first().click();
+  await page.waitForTimeout(2200);
+  const picker = page.locator('button', { hasText: 'Yes, use it' }).first();
+  if (await picker.count()) { await picker.click(); await page.waitForTimeout(2000); }
+  check('ONE AT A TIME: after the search the Build card comes back, alone',
     (await page.locator('text=Did I get that right?').count()) > 0 &&
-    (await page.locator('text=May I look this up online?').count()) > 0;
-  check('the read back can suggest a search and still offer the Build card', bothAfterReadback);
-
-  /* Exactly one, not two. Answering the offer has to take its own search
-     card down with it, or the stale one from the first turn is still live
-     and is the one that gets pressed. */
-  check('the stale search card from the first turn is gone',
-    (await page.locator('text=May I look this up online?').count()) === 1);
-  await page.screenshot({ path: '/tmp/claude-0/flow-both.png', fullPage: true });
-
-  /* Sending it looking has to take the Build button down. Left up, it is a
-     live button that would write the document off the old read back in the
-     middle of the check meant to improve it. */
-  if (bothAfterReadback) {
-    await page.locator('button', { hasText: 'Yes, go and look' }).first().click();
-    await page.waitForTimeout(600);
-    check('starting the search takes the stale Build card down',
-      (await page.locator('text=Did I get that right?').count()) === 0);
-
-    await page.waitForTimeout(1600);
-    const picker = page.locator('button', { hasText: 'Use' }).first();
-    if (await picker.count()) { await picker.click(); await page.waitForTimeout(2000); }
-    check('and the work comes back to a Build card afterwards',
-      (await page.locator('text=Did I get that right?').count()) > 0);
-  }
+    (await page.locator(SEARCH).count()) === 0);
 
   /* CAPTURED HERE, RIGHT WHERE THE SEARCH WALK ENDS, and not further down.
 
