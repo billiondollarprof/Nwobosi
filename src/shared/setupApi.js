@@ -108,10 +108,17 @@ export function demoEmail(code) {
 }
 
 /* Long and random. It exists for the length of one function call. */
+/* ⚠️ 64 CHARACTERS, NEVER MORE THAN 72. Supabase refuses a password over 72
+   characters (bcrypt reads no further). This used to be two UUIDs joined by a
+   dash, 73 characters, and from some point Supabase started rejecting it, so
+   EVERY new workspace failed with "Could not create your account". Found
+   2026-11-10 by walking /setup with a fresh code. Two UUIDs with the dashes
+   taken out give 64 hex characters: still 244 random bits, well past enough
+   for a password nobody ever types. */
 function throwawayPassword() {
   const rand = () =>
     globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2).padEnd(24, "x");
-  return `${rand()}-${rand()}`;
+  return `${rand()}${rand()}`.replace(/-/g, "").slice(0, 64);
 }
 
 /* --------------------------------------------------------------------------
