@@ -3540,6 +3540,23 @@ export default function Chat() {
                   Upload file
                 </button>
 
+                {/* ANALYSE A FILE. Anthony, 2026-11-10: "upload a document, get
+                    an analysis, for example pricing." Picks the file and puts
+                    the words in the box; they press send, and the first stage
+                    answers with the analysis right there in the chat. */}
+                <button
+                  onClick={() => {
+                    setInput((now) => (now.trim() ? now : "Analyse this file for me."));
+                    if (fileInputRef.current) fileInputRef.current.click();
+                    setPlusMenuOpen(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-[14px] font-medium hover:opacity-80 transition-opacity"
+                  style={{ color: "var(--text-1)" }}
+                >
+                  <Search size={17} style={{ color: "var(--text-3)" }} />
+                  Analyse a file
+                </button>
+
                 <div className="h-px" style={{ backgroundColor: "var(--border)" }} />
 
                 <button
