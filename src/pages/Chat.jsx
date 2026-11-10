@@ -199,6 +199,10 @@ function visibleText(raw) {
   let out = withoutConvertLine(withoutFormatLine(raw));
   for (const word of MARKER_WORDS) out = out.split(word).join("");
 
+  /* A model's own wrapper tags (<output>, </output>) are its plumbing too.
+     Seen live 2026-11-10 around a message it wrote. Never shown. */
+  out = out.replace(/<\/?(output|answer|response|document)>/gi, "");
+
   /* A marker arrives in pieces. Anything trailing that could still grow
      into one is held back for a beat rather than shown and yanked away. */
   const tail = out.match(/[A-Z_]+$/);
