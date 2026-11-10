@@ -1180,6 +1180,20 @@ export default function Chat() {
             return;
           }
 
+          /* IT SAID "IF I UNDERSTAND" AND FORGOT THE MARKER. Seen live,
+             2026-11-10: the confirmation was on screen with no buttons under
+             it. The stage instruction makes that sentence the sign that the
+             direction is clear, so the sentence itself puts the card up. */
+          if (/(^|\n)\s*\**If I understand\b/i.test(clean)) {
+            setFlowStage("offered");
+            const withOffer = updateMessages((prev) => [
+              ...prev,
+              { id: nextId(), role: "assistant", type: "offer" },
+            ]);
+            persist(withOffer, "offered");
+            return;
+          }
+
           /* No marker at all and no search behind us means it was not a
              piece of work, just conversation. The stage stays where it is
              and it reads again next time. */

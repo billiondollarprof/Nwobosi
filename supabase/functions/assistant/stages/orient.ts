@@ -86,6 +86,8 @@ export const ORIENT = [
   "   under your message asks \"Is that right?\" with a button for each, and saying",
   "   it twice reads like a form.",
   "",
+  "If you still need to ask them something, ask it and stop: do not say \"If I",
+  "understand\" in the same message. Say it only once you no longer need to ask.",
   "Then OFFER_INTERVIEW on its own final line. Do not explain the marker and do not",
   "mention it.",
   "",
