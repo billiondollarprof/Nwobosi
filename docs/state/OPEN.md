@@ -19,6 +19,16 @@ How this file works:
 
 ## 1. Now, in his order
 
+0. **After the Dreef call, 2026-11-10, in this order:**
+   1. Rotate Amara's code (it was in the repo while public for minutes):
+      `update access_codes set code = '<new>' where code = '<old>'`. His yes
+      given. Give him the new code in chat only, never in the repo.
+   2. Take every access code out of the docs, and add the rule: no codes, no
+      keys in the repo. Six unused or orphaned codes already revoked.
+   3. Ask him whether `docs/clients/` moves to his Drive.
+   4. Output fixes f to i below (prompt, his yes given), test, ship.
+   5. CI minute savings (his yes given): skip CI on doc-only pushes, no
+      second CI run on the merge to main, shorter smoke wait.
 1. **Make the demo flow work, step by step.** 2026-10-31. Dreef may book a
    call to see it. They need to see three things and nothing else:
    1. Start a request in the existing Amara knowledge base.
@@ -28,9 +38,46 @@ How this file works:
    Go through each stage of the assistant one at a time, find where it fails,
    fix it, and make each step simpler while keeping the output at its best.
    The demo stays on Supabase on purpose: it is there to close a client.
-2. **Research similar tools**, and how they orchestrate agents to produce
+
+   **Audit from the records, 2026-11-03** (conversations and budget, read
+   only). Last three real runs, 23 Sep to 1 Oct, all reached a document.
+   Faults found, to fix together after one live rehearsal:
+   a. Amara's budget is 67 cents. At zero the assistant refuses. Needs a
+      top up or exempt (SQL write, his yes).
+   b. The prompt never mentions Canva, so the model improvised: told him
+      "PDF or Word", then offered PowerPoint two messages later. Prompt
+      line needed (edge function change, his yes).
+   c. Two error texts on the staff screen say "Check the function logs" and
+      "answered with 500" (`src/shared/assistantApi.js`). Plain words.
+   d. 25 Sep: "Yes, ask me your questions" stalled ("That one stopped
+      answering"), then the next turn asked twice in a row. Cause unknown;
+      the rehearsal logs will show it.
+   e. FIXED 2026-11-10: the web search works. Tavily key added; live run
+      found real sources with Verify links and tickboxes, 87 seconds.
+
+   **Live run, 2026-11-10** (testing site, Amara, DeepSeek): request,
+   questions, search, read back, PDF, all worked. Whole run 4.8 cents.
+   Faults found in the result, to fix with his yes (assistant prompt):
+   f. Asked for a one page summary, got 3 pages.
+   g. Every section shows its title twice (a small label, then the same
+      words as a heading), and the steps are numbered twice ("1" and "01").
+   h. The model's own reasoning leaks onto the page: "This page will not
+      borrow a foreign number and dress it as a Nigerian one".
+   i. Two sets of reply buttons after the first turn: likely a double reply.
+2. **Models for the demo: DeepSeek for the work, Gemini for support.**
+   2026-11-03. His words: "use the DeepSeek most capable model and then use a
+   simpler model for the WhatsApp chat... we can actually use Gemini, because
+   Gemini has free tier". No Claude credit left. Found: Amara already runs
+   wholly on DeepSeek (`deepseek-flash`, which DeepSeek says is its strongest
+   model; v4-pro routes to it). To build: a `gemini` vendor in
+   `_shared/brain.ts`, and a separate vendor setting for support (needs a
+   column, SQL his yes). His steps: fund $5 on DeepSeek, get a Gemini key
+   from Google AI Studio and put it in Supabase secrets as `GEMINI_API_KEY`.
+   Caution told to him: Gemini's free tier may use prompts to improve
+   Google's products; fine for Amara's demo, not for a client.
+3. **Research similar tools**, and how they orchestrate agents to produce
    documents and files. Then recommend how to shape ours (security aside).
-3. **MCP and the browser**, and keeping web search cheap. He asked why an
+4. **MCP and the browser**, and keeping web search cheap. He asked why an
    online session costs so much, and about free search access such as Exa.
    Start from what exists: our search already runs on Tavily's free plan and
    DuckDuckGo (`docs/state/LIVE.md`).

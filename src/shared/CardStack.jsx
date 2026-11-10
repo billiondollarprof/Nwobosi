@@ -37,6 +37,10 @@ import { Children, useEffect, useLayoutEffect, useRef, useState } from "react";
    leaves the card opaque and simply sends it back into the dark. */
 const SCALE_DROP = 0.055;
 
+/* How far a card leans back before it arrives, in degrees. Small, so it
+   reads as the card settling into place rather than flipping over. */
+const TILT_MAX = 12;
+
 /* How far the buried card darkens is a theme decision, not a constant.
    Darkening a white card does not read as depth, it reads as a grey card,
    which is exactly what the light stack looked like: three cards fading to
@@ -133,8 +137,15 @@ export default function CardStack({
         if (!card) return;
 
         /* The last card is never covered, so it never recedes. */
+        /* THE TILT IN, from Anthony's portfolio, 2026-11-10. A card that is
+           still low in the window leans back a little, and stands upright as
+           it climbs to its place. Measured from the card's own position, so
+           it tracks the finger rather than playing on a timer. */
+        const arrived = Math.min(1, Math.max(0, (viewport - tops[i]) / (viewport * 0.45)));
+        const tilt = `perspective(1100px) rotateX(${((1 - arrived) * TILT_MAX).toFixed(2)}deg)`;
+
         if (i === slots.length - 1) {
-          card.style.transform = "";
+          card.style.transform = tilt;
           card.style.filter = "";
           return;
         }
@@ -144,7 +155,7 @@ export default function CardStack({
         const travel = viewport - top;
         const progress = travel <= 0 ? 0 : Math.min(1, Math.max(0, 1 - (tops[i + 1] - top) / travel));
 
-        card.style.transform = `scale(${1 - progress * SCALE_DROP})`;
+        card.style.transform = `${tilt} scale(${1 - progress * SCALE_DROP})`;
         card.style.filter = `brightness(${1 - progress * darken})`;
       });
     }

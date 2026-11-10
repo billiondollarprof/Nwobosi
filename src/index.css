@@ -1008,3 +1008,34 @@ body {
     content: "" !important;
   }
 }
+
+/* ==========================================================================
+   HERO LINES RISE IN TURN
+   Taken from Anthony's portfolio, 2026-11-10. Each direct child of an
+   element marked sx-hero-in rises into place a beat after the one before,
+   so the headline, the line under it and the buttons arrive in reading
+   order. Reduced motion: everything is simply there.
+   ========================================================================== */
+
+@keyframes sx-up {
+  from {
+    opacity: 0;
+    transform: translateY(26px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.sx-hero-in > * {
+  animation: sx-up 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.sx-hero-in > :nth-child(2) { animation-delay: 0.08s; }
+.sx-hero-in > :nth-child(3) { animation-delay: 0.16s; }
+.sx-hero-in > :nth-child(4) { animation-delay: 0.24s; }
+.sx-hero-in > :nth-child(n + 5) { animation-delay: 0.32s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sx-hero-in > * { animation: none; }
+}

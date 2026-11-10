@@ -167,17 +167,19 @@ export default function Founder() {
             ))}
           </div>
 
-          {/* The way through to /anthony, which is the page that actually
-              sells him. This one answers "who is behind StellaXafe" for a
+          {/* The way through to anthony.stellaxafe.com, his own profile
+              since 2026-11-10 (the old /anthony page is stale). It is the
+              page that actually sells him. This one answers "who is behind StellaXafe" for a
               buyer already reading about StellaXafe. That one answers "what
               can this person do for us" for somebody who has never heard of
               either, and nothing in the nav points at it, so without this
               a reader who gets interested here has nowhere to go. Placed
               after the cards on purpose: by this point they have read the
               bio, and this is the moment they want more. */}
-          <button
-            type="button"
-            onClick={() => navigate("/anthony")}
+          <a
+            href="https://anthony.stellaxafe.com"
+            target="_blank"
+            rel="noreferrer"
             className="w-full text-left mt-6 rounded-[14px] border px-5 py-4 flex items-center justify-between gap-4 transition-all hover:gap-3"
             style={{ borderColor: "var(--border-2)", backgroundColor: "var(--surface)" }}
           >
@@ -193,7 +195,7 @@ export default function Founder() {
               </span>
             </span>
             <ArrowRight size={17} style={{ color: BRAND.accentSoft }} className="shrink-0" />
-          </button>
+          </a>
         </div>
       </ModalCard>
     </MarketingPage>
