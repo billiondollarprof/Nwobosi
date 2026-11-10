@@ -2145,7 +2145,12 @@ export default function Chat() {
         /* Into the library, so it is somewhere other than this one
            conversation. savedToStorage stays false because no storage is
            connected here, and claiming otherwise would be a lie in the UI. */
-        const title = docTitle(convo);
+        /* THE DOCUMENT'S OWN TITLE, its top heading. Seen 2026-11-10: the
+           Library and the admin's list named every document after the
+           chat's first message ("Hi", "I have a meeting with..."). The
+           first message stays only as the fallback for a document with no
+           heading. */
+        const title = titleOf(finished, docTitle(convo));
 
         setLibraryFiles((prev) => [
           { id: nextId(), title, skill: autoSkill, savedToStorage: false, when: "Just now", content: finished },
