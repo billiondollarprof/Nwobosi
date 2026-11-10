@@ -41,7 +41,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk@0.68.0";
-import { centsExact, clientFor, modelFor, vendorForSupport, type Tier } from "../_shared/brain.ts";
+import { centsExact, clientFor, modelFor, vendorForCompany, vendorForSupport, type Tier } from "../_shared/brain.ts";
 
 /* --------------------------------------------------------------------------
    SECTION: Constants
@@ -696,7 +696,7 @@ Deno.serve(async (req) => {
      the table not being there, so this can ship before the migration does. */
   /* Gemini's free tier when its key is set (this platform, Anthony
      2026-11-10), otherwise the company's own vendor. See vendorForSupport. */
-  const vendor = await vendorForSupport(company.id);
+  let vendor = await vendorForSupport(company.id);
 
   /* ------------------------------------------------------------------
      The thread, and the message going into it.
@@ -933,7 +933,30 @@ Deno.serve(async (req) => {
     systemBlocks.push({ type: "text", text: openQuestionsBlock });
   }
 
-  const anthropic = clientFor(vendor);
+  /* GEMINI FIRST, THE COMPANY'S OWN BRAIN IF IT FAILS. 2026-11-10, seen
+     live on WhatsApp: Gemini's free tier answered 503 "This model is
+     currently experiencing high demand", the customer saw the typing dot
+     for a minute, and then nothing. A free tier can say no at any time, so
+     support never depends on it alone: one failure from Gemini and the same
+     question goes straight to the company's own vendor (DeepSeek here). */
+  const askReply = async () => {
+    const call = (v: typeof vendor) => clientFor(v).messages.create({
+      model: modelFor(v, LEVEL),
+      max_tokens: 700,
+      system: systemBlocks,
+      tools: [REPLY_TOOL],
+      tool_choice: { type: "tool", name: "reply" },
+      messages,
+    });
+    try {
+      return await call(vendor);
+    } catch (err) {
+      if (vendor !== "gemini") throw err;
+      console.warn("gemini failed for support, using the company's own brain", err instanceof Error ? err.message.slice(0, 200) : err);
+      vendor = await vendorForCompany(company.id);
+      return await call(vendor);
+    }
+  };
 
   let reply: string | null = null;
   let needsPerson = false;
@@ -954,14 +977,7 @@ Deno.serve(async (req) => {
   } | null = null;
 
   try {
-    const result = await anthropic.messages.create({
-      model: modelFor(vendor, LEVEL),
-      max_tokens: 700,
-      system: systemBlocks,
-      tools: [REPLY_TOOL],
-      tool_choice: { type: "tool", name: "reply" },
-      messages,
-    });
+    const result = await askReply();
 
     usage = result.usage;
     const call = result.content.find((block) => block.type === "tool_use");
