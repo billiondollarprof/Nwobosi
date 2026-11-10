@@ -43,6 +43,19 @@ order):**
   the search run after the answers and before the read back, a short read
   back, then "Go ahead with PDF / Word / Excel / Slides" buttons.
 
+**Asked 2026-11-10, afternoon:**
+- The first stage must be conversational: chat freely, read the company map
+  silently, and only when the direction is clear say "if I understand, this
+  is what you want to build", then pull the knowledge and read back. Each
+  stage its own agent or skill. Being discussed with him first.
+- Waiting: something on screen within about 2 seconds ("Responding in a
+  bit"), animated like Claude's status line (a shimmering word and a pulsing
+  mark). Failures say so and retry; usage limits say so plainly.
+- Connected tools asked about one at a time, connected knowledge before the
+  internet: written into docs/product/DIRECTION.md, not built yet.
+- Not yet shipped: the one page fit in the PDF builder (pdf.js, download.js),
+  written and not yet tested.
+
 **Next, his order:** (1) show the plan while it builds, as live progress
 lines in colour, "like the way Claude used to show it"; (2) the output
 fixes: one page means one page, no title shown twice, no reasoning on the
