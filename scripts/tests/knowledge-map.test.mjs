@@ -26,7 +26,8 @@ const pricing = "# Amara pricing\nSome words here.\n## Partner rates\nMore words
 const sections = sectionsOf(pricing);
 check("Markdown headings are sections", sections.includes("Amara pricing") && sections.includes("Partner rates"));
 check("a short line in capitals is a section", sections.includes("PAYMENT TERMS"));
-check("a short line ending in a colon is a section", sections.includes("Contact"));
+check("a line ending in a colon is not a section", !sections.includes("Contact"));
+check("a legal sentence ending in a colon is not a section", sectionsOf("You have the right to:\nAll messages are:").length === 0);
 check("a heading is listed once", sections.filter((s) => s === "Partner rates").length === 1);
 check("an ordinary sentence is not a section", !sections.some((s) => s.startsWith("Some words")));
 check("no more than eight sections", sectionsOf(Array.from({ length: 20 }, (_, i) => `# Part ${i}`).join("\n")).length === 8);

@@ -43,9 +43,11 @@ export type BrandColour = {
 
 /* --------------------------------------------------------------------------
    1. Sections: the headings a source actually has
-   A line counts as a heading when it is a Markdown heading, or a short line
-   in capitals, or a short line ending in a colon. Eight at most, in order,
-   each said once.
+   A line counts as a heading when it is a Markdown heading or a short line
+   in capitals. Eight at most, in order, each said once.
+   Lines ending in a colon used to count too, and on a scraped website they
+   turned legal sentences ("You have the right to:") into "sections". A
+   source with no real headings now simply shows none.
    -------------------------------------------------------------------------- */
 
 export function sectionsOf(text: string | null | undefined, max = 8): string[] {
@@ -58,7 +60,6 @@ export function sectionsOf(text: string | null | undefined, max = 8): string[] {
     const md = line.match(/^#{1,3}\s+(.+?)\s*#*$/);
     if (md) heading = md[1];
     else if (/^[A-Z0-9][A-Z0-9 &,'/()-]{2,}$/.test(line) && /[A-Z]{3}/.test(line)) heading = line;
-    else if (/^[A-Z][^.!?]{2,48}:$/.test(line)) heading = line.slice(0, -1);
     heading = heading.replace(/[*_`]/g, "").trim();
     if (!heading) continue;
     const key = heading.toLowerCase();
