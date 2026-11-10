@@ -64,7 +64,7 @@ async function build(browser, brief) {
   await page.waitForTimeout(1500);
   await page.locator('button', { hasText: 'Yes, start now' }).first().click();
   await page.waitForTimeout(2200);
-  await page.locator('button', { hasText: 'Go ahead, build it' }).first().click();
+  await page.locator('button', { hasText: 'Go ahead with' }).first().click();
   await page.waitForTimeout(3500);
 
   const sent = await page.evaluate(() => (window.__SENT || [])[0]);

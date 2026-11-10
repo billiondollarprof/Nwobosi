@@ -94,7 +94,7 @@ async function walkToBuilt(browser, generate, path = 'interview', stops = null, 
     await page.waitForTimeout(2200);
   }
   if (stopAtCard) return { page, errs };
-  await page.locator('button', { hasText: 'Go ahead, build it' }).first().click();
+  await page.locator('button', { hasText: 'Go ahead with' }).first().click();
   await page.waitForTimeout(2800);
 
   return { page, errs };
@@ -169,7 +169,7 @@ const isPdf = (b) => b.length > 4 && b.slice(0, 4).toString() === '%PDF';
   check(`Slides: it is called .pptx (${deck.name})`, /\.pptx$/i.test(deck.name || ''));
   check('Slides: it is really a PowerPoint file', isZip(deck.bytes));
 
-  const sheet = await pressAndCatch(page, 'Spreadsheet');
+  const sheet = await pressAndCatch(page, 'Excel');
   check(`Spreadsheet: a file arrives${sheet.error ? ' -> ' + sheet.error : ''}`, sheet.bytes.length > 0);
   check(`Spreadsheet: it is called .xlsx (${sheet.name})`, /\.xlsx$/i.test(sheet.name || ''));
   check('Spreadsheet: it is really an Excel file', isZip(sheet.bytes));
@@ -196,7 +196,7 @@ const isPdf = (b) => b.length > 4 && b.slice(0, 4).toString() === '%PDF';
      not there. */
   const plain = await walkToBuilt(b, '# Notes\n\nJust words, no table at all.', 'skip');
   check('with no table, the Spreadsheet button is not offered',
-    (await plain.page.locator('button', { hasText: 'Spreadsheet' }).count()) === 0);
+    (await plain.page.locator('button', { hasText: 'Excel' }).count()) === 0);
   check('but Word and PDF still are',
     (await plain.page.locator('button', { hasText: 'PDF' }).count()) > 0);
   await plain.page.close();
@@ -210,16 +210,16 @@ const isPdf = (b) => b.length > 4 && b.slice(0, 4).toString() === '%PDF';
   check('CUT OFF: it says the file is not complete',
     (await cut.page.locator('text=ran out of room before the end').count()) > 0);
   check('CUT OFF: the build card comes back, so there is something to press',
-    (await cut.page.locator('button', { hasText: 'Go ahead, build it' }).count()) > 0);
+    (await cut.page.locator('button', { hasText: 'Go ahead with' }).count()) > 0);
   await cut.page.screenshot({ path: '/tmp/claude-0/download-cutoff.png', fullPage: true });
   await cut.page.evaluate(() => { window.__STOP_REASONS = null; });
-  await cut.page.locator('button', { hasText: 'Go ahead, build it' }).first().click();
+  await cut.page.locator('button', { hasText: 'Go ahead with' }).first().click();
   await cut.page.waitForTimeout(2800);
   const cutTurns = await cut.page.evaluate(() => window.__TURNS || []);
   check(`CUT OFF: pressing build again runs brief and generate again (${cutTurns.join(' > ')})`,
     cutTurns.filter((s) => s === 'generate').length === 2);
   check('CUT OFF: and the build card is gone once it finishes',
-    (await cut.page.locator('button', { hasText: 'Go ahead, build it' }).count()) === 0);
+    (await cut.page.locator('button', { hasText: 'Go ahead with' }).count()) === 0);
   const cutWord = await pressAndCatch(cut.page, 'Word');
   check('CUT OFF: the second press ends in a real Word file', isZip(cutWord.bytes));
   check('CUT OFF: no page errors' + (cut.errs.length ? ' -> ' + cut.errs.join(' | ') : ''),
@@ -237,7 +237,7 @@ const isPdf = (b) => b.length > 4 && b.slice(0, 4).toString() === '%PDF';
   check('EMPTY BRIEF: generate never ran on an empty brief',
     !(await empty.page.evaluate(() => window.__TURNS || [])).includes('generate'));
   check('EMPTY BRIEF: the build card comes back',
-    (await empty.page.locator('button', { hasText: 'Go ahead, build it' }).count()) > 0);
+    (await empty.page.locator('button', { hasText: 'Go ahead with' }).count()) > 0);
   await empty.page.close();
 
   /* ---- 7. CHOOSING A DIFFERENT FILE ON THE BUILD CARD -----------------
@@ -249,7 +249,7 @@ const isPdf = (b) => b.length > 4 && b.slice(0, 4).toString() === '%PDF';
   check('CHOICE: the card offers the other file types',
     (await pick.page.locator('text=Or make it').count()) > 0 &&
     (await pick.page.locator('button', { hasText: 'Slides' }).count()) > 0 &&
-    (await pick.page.locator('button', { hasText: 'Spreadsheet' }).count()) > 0);
+    (await pick.page.locator('button', { hasText: 'Excel' }).count()) > 0);
   check('CHOICE: the one already picked is not offered twice',
     (await pick.page.locator('button', { hasText: /^Word$/ }).count()) === 0);
   await pick.page.screenshot({ path: '/tmp/claude-0/build-choice.png', fullPage: true });

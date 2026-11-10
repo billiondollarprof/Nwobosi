@@ -248,7 +248,7 @@ function check(name, cond) { (cond ? OK : BAD).push(name); }
   await page.waitForTimeout(1400);
   await page.locator('button', { hasText: 'Yes, start now' }).first().click();
   await page.waitForTimeout(2200);
-  await page.locator('button', { hasText: 'Go ahead, build it' }).first().click();
+  await page.locator('button', { hasText: 'Go ahead with' }).first().click();
   await page.waitForTimeout(2600);
 
   /* THE FILE IS THE DELIVERABLE, NOT THE MESSAGE.
@@ -389,7 +389,7 @@ function check(name, cond) { (cond ? OK : BAD).push(name); }
   await page.waitForTimeout(1400);
   await page.locator('button', { hasText: 'Yes, start now' }).first().click();
   await page.waitForTimeout(2200);
-  await page.locator('button', { hasText: 'Go ahead, build it' }).first().click();
+  await page.locator('button', { hasText: 'Go ahead with' }).first().click();
   await page.waitForTimeout(2200);
 
   check('an empty plan does NOT silently build a document',
@@ -414,7 +414,7 @@ function check(name, cond) { (cond ? OK : BAD).push(name); }
   await page.waitForTimeout(1400);
   await page.locator('button', { hasText: 'Yes, start now' }).first().click();
   await page.waitForTimeout(2200);
-  await page.locator('button', { hasText: 'Go ahead, build it' }).first().click();
+  await page.locator('button', { hasText: 'Go ahead with' }).first().click();
   await page.waitForTimeout(2600);
 
   check('an empty document says so rather than leaving a stopped spinner',

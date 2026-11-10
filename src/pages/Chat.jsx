@@ -1184,6 +1184,24 @@ export default function Chat() {
                closed before the read back arrives, reopening must not find
                a read back step with no read back in it. */
             persist(next, "interview");
+
+            /* THEY PRESSED "YES, AFTER MY ANSWERS" UNDER THE QUESTIONS.
+               Anthony, 2026-11-10: the search runs after the answers. So it
+               runs now, before the read back, and comes back to the read
+               back with what they keep. The yes line is theirs: they pressed
+               the button that says it, and the search gate on the server
+               still refuses without it. */
+            if (searchAfterAnswersRef.current) {
+              searchAfterAnswersRef.current = false;
+              lookupFromRef.current = "analyse";
+              const yes = "Yes, go and look.";
+              updateMessages((prev) => prev.filter((m) => m.type !== "lookupArmed"));
+              addMessage({ role: "user", type: "text", content: yes });
+              setFlowStage("analyse");
+              runTurn("research", [...history, { role: "assistant", content: clean }, { role: "user", content: yes }]);
+              return;
+            }
+
             setFlowStage("analyse");
             runTurn("analyse", [...history, { role: "assistant", content: clean }]);
             return;
@@ -1197,7 +1215,7 @@ export default function Chat() {
           if (alsoAskedToLook) {
             const withLookup = updateMessages((prev) => [
               ...prev,
-              { id: nextId(), role: "assistant", type: "lookup", from: "interview" },
+              { id: nextId(), role: "assistant", type: "lookup", from: "interview", later: true },
             ]);
             persist(withLookup, "interview");
             return;
@@ -2191,6 +2209,29 @@ export default function Chat() {
      default is "analyse". */
   const lookupFromRef = useRef("analyse");
 
+  /* A search they said yes to under the interview questions, waiting for
+     their answers. Anthony, 2026-11-10: "should I look this up online?"
+     sits inside the questions, and the search runs after the answers. */
+  const searchAfterAnswersRef = useRef(false);
+
+  /* "Yes, after my answers": nothing runs yet. The card turns into a short
+     note so they can see the yes was taken, and they answer the questions. */
+  function armLookupAfterAnswers() {
+    searchAfterAnswersRef.current = true;
+    updateMessages((prev) => prev.map((m) => (m.type === "lookup" && m.later
+      ? { id: m.id, role: "assistant", type: "lookupArmed" }
+      : m)));
+    textareaRef.current?.focus();
+  }
+
+  /* "No need": the card goes, nothing runs, they answer the questions. */
+  function skipLookupAfterAnswers() {
+    searchAfterAnswersRef.current = false;
+    declinedRef.current += 1;
+    updateMessages((prev) => prev.filter((m) => !(m.type === "lookup" && m.later)));
+    textareaRef.current?.focus();
+  }
+
   /* Back to the stage that asked, so a search during the interview returns
      to the interview and one during the analysis returns to the analysis.
      Both of those stages end on their own, so neither can trap anybody: the
@@ -2369,6 +2410,7 @@ export default function Chat() {
     abortTurnRef.current = null;
     conversationIdRef.current = null;
     lookupFromRef.current = "analyse";
+    searchAfterAnswersRef.current = false;
     orientLookupsRef.current = 0;
     setTyping(false);
     setActiveTier(null);
@@ -3359,8 +3401,8 @@ export default function Chat() {
                 onAdjust={handleAdjust}
                 onWantInterview={handleWantInterview}
                 onSkipInterview={handleSkipInterview}
-                onAllowLookup={() => allowLookup(m.from)}
-                onRefuseLookup={() => refuseLookup(m.from)}
+                onAllowLookup={() => (m.later ? armLookupAfterAnswers() : allowLookup(m.from))}
+                onRefuseLookup={() => (m.later ? skipLookupAfterAnswers() : refuseLookup(m.from))}
                 onUseFinding={useFinding}
                 onDropFinding={dropFinding}
                 onReset={handleNewChat}
@@ -3921,6 +3963,52 @@ export function ChatBubble({ message, brief, buildFormat = DEFAULT_FORMAT, build
      ordinary next step. The refusal is the plain button on purpose: saying
      no is free, costs nothing, and must never feel like the awkward
      choice. */
+  /* The yes they gave under the questions, kept on screen as a short note
+     until the search runs after their answers. */
+  if (message.type === "lookupArmed") {
+    return (
+      <div style={riseStyle}>
+        <p className="flex items-center gap-2 text-[13.5px]" style={{ color: "var(--text-3)" }}>
+          <Search size={14} style={{ color: BRAND.amber }} />
+          I will look it up once you have answered, and show you what I find first.
+        </p>
+      </div>
+    );
+  }
+
+  if (message.type === "lookup" && message.later) {
+    return (
+      <div style={riseStyle}>
+        <div
+          className="rounded-[18px] border p-5 backdrop-blur-xl"
+          style={{ backgroundColor: "var(--surface)", borderColor: BRAND.amber + "66" }}
+        >
+          <div className="flex items-center gap-2 mb-1">
+            <Search size={15} style={{ color: BRAND.amber }} />
+            <p className="text-[15.5px] font-semibold" style={{ color: "var(--text-1)" }}>
+              Look this up online too?
+            </p>
+          </div>
+          <p className="text-[13.5px] mb-4 leading-relaxed" style={{ color: "var(--text-3)" }}>
+            If yes, I will look once you have answered the questions above. Nothing goes into
+            your work until you have seen it and said yes.
+          </p>
+          <PrimaryButton onClick={onAllowLookup} className="w-full flex items-center justify-center gap-2">
+            <Search size={15} />
+            Yes, after my answers
+          </PrimaryButton>
+          <button
+            onClick={onRefuseLookup}
+            className="w-full mt-2.5 rounded-[12px] border py-2.5 text-[13.5px] transition-opacity hover:opacity-80"
+            style={{ borderColor: "var(--border-2)", color: "var(--text-2)" }}
+          >
+            No need
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (message.type === "lookup") {
     return (
       <div style={riseStyle}>
@@ -4123,7 +4211,7 @@ export function ChatBubble({ message, brief, buildFormat = DEFAULT_FORMAT, build
               know about; "Build it as a Word document" does not. */}
           <PrimaryButton onClick={() => onGenerate()} className="w-full flex items-center justify-center gap-2">
             <FileText size={15} />
-            Go ahead, build it as {FORMAT_NAMES[buildFormat] ?? "a Word document"}
+            Go ahead with {FORMAT_SHORT[buildFormat] ?? "Word"}
           </PrimaryButton>
           {/* THE OTHER FILE TYPES, one press each. Anthony, 2026-09-23:
               "I wasn't even offered the choice to choose file type." The
@@ -4381,7 +4469,7 @@ export function ChatBubble({ message, brief, buildFormat = DEFAULT_FORMAT, build
             {made !== "pdf" && <GhostButton onClick={() => onDownload("pdf")}>PDF</GhostButton>}
             {made !== "pptx" && <GhostButton onClick={() => onDownload("pptx")}>Slides</GhostButton>}
             {hasTable && made !== "xlsx" && (
-              <GhostButton onClick={() => onDownload("xlsx")}>Spreadsheet</GhostButton>
+              <GhostButton onClick={() => onDownload("xlsx")}>Excel</GhostButton>
             )}
           </div>
 

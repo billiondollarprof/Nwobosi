@@ -61,7 +61,7 @@ const DOC = [
   await page.waitForTimeout(1500);
   await page.locator('button', { hasText: 'Yes, start now' }).first().click();
   await page.waitForTimeout(2200);
-  await page.locator('button', { hasText: 'Go ahead, build it' }).first().click();
+  await page.locator('button', { hasText: 'Go ahead with' }).first().click();
   await page.waitForTimeout(3500);
 
   const card = page.locator('text=Worth checking before it goes out').locator('..');

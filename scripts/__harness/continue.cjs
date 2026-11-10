@@ -81,7 +81,7 @@ async function say(page, text, wait = 3000) {
   await page.waitForTimeout(wait);
 }
 
-const buildButtons = (page) => page.locator('button', { hasText: 'Go ahead, build it' }).count();
+const buildButtons = (page) => page.locator('button', { hasText: 'Go ahead with' }).count();
 const nothingCame = (page) => page.locator('text=Nothing came back').count();
 
 async function download(page, label) {
