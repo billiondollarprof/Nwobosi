@@ -97,6 +97,23 @@ if (fromRef) {
   describedAs = `${localPath} in the working tree`;
 }
 
+/* THE FUNCTION'S OWN FILES COUNT TOO. Since 2026-11-10 the assistant keeps
+   each stage's instruction in its own file (`./stages/orient.ts` and so on).
+   They are bundled into the same deploy, so their sentences are markers like
+   any other. Without this, moving a prompt out of index.ts would quietly stop
+   it being checked at all. */
+function readOwn(rel) {
+  const p = `supabase/functions/${slug}/${rel}`;
+  if (fromRef) { try { return execSync(`git show ${fromRef}:${p}`).toString(); } catch { return ""; } }
+  return existsSync(p) ? readFileSync(p, "utf8") : "";
+}
+const ownFiles = [...new Set([...source.matchAll(/from "\.\/([A-Za-z0-9_./-]+\.ts)"/g)].map((m) => m[1]))];
+for (const rel of ownFiles) {
+  const text = readOwn(rel);
+  if (text) source += "\n" + text;
+}
+if (ownFiles.length) describedAs += `  + ${ownFiles.join(", ")}`;
+
 /* ⚠️ THE SHARED MODULES ARE BUNDLED IN TOO, SO THEIR MARKERS COUNT, AND THE
    WALK HAS TO BE TRANSITIVE.
    The first production bug on DeepSeek was a fix in `_shared/wire.ts`, and

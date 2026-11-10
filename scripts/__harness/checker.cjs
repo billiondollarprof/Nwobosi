@@ -59,7 +59,7 @@ const DOC = [
   await page.locator('textarea').first().fill('Room costs for this quarter. Food was ₦45,500.');
   await page.keyboard.press('Enter');
   await page.waitForTimeout(1500);
-  await page.locator('button', { hasText: 'Just get on with it' }).first().click();
+  await page.locator('button', { hasText: 'Yes, start now' }).first().click();
   await page.waitForTimeout(2200);
   await page.locator('button', { hasText: 'Go ahead, build it' }).first().click();
   await page.waitForTimeout(3500);

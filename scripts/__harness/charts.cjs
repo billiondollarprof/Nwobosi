@@ -96,7 +96,7 @@ async function names(buffer) {
   await page.locator('textarea').first().fill('Make me the Q3 review with charts');
   await page.keyboard.press('Enter');
   await page.waitForTimeout(1500);
-  await page.locator('button', { hasText: 'Just get on with it' }).first().click();
+  await page.locator('button', { hasText: 'Yes, start now' }).first().click();
   await page.waitForTimeout(2200);
   await page.locator('button', { hasText: 'Go ahead, build it' }).first().click();
   await page.waitForTimeout(3500);

@@ -2126,14 +2126,14 @@ export default function Chat() {
   }
 
   /* Yes. Straight into the questions. */
-  const handleWantInterview = () => answerOffer("Yes, ask me your questions.", "interview");
+  const handleWantInterview = () => answerOffer("Yes, that is right. Ask me what you need.", "interview");
 
   /* No. Straight to the read back, which is where it says what it
      understood and what it is going to use. They still see that before
      anything is written, so saying no skips the questions and never skips
      the checkpoint. */
   const handleSkipInterview = () =>
-    answerOffer("No, get on with it with what you have.", "analyse");
+    answerOffer("Yes, that is right. Start now with what you have.", "analyse");
 
   /* ------------------------------------------------------------------------
      GOING AND LOOKING, AND THE TWO GATES EITHER SIDE OF IT
@@ -4057,24 +4057,24 @@ export function ChatBubble({ message, brief, buildFormat = DEFAULT_FORMAT, build
           style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
         >
           <p className="text-[15.5px] font-semibold mb-1" style={{ color: "var(--text-1)" }}>
-            Want me to ask you a few questions?
+            Is that right?
           </p>
           <p className="text-[13.5px] mb-4 leading-relaxed" style={{ color: "var(--text-3)" }}>
-            A few short ones make the work a lot better. Or I can start now with what I have.
+            If it is, I can ask the few things I still need, or start now with what I have. If not, just tell me what to change.
           </p>
           <PrimaryButton
             onClick={onWantInterview}
             className="w-full flex items-center justify-center gap-2"
           >
             <MessagesSquare size={15} />
-            Ask me a few questions
+            Yes, ask what you need
           </PrimaryButton>
           <button
             onClick={onSkipInterview}
             className="w-full mt-2.5 rounded-[12px] border py-2.5 text-[13.5px] transition-opacity hover:opacity-80"
             style={{ borderColor: "var(--border-2)", color: "var(--text-2)" }}
           >
-            Just get on with it
+            Yes, start now
           </button>
         </div>
       </div>

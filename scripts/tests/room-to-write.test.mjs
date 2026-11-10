@@ -37,6 +37,11 @@ let code = readFileSync(join(dir, "fn.mjs"), "utf8")
      before that sweep, or the sweep removes it and the module then refers to
      vendorFor without declaring it. That was a real failure, not a theory. */
   .replace(BRAIN_IMPORT_RE, BRAIN_STUB)
+  /* Each stage's instruction lives in ./stages/*.ts since 2026-11-10. Those
+     files are plain constants, so they are pasted in where they were
+     imported, before the sweep below deletes every import that is left. */
+  .replace(/^import \{ ([A-Z]+) \} from "\.\/stages\/([a-z]+)\.ts";$/gm, (_, name, file) =>
+    readFileSync(`supabase/functions/assistant/stages/${file}.ts`, "utf8").replace(`export const ${name}`, `const ${name}`))
   .replace(/import \{ createClient \} from "[^"]+";/, "const createClient = () => ({});")
   .replace(/import Anthropic from "[^"]+";/, "class Anthropic {}")
   .replace(/import "[^"]*edge-runtime[^"]*";/, "")

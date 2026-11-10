@@ -77,7 +77,7 @@ async function download(page, label) {
   check('THE PICTURE REACHES THE MODEL WITH ITS FILE NAME', labelAt >= 0);
   check('and the picture itself comes straight after its name', blocks[labelAt + 1]?.type === 'image');
 
-  await page.locator('button', { hasText: 'Just get on with it' }).first().click();
+  await page.locator('button', { hasText: 'Yes, start now' }).first().click();
   await page.waitForTimeout(2200);
   await page.locator('button', { hasText: 'Go ahead, build it' }).first().click();
   await page.waitForTimeout(3500);

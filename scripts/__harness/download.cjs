@@ -53,10 +53,10 @@ const DOCUMENT = [
 
 /* TWO WAYS TO THE BUILD CARD, AND BOTH HAVE TO END IN A FILE.
 
-     interview  "Ask me a few questions", answer one, and it hands off.
+     interview  "Yes, ask what you need", answer one, and it hands off.
                 This is the path Anthony asked for by name and the one a
                 demo will show, so it is the main walk.
-     skip       "Just get on with it", straight to the read back. */
+     skip       "Yes, start now", straight to the read back. */
 async function walkToBuilt(browser, generate, path = 'interview', stops = null, brief = 'Write a one page pricing FAQ with the plan table.', stopAtCard = false) {
   const page = await browser.newPage({ viewport: { width: 1280, height: 1000 }, acceptDownloads: true });
   const errs = [];
@@ -84,13 +84,13 @@ async function walkToBuilt(browser, generate, path = 'interview', stops = null, 
   await page.keyboard.press('Enter');
   await page.waitForTimeout(1400);
   if (path === 'interview') {
-    await page.locator('button', { hasText: 'Ask me a few questions' }).first().click();
+    await page.locator('button', { hasText: 'Yes, ask what you need' }).first().click();
     await page.waitForTimeout(1600);
     await page.locator('textarea').first().fill('Customers who are deciding whether to buy');
     await page.keyboard.press('Enter');
     await page.waitForTimeout(2600);
   } else {
-    await page.locator('button', { hasText: 'Just get on with it' }).first().click();
+    await page.locator('button', { hasText: 'Yes, start now' }).first().click();
     await page.waitForTimeout(2200);
   }
   if (stopAtCard) return { page, errs };

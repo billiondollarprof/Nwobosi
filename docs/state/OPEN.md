@@ -31,14 +31,13 @@ plan written first with nothing before it; the plan shown live while it
 builds, with coloured progress lines; landing page motion like his
 portfolio, "Meet the founder", founder page linking to anthony.stellaxafe.com;
 products section removed from the landing page; one page means one page
-(tested live: a fresh Amara one-pager came out as exactly one page).
+(tested live: a fresh Amara one-pager came out as exactly one page); a page count
+they named is checked once, then respected (live, assistant redeployed by
+GitHub).
 
 **The queue, everything he asked for on 2026-11-10, taken one after the
 other.** Nothing comes off until it is built, checked and live.
 
-2b. **A page count they named** (2026-11-10): estimate whether it holds
-   what they want, say so once if not and suggest a number, then do what
-   they say if they insist. A one pager is never questioned. Shipping now.
 3. **The waiting line.** Something on screen within about 2 seconds
    ("Responding in a bit"); the word shimmers with a pulsing mark, like
    Claude's "Musing..."; a failure says so and retries once; a usage limit
@@ -47,7 +46,14 @@ other.** Nothing comes off until it is built, checked and live.
    silently, and only when the direction is clear say "if I understand, this
    is what you want to build", then pull the knowledge. "That beginning part
    is actually very, very, very vital." Each stage its own skill (its own
-   instruction file). Explained to him; waiting for his yes on the design.
+   instruction file). His yes given. Built: each stage in
+   `supabase/functions/assistant/stages/`, the first stage talks until the
+   direction is clear, the card reads "Is that right?". On testing; live
+   test, then main.
+4b. **Fit the pages, never truncate** (2026-11-10): "Fitting into a page
+   doesn't mean that it will Truncate the details, it still has to end every
+   file well." The plan now says how the content fits; the writing keeps
+   every agreed point and always ends properly. Ships with 4.
 5. **The flow after that.** The few missing questions in one go, with "should
    I look this up online?" inside them; the search runs after the answers;
    a short read back (what, who, direction, sources, format); then "Go ahead

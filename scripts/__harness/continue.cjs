@@ -47,7 +47,7 @@ async function toReadBack(browser, analyse) {
   await page.locator('textarea').first().fill('Make me a one page pricing FAQ');
   await page.keyboard.press('Enter');
   await page.waitForTimeout(1400);
-  await page.locator('button', { hasText: 'Just get on with it' }).first().click();
+  await page.locator('button', { hasText: 'Yes, start now' }).first().click();
   await page.waitForTimeout(2200);
   return { page, errs };
 }

@@ -30,7 +30,7 @@ async function built(browser, drive) {
   await page.waitForTimeout(1000);
   await page.locator('textarea').first().fill('Make me a pricing FAQ');
   await page.keyboard.press('Enter'); await page.waitForTimeout(1300);
-  await page.locator('button', { hasText: 'Just get on with it' }).first().click(); await page.waitForTimeout(2000);
+  await page.locator('button', { hasText: 'Yes, start now' }).first().click(); await page.waitForTimeout(2000);
   await page.locator('button', { hasText: 'Go ahead, build it' }).first().click(); await page.waitForTimeout(2800);
   return { page, errs };
 }
