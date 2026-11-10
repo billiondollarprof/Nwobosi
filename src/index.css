@@ -1049,3 +1049,30 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .sx-progress-pulse { animation: none; }
 }
+
+/* The waiting line (Thinking in ui.jsx). Anthony, 2026-11-10: like Claude's
+   "Musing...", a mark that breathes and a word that shimmers. */
+.sx-working-mark {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: currentColor;
+  display: inline-block;
+  flex-shrink: 0;
+  animation: sx-progress-pulse 1.1s ease-in-out infinite;
+}
+.sx-working-word {
+  background: linear-gradient(90deg, currentColor 0%, currentColor 40%, var(--working-shine, #fff) 50%, currentColor 60%, currentColor 100%);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: sx-word-shimmer 2.2s linear infinite;
+}
+@keyframes sx-word-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -200% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sx-working-mark, .sx-working-word { animation: none; }
+}

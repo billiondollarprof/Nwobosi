@@ -454,6 +454,14 @@ export default function Chat() {
   const [turnStage, setTurnStage] = useState("orient");
   const [stalled, setStalled] = useState(false);
 
+  /* The first try failed before a word came back and sendTurn is asking
+     again on its own (assistantApi.js, "One quiet retry"). The waiting line
+     says so. Cleared the moment the turn ends either way. */
+  const [retrying, setRetrying] = useState(false);
+  useEffect(() => {
+    if (!typing) setRetrying(false);
+  }, [typing]);
+
   /* Which model actually ran the last turn, reported by the server rather
      than assumed here. The ladder is a real feature, so it gets shown. */
   const [activeTier, setActiveTier] = useState(null);
@@ -903,6 +911,10 @@ export default function Chat() {
       /* Quiet for a long time. The turn is still running, so this only
          changes what the line says. Nothing is cancelled here. */
       onStall: () => setStalled(true),
+      onRetry: () => {
+        setStalled(false);
+        setRetrying(true);
+      },
 
       onText: (chunk) => {
         raw += chunk;
@@ -1710,6 +1722,10 @@ export default function Chat() {
 
       onMeta: ({ tier }) => setActiveTier(tier),
       onStall: () => setStalled(true),
+      onRetry: () => {
+        setStalled(false);
+        setRetrying(true);
+      },
       onText: (chunk) => {
         brief += chunk;
         setStalled(false);
@@ -1886,6 +1902,10 @@ export default function Chat() {
 
       onMeta: ({ tier }) => setActiveTier(tier),
       onStall: () => setStalled(true),
+      onRetry: () => {
+        setStalled(false);
+        setRetrying(true);
+      },
 
       onText: (chunk) => {
         finished += chunk;
@@ -3360,7 +3380,7 @@ export default function Chat() {
                 onArrange={() => arrangeConverted(m)}
               />
             ))}
-            {typing && <Thinking stage={turnStage} stalled={stalled} />}
+            {typing && <Thinking stage={turnStage} stalled={stalled} retrying={retrying} />}
           </div>
         </div>
       )}

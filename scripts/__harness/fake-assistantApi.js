@@ -11,7 +11,7 @@
 
 export { toApiMessages } from "../../src/shared/assistantApi.js";
 
-export function sendTurn({ stage = "orient", messages = [], onMeta, onText, onDone, onError }) {
+export function sendTurn({ stage = "orient", messages = [], onMeta, onText, onDone, onError, onRetry }) {
   window.__TURNS = window.__TURNS || [];
   window.__TURNS.push(stage);
   /* What each stage was actually sent, so a walk can check the model was
@@ -53,6 +53,10 @@ export function sendTurn({ stage = "orient", messages = [], onMeta, onText, onDo
      at. Without it the stub answers in 30ms and the state nobody can see
      is the state nobody can screenshot. */
   const wait = window.__HANG ? 60000 : 30;
+
+  /* window.__RETRY_SHOWN shows the "trying again" line, as the real
+     sendTurn does when its first try fails before any words. */
+  if (window.__RETRY_SHOWN) setTimeout(() => onRetry?.(), 10);
 
   setTimeout(() => {
     onMeta?.({ tier: "standard", stage });

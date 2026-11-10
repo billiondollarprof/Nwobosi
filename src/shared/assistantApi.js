@@ -143,7 +143,7 @@ function endingOnTheirTurn(list) {
   return out.length ? out : list;
 }
 
-export function sendTurn({ stage = "orient", askedSoFar = 0, brief = "", findings = "", messages, onMeta, onText, onDone, onError, onStall }) {
+function sendTurnOnce({ stage = "orient", askedSoFar = 0, brief = "", findings = "", messages, onMeta, onText, onDone, onError, onStall }) {
   const controller = new AbortController();
   messages = endingOnTheirTurn(messages);
 
@@ -201,7 +201,7 @@ export function sendTurn({ stage = "orient", askedSoFar = 0, brief = "", finding
         console.error("assistant fallback failed", error);
         finish(onError, {
           reason: "network",
-          message: `The assistant did not answer. ${error.message ?? "No reason given."}`,
+          message: "The assistant did not answer. Send it again in a moment.",
         });
         return;
       }
@@ -220,7 +220,7 @@ export function sendTurn({ stage = "orient", askedSoFar = 0, brief = "", finding
 
       if (!whole.includes("event:")) {
         console.error("assistant fallback returned an unreadable body", data);
-        finish(onError, { reason: "network", message: "The assistant did not answer. Check the function logs." });
+        finish(onError, { reason: "network", message: "The assistant did not answer. Send it again in a moment." });
         return;
       }
 
@@ -263,7 +263,9 @@ export function sendTurn({ stage = "orient", askedSoFar = 0, brief = "", finding
         message:
           payload?.message ??
           payload?.reason ??
-          `The assistant answered with ${response.status}. Check the function logs.`,
+          (response.status === 429
+            ? "Too many requests at once. Give it a minute, then send it again."
+            : "The assistant could not answer just now. Send it again in a moment."),
       });
       return;
     }
@@ -396,6 +398,60 @@ export function sendTurn({ stage = "orient", askedSoFar = 0, brief = "", finding
   })();
 
   return () => controller.abort();
+}
+
+/* --------------------------------------------------------------------------
+   SECTION: One quiet retry
+
+   Anthony, 2026-11-10: "a failure says so and retries once." A turn that
+   fails BEFORE a single word came back is asked again, once, on its own,
+   and the person is told it is trying again (onRetry). Nothing they typed
+   is lost and they do not have to press anything.
+
+   NEVER RETRIED:
+     - a turn that already showed words. Asking again would write a second
+       answer underneath the first half of one.
+     - a refusal that will say the same thing twice: out of budget, signed
+       out, a paused account, too much to send, searching without a yes.
+     - a turn the page cancelled itself.
+   Only the failures that are about the connection or the model having a
+   bad moment get the second go.
+   -------------------------------------------------------------------------- */
+
+const RETRY_REASONS = new Set(["network", "stalled", "stream", "failed"]);
+
+export function sendTurn(args) {
+  const { onText, onError, onRetry } = args;
+  let wroteSomething = false;
+  let tried = 0;
+  let abortCurrent = () => {};
+  let cancelled = false;
+
+  const attempt = () => {
+    tried += 1;
+    abortCurrent = sendTurnOnce({
+      ...args,
+      onText: (t) => {
+        if (t) wroteSomething = true;
+        onText?.(t);
+      },
+      onError: (err) => {
+        if (cancelled) return;
+        if (tried < 2 && !wroteSomething && RETRY_REASONS.has(err?.reason)) {
+          onRetry?.();
+          attempt();
+          return;
+        }
+        onError?.(err);
+      },
+    });
+  };
+
+  attempt();
+  return () => {
+    cancelled = true;
+    abortCurrent();
+  };
 }
 
 /* --------------------------------------------------------------------------
