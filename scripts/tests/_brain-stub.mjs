@@ -42,7 +42,7 @@ export const BRAIN_STUB = [
   "const {",
   "  vendorFor, modelFor, specialFor, rateFor, supportsAdaptiveThinking,",
   "  billableDollars, centsExact, centsRoundedUp, hasKeyFor, keyNameFor, clientFor,",
-  "  vendorForCompany, vendorForUser,",
+  "  vendorForCompany, vendorForUser, vendorForSupport,",
   "} = {",
   '  vendorFor: () => "anthropic",',
   '  modelFor: () => "stub-model",',
@@ -61,5 +61,6 @@ export const BRAIN_STUB = [
      Anthropic is exactly what every function did before the lookup existed. */
   '  vendorForCompany: async () => "anthropic",',
   '  vendorForUser: async () => "anthropic",',
+  '  vendorForSupport: async () => "anthropic",',
   "};",
 ].join("\n");

@@ -374,5 +374,16 @@ check("and it no longer keeps a second copy of the cost arithmetic",
 check("support-ask, which was always right, still uses the shared one",
   /centsExact\(/.test(stripComments(supportSource)));
 
+/* GEMINI, 2026-11-10. Support runs on Gemini's OpenAI compatible endpoint,
+   which rejects DeepSeek's `thinking` field and any effort but low, medium
+   or high. */
+const gem = toWireBody({ model: "gemini-3.8-flash", messages: [], thinking: { type: "enabled" }, output_config: { effort: "minimal" } }, false, "gemini");
+check("GEMINI: no thinking field is sent", !("thinking" in gem));
+check("GEMINI: an effort Gemini refuses is left out", !("reasoning_effort" in gem));
+const gem2 = toWireBody({ model: "gemini-3.8-flash", messages: [], output_config: { effort: "high" } }, false, "gemini");
+check("GEMINI: a valid effort is passed", gem2.reasoning_effort === "high");
+const ds = toWireBody({ model: "deepseek-flash", messages: [], thinking: { type: "disabled" } }, false);
+check("DEEPSEEK: still gets its thinking field", ds.thinking?.type === "disabled");
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

@@ -837,7 +837,7 @@ Deno.serve(async (req: Request) => {
   const mine = (myRow ?? {}) as Record<string, unknown>;
 
   serviceClient.from("staff").update({ last_seen_at: new Date().toISOString() }).eq("id", user.id)
-    .then(({ error }) => { if (error && error.code !== "42703" && error.code !== "PGRST204") console.warn("could not mark seen", error.message); });
+    .then(({ error }: { error: { code?: string; message?: string } | null }) => { if (error && error.code !== "42703" && error.code !== "PGRST204") console.warn("could not mark seen", error.message); });
 
   if (mine.paused_at) {
     return json({

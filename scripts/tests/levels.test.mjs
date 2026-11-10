@@ -175,7 +175,7 @@ check("the assistant resolves the vendor per request, not at module level",
    whose models are missing would otherwise fail only when a company chose
    it. */
 const brain = readFileSync("supabase/functions/_shared/brain.ts", "utf8");
-const VENDORS = ["anthropic", "deepseek", "openai"];
+const VENDORS = ["anthropic", "deepseek", "openai", "gemini"];
 
 check("the brain names every vendor",
   sorted(recordKeys(brain, "BRAIN") ?? []) === sorted(VENDORS));

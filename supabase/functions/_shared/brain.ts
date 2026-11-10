@@ -49,7 +49,7 @@ import { makeOpenAiClient } from "./wire.ts";
    1. THE VOCABULARY
    -------------------------------------------------------------------------- */
 
-export type Vendor = "anthropic" | "openai" | "deepseek";
+export type Vendor = "anthropic" | "openai" | "deepseek" | "gemini";
 
 /* The two rungs, unchanged. See src/shared/config.js and the note in
    assistant/index.ts about the ladder coming down from four. */
@@ -67,7 +67,7 @@ export const DEFAULT_VENDOR: Vendor = "anthropic";
    the column later changes behaviour, and nothing before that does. */
 export function vendorFor(row: { brain_vendor?: string | null } | null | undefined): Vendor {
   const v = row?.brain_vendor;
-  if (v === "anthropic" || v === "openai" || v === "deepseek") return v;
+  if (v === "anthropic" || v === "openai" || v === "deepseek" || v === "gemini") return v;
   return DEFAULT_VENDOR;
 }
 
@@ -84,7 +84,7 @@ interface TableReader {
 }
 
 function asVendor(value: unknown): Vendor {
-  return (value === "anthropic" || value === "openai" || value === "deepseek")
+  return (value === "anthropic" || value === "openai" || value === "deepseek" || value === "gemini")
     ? value
     : DEFAULT_VENDOR;
 }
@@ -237,6 +237,20 @@ const OPENAI_RATE: Omit<Rate, "adaptiveThinking"> = {
   input: 0, output: 0, cacheWrite: { short: 1, long: 1 }, cacheReadMult: 1,
 };
 
+/* ⚠️ GEMINI IS FOR SUPPORT ON THIS PLATFORM, ON THE FREE TIER.
+   Anthony, 2026-11-10: "Gemini for support, DeepSeek for the work... we are
+   using the free Gemini Flash... that's just to help me save tokens." The
+   free tier bills nothing, so the rate is zero and a support reply draws
+   nothing from the company's meter. If the key is ever moved to a paid
+   tier, fill in the real rates here before anything else.
+   Model: gemini-3.8-flash, the current Flash on Google's OpenAI compatible
+   endpoint (https://ai.google.dev/gemini-api/docs/openai), checked
+   2026-11-10. Free tier data may be used by Google to improve its products:
+   fine for this platform's own demo, never for a client's deployment. */
+const GEMINI_FREE_RATE: Omit<Rate, "adaptiveThinking"> = {
+  input: 0, output: 0, cacheWrite: { short: 1, long: 1 }, cacheReadMult: 1,
+};
+
 export const BRAIN: Record<Vendor, Record<Tier, Choice>> = {
   anthropic: {
     conversational: {
@@ -255,6 +269,10 @@ export const BRAIN: Record<Vendor, Record<Tier, Choice>> = {
   openai: {
     conversational: { model: "", rate: { ...OPENAI_RATE, adaptiveThinking: false } },
     standard: { model: "", rate: { ...OPENAI_RATE, adaptiveThinking: true } },
+  },
+  gemini: {
+    conversational: { model: "gemini-3.8-flash", rate: { ...GEMINI_FREE_RATE, adaptiveThinking: false } },
+    standard: { model: "gemini-3.8-flash", rate: { ...GEMINI_FREE_RATE, adaptiveThinking: false } },
   },
 };
 
@@ -280,6 +298,7 @@ const SPECIAL: Record<Vendor, Record<string, string>> = {
   anthropic: { describeSource: "claude-haiku-4-5-20251001" },
   deepseek: { describeSource: "deepseek-flash" },
   openai: { describeSource: "" },
+  gemini: { describeSource: "gemini-3.8-flash" },
 };
 
 export function specialFor(vendor: Vendor, job: string): string {
@@ -385,6 +404,7 @@ const ANTHROPIC_KEY = "ANTHROPIC_API_KEY";
 export function keyNameFor(vendor: Vendor): string {
   if (vendor === "anthropic") return ANTHROPIC_KEY;
   if (vendor === "deepseek") return "DEEPSEEK_API_KEY";
+  if (vendor === "gemini") return "GEMINI_API_KEY";
   return "OPENAI_API_KEY";
 }
 
@@ -400,7 +420,17 @@ const WIRE_BASE: Record<Vendor, string> = {
   anthropic: "",
   deepseek: "https://api.deepseek.com",
   openai: "https://api.openai.com/v1",
+  gemini: "https://generativelanguage.googleapis.com/v1beta/openai",
 };
+
+/* Which brain answers SUPPORT. Anthony, 2026-11-10: on this platform the
+   support line runs on Gemini's free tier and the work runs on the company's
+   own vendor. So when a Gemini key is set, support uses it; a client's own
+   deployment simply never sets that key and keeps its vendor everywhere. */
+export async function vendorForSupport(companyId: string | null | undefined): Promise<Vendor> {
+  if (Deno.env.get("GEMINI_API_KEY")) return "gemini";
+  return await vendorForCompany(companyId);
+}
 
 /* Whether this vendor is ready to be chosen. OpenAI is not, because nobody has
    picked its models or checked its prices. A vendor whose row is empty must
@@ -426,5 +456,5 @@ export function clientFor(vendor: Vendor): Anthropic {
     throw new Error(`No models chosen for ${vendor} yet, so it cannot be used`);
   }
 
-  return makeOpenAiClient(WIRE_BASE[vendor], key) as unknown as Anthropic;
+  return makeOpenAiClient(WIRE_BASE[vendor], key, vendor === "gemini" ? "gemini" : "standard") as unknown as Anthropic;
 }
