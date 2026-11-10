@@ -239,14 +239,16 @@ them**, because some may have been done since. Full detail is in
 
 ## 5. Decided, so nobody reopens them
 
-- **2026-11-10: limits.** Admins have no document limits; the money meter
-  (the $2 on a client trial) is their only cap, and when it runs out it is
-  finished. Staff get 20 documents a day by default; the admin can lower it
-  at any time and the new number applies at once (done 10, cut to 12, so 2
-  left). A change to a finished document is not a new document: changes have
-  their own cap of 20 a day. On this platform the money cap belongs to the
-  admin, because admins are the clients. In a client's own build, the client
-  decides each user's cap, by number of documents or by usage.
+- **2026-11-10: limits, his final word.** Admins have no document limits;
+  the money meter (the $2 on a client trial) is their only cap. Staff get 20
+  documents a day by default, and every build counts toward it, new or
+  changed, to keep it simple. No weekly limit unless the admin sets one. The
+  admin can lower the daily number at any time and it applies at once. In a
+  client's own build, the client decides each user's cap.
+- **2026-11-10: the free Gemini tier is for this demo only**, never a client.
+  What a client runs on depends on what they want and where they deploy.
+- **2026-11-10: the repo stays public and the CI rule stays as it is.** No
+  CI minute savings. Item 13 is closed.
 - **2026-11-10: Gemini runs support only, on this platform**, on the free
   Flash tier, to save money. DeepSeek does the work. His key is in Supabase
   secrets as `GEMINI_API_KEY`.

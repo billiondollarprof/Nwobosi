@@ -570,11 +570,11 @@ export async function staffWork(companyId) {
   for (const row of data ?? []) {
     const entry = out.get(row.staff_id) ?? { today: 0, week: 0, recent: [] };
     const at = new Date(row.created_at);
-    /* A change to a finished document is not a new document (Anthony,
-       2026-11-10), so it is listed but not counted. */
+    /* Every build counts, new or changed (Anthony, 2026-11-10). A change is
+       still marked, so the admin can tell the two apart in the list. */
     const change = row.brief?.revision === true;
-    if (!change && row.created_at >= weekAgo) entry.week += 1;
-    if (!change && at >= startOfToday) entry.today += 1;
+    if (row.created_at >= weekAgo) entry.week += 1;
+    if (at >= startOfToday) entry.today += 1;
     if (entry.recent.length < 8) entry.recent.push({ ...row, change });
     out.set(row.staff_id, entry);
   }
@@ -785,9 +785,9 @@ export async function listWork(companyId, staffId) {
   return rows.map((row) => ({ ...row, content: byId.get(row.id) ?? row.summary }));
 }
 
-/* `revision` marks a change to a document already made in the same chat.
-   Anthony, 2026-11-10: a change does not count as a new document. The
-   assistant counts changes separately (20 a day), and reads this mark. */
+/* `revision` marks a change to a document already made in the same chat,
+   so the admin's list can say "(a change)". It counts toward the daily
+   limit like any other build (Anthony, 2026-11-10). */
 export async function saveWork({ companyId, staffId, title, skill, content, sourcesUsed = [], credits = 0, revision = false }) {
   const { data, error } = await supabase
     .from("work_history")
