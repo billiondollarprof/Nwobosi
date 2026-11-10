@@ -19,6 +19,16 @@ How this file works:
 
 ## 1. Now, in his order
 
+0. **After the Dreef call, 2026-11-10, in this order:**
+   1. Rotate Amara's code (it was in the repo while public for minutes):
+      `update access_codes set code = '<new>' where code = '<old>'`. His yes
+      given. Give him the new code in chat only, never in the repo.
+   2. Take every access code out of the docs, and add the rule: no codes, no
+      keys in the repo. Six unused or orphaned codes already revoked.
+   3. Ask him whether `docs/clients/` moves to his Drive.
+   4. Output fixes f to i below (prompt, his yes given), test, ship.
+   5. CI minute savings (his yes given): skip CI on doc-only pushes, no
+      second CI run on the merge to main, shorter smoke wait.
 1. **Make the demo flow work, step by step.** 2026-10-31. Dreef may book a
    call to see it. They need to see three things and nothing else:
    1. Start a request in the existing Amara knowledge base.
