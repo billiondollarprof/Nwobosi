@@ -19,6 +19,36 @@ How this file works:
 
 ## 1. Now, in his order
 
+**2026-11-10, done:** client trial code issued (given to Anthony in chat,
+never in the repo), $2 meter. Every new workspace now starts on DeepSeek
+(trigger, migration 20261110100000). Setup was broken for every new
+workspace (73 character throwaway password, Supabase allows 72): fixed and
+live. A full new workspace run was tested end to end on DeepSeek, test
+workspace `volt-test-engineering` (internal test code, $1 meter): ask him
+before deleting it.
+
+**Asked 2026-11-10, after the client's concerns (waiting for his yes on the
+order):**
+- Usage control: cap a person per day or per week, pause or reduce them.
+  Built today: outputs per day per person, model level, company budget.
+  Not built: weekly cap, pause without deleting, usage shown per person.
+- Admin summary per person: click a name, see a dropdown of what they did.
+  Built today: Recent work with who made it and a 280 character summary.
+- Activity: when each person signed in, signed out, is active. Not built.
+- A knowledge map: one short file summarising every source (and, later,
+  connected SharePoint or Notion, with links), so the agent reads the map
+  and fetches only what the task needs. Today every turn sends all company
+  text, up to the company ceiling.
+- Flow: interview first, the search question asked inside the interview,
+  the search run after the answers and before the read back, a short read
+  back, then "Go ahead with PDF / Word / Excel / Slides" buttons.
+
+**Next, his order:** (1) show the plan while it builds, as live progress
+lines in colour, "like the way Claude used to show it"; (2) the output
+fixes: one page means one page, no title shown twice, no reasoning on the
+page, no chat at the top of the plan, no repeated lines (the Volt test PDF
+repeated the payment terms and its header said the company name twice).
+
 0. **After the Dreef call, 2026-11-10, in this order:**
    1. Rotate Amara's code (it was in the repo while public for minutes):
       `update access_codes set code = '<new>' where code = '<old>'`. His yes

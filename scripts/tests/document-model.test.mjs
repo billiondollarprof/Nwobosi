@@ -5,7 +5,7 @@
    Slides and Spreadsheet versions of the same document. */
 
 import { readFileSync } from "node:fs";
-import { readDocument, readInline, plainText, notesAsText, figureCaption } from "../../src/shared/docs/documentModel.js";
+import { readDocument, readInline, plainText, notesAsText, figureCaption, saysTheSame, runningLine } from "../../src/shared/docs/documentModel.js";
 
 let passed = 0, failed = 0;
 function check(name, cond) {
@@ -135,6 +135,19 @@ const lone = readDocument("## A\n\n:::image one.jpg | Only one", "x").blocks.fin
 check("figures: a single picture nobody points at gets no number", lone.figure === null);
 const pointed = readDocument("## A\n\nSee [[fig:one]].\n\n:::image one.jpg | Only one", "x").blocks.find((b) => b.type === "image");
 check("figures: a single picture the text points at IS numbered", pointed.figure === 1);
+
+/* 5b. SAYING THE SAME THING TWICE, 2026-11-10 ----------------------------- */
+const labelled = readDocument("# Doc\n\n## The problem\n:::label Problem\n\nText.", "x").blocks;
+check("a label after a heading that says the same thing is dropped", !labelled.some((b) => b.label || b.type === "label"));
+const before = readDocument("# Doc\n\n:::label The evidence\n## Evidence\n\nText.", "x").blocks;
+check("a label before a heading that says the same thing is dropped", !before.some((b) => b.type === "label"));
+const kept = readDocument("# Doc\n\n## What you earn\n:::label Money\n\nText.", "x").blocks.find((b) => b.type === "h" && b.level === 2);
+check("a label that says something different is kept", kept && kept.label === "Money");
+const steps = readDocument("# Doc\n\n:::steps\n### Sign up free | 01\nA line.\n### Share your code | Step 2\nA line.\n:::", "x").blocks.find((b) => b.type === "steps" || b.type === "cards");
+check("a step whose kicker is only a number loses it (no '1' and '01')", steps && steps.items.every((i) => i.kicker === ""));
+check("the running line says the company once when the title is the company", runningLine("Volt Test Engineering", "Volt Test Engineering") === "Volt Test Engineering");
+check("the running line still says both when they differ", runningLine("Amara", "Partner Programme") === "Amara  ·  Partner Programme");
+check("same words ignores case, punctuation and a leading 'the'", saysTheSame("THE PROBLEM.", "Problem") && !saysTheSame("Problem", "Problems"));
 
 /* 6. ODD INPUT ----------------------------------------------------------- */
 check("no heading means the fallback title", readDocument("Just words.", "Fallback").title === "Fallback");

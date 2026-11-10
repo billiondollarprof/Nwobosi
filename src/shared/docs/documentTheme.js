@@ -32,8 +32,11 @@ export const THEME = {
      The PDF carries its own font inside the file, see pdf.js. */
   officeFont: "Calibri",
 
-  /* Sizes in points, for print. The slides use their own, larger set. */
-  size: { title: 24, subtitle: 12, h1: 16, h2: 13.5, h3: 12, body: 10.5, small: 8.5 },
+  /* Sizes in points, for print. The slides use their own, larger set.
+     NOTHING A PERSON READS IS UNDER 11 POINT. Anthony, 2026-11-10: "Keep its
+     text readable at least 11 points by default, except the person asks
+     otherwise." `small` is only for page numbers and the running line. */
+  size: { title: 24, subtitle: 12.5, h1: 16.5, h2: 14, h3: 12.5, body: 11, small: 9 },
 };
 
 /* "1E3A8A" to "#1E3A8A", for the writers that want CSS style colours. */

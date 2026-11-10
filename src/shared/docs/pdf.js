@@ -34,7 +34,7 @@
    ========================================================================== */
 
 import { THEME, themeFor, hex } from "./documentTheme.js";
-import { plainText } from "./documentModel.js";
+import { plainText, runningLine } from "./documentModel.js";
 import { imageKey } from "./imageKey.js";
 import { chartSvg } from "./charts/chartSvg.js";
 
@@ -118,7 +118,7 @@ function tableBlock(block, t) {
       paddingTop: () => 6,
       paddingBottom: () => 6,
     },
-    fontSize: THEME.size.body - 0.5,
+    fontSize: THEME.size.body,
     margin: [0, 6, 0, 14],
   };
 }
@@ -145,7 +145,7 @@ function quoteBlock(block, t) {
    -------------------------------------------------------------------------- */
 
 function labelText(text, t) {
-  return { text: String(text).toUpperCase(), fontSize: 8, bold: true, color: hex(t.accent), characterSpacing: 1.2, margin: [0, 14, 0, 0] };
+  return { text: String(text).toUpperCase(), fontSize: 9, bold: true, color: hex(t.accent), characterSpacing: 1.2, margin: [0, 14, 0, 0] };
 }
 
 /* Cards side by side, each a tinted box. Steps are the same, numbered.
@@ -163,9 +163,9 @@ function cardsBlock(block, t, numbered) {
   const card = (item, n) => ({
     fillColor: hex(t.accentTint),
     stack: [
-      { text: [...(numbered ? [{ text: `${n}  `, color: hex(t.accent), bold: true }] : []), ...textOf(item.title)], bold: true, color: hex(t.accent), fontSize: 11.5 },
-      ...(item.kicker ? [{ text: item.kicker, bold: true, fontSize: 8.5, color: hex(t.kicker), margin: [0, 2, 0, 0] }] : []),
-      { stack: blocksToPdf(item.blocks, t), fontSize: 9.5, margin: [0, 6, 0, 0] },
+      { text: [...(numbered ? [{ text: `${n}  `, color: hex(t.accent), bold: true }] : []), ...textOf(item.title)], bold: true, color: hex(t.accent), fontSize: 12.5 },
+      ...(item.kicker ? [{ text: item.kicker, bold: true, fontSize: 10, color: hex(t.kicker), margin: [0, 2, 0, 0] }] : []),
+      { stack: blocksToPdf(item.blocks, t), fontSize: THEME.size.body, margin: [0, 6, 0, 0] },
     ],
   });
   const gap = { text: "" };
@@ -204,7 +204,7 @@ function statBlock(block, t) {
           fillColor: hex(t.accent),
           stack: [
             { text: block.value, fontSize: String(block.value).length <= 4 ? 32 : String(block.value).length <= 7 ? 26 : 20, bold: true, color: "#FFFFFF", alignment: "center" },
-            ...(block.caption ? [{ text: block.caption, fontSize: 9.5, color: hex(t.onAccentSoft ?? "FFFFFF"), alignment: "center", margin: [0, 4, 0, 0] }] : []),
+            ...(block.caption ? [{ text: block.caption, fontSize: 11, color: hex(t.onAccentSoft ?? "FFFFFF"), alignment: "center", margin: [0, 4, 0, 0] }] : []),
           ],
         },
         { stack: blocksToPdf(block.blocks, t), margin: [8, 0, 0, 0] },
@@ -230,10 +230,10 @@ function figureCaptionLines(block) {
         ...(block.figure ? [{ text: `Figure ${block.figure}.${block.caption ? " " : ""}`, bold: true }] : []),
         ...(block.caption ? [{ text: block.caption }] : []),
       ],
-      fontSize: 8.5, color: hex(THEME.muted), alignment: "center", margin: [0, 5, 0, 0],
+      fontSize: 10, color: hex(THEME.muted), alignment: "center", margin: [0, 5, 0, 0],
     });
   }
-  if (block.source) out.push({ text: block.source, fontSize: 7.5, color: hex(THEME.muted), alignment: "center", margin: [0, 2, 0, 0] });
+  if (block.source) out.push({ text: block.source, fontSize: 9.5, color: hex(THEME.muted), alignment: "center", margin: [0, 2, 0, 0] });
   return out;
 }
 
@@ -383,7 +383,7 @@ const RUNNING = "running-header-or-footer";
    them and a conversion adds nothing. */
 export function pdfDefinition(doc, t = themeFor(), brand = null, images = null, { plain = false } = {}) {
   const titleBlock = plain || !doc.title ? [] : [
-    ...(brand?.name ? [{ text: brand.name.toUpperCase(), fontSize: 8.5, bold: true, color: hex(t.accent), characterSpacing: 1.2, margin: [0, 0, 0, 6] }] : []),
+    ...(brand?.name ? [{ text: brand.name.toUpperCase(), fontSize: 9.5, bold: true, color: hex(t.accent), characterSpacing: 1.2, margin: [0, 0, 0, 6] }] : []),
     { text: doc.title, fontSize: THEME.size.title, bold: true, color: hex(THEME.ink), lineHeight: 1.15 },
     ...(doc.subtitle
       ? [{ text: doc.subtitle, fontSize: THEME.size.subtitle, color: hex(THEME.muted), margin: [0, 6, 0, 0] }]
@@ -402,7 +402,7 @@ export function pdfDefinition(doc, t = themeFor(), brand = null, images = null, 
        separated from the rest still says what it belongs to. */
     header: (page) =>
       !plain && page > 1
-        ? { id: RUNNING, text: brand?.name ? `${brand.name}  ·  ${doc.title}` : doc.title, alignment: "right", fontSize: THEME.size.small, color: hex(THEME.muted), margin: [56, 30, 56, 0] }
+        ? { id: RUNNING, text: runningLine(brand?.name, doc.title), alignment: "right", fontSize: THEME.size.small, color: hex(THEME.muted), margin: [56, 30, 56, 0] }
         : null,
     footer: (page, count) => (plain ? null : {
       id: RUNNING,

@@ -16,6 +16,7 @@ import { supabase } from "./supabase.js";
 import { BRAND_ASSETS_BUCKET, FUNCTIONS } from "./config.js";
 import { clearAdminClock } from "./adminClock.js";
 import { summaryOf } from "./workSummary.js";
+import { colourFromText, colourFromImage, rememberBrandColour } from "./brandColour.js";
 
 /* --------------------------------------------------------------------------
    SECTION: Load the signed in person and their company
@@ -204,6 +205,10 @@ export async function addTextSource({
 
   if (readyError) console.error("could not mark source ready", readyError);
 
+  /* A brand colour named in their own material becomes the company's colour,
+     if it has none yet. Never fails the upload. See brandColour.js. */
+  await rememberBrandColour(companyId, colourFromText(text));
+
   return { ok: true, source: { ...source, status: "ready" }, chunks: chunks.length };
 }
 
@@ -322,6 +327,10 @@ export async function addImageSource({
      try and never turns a successful upload into an error on screen.
      read-image is the one that puts the row back to ready, whatever
      happens inside it, so nothing is left saying "being read" forever. */
+  /* A logo or brand picture: its strongest colour becomes the company's
+     colour, if it has none yet. Never fails the upload. See brandColour.js. */
+  await rememberBrandColour(companyId, await colourFromImage(blob));
+
   let read = 0;
   try {
     if (knownReading.trim()) {

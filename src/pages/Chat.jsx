@@ -134,6 +134,7 @@ import { storageTarget, storageMessage } from "../shared/storage.js";
 import { withoutMarks } from "../shared/findings.js";
 import { formatAsked } from "../shared/formatAsked.js";
 import { formatFromReply, withoutFormatLine, DEFAULT_FORMAT, FORMAT_NAMES, FORMAT_SHORT } from "../shared/outputFormat.js";
+import BuildProgress, { advance, note, sectionsSoFar } from "../shared/BuildProgress.jsx";
 
 /* ==========================================================================
    1. INTERVIEW HELPERS
@@ -1683,7 +1684,14 @@ export default function Chat() {
     updateMessages((prev) => [
       ...prev.filter((m) => m.type !== "build"),
       ...(said ? [said] : []),
-      { id: nextId(), role: "assistant", type: "generating" },
+      {
+        id: nextId(),
+        role: "assistant",
+        type: "generating",
+        /* The live lines and the plan, see BuildProgress.jsx. */
+        steps: advance([{ text: "Read everything we agreed", tone: "done" }], "Writing the plan"),
+        plan: "",
+      },
     ]);
 
     let brief = "";
@@ -1702,7 +1710,11 @@ export default function Chat() {
 
       onMeta: ({ tier }) => setActiveTier(tier),
       onStall: () => setStalled(true),
-      onText: (chunk) => { brief += chunk; setStalled(false); },
+      onText: (chunk) => {
+        brief += chunk;
+        setStalled(false);
+        updateMessages((prev) => prev.map((m) => (m.type === "generating" ? { ...m, plan: brief } : m)));
+      },
 
       onError: ({ reason, message }) => {
         setGenerating(false);
@@ -1854,6 +1866,18 @@ export default function Chat() {
     setTurnStage("generate");
     setStalled(false);
 
+    /* The progress lines live on whichever card is on screen: the build card
+       until the first words arrive, then the result card. */
+    let steps = [];
+    let sections = 0;
+    updateMessages((prev) =>
+      prev.map((m) => {
+        if (m.type !== "generating") return m;
+        steps = advance(m.steps, "Writing the first draft");
+        return { ...m, steps, plan: brief };
+      })
+    );
+
     abortTurnRef.current = sendTurn({
       stage: "generate",
       brief,
@@ -1876,14 +1900,22 @@ export default function Chat() {
               type: "result",
               content: "",
               title: docTitle(convo),
+              steps,
+              plan: brief,
               /* Which file this IS, decided back at the read back. The card
                  leads with it rather than offering four equal choices. */
               format: formatRef.current,
             },
           ]);
         }
+        /* One grey line per section, the moment its heading arrives. */
+        const heads = sectionsSoFar(finished);
+        if (heads.length > sections) {
+          for (const head of heads.slice(sections)) steps = note(steps, `Writing: ${head}`);
+          sections = heads.length;
+        }
         updateMessages((prev) =>
-          prev.map((m) => (m.id === resultId ? { ...m, content: m.content + chunk } : m))
+          prev.map((m) => (m.id === resultId ? { ...m, content: m.content + chunk, steps } : m))
         );
       },
 
@@ -2020,6 +2052,12 @@ export default function Chat() {
           });
         }
 
+        /* The section lines were live progress. Once the document is done they
+           fold away, and the card keeps the steps that matter. */
+        steps = steps.filter((step) => step.tone !== "info");
+        steps = advance(steps, "Checked the figures against your sources", "done");
+        steps = advance(steps, "Done", "done");
+        updateMessages((prev) => prev.map((m) => (m.id === resultId ? { ...m, steps } : m)));
         checkNumbers(resultId, finished, brief, convo);
       },
 
@@ -4113,16 +4151,25 @@ export function ChatBubble({ message, brief, buildFormat = DEFAULT_FORMAT, build
           className="rounded-[18px] border p-5 backdrop-blur-xl"
           style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
         >
-          <div className="flex items-center gap-2.5 mb-2">
+          <div className="flex items-center gap-2.5 mb-3">
             <Spinner size={16} />
             <span className="text-[14.5px] font-medium" style={{ color: "var(--text-1)" }}>
               Building it now
             </span>
           </div>
 
-          <div className="pl-[26px]">
-            <Thinking stage={buildStage} stalled={buildStalled} />
-          </div>
+          {message.steps?.length ? (
+            <BuildProgress steps={message.steps} plan={message.plan} working />
+          ) : (
+            <div className="pl-[26px]">
+              <Thinking stage={buildStage} stalled={buildStalled} />
+            </div>
+          )}
+          {buildStalled && message.steps?.length > 0 && (
+            <p className="text-[12.5px] mt-2" style={{ color: "var(--text-3)" }}>
+              Still working. Longer documents take a minute or two.
+            </p>
+          )}
         </div>
       </div>
     );
@@ -4213,6 +4260,12 @@ export function ChatBubble({ message, brief, buildFormat = DEFAULT_FORMAT, build
               So the card leads with the file. The words are still here and
               always will be, one press away, for when somebody cannot open
               the file or just wants to copy a line out of it. */}
+          {message.steps?.length > 0 && (
+            <div className="mb-4 mt-2">
+              <BuildProgress steps={message.steps} plan={message.plan} />
+            </div>
+          )}
+
           <p className="text-[13.5px] mb-4 leading-relaxed" style={{ color: "var(--text-3)" }}>
             Ready as {FORMAT_NAMES[made] ?? "a Word document"}. Download it below, or read it
             here first.

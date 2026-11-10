@@ -1039,3 +1039,13 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .sx-hero-in > * { animation: none; }
 }
+
+/* The blue dot on the step that is running now (BuildProgress.jsx). */
+@keyframes sx-progress-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.8); }
+}
+.sx-progress-pulse { animation: sx-progress-pulse 1.1s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .sx-progress-pulse { animation: none; }
+}
