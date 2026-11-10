@@ -19,6 +19,20 @@ How this file works:
 
 ## 1. Now, in his order
 
+**2026-11-10, done:** client trial code issued (given to Anthony in chat,
+never in the repo), $2 meter. Every new workspace now starts on DeepSeek
+(trigger, migration 20261110100000). Setup was broken for every new
+workspace (73 character throwaway password, Supabase allows 72): fixed and
+live. A full new workspace run was tested end to end on DeepSeek, test
+workspace `volt-test-engineering` (internal test code, $1 meter): ask him
+before deleting it.
+
+**Next, his order:** (1) show the plan while it builds, as live progress
+lines in colour, "like the way Claude used to show it"; (2) the output
+fixes: one page means one page, no title shown twice, no reasoning on the
+page, no chat at the top of the plan, no repeated lines (the Volt test PDF
+repeated the payment terms and its header said the company name twice).
+
 0. **After the Dreef call, 2026-11-10, in this order:**
    1. Rotate Amara's code (it was in the repo while public for minutes):
       `update access_codes set code = '<new>' where code = '<old>'`. His yes
