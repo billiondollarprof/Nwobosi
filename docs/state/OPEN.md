@@ -29,15 +29,13 @@ doubled titles or step numbers, no running line saying the company twice,
 reading text at least 11 point, no reasoning on the page (instruction), the
 plan written first with nothing before it; the plan shown live while it
 builds, with coloured progress lines; landing page motion like his
-portfolio, "Meet the founder", founder page linking to anthony.stellaxafe.com.
+portfolio, "Meet the founder", founder page linking to anthony.stellaxafe.com;
+products section removed from the landing page; one page means one page
+(tested live: a fresh Amara one-pager came out as exactly one page).
 
 **The queue, everything he asked for on 2026-11-10, taken one after the
 other.** Nothing comes off until it is built, checked and live.
 
-1. **Remove "Built and run by us" (products) from the landing page.** "They
-   are already in my portfolio." Also its nav link. In progress.
-2. **One page means one page.** The PDF builder tightens spacing (never the
-   text size) when one page was asked for. Written, not yet tested.
 3. **The waiting line.** Something on screen within about 2 seconds
    ("Responding in a bit"); the word shimmers with a pulsing mark, like
    Claude's "Musing..."; a failure says so and retries once; a usage limit
