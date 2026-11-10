@@ -469,6 +469,11 @@ export default function Chat() {
   /* Whether the build running now is a change to a document this chat
      already made. Read when the finished work is saved. */
   const revisionRef = useRef(false);
+
+  /* The sources the assistant chose for this piece of work (null: all of
+     them). Anthony, 2026-11-10: the knowledge map decides what a turn reads.
+     Cleared with a new chat. */
+  const sourcesRef = useRef(null);
   useEffect(() => {
     if (!typing) setRetrying(false);
   }, [typing]);
@@ -902,6 +907,7 @@ export default function Chat() {
     let raw = "";
 
     abortTurnRef.current = sendTurn({
+      sources: sourcesRef.current,
       stage,
 
       /* The server cannot count this from the messages: the orient turn and
@@ -917,7 +923,12 @@ export default function Chat() {
 
       messages: history,
 
-      onMeta: ({ tier }) => setActiveTier(tier),
+      onMeta: (meta) => {
+        setActiveTier(meta.tier);
+        /* Which sources the assistant chose to read for this work, sent
+           back on the next turn so it reads the same ones. */
+        if (meta && "sources" in meta) sourcesRef.current = meta.sources ?? null;
+      },
 
       /* Quiet for a long time. The turn is still running, so this only
          changes what the line says. Nothing is cancelled here. */
@@ -1747,6 +1758,7 @@ export default function Chat() {
     setStalled(false);
 
     abortTurnRef.current = sendTurn({
+      sources: sourcesRef.current,
       stage: "brief",
       revision,
       /* The build does not go through runTurn, so it has to carry the
@@ -1756,7 +1768,12 @@ export default function Chat() {
       findings: findingsRef.current.join("\n\n"),
       messages: toApiMessages(convo),
 
-      onMeta: ({ tier }) => setActiveTier(tier),
+      onMeta: (meta) => {
+        setActiveTier(meta.tier);
+        /* Which sources the assistant chose to read for this work, sent
+           back on the next turn so it reads the same ones. */
+        if (meta && "sources" in meta) sourcesRef.current = meta.sources ?? null;
+      },
       onStall: () => setStalled(true),
       onRetry: () => {
         setStalled(false);
@@ -1931,12 +1948,18 @@ export default function Chat() {
     );
 
     abortTurnRef.current = sendTurn({
+      sources: sourcesRef.current,
       stage: "generate",
       brief,
       findings: findingsRef.current.join("\n\n"),
       messages: toApiMessages(convo),
 
-      onMeta: ({ tier }) => setActiveTier(tier),
+      onMeta: (meta) => {
+        setActiveTier(meta.tier);
+        /* Which sources the assistant chose to read for this work, sent
+           back on the next turn so it reads the same ones. */
+        if (meta && "sources" in meta) sourcesRef.current = meta.sources ?? null;
+      },
       onStall: () => setStalled(true),
       onRetry: () => {
         setStalled(false);
@@ -2431,6 +2454,7 @@ export default function Chat() {
     lookupFromRef.current = "analyse";
     searchAfterAnswersRef.current = false;
     orientLookupsRef.current = 0;
+    sourcesRef.current = null;
     setTyping(false);
     setActiveTier(null);
     updateMessages([]);

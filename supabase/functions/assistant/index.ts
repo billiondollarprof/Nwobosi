@@ -635,6 +635,89 @@ const MAX_REQUEST_BYTES = 5 * 1024 * 1024;
    This constant is the default and the fallback. */
 const MAX_SOURCE_CHARS = 200000;
 
+/* --------------------------------------------------------------------------
+   THE KNOWLEDGE MAP DECIDES WHAT A TURN READS
+
+   Anthony, 2026-11-10: "A turn needs the knowledge map, not everything. So
+   the knowledge map tells the turn what to look at... if it needs
+   everything, then it reads everything. Depends on the context."
+
+   HOW. Under SELECT_ABOVE_CHARS of company text, every turn reads all of
+   it: small, and the cache makes it nearly free. Above it, one quick call
+   to the small model reads the map and the conversation and names the
+   sources the work needs, or answers ALL. Only those are read in full; the
+   map still lists everything, so nothing is hidden from view.
+
+   WHEN IT CHOOSES. On the first stage and at the read back, the two points
+   where the direction is set or settled. Every other turn reuses the last
+   choice, which the app sends back (body.sources). Reusing it keeps the
+   prompt identical from turn to turn, so the cache keeps holding.
+
+   ⚠️ IT FAILS OPEN, TO EVERYTHING. A slow call, an error, an answer naming
+   nothing it recognises: all of them read every source, which is exactly
+   what happened before this existed. Choosing can save money; it must never
+   cost an answer.
+   -------------------------------------------------------------------------- */
+const SELECT_ABOVE_CHARS = 20000;
+const SELECT_TIMEOUT_MS = 8000;
+
+async function chooseSources(
+  vendor: Vendor,
+  map: string,
+  names: string[],
+  conversation: unknown[],
+): Promise<{ chosen: string[] | null; cents: number }> {
+  try {
+    const recent = conversation.slice(-8).map((m) => {
+      const msg = m as { role?: string; content?: unknown };
+      const text = typeof msg.content === "string"
+        ? msg.content
+        : Array.isArray(msg.content)
+        ? msg.content.map((b) => (b as { text?: string }).text ?? "").join(" ")
+        : "";
+      return `${msg.role === "assistant" ? "ASSISTANT" : "PERSON"}: ${text.slice(0, 1500)}`;
+    }).join("\n\n").slice(-8000);
+
+    const call = clientFor(vendor).messages.create({
+      model: modelFor(vendor, "conversational"),
+      max_tokens: 300,
+      thinking: { type: "disabled" },
+      system: "You choose which of a company's sources a piece of work needs. Reply with the exact source names, one per line, and nothing else. If the work needs most of them, or you cannot tell, reply with the single word ALL.",
+      messages: [{
+        role: "user",
+        content: `${map}\n\nTHE CONVERSATION SO FAR, latest last:\n${recent}\n\nWhich sources must be read in full for the next reply and the work it leads to?`,
+      }],
+    } as unknown as Anthropic.MessageCreateParamsNonStreaming);
+
+    const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), SELECT_TIMEOUT_MS));
+    const result = await Promise.race([call, timeout]);
+    if (!result) return { chosen: null, cents: 0 };
+
+    const usage = (result as Anthropic.Message).usage;
+    const cents = centsExact(vendor, "conversational", {
+      fresh: usage?.input_tokens ?? 0,
+      output: usage?.output_tokens ?? 0,
+    });
+    const text = (result as Anthropic.Message).content
+      .map((b) => (b.type === "text" ? b.text : ""))
+      .join("\n");
+    if (/^\s*ALL\s*$/im.test(text)) return { chosen: null, cents };
+
+    const lower = new Map<string, string>(names.map((n) => [n.trim().toLowerCase(), n] as [string, string]));
+    const found: string[] = [];
+    for (const line of text.split("\n")) {
+      const key = line.replace(/^[\s*\-\d.)]+/, "").replace(/[*_`"]/g, "").trim().toLowerCase();
+      const name = lower.get(key);
+      if (name && !found.includes(name)) found.push(name);
+    }
+    const chosen: string[] = found;
+    return { chosen: chosen.length ? chosen : null, cents };
+  } catch (err) {
+    console.warn("could not choose sources, reading all", err instanceof Error ? err.message : err);
+    return { chosen: null, cents: 0 };
+  }
+}
+
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -1076,6 +1159,11 @@ Deno.serve(async (req: Request) => {
 
   let sourceContents = "";
 
+  /* Which sources this turn reads in full: null means all of them. Sent to
+     the app with meta so the next turn can reuse the choice. */
+  let chosenSources: string[] | null = null;
+  let selectionCents = 0;
+
   if (readySources.length) {
     const { data: chunks } = await asUser
       .from("knowledge_chunks")
@@ -1109,12 +1197,47 @@ Deno.serve(async (req: Request) => {
         { colour: company.brand_color as string | null, from: (company as Record<string, unknown>).brand_color_source as string | null },
       );
 
+      /* WHICH SOURCES THIS TURN READS IN FULL. See chooseSources. */
+      const allNames = readySources.map((s) => s.name as string);
+      const totalChars = [...fullText.values()].reduce((n, t) => n + t.length, 0);
+      const askedFor = Array.isArray(body?.sources)
+        ? (body.sources as unknown[]).filter((n): n is string => typeof n === "string" && allNames.includes(n))
+        : [];
+      if (totalChars > SELECT_ABOVE_CHARS) {
+        if (stage === "orient" || stage === "analyse" || askedFor.length === 0) {
+          const picked = await chooseSources(vendor, map, allNames, messages as unknown[]);
+          chosenSources = picked.chosen;
+          selectionCents = picked.cents;
+        } else {
+          chosenSources = askedFor;
+        }
+      }
+      if (chosenSources) {
+        const keep = new Set(readySources.filter((s) => chosenSources!.includes(s.name)).map((s) => s.id));
+        parts.length = 0;
+        let left = sourceCeiling;
+        for (const chunk of chunks) {
+          if (left <= 0 || !keep.has(chunk.source_id)) continue;
+          const slice = String(chunk.content ?? "").slice(0, left);
+          if (!slice.trim()) continue;
+          left -= slice.length;
+          parts.push(`--- FROM: ${byName.get(chunk.source_id) ?? "a company source"} ---\n${slice}`);
+        }
+      }
+
       if (parts.length) {
         sourceContents = [
           "",
           map,
           "Use the map to find the right source, then read that source below. Do not",
           "read the map out to people; name a source only when it matters.",
+          ...(chosenSources
+            ? [
+                `Only these are below in full, chosen for this work: ${chosenSources.join(", ")}.`,
+                "The others are in the map only. If the work turns out to need one of them,",
+                "say which by its exact name in one line, and it will be read next turn.",
+              ]
+            : []),
           "",
           "WHAT THOSE SOURCES ACTUALLY SAY",
           "The text of the company material listed above. This is theirs, it is",
@@ -1247,7 +1370,7 @@ Deno.serve(async (req: Request) => {
       /* Tell the client which model is actually running before any text
          arrives. The tier ladder is a real feature of the product, not a
          detail to hide, and the staff member sees it as a plain label. */
-      send("meta", { tier, stage });
+      send("meta", { tier, stage, sources: chosenSources });
 
       try {
         /* ------------------------------------------------------------
@@ -1515,10 +1638,14 @@ Deno.serve(async (req: Request) => {
            token counts, because this line said tier and not stage. */
         console.log(
           `usage stage=${stage} tier=${tier} fresh=${freshInput} cacheWrite=${cacheWrite} ` +
-            `cacheRead=${cacheRead} out=${outputTokens} cents=${cents}`,
+            `cacheRead=${cacheRead} out=${outputTokens} cents=${cents} ` +
+            `chose=${chosenSources ? chosenSources.length : "all"} chooseCents=${selectionCents}`,
         );
 
-        if (!exempt && cents > 0) {
+        /* The small call that chose the sources is charged too. */
+        const charge = cents + selectionCents;
+
+        if (!exempt && charge > 0) {
           const admin = createClient(
             Deno.env.get("SUPABASE_URL")!,
             Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
@@ -1529,7 +1656,7 @@ Deno.serve(async (req: Request) => {
              this request, a whole model call ago. */
           const { error: spendError } = await admin.rpc("company_spend", {
             p_company_id: staff.company_id,
-            p_cents: cents,
+            p_cents: charge,
           });
 
           if (spendError) {
