@@ -110,7 +110,7 @@ async function download(page, label) {
     check('TONIGHT: no "Nothing came back"', (await nothingCame(page)) === 0);
     check('TONIGHT: the build button is there to press', (await buildButtons(page)) === 1);
     check('TONIGHT: and it still says PDF',
-      (await page.locator('button', { hasText: 'build it as a PDF' }).count()) === 1);
+      (await page.locator('button', { hasText: 'Go ahead with PDF' }).count()) === 1);
     /* The empty bubble had thumbs and copy under nothing. Every reply has
        exactly one row of those, so count copy buttons against replies. */
     const empties = await page.evaluate(() =>
@@ -203,7 +203,7 @@ async function download(page, label) {
     });
     check('FILE TYPE: one button, not two', (await buildButtons(page)) === 1);
     check('FILE TYPE: it still says PDF after reopening',
-      (await page.locator('button', { hasText: 'build it as a PDF' }).count()) === 1);
+      (await page.locator('button', { hasText: 'Go ahead with PDF' }).count()) === 1);
     await page.close();
   }
 
