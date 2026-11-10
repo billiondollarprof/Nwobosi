@@ -124,6 +124,32 @@ async function answer(page) {
     await page.close();
   }
 
+  /* 4. The questions step answers with no question and no marker (seen
+        live: it wrote the work after a correction). The work still moves
+        on to the read back instead of leaving them with no button. */
+  {
+    const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
+    await page.addInitScript(() => {
+      try { localStorage.setItem('stellaxafe.theme', 'dark'); } catch {}
+      window.__SCRIPT = {
+        orient: ['If I understand, you want a welcome message.\nOFFER_INTERVIEW'],
+        interview: ['Hi there, welcome to Amara. Ogo'],
+        analyse: ['**What:** a welcome message.\nFORMAT: docx\nREADBACK_COMPLETE'],
+      };
+    });
+    await page.goto('http://localhost:5301/?page=chat', { waitUntil: 'networkidle' });
+    await page.waitForTimeout(900);
+    await page.locator('textarea').first().fill('A welcome message');
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(1500);
+    await page.locator('button', { hasText: 'Yes, ask what you need' }).first().click();
+    await page.waitForTimeout(2500);
+    const turns = await page.evaluate(() => (window.__TURNS || []).join(','));
+    check(`NO QUESTION: the work moves on to the read back (${turns})`, turns === 'orient,interview,analyse');
+    check('NO QUESTION: and the build card is there', (await page.locator('text=Did I get that right?').count()) === 1);
+    await page.close();
+  }
+
   await browser.close();
   console.log('');
   for (const n of OK) console.log('  ok   ' + n);

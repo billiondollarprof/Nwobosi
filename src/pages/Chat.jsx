@@ -1268,6 +1268,20 @@ export default function Chat() {
             return;
           }
 
+          /* NOTHING ASKED AND NO MARKER: IT HAS NOTHING LEFT TO ASK. Seen live
+             2026-11-10: after a correction the interview wrote the work
+             instead of handing off, and the person was left with text and
+             no button. A turn here that asks no question is done, so the
+             work moves on to the read back exactly as INTERVIEW_COMPLETE
+             would have moved it. */
+          if (!clean.includes("?")) {
+            interviewTurnsRef.current = 0;
+            persist(next, "interview");
+            setFlowStage("analyse");
+            runTurn("analyse", [...history, { role: "assistant", content: clean }]);
+            return;
+          }
+
           /* An ordinary question. Wait for them to answer it. */
           persist(next, "interview");
           return;
