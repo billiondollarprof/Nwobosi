@@ -19,47 +19,75 @@ How this file works:
 
 ## 1. Now, in his order
 
-**2026-11-10, done:** client trial code issued (given to Anthony in chat,
-never in the repo), $2 meter. Every new workspace now starts on DeepSeek
-(trigger, migration 20261110100000). Setup was broken for every new
-workspace (73 character throwaway password, Supabase allows 72): fixed and
-live. A full new workspace run was tested end to end on DeepSeek, test
-workspace `volt-test-engineering` (internal test code, $1 meter): ask him
-before deleting it.
+**Done on 2026-11-10** (moves to the session log at the end of the day):
+client trial code issued with a $2 meter; every new workspace starts on
+DeepSeek; setup fixed for every new workspace (73 character password);
+Amara's access code changed and six old codes revoked; Amara meter topped up
+by $4; Tavily key added, web search works; Amara's green set as its brand
+colour, and brand colour now found from an admin's uploads; documents: no
+doubled titles or step numbers, no running line saying the company twice,
+reading text at least 11 point, no reasoning on the page (instruction), the
+plan written first with nothing before it; the plan shown live while it
+builds, with coloured progress lines; landing page motion like his
+portfolio, "Meet the founder", founder page linking to anthony.stellaxafe.com.
 
-**Asked 2026-11-10, after the client's concerns (waiting for his yes on the
-order):**
-- Usage control: cap a person per day or per week, pause or reduce them.
-  Built today: outputs per day per person, model level, company budget.
-  Not built: weekly cap, pause without deleting, usage shown per person.
-- Admin summary per person: click a name, see a dropdown of what they did.
-  Built today: Recent work with who made it and a 280 character summary.
-- Activity: when each person signed in, signed out, is active. Not built.
-- A knowledge map: one short file summarising every source (and, later,
-  connected SharePoint or Notion, with links), so the agent reads the map
-  and fetches only what the task needs. Today every turn sends all company
-  text, up to the company ceiling.
-- Flow: interview first, the search question asked inside the interview,
-  the search run after the answers and before the read back, a short read
-  back, then "Go ahead with PDF / Word / Excel / Slides" buttons.
+**The queue, everything he asked for on 2026-11-10, taken one after the
+other.** Nothing comes off until it is built, checked and live.
 
-**Next, his order:** (1) show the plan while it builds, as live progress
-lines in colour, "like the way Claude used to show it"; (2) the output
-fixes: one page means one page, no title shown twice, no reasoning on the
-page, no chat at the top of the plan, no repeated lines (the Volt test PDF
-repeated the payment terms and its header said the company name twice).
+1. **Remove "Built and run by us" (products) from the landing page.** "They
+   are already in my portfolio." Also its nav link. In progress.
+2. **One page means one page.** The PDF builder tightens spacing (never the
+   text size) when one page was asked for. Written, not yet tested.
+3. **The waiting line.** Something on screen within about 2 seconds
+   ("Responding in a bit"); the word shimmers with a pulsing mark, like
+   Claude's "Musing..."; a failure says so and retries once; a usage limit
+   says so plainly. "It doesn't leave somebody hanging."
+4. **The first stage, conversational.** Chat freely, read the company map
+   silently, and only when the direction is clear say "if I understand, this
+   is what you want to build", then pull the knowledge. "That beginning part
+   is actually very, very, very vital." Each stage its own skill (its own
+   instruction file). Explained to him; waiting for his yes on the design.
+5. **The flow after that.** The few missing questions in one go, with "should
+   I look this up online?" inside them; the search runs after the answers;
+   a short read back (what, who, direction, sources, format); then "Go ahead
+   with PDF / Word / Excel / Slides".
+6. **Change a document after it is built, with no new interview.** The
+   instruction is live (assistant v55); test it.
+7. **Excel and PowerPoint, checked for real.** Make both, screenshot every
+   slide and sheet, text at least 11 point. The system should look at what
+   it made (screenshot) before handing it over, especially slides.
+8. **"Analyse this file", simple, for the client.** Upload a document, get an
+   analysis (for example pricing). The full analyser comes later, per
+   company, and reads the knowledge map.
+9. **The knowledge map.** One short file summarising every source, its
+   sections and where it lives; written when files are added; says where
+   the brand colour came from (uploaded on purpose, found in the logo or
+   files, or none so our blue); the assistant reads it and fetches only what
+   it needs. Project files first, connected platforms later.
+10. **Admin control.** A weekly limit as well as daily; pause and resume a
+    person; usage per person in documents made; click a name for a dropdown
+    of what they did; signed in, signed out, active now. No notice to staff
+    about it (his decision).
+11. **Humanizer on every piece of copy.** Go through the landing page and the
+    app's own text so it reads like a person talking: context, conversational,
+    nothing clipped. The skill is in `.claude/skills/humanizer`, the rules in
+    `docs/rules/WRITING.md`.
+12. **Gemini for support, DeepSeek for the work.** Needs his Gemini key in
+    Supabase secrets as `GEMINI_API_KEY`.
+13. **CI minute savings** (his yes given): skip CI on doc-only pushes, no
+    second CI run on the merge to main, shorter smoke wait.
+14. **Housekeeping.** Take the access codes out of the docs and add the rule
+    "no codes, no keys in the repo"; ask whether `docs/clients/` moves to his
+    Drive; ask before deleting the test workspace `volt-test-engineering`;
+    the repo goes back to private (his step) before anything sensitive is
+    added.
+15. **Connected tools, per client** (written in `docs/product/DIRECTION.md`):
+    ask before using any, one at a time in task order, connected knowledge
+    before the internet, Canva offered for designs.
+16. **Research:** similar tools and how they orchestrate agents to make
+    files; MCP and the browser; keeping search cheap.
 
-0. **After the Dreef call, 2026-11-10, in this order:**
-   1. Rotate Amara's code (it was in the repo while public for minutes):
-      `update access_codes set code = '<new>' where code = '<old>'`. His yes
-      given. Give him the new code in chat only, never in the repo.
-   2. Take every access code out of the docs, and add the rule: no codes, no
-      keys in the repo. Six unused or orphaned codes already revoked.
-   3. Ask him whether `docs/clients/` moves to his Drive.
-   4. Output fixes f to i below (prompt, his yes given), test, ship.
-   5. CI minute savings (his yes given): skip CI on doc-only pushes, no
-      second CI run on the merge to main, shorter smoke wait.
-1. **Make the demo flow work, step by step.** 2026-10-31. Dreef may book a
+**Background, kept for its findings:** the demo flow audit. 2026-10-31. Dreef may book a
    call to see it. They need to see three things and nothing else:
    1. Start a request in the existing Amara knowledge base.
    2. It runs the stages and produces a finished document.
@@ -94,7 +122,7 @@ repeated the payment terms and its header said the company name twice).
    h. The model's own reasoning leaks onto the page: "This page will not
       borrow a foreign number and dress it as a Nigerian one".
    i. Two sets of reply buttons after the first turn: likely a double reply.
-2. **Models for the demo: DeepSeek for the work, Gemini for support.**
+**Background:** models for the demo, DeepSeek for the work, Gemini for support.
    2026-11-03. His words: "use the DeepSeek most capable model and then use a
    simpler model for the WhatsApp chat... we can actually use Gemini, because
    Gemini has free tier". No Claude credit left. Found: Amara already runs
@@ -105,9 +133,9 @@ repeated the payment terms and its header said the company name twice).
    from Google AI Studio and put it in Supabase secrets as `GEMINI_API_KEY`.
    Caution told to him: Gemini's free tier may use prompts to improve
    Google's products; fine for Amara's demo, not for a client.
-3. **Research similar tools**, and how they orchestrate agents to produce
+**Background:** research similar tools, and how they orchestrate agents to produce
    documents and files. Then recommend how to shape ours (security aside).
-4. **MCP and the browser**, and keeping web search cheap. He asked why an
+**Background:** MCP and the browser, and keeping web search cheap. He asked why an
    online session costs so much, and about free search access such as Exa.
    Start from what exists: our search already runs on Tavily's free plan and
    DuckDuckGo (`docs/state/LIVE.md`).

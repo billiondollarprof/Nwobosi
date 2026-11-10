@@ -20,7 +20,7 @@
       6. How it works
       7. Where we deploy
       8. Services
-      9. Products
+      9. (Products removed 2026-11-10: they live on Anthony's portfolio)
      10. Security
      11. Insights
      12. Meet the founder
@@ -59,7 +59,6 @@ import {
   Sparkles,
 } from "lucide-react";
 
-import { AmaraLockup } from "../shared/icons.jsx";
 import Photo from "../shared/Photo.jsx";
 import ContainmentSeal from "../shared/ContainmentSeal.jsx";
 import Reveal from "../shared/Reveal.jsx";
@@ -67,7 +66,6 @@ import Typewriter from "../shared/Typewriter.jsx";
 import CardStack from "../shared/CardStack.jsx";
 import CountUp from "../shared/CountUp.jsx";
 import { BRAND, GRADIENTS, FONTS } from "../shared/tokens";
-import { useTheme } from "../shared/theme.jsx";
 import { PageShell, GlassPanel, PrimaryButton, GhostButton, GlassButton, StatusPill } from "../shared/ui.jsx";
 import MarketingNav from "../shared/MarketingNav.jsx";
 import MarketingFooter from "../shared/MarketingFooter.jsx";
@@ -460,7 +458,6 @@ function HeroAura() {
 export default function Landing() {
   const navigate = useNavigate();
   const { hash } = useLocation();
-  const { effectiveTheme } = useTheme();
 
   /* This page owns the one anchor on the site, #products, which the nav
      and the footer both point at from other pages. Arriving with it in
@@ -1238,106 +1235,6 @@ Six steps. All your staff ever do is talk.
               See the full service architecture
               <ArrowRight size={15} />
             </GhostButton>
-          </div>
-        </Reveal>
-      </section>
-
-      <Divider />
-
-      {/* ====================================================================
-          9. PRODUCTS
-          The anchor the nav and the footer point at. What we build and run
-          ourselves, said plainly.
-          ==================================================================== */}
-
-      <section id="products" className="relative z-10 px-5 sm:px-8 py-20 sm:py-28 scroll-mt-24">
-        <Reveal className="max-w-5xl mx-auto">
-          <SectionHead
-            eyebrow="Our products"
-            title="Built and run by us"
-            sub="Amara is live with hospitality businesses today. XALOM is next."
-            center
-          />
-
-          <div className="grid gap-4 lg:grid-cols-3">
-            {/* Amara */}
-            <GlassPanel className="p-0 overflow-hidden" style={{ borderTop: `3px solid ${BRAND.purple}` }}>
-              <div className="p-7 pb-0">
-                <div className="flex items-center justify-between gap-3">
-                  <AmaraLockup size="1.5rem" glyph={26} />
-                  <StatusPill tone="ok">Deployed</StatusPill>
-                </div>
-                <p className="text-[14px] leading-relaxed mt-4" style={{ color: "var(--text-3)" }}>
-                  Guest intelligence and automated CRM for hospitality, on one isolated workspace
-                  per property. Guest messaging, booking follow up, and engagement analytics in one
-                  system.
-                </p>
-              </div>
-              {/* The card's action, not a footnote. This one is deployed and
-                  running, so the strongest thing the card can do is send
-                  somebody to look at it. It used to be a grey line of text
-                  under a "Live at" label, which is where you put a fact you
-                  do not want clicked. */}
-              <div className="m-7 mt-5">
-                <a
-                  href="https://amara.ng"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-2 text-[14px] font-semibold transition-all hover:gap-3"
-                  style={{ color: BRAND.accentSoft }}
-                >
-                  Open amara.ng
-                  <ArrowRight size={15} />
-                </a>
-              </div>
-            </GlassPanel>
-
-            {/* XALOM */}
-            <GlassPanel
-              className="p-0 overflow-hidden"
-              style={{ borderTop: `3px solid ${BRAND.accentSoft}` }}
-            >
-              <div className="p-7 pb-0">
-                <div className="flex items-center justify-between gap-3">
-                  <span
-                    className="font-bold text-[17px] tracking-tight"
-                    style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
-                  >
-                    XALOM
-                  </span>
-                  <StatusPill tone="accent">Identity protocol</StatusPill>
-                </div>
-                <p className="text-[14px] leading-relaxed mt-4" style={{ color: "var(--text-3)" }}>
-                  Digital trust, reputation, and identity infrastructure. Verifiable digital identity
-                  built for secure fintech and digital ecosystems.
-                </p>
-              </div>
-              <div
-                className="m-7 mt-5 rounded-[12px] border px-4 py-3.5 flex items-center gap-3"
-                style={{ backgroundColor: "var(--surface-2)", borderColor: "var(--border)" }}
-              >
-                {/* Two files, one per background. Picking here rather than
-                    hiding one with CSS means only the one being shown is
-                    ever fetched. */}
-                <img
-                  src={effectiveTheme === "dark" ? "/xalom-dark.webp" : "/xalom-light.webp"}
-                  alt=""
-                  className="w-8 h-auto shrink-0"
-                />
-                <div>
-                  <div
-                    className="text-[10.5px] uppercase tracking-wide"
-                    style={{ color: "var(--text-3)" }}
-                  >
-                    Status
-                  </div>
-                  <div className="text-[13.5px]" style={{ color: "var(--text-2)" }}>
-                    In development
-                  </div>
-                </div>
-              </div>
-            </GlassPanel>
-
           </div>
         </Reveal>
       </section>

@@ -504,3 +504,25 @@ their finished document and discover data in it they never approved.
 - **Shareable links with previews.** Open Graph and Twitter card metadata
   per piece, because these get posted to LinkedIn and Facebook and a link
   without a preview card looks like nothing.
+
+---
+
+## Connected tools are asked about, one at a time, in order
+
+Anthony, 2026-11-10. Not built yet; this is the rule for when a client's
+SharePoint, Notion, Slack, Canva or any other tool is connected.
+
+- **Anything outside the company's own uploaded knowledge is asked for first**,
+  exactly like the web search today: say what it wants to find and where,
+  and wait for a yes.
+- **One question at a time, in the order the task needs**, never all at once.
+- **Connected knowledge before the internet.** If SharePoint, Notion, Slack or
+  another source is connected, it first lists those, asks which to look in,
+  and only then asks whether to search the internet as well.
+- **Connected tools for making things are offered, not assumed.** For a deck or
+  a design: "Shall I make the PowerPoint here, or in Canva?" when Canva is
+  connected.
+- **The knowledge map comes first.** Every agent reads the company map (the
+  short summary of every source and where it lives) before anything else, so
+  it only fetches what the task needs. The document analyser reads the same
+  map, so it always knows the company.

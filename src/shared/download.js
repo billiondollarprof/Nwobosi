@@ -149,6 +149,14 @@ export const MIME = {
    handed over live. Pictures the document names are found there or in the
    company's knowledge base, prepared once, and handed to every writer. See
    docs/images.js. */
+/* True when the person asked for one page anywhere in the conversation
+   ("one page", "one-pager", "a single page", "1 page"). */
+export function askedForOnePage(messages = []) {
+  return (messages ?? []).some(
+    (m) => m?.role === "user" && /\b(one|1|single)[\s-]?page(r)?\b/i.test(String(m.content ?? "")),
+  );
+}
+
 export async function buildFile(format, title, markdown, company, messages = []) {
   const doc = readDocument(markdown, title);
   const { theme, brand } = await brandFor(company);
@@ -162,7 +170,7 @@ export async function buildFile(format, title, markdown, company, messages = [])
     charts = await chartPictures(doc, theme);
   }
   let blob;
-  if (format === "pdf") blob = await pdfBlob(doc, theme, brand, images);
+  if (format === "pdf") blob = await pdfBlob(doc, theme, brand, images, { pages: askedForOnePage(messages) ? 1 : 0 });
   else if (format === "pptx") {
     if (!doc.blocks.length) throw new Error("nothing to put on a slide");
     const { deckBlob } = await import("./docs/deck.js");
