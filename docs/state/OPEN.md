@@ -42,8 +42,18 @@ How this file works:
    d. 25 Sep: "Yes, ask me your questions" stalled ("That one stopped
       answering"), then the next turn asked twice in a row. Cause unknown;
       the rehearsal logs will show it.
-   e. The web search has no recorded successful run since it was rebuilt on
-      25 Sep. Both later runs were told "work with what you have".
+   e. FIXED 2026-11-10: the web search works. Tavily key added; live run
+      found real sources with Verify links and tickboxes, 87 seconds.
+
+   **Live run, 2026-11-10** (testing site, Amara, DeepSeek): request,
+   questions, search, read back, PDF, all worked. Whole run 4.8 cents.
+   Faults found in the result, to fix with his yes (assistant prompt):
+   f. Asked for a one page summary, got 3 pages.
+   g. Every section shows its title twice (a small label, then the same
+      words as a heading), and the steps are numbered twice ("1" and "01").
+   h. The model's own reasoning leaks onto the page: "This page will not
+      borrow a foreign number and dress it as a Nigerian one".
+   i. Two sets of reply buttons after the first turn: likely a double reply.
 2. **Models for the demo: DeepSeek for the work, Gemini for support.**
    2026-11-03. His words: "use the DeepSeek most capable model and then use a
    simpler model for the WhatsApp chat... we can actually use Gemini, because
