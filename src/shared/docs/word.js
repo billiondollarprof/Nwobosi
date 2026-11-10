@@ -112,12 +112,12 @@ function cardsTable(docx, block, t, numbered) {
           new Paragraph({
             children: [
               ...(numbered ? [new TextRun({ text: `${i + c + 1}  `, bold: true, color: t.accent })] : []),
-              ...runsOf(docx, item.title, { bold: true, color: t.accent, size: half(12.5) }),
+              ...runsOf(docx, item.title, { bold: true, color: t.accent, size: half(13) }),
             ],
             spacing: { after: 40 },
           }),
-          ...(item.kicker ? [new Paragraph({ children: [new TextRun({ text: item.kicker, bold: true, size: half(9), color: t.kicker })], spacing: { after: 100 } })] : []),
-          ...innerParagraphs(docx, item.blocks, { size: half(10) }),
+          ...(item.kicker ? [new Paragraph({ children: [new TextRun({ text: item.kicker, bold: true, size: half(10), color: t.kicker })], spacing: { after: 100 } })] : []),
+          ...innerParagraphs(docx, item.blocks, { size: half(THEME.size.body) }),
         ],
       }));
     });
@@ -153,7 +153,7 @@ function statTable(docx, block, t) {
           verticalAlign: VerticalAlign.CENTER,
           children: [
             new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: block.value, bold: true, size: half(figureSize(block.value)), color: "FFFFFF" })] }),
-            ...(block.caption ? [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: block.caption, size: half(10), color: t.onAccentSoft ?? "FFFFFF" })] })] : []),
+            ...(block.caption ? [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: block.caption, size: half(11), color: t.onAccentSoft ?? "FFFFFF" })] })] : []),
           ],
         }),
         new TableCell({
@@ -197,8 +197,8 @@ function figureCaptionParagraphs(docx, block) {
       alignment: AlignmentType.CENTER,
       spacing: { after: hasSource ? 20 : 200 },
       children: [
-        ...(block.figure ? [new TextRun({ text: `Figure ${block.figure}.${block.caption ? " " : ""}`, size: half(9), color: THEME.muted, bold: true })] : []),
-        ...(block.caption ? [new TextRun({ text: block.caption, size: half(9), color: THEME.muted, italics: true })] : []),
+        ...(block.figure ? [new TextRun({ text: `Figure ${block.figure}.${block.caption ? " " : ""}`, size: half(10), color: THEME.muted, bold: true })] : []),
+        ...(block.caption ? [new TextRun({ text: block.caption, size: half(10), color: THEME.muted, italics: true })] : []),
       ],
     }));
   }
@@ -206,7 +206,7 @@ function figureCaptionParagraphs(docx, block) {
     out.push(new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { after: 200 },
-      children: [new TextRun({ text: block.source, size: half(8), color: THEME.muted })],
+      children: [new TextRun({ text: block.source, size: half(9.5), color: THEME.muted })],
     }));
   }
   return out;
@@ -251,7 +251,7 @@ function labelParagraph(docx, text, t) {
   return new Paragraph({
     keepNext: true,
     spacing: { before: 280, after: 0 },
-    children: [new TextRun({ text: String(text).toUpperCase(), bold: true, size: half(8.5), color: t.accent, characterSpacing: 30 })],
+    children: [new TextRun({ text: String(text).toUpperCase(), bold: true, size: half(9.5), color: t.accent, characterSpacing: 30 })],
   });
 }
 

@@ -38,7 +38,7 @@
    ========================================================================== */
 
 import { THEME } from "./documentTheme.js";
-import { plainText, blockText, figureCaption } from "./documentModel.js";
+import { plainText, blockText, figureCaption, runningLine } from "./documentModel.js";
 import { imageKey } from "./imageKey.js";
 import { chartPalette } from "./charts/chartSvg.js";
 
@@ -366,7 +366,7 @@ function drawCaption(page, block, box) {
   const runs = [];
   const line = figureCaption(block);
   if (line) runs.push({ text: line, options: { fontSize: 12, italic: true, color: THEME.muted, breakLine: Boolean(block.source) } });
-  if (block.source) runs.push({ text: block.source, options: { fontSize: 9.5, color: THEME.muted } });
+  if (block.source) runs.push({ text: block.source, options: { fontSize: 11, color: THEME.muted } });
   page.addText(runs, {
     x: box.x, y: box.y + box.h - h + 0.05, w: box.w, h: h - 0.05, align: "center", valign: "top", fontFace: THEME.officeFont, margin: 0,
   });
@@ -546,7 +546,7 @@ export async function deckBlob(doc, theme = { ...THEME, highlight: "DDE2EE", onA
     background: { color: "FFFFFF" },
     objects: [
       { rect: { x: X, y: FOOT_Y, w: BODY_W, h: 0.012, fill: { color: THEME.rule } } },
-      { text: { text: brand?.name ? `${brand.name}  ·  ${doc.title}` : doc.title, options: { x: X, y: FOOT_Y + 0.05, w: BODY_W - 1, h: 0.35, fontSize: 10, color: THEME.muted, fontFace: THEME.officeFont } } },
+      { text: { text: runningLine(brand?.name, doc.title), options: { x: X, y: FOOT_Y + 0.05, w: BODY_W - 1, h: 0.35, fontSize: 11, color: THEME.muted, fontFace: THEME.officeFont } } },
     ],
     slideNumber: { x: W - X - 0.6, y: FOOT_Y + 0.05, w: 0.6, h: 0.35, fontSize: 10, color: THEME.muted, align: "right", fontFace: THEME.officeFont },
   });

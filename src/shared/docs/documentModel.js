@@ -150,6 +150,41 @@ export function plainText(runs) {
   return (runs ?? []).map((r) => (r.br ? "\n" : r.text)).join("");
 }
 
+/* ⚠️ SAYING THE SAME THING TWICE, caught in the builder, 2026-11-10.
+   The model often writes a small label and a heading that say the same thing
+   ("THE PROBLEM" over "The problem"), and the pages read as a stutter. These
+   compare two pieces of text the way a reader would: case, punctuation and a
+   leading "the", "our" or "your" do not count. It lives here, in the builder,
+   so it holds whatever the model writes. */
+function plainWords(text) {
+  return String(text ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]+/g, " ")
+    .replace(/^\s*(the|our|your)\s+/, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export function saysTheSame(a, b) {
+  const x = plainWords(a);
+  const y = plainWords(b);
+  return Boolean(x) && x === y;
+}
+
+/* The line at the top or foot of every page: company, then title. When the
+   title IS the company name, it is said once ("Volt · Volt" read as a fault). */
+export function runningLine(brandName, title) {
+  if (!brandName) return title;
+  if (saysTheSame(brandName, title)) return brandName;
+  return `${brandName}  ·  ${title}`;
+}
+
+/* A kicker that is only a number ("01", "2.", "Step 3") repeats the number the
+   numbered steps already print, so it is dropped. */
+function isOnlyANumber(text) {
+  return /^(step\s*)?0*\d+[.):]?$/i.test(String(text ?? "").trim());
+}
+
 /* --------------------------------------------------------------------------
    SECTION 2: Blocks
 
@@ -229,6 +264,9 @@ export function readBlocks(markdown) {
     const heading = line.match(/^(#{1,6})\s+(.*)$/);
     if (heading) {
       flushAll();
+      /* A label written just above a heading that says the same thing goes. */
+      const before = blocks[blocks.length - 1];
+      if (before && before.type === "label" && saysTheSame(before.text, heading[2])) blocks.pop();
       blocks.push({ type: "h", level: Math.min(heading[1].length, 4), runs: readInline(heading[2]) });
       continue;
     }
@@ -278,7 +316,8 @@ export function readBlocks(markdown) {
 /* "Title | kicker" -> both halves. The kicker is optional. */
 function splitTitle(text) {
   const [title, ...rest] = String(text ?? "").split("|");
-  return { title: readInline(title.trim()), kicker: rest.join("|").trim() };
+  const kicker = rest.join("|").trim();
+  return { title: readInline(title.trim()), kicker: isOnlyANumber(kicker) ? "" : kicker };
 }
 
 /* The lines of a block up to its closing ":::". A block that is never
@@ -332,6 +371,8 @@ function readDesignBlock(kind, rest, lines, index, blocks) {
   if (kind === "label") {
     const text = rest.trim();
     const previous = blocks[blocks.length - 1];
+    /* A label that only repeats the heading it sits on adds nothing. */
+    if (previous && previous.type === "h" && saysTheSame(text, plainText(previous.runs))) return 1;
     if (previous && previous.type === "h" && !previous.label) previous.label = text;
     else if (text) blocks.push({ type: "label", text });
     return 1;
