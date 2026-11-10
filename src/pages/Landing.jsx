@@ -23,8 +23,15 @@
       9. Products
      10. Security
      11. Insights
-     12. Call to action
-     13. Footer
+     12. Meet the founder
+     13. Call to action
+     14. Footer
+
+   Motion, added 2026-11-10 to match Anthony's portfolio
+   (anthony.stellaxafe.com): a progress bar at the top (ScrollProgress),
+   the hero lines rising in turn (sx-hero-in in index.css), sections fading
+   up (Reveal), and cards stacking and tilting into place (CardStack).
+   Every one of them switches off when the reader asks for reduced motion.
    ========================================================================== */
 
 import { useEffect } from "react";
@@ -65,6 +72,7 @@ import { PageShell, GlassPanel, PrimaryButton, GhostButton, GlassButton, StatusP
 import MarketingNav from "../shared/MarketingNav.jsx";
 import MarketingFooter from "../shared/MarketingFooter.jsx";
 import IntegrationStrip from "../shared/IntegrationStrip.jsx";
+import ScrollProgress from "../shared/ScrollProgress.jsx";
 import { SectionHead, GradientText, Eyebrow, Divider } from "../shared/marketing.jsx";
 
 /* --------------------------------------------------------------------------
@@ -474,6 +482,7 @@ export default function Landing() {
           ==================================================================== */}
 
       <MarketingNav />
+      <ScrollProgress />
 
       {/* ====================================================================
           2. HERO
@@ -528,7 +537,7 @@ export default function Landing() {
               <ContainmentSeal size="var(--seal)" />
             </div>
 
-            <div className="order-2 lg:order-1 text-center lg:text-left">
+            <div className="sx-hero-in order-2 lg:order-1 text-center lg:text-left">
 
           {/* One moving object and one sentence. Everything that used to
               sit above the mark has gone: a badge over the top of it is
@@ -1237,16 +1246,16 @@ Six steps. All your staff ever do is talk.
 
       {/* ====================================================================
           9. PRODUCTS
-          The anchor the nav and the footer point at. Three things built and
-          maintained end to end, not three things advised on.
+          The anchor the nav and the footer point at. What we build and run
+          ourselves, said plainly.
           ==================================================================== */}
 
       <section id="products" className="relative z-10 px-5 sm:px-8 py-20 sm:py-28 scroll-mt-24">
         <Reveal className="max-w-5xl mx-auto">
           <SectionHead
-            eyebrow="In house products"
-            title="We do not just advise. We build."
-            sub="Three products, engineered and maintained end to end."
+            eyebrow="Our products"
+            title="Built and run by us"
+            sub="Amara is live with hospitality businesses today. XALOM is next."
             center
           />
 
@@ -1476,7 +1485,57 @@ Six steps. All your staff ever do is talk.
       </section>
 
       {/* ====================================================================
-          12. CALL TO ACTION
+          12. MEET THE FOUNDER
+          Anthony asked for this on 2026-11-10, in place of the old "we do
+          not just advise" line. A buyer wants to know who builds the
+          thing. The link goes to his own profile, anthony.stellaxafe.com.
+          ==================================================================== */}
+
+      <section className="relative z-10 px-5 sm:px-8 pb-20 sm:pb-28">
+        <Reveal className="max-w-3xl mx-auto">
+          <GlassPanel className="p-0 overflow-hidden">
+            <div className="grid sm:grid-cols-[200px_1fr] items-stretch">
+              <div className="relative min-h-[240px] sm:min-h-full" style={{ backgroundColor: "#05060C" }}>
+                <Photo
+                  name="anthony-nwobosi"
+                  alt="Anthony Nwobosi"
+                  widths={[640]}
+                  sizes="(max-width: 640px) 100vw, 200px"
+                  fill
+                  imgClassName="object-top"
+                />
+              </div>
+              <div className="p-7 sm:p-8 text-center sm:text-left">
+                <Eyebrow>Meet the founder</Eyebrow>
+                <h2
+                  className="text-[24px] sm:text-[30px] font-medium tracking-[-0.025em] mt-3"
+                  style={{ fontFamily: FONTS.display, color: "var(--text-1)" }}
+                >
+                  Anthony Nwobosi
+                </h2>
+                <p className="text-[15px] leading-relaxed mt-3" style={{ color: "var(--text-2)" }}>
+                  Anthony builds StellaXafe and the products above it. He takes a business problem
+                  from the first idea to a system people use every day, and he likes the tools he
+                  builds to be easy for anyone to pick up.
+                </p>
+                <a
+                  href="https://anthony.stellaxafe.com"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 text-[14px] font-semibold mt-5 transition-all hover:gap-3"
+                  style={{ color: BRAND.accentSoft }}
+                >
+                  Meet Anthony
+                  <ArrowRight size={15} />
+                </a>
+              </div>
+            </div>
+          </GlassPanel>
+        </Reveal>
+      </section>
+
+      {/* ====================================================================
+          13. CALL TO ACTION
           ==================================================================== */}
 
       <section className="relative z-10 px-5 sm:px-8 pb-24">
@@ -1526,7 +1585,7 @@ Six steps. All your staff ever do is talk.
       </section>
 
       {/* ====================================================================
-          13. FOOTER
+          14. FOOTER
           ==================================================================== */}
 
       <MarketingFooter />
