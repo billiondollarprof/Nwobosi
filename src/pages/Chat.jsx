@@ -150,6 +150,13 @@ import BuildProgress, { advance, note, sectionsSoFar } from "../shared/BuildProg
    one character at a time, so it never flashes on screen and then vanishes.
    -------------------------------------------------------------------------- */
 
+/* Refusals that are not faults: the meter ran out, the admin paused this
+   person, or they reached the daily or weekly limit. Each comes back with
+   a plain sentence written for them, so it is shown as an ordinary reply
+   rather than a red error. Anthony, 2026-11-10: "a usage limit says so
+   plainly." */
+const PLAIN_REFUSALS = new Set(["out_of_budget", "paused", "daily_limit", "weekly_limit"]);
+
 const MARKER = {
   offerInterview: "OFFER_INTERVIEW",
   needLookup: "NEED_LOOKUP",
@@ -1376,7 +1383,7 @@ export default function Chat() {
             {
               id: nextId(),
               role: "assistant",
-              type: reason === "out_of_budget" ? "text" : "error",
+              type: PLAIN_REFUSALS.has(reason) ? "text" : "error",
               content: message,
             },
           ]),
@@ -1759,7 +1766,7 @@ export default function Chat() {
           {
             id: nextId(),
             role: "assistant",
-            type: reason === "out_of_budget" ? "text" : "error",
+            type: PLAIN_REFUSALS.has(reason) ? "text" : "error",
             content: message,
           },
         ]);
@@ -2108,7 +2115,7 @@ export default function Chat() {
           {
             id: nextId(),
             role: "assistant",
-            type: reason === "out_of_budget" ? "text" : "error",
+            type: PLAIN_REFUSALS.has(reason) ? "text" : "error",
             content: message,
           },
         ]);

@@ -801,6 +801,80 @@ Deno.serve(async (req: Request) => {
   }
 
   /* ----------------------------------------------------------------------
+     RULE 3B: THE ADMIN'S OWN LIMITS, ENFORCED HERE AND NOT ONLY ON SCREEN
+
+     Anthony, 2026-11-10: admin control, a weekly limit as well as daily,
+     pause and resume a person, and who is active. Until today the daily
+     limit was only counted in the browser, so nothing actually stopped
+     anybody. Now it is checked here, where a browser cannot reach.
+
+       PAUSED      every turn is refused, in plain words.
+       DAILY       documents made today (UTC) against staff.daily_limit.
+       WEEKLY      documents made in the last seven days against
+                   staff.weekly_limit, when the admin set one.
+     A document counts when it is finished (one work_history row), and the
+     check runs where a build starts, the brief stage, so a conversation is
+     never cut off halfway through a question.
+
+     ALL OF IT IS TOLERANT OF THE COLUMNS NOT EXISTING YET (migration
+     20261110130000_admin_control.sql). A missing column reads as no
+     pause and no weekly limit, which is exactly how it behaved before.
+
+     And the person is marked as seen just now, for "active now" on the
+     admin's People screen. Fire and forget: it never holds up a turn.
+     ---------------------------------------------------------------------- */
+  const serviceClient = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  );
+  const { data: myRow } = await serviceClient.from("staff").select("*").eq("id", user.id).maybeSingle();
+  const mine = (myRow ?? {}) as Record<string, unknown>;
+
+  serviceClient.from("staff").update({ last_seen_at: new Date().toISOString() }).eq("id", user.id)
+    .then(({ error }) => { if (error && error.code !== "42703" && error.code !== "PGRST204") console.warn("could not mark seen", error.message); });
+
+  if (mine.paused_at) {
+    return json({
+      ok: false,
+      reason: "paused",
+      message: "Your access is paused for now. Ask your admin to turn it back on.",
+    }, 403);
+  }
+
+  if (stage === "brief") {
+    const dailyLimit = Number(staff.daily_limit ?? mine.daily_limit ?? 0) || 0;
+    const weeklyLimit = Number(mine.weekly_limit ?? 0) || 0;
+    const startOfToday = new Date();
+    startOfToday.setUTCHours(0, 0, 0, 0);
+    const weekAgo = new Date(Date.now() - 7 * 24 * 3600 * 1000);
+
+    const { data: made } = await serviceClient
+      .from("work_history")
+      .select("created_at")
+      .eq("staff_id", user.id)
+      .gte("created_at", weekAgo.toISOString());
+    const thisWeek = (made ?? []).length;
+    const today = (made ?? []).filter((r) => new Date(r.created_at as string) >= startOfToday).length;
+
+    if (dailyLimit > 0 && today >= dailyLimit) {
+      return json({
+        ok: false,
+        reason: "daily_limit",
+        message: `You have made ${today} ${today === 1 ? "document" : "documents"} today, which is your daily limit. ` +
+          "It starts again tomorrow, or ask your admin for more.",
+      }, 429);
+    }
+    if (weeklyLimit > 0 && thisWeek >= weeklyLimit) {
+      return json({
+        ok: false,
+        reason: "weekly_limit",
+        message: `You have made ${thisWeek} documents this week, which is your weekly limit. ` +
+          "Ask your admin if you need more.",
+      }, 429);
+    }
+  }
+
+  /* ----------------------------------------------------------------------
      RULE 2: WHICH MODEL
      ---------------------------------------------------------------------- */
 

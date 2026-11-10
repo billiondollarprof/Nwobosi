@@ -160,3 +160,11 @@ export async function revokeStaff(staffId) {
 /* The company's sources for the checker. window.__SOURCES, when a test
    sets it, is the text; unset, there are none. */
 export async function companySourceText() { return window.__SOURCES ?? ""; }
+
+/* ADMIN CONTROL, 2026-11-10. window.__ACTIVITY and window.__STAFF_WORK let a
+   walk set who is active and what they made; unset, everything is empty. */
+export async function setWeeklyLimit(_id, limit) { return { ok: true, limit: limit ? Number(limit) : null }; }
+export async function setPaused(_id, paused) { return { ok: true, pausedAt: paused ? new Date().toISOString() : null }; }
+export async function staffActivity() { return new Map(Object.entries(window.__ACTIVITY ?? {})); }
+export async function staffWork() { return new Map(Object.entries(window.__STAFF_WORK ?? {})); }
+export async function staffControls() { return new Map(Object.entries(window.__CONTROLS ?? {})); }

@@ -30,6 +30,7 @@ import {
   Sparkles,
   LogOut,
   Info,
+  ChevronDown,
 } from "lucide-react";
 
 import { LogoMark } from "../shared/icons.jsx";
@@ -61,6 +62,11 @@ import {
   addImageSource,
   setSupportAccess,
   setDailyLimit,
+  setWeeklyLimit,
+  setPaused,
+  staffActivity,
+  staffWork,
+  staffControls,
   removeSource,
   groupImages,
   setSourceVisibility,
@@ -2080,8 +2086,14 @@ export function AccessSection({ me }) {
     if (!me?.company?.id) return;
     let alive = true;
     (async () => {
-      const rows = await listStaff(me.company.id);
+      const [rows, activity, work, controls] = await Promise.all([
+        listStaff(me.company.id),
+        staffActivity(),
+        staffWork(me.company.id),
+        staffControls(me.company.id),
+      ]);
       if (!alive) return;
+      setControlsReady([...controls.values()].some((c) => c.ready));
       setStaff(
         rows.map((r) => ({
           id: r.id,
@@ -2098,7 +2110,14 @@ export function AccessSection({ me }) {
           ceiling: levelOf(r.model_ceiling),
           canSupport: r.can_support === true,
           limit: r.daily_limit ?? 5,
-          used: 0,
+          /* ADMIN CONTROL, 2026-11-10: what they made, when they were last
+             around, a weekly limit and whether they are paused. */
+          used: work.get(r.id)?.today ?? 0,
+          week: work.get(r.id)?.week ?? 0,
+          recent: work.get(r.id)?.recent ?? [],
+          activity: activity.get(r.id) ?? null,
+          weekly: controls.get(r.id)?.weekly ?? null,
+          pausedAt: controls.get(r.id)?.pausedAt ?? null,
         }))
       );
     })();
@@ -2117,6 +2136,13 @@ export function AccessSection({ me }) {
      has nothing to do with inviting somebody, and putting the words in
      that panel sends an admin to look at the wrong control. */
   const [staffNote, setStaffNote] = useState("");
+
+  /* Whose recent work is open under their name. One at a time. */
+  const [openPerson, setOpenPerson] = useState(null);
+
+  /* False until the admin control database update has run, so the weekly
+     limit and pause controls are not offered before they can save. */
+  const [controlsReady, setControlsReady] = useState(false);
   const [invited, setInvited] = useState(null);
 
   /* Every required box filled. The button reads this rather than waiting
@@ -2274,6 +2300,33 @@ export function AccessSection({ me }) {
      one that was picked. They are the same today. The day somebody puts a
      rule on that column they will not be, and the screen should show what
      was stored rather than what was asked for. */
+  /* A weekly limit, or none. Same shape as the daily one: shown at once,
+     put back if the save fails. */
+  async function changeWeeklyLimit(person, next) {
+    const wanted = next ? Number(next) : null;
+    if (wanted === (person.weekly ?? null)) return;
+    setStaff((prev) => prev.map((x) => (x.id === person.id ? { ...x, weekly: wanted } : x)));
+    const result = await setWeeklyLimit(person.id, wanted);
+    if (!result.ok) {
+      setStaff((prev) => prev.map((x) => (x.id === person.id ? { ...x, weekly: person.weekly } : x)));
+      setStaffNote(result.reason);
+      setTimeout(() => setStaffNote(""), 6000);
+    }
+  }
+
+  /* Pause or resume. While paused the assistant tells them, in one line,
+     that their access is paused and to ask their admin. */
+  async function togglePaused(person) {
+    const pausing = !person.pausedAt;
+    setStaff((prev) => prev.map((x) => (x.id === person.id ? { ...x, pausedAt: pausing ? new Date().toISOString() : null } : x)));
+    const result = await setPaused(person.id, pausing);
+    if (!result.ok) {
+      setStaff((prev) => prev.map((x) => (x.id === person.id ? { ...x, pausedAt: person.pausedAt } : x)));
+      setStaffNote(result.reason);
+      setTimeout(() => setStaffNote(""), 6000);
+    }
+  }
+
   async function changeDailyLimit(person, next) {
     const wanted = Number(next) || person.limit;
     if (wanted === person.limit) return;
@@ -2494,7 +2547,7 @@ export function AccessSection({ me }) {
       </GlassPanel>
 
       <GlassPanel className="p-6">
-        <SectionHeading hint="Change how many outputs somebody gets a day, put them on the support queue, or take their access away. You cannot take away your own.">
+        <SectionHeading hint="Tap a name to see what they made. Set a daily or weekly limit, pause someone, put them on the support queue, or take their access away. You cannot pause or take away your own.">
           Staff
         </SectionHeading>
 
@@ -2518,14 +2571,37 @@ export function AccessSection({ me }) {
                 {person.name.charAt(0)}
               </span>
 
-              <div className="flex-1 min-w-[140px]">
-                <p className="text-[14px] font-medium truncate" style={{ color: "var(--text-1)" }}>
-                  {person.name}
-                </p>
-                <p className="text-[12.5px] truncate" style={{ color: "var(--text-3)" }}>
+              {/* THE NAME OPENS WHAT THEY DID. Anthony, 2026-11-10: "click a
+                  name for a dropdown of what they did". Underneath it, when
+                  they were last around and how much they made. */}
+              <button
+                type="button"
+                onClick={() => setOpenPerson((id) => (id === person.id ? null : person.id))}
+                aria-expanded={openPerson === person.id}
+                className="flex-1 min-w-[160px] text-left hover:opacity-90"
+              >
+                <span className="text-[14px] font-medium flex items-center gap-1.5 min-w-0" style={{ color: "var(--text-1)" }}>
+                  <span className="truncate">{person.name}</span>
+                  <ChevronDown
+                    size={13}
+                    className="shrink-0"
+                    style={{ color: "var(--text-3)", transform: openPerson === person.id ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}
+                  />
+                </span>
+                <span className="block text-[12.5px] truncate" style={{ color: "var(--text-3)" }}>
                   {person.role}
-                </p>
-              </div>
+                </span>
+                <span className="text-[12px] mt-0.5 flex flex-wrap items-center gap-x-1.5" style={{ color: "var(--text-2)" }}>
+                  {person.pausedAt ? (
+                    <span style={{ color: BRAND.amber }}>Paused</span>
+                  ) : (
+                    <ActivityLine activity={person.activity} />
+                  )}
+                  <span style={{ color: "var(--text-3)" }}>
+                    · {person.used ?? 0} today · {person.week ?? 0} this week
+                  </span>
+                </span>
+              </button>
 
               {/* THE PER PERSON LEVEL PICKER WAS HERE AND IT IS GONE.
 
@@ -2598,6 +2674,44 @@ export function AccessSection({ me }) {
                 </div>
               </div>
 
+              {/* A WEEKLY LIMIT, as well as the daily one. "No weekly limit"
+                  leaves only the daily one in force. Offered once the
+                  database update has run, so it never pretends to save. */}
+              {controlsReady && (
+                <div className="shrink-0 w-[152px]">
+                  <SelectInput
+                    value={person.weekly ? String(person.weekly) : ""}
+                    onChange={(e) => changeWeeklyLimit(person, e.target.value)}
+                    className="py-1.5 text-[12.5px]"
+                    aria-label={`Documents a week for ${person.name}`}
+                  >
+                    <option value="">No weekly limit</option>
+                    {[10, 25, 50, 100].map((n) => (
+                      <option key={n} value={n}>
+                        {n} a week
+                      </option>
+                    ))}
+                  </SelectInput>
+                </div>
+              )}
+
+              {/* PAUSE AND RESUME. Not for the admin themselves, for the same
+                  reason they cannot revoke themselves. */}
+              {controlsReady && person.id !== me?.user?.id && (
+                <button
+                  onClick={() => togglePaused(person)}
+                  className="rounded-full px-3 py-1.5 text-[12.5px] font-medium border transition-colors hover:opacity-80 shrink-0"
+                  style={
+                    person.pausedAt
+                      ? { borderColor: BRAND.amber, color: BRAND.amber, backgroundColor: "rgba(232,152,10,0.10)" }
+                      : { borderColor: "var(--border-2)", color: "var(--text-2)" }
+                  }
+                  aria-pressed={Boolean(person.pausedAt)}
+                >
+                  {person.pausedAt ? "Resume" : "Pause"}
+                </button>
+              )}
+
               {/* An admin cannot revoke themselves. Doing so would lock the
                   only person who can let anybody back in out of their own
                   company, with no way to undo it from any screen. */}
@@ -2610,6 +2724,8 @@ export function AccessSection({ me }) {
                 Revoke
               </button>
               )}
+
+              {openPerson === person.id && <PersonWork person={person} />}
             </div>
           ))}
         </div>
@@ -2733,6 +2849,73 @@ export function AccessSection({ me }) {
    min-w-0 is load bearing. A grid item defaults to a minimum width of its
    own content, so without it a long label pushes its column wider and drags
    the other two out of alignment. */
+/* --------------------------------------------------------------------------
+   ADMIN CONTROL HELPERS, 2026-11-10
+   -------------------------------------------------------------------------- */
+
+/* "2 hours ago", "3 days ago". Plain words, rounded, never a timestamp. */
+function sinceWords(iso) {
+  if (!iso) return "";
+  const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (mins < 2) return "just now";
+  if (mins < 60) return `${mins} minutes ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours} ${hours === 1 ? "hour" : "hours"} ago`;
+  const days = Math.round(hours / 24);
+  return `${days} ${days === 1 ? "day" : "days"} ago`;
+}
+
+/* Active now, last active, signed out, or signed in: whichever is newest. */
+function ActivityLine({ activity }) {
+  if (!activity) return <span style={{ color: "var(--text-3)" }}>No activity yet</span>;
+  const seen = activity.last_seen_at ? new Date(activity.last_seen_at).getTime() : 0;
+  const out = activity.signed_out_at ? new Date(activity.signed_out_at).getTime() : 0;
+  const inAt = activity.last_sign_in_at ? new Date(activity.last_sign_in_at).getTime() : 0;
+  if (seen && Date.now() - seen < 5 * 60000 && seen > out) {
+    return (
+      <span className="flex items-center gap-1.5" style={{ color: BRAND.green }}>
+        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: BRAND.green }} />
+        Active now
+      </span>
+    );
+  }
+  const newest = Math.max(seen, out, inAt);
+  if (!newest) return <span style={{ color: "var(--text-3)" }}>Not signed in yet</span>;
+  if (newest === out) return <span>Signed out {sinceWords(activity.signed_out_at)}</span>;
+  if (newest === seen) return <span>Last active {sinceWords(activity.last_seen_at)}</span>;
+  return <span>Signed in {sinceWords(activity.last_sign_in_at)}</span>;
+}
+
+/* What they made in the last seven days: the title, when, and the short
+   summary. Never the document itself (decided 2026-09-23). */
+function PersonWork({ person }) {
+  const recent = person.recent ?? [];
+  return (
+    <div className="w-full mt-1 pt-3 border-t space-y-2.5" style={{ borderColor: "var(--border)" }}>
+      {recent.length === 0 && (
+        <p className="text-[13px]" style={{ color: "var(--text-3)" }}>
+          Nothing made in the last seven days.
+        </p>
+      )}
+      {recent.map((w) => (
+        <div key={w.id}>
+          <p className="text-[13.5px] font-medium break-words" style={{ color: "var(--text-1)" }}>
+            {w.title || "Untitled"}{" "}
+            <span className="font-normal text-[12px]" style={{ color: "var(--text-3)" }}>
+              · {sinceWords(w.created_at)}
+            </span>
+          </p>
+          {w.summary && (
+            <p className="text-[13px] leading-relaxed break-words line-clamp-3" style={{ color: "var(--text-2)" }}>
+              {w.summary}
+            </p>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function StatTile({ label, value, tone = "neutral", hint }) {
   const colors = {
     ok: BRAND.green,
