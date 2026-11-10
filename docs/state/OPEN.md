@@ -42,6 +42,7 @@ other.** Nothing comes off until it is built, checked and live.
    ("Responding in a bit"); the word shimmers with a pulsing mark, like
    Claude's "Musing..."; a failure says so and retries once; a usage limit
    says so plainly. "It doesn't leave somebody hanging."
+   **Built, on testing:** "Responding in a bit" first, a breathing mark and shimmering word, a seconds counter after 4s, one automatic retry ("That did not come back, trying again"), limits and pauses said as plain replies.
 4. **The first stage, conversational.** Chat freely, read the company map
    silently, and only when the direction is clear say "if I understand, this
    is what you want to build", then pull the knowledge. "That beginning part
@@ -58,6 +59,7 @@ other.** Nothing comes off until it is built, checked and live.
    I look this up online?" inside them; the search runs after the answers;
    a short read back (what, who, direction, sources, format); then "Go ahead
    with PDF / Word / Excel / Slides".
+   **Built, on testing:** questions in one numbered message; "Yes, after my answers" arms the search, which runs once they answer (the server's yes gate unchanged); five line read back; build card "Go ahead with PDF" plus Word, Excel, Slides. Walk: `search-after.cjs`.
 6. **Change a document after it is built, with no new interview.** The
    instruction is live (assistant v55); test it.
 7. **Excel and PowerPoint, checked for real.** Make both, screenshot every
@@ -66,28 +68,45 @@ other.** Nothing comes off until it is built, checked and live.
 8. **"Analyse this file", simple, for the client.** Upload a document, get an
    analysis (for example pricing). The full analyser comes later, per
    company, and reads the knowledge map.
+   **Built, on testing:** "Analyse a file" in the plus menu; the first stage answers in the chat (what it is, what stands out, against your material, risks, next steps).
 9. **The knowledge map.** One short file summarising every source, its
    sections and where it lives; written when files are added; says where
    the brand colour came from (uploaded on purpose, found in the logo or
    files, or none so our blue); the assistant reads it and fetches only what
    it needs. Project files first, connected platforms later.
+   **Built, on testing:** `_shared/knowledgeMap.ts`, read first by the assistant every turn and shown folded on the admin Knowledge screen. Brand colour origin needs SQL (`20261110120000`, his yes). **Not built yet:** fetching only the sources a turn needs; every turn still reads all of them. Needs a measured test of cost and answer quality before it ships.
 10. **Admin control.** A weekly limit as well as daily; pause and resume a
     person; usage per person in documents made; click a name for a dropdown
     of what they did; signed in, signed out, active now. No notice to staff
     about it (his decision).
+    **Built, on testing:** the daily limit, a weekly limit and pause are now
+    enforced by the assistant on the server (before, nothing stopped anyone);
+    People screen shows activity, documents today and this week, Pause and
+    Resume, and a tap on a name lists their last seven days of work. Needs
+    SQL (`20261110130000`, his yes) before weekly limit, pause and activity
+    appear.
 11. **Humanizer on every piece of copy.** Go through the landing page and the
     app's own text so it reads like a person talking: context, conversational,
     nothing clipped. The skill is in `.claude/skills/humanizer`, the rules in
     `docs/rules/WRITING.md`.
+    **Landing page done, on testing.** Also fixed two lines left stale by the
+    products section going, and took Amazon Bedrock off the public page.
+    **The app's own text is not done yet.**
 12. **Gemini for support, DeepSeek for the work.** Needs his Gemini key in
     Supabase secrets as `GEMINI_API_KEY`.
 13. **CI minute savings** (his yes given): skip CI on doc-only pushes, no
     second CI run on the merge to main, shorter smoke wait.
+    **Blocked:** the edit to the workflow files was refused by the agent's
+    safety check, because it skips checks. Needs his explicit go-ahead in
+    the chat for this exact change.
 14. **Housekeeping.** Take the access codes out of the docs and add the rule
     "no codes, no keys in the repo"; ask whether `docs/clients/` moves to his
     Drive; ask before deleting the test workspace `volt-test-engineering`;
     the repo goes back to private (his step) before anything sensitive is
     added.
+    **Codes done, on testing:** every code in the repo replaced with
+    `SX-XXXX-XXXX` (all were revoked or never existed) and the rule added to
+    `CLAUDE.md`. The three questions are still open.
 15. **Connected tools, per client** (written in `docs/product/DIRECTION.md`):
     ask before using any, one at a time in task order, connected knowledge
     before the internet, Canva offered for designs.
