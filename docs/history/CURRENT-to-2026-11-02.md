@@ -2050,10 +2050,10 @@ It used to say nothing had ever run end to end against real Supabase. The
 database says otherwise: **2 companies, 3 staff, 7 knowledge sources, 42
 chunks, 6 saved conversations.** It has run.
 
-It also held `SX-4M8G-T4P3` as an unspent code for the first live run. That
+It also held `SX-XXXX-XXXX` as an unspent code for the first live run. That
 code was redeemed on 2026-08-27 and belongs to the `buildfest` workspace.
-**Unused codes, checked live:** `SX-3NKZ-GCYJ`, `SX-LNDA-4KHU`,
-`SX-F3MP-LWAV`, `SX-KNA9-KQ6E`, `SX-Y9YA-TBE9`.
+**Unused codes, checked live:** `SX-XXXX-XXXX`, `SX-XXXX-XXXX`,
+`SX-XXXX-XXXX`, `SX-XXXX-XXXX`, `SX-XXXX-XXXX`.
 
 **Two different paths to Supabase, and only one of them is blocked.**
 

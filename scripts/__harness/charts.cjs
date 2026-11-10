@@ -96,9 +96,9 @@ async function names(buffer) {
   await page.locator('textarea').first().fill('Make me the Q3 review with charts');
   await page.keyboard.press('Enter');
   await page.waitForTimeout(1500);
-  await page.locator('button', { hasText: 'Just get on with it' }).first().click();
+  await page.locator('button', { hasText: 'Yes, start now' }).first().click();
   await page.waitForTimeout(2200);
-  await page.locator('button', { hasText: 'Go ahead, build it' }).first().click();
+  await page.locator('button', { hasText: 'Go ahead with' }).first().click();
   await page.waitForTimeout(3500);
 
   /* SLIDES: real PowerPoint charts, three of them, not the broken one. */
@@ -124,7 +124,7 @@ async function names(buffer) {
   check('WORD: the broken chart is its table, with its numbers', body.includes('August') && body.includes('-3'));
 
   /* SPREADSHEET: the numbers on a sheet named after the chart, and the picture. */
-  const xlsx = await download(page, 'Spreadsheet');
+  const xlsx = await download(page, 'Excel');
   const sheet = await names(xlsx);
   const workbook = await sheet.zip.file('xl/workbook.xml').async('string');
   check('SPREADSHEET: a sheet named after the chart', workbook.includes('Room revenue by quarter'));

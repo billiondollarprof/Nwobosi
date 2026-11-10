@@ -11,7 +11,7 @@
 
 import { supabase } from "./supabase.js";
 
-/* A code looks like SX-A7K4-M2PQ. Uppercase, two blocks of four.
+/* A code looks like SX-XXXX-XXXX. Uppercase, two blocks of four.
    Ambiguous characters are never issued: no O or 0, no I or 1, no S or 5. */
 const CODE_SHAPE = /^SX-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
 

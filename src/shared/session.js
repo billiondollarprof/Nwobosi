@@ -118,6 +118,15 @@ export function splitIntoChunks(text) {
 export async function signOutCompletely() {
   clearAdminClock();
 
+  /* "Signed out" on the admin's People screen. Recorded before the token
+     goes, because afterwards there is nobody to record it for. Never holds
+     sign out up: a failure, or the function not existing yet, is ignored. */
+  try {
+    await supabase.rpc("mark_signed_out");
+  } catch {
+    /* nothing to do: they are signing out either way */
+  }
+
   const { error } = await supabase.auth.signOut();
 
   /* Reported and not thrown. A failure here is almost always the network,
@@ -207,7 +216,7 @@ export async function addTextSource({
 
   /* A brand colour named in their own material becomes the company's colour,
      if it has none yet. Never fails the upload. See brandColour.js. */
-  await rememberBrandColour(companyId, colourFromText(text));
+  await rememberBrandColour(companyId, colourFromText(text), name);
 
   return { ok: true, source: { ...source, status: "ready" }, chunks: chunks.length };
 }
@@ -329,7 +338,7 @@ export async function addImageSource({
      happens inside it, so nothing is left saying "being read" forever. */
   /* A logo or brand picture: its strongest colour becomes the company's
      colour, if it has none yet. Never fails the upload. See brandColour.js. */
-  await rememberBrandColour(companyId, await colourFromImage(blob));
+  await rememberBrandColour(companyId, await colourFromImage(blob), name);
 
   let read = 0;
   try {
@@ -490,6 +499,84 @@ export async function setSupportAccess(staffId, canSupport) {
    a browser is not something this file is allowed to trust, and this writes
    a number that decides what somebody is allowed to spend.
    -------------------------------------------------------------------------- */
+
+/* --------------------------------------------------------------------------
+   ADMIN CONTROL. Anthony, 2026-11-10: a weekly limit as well as daily,
+   pause and resume, and who did what and when.
+   Each needs migration 20261110130000_admin_control.sql. Until it has run,
+   each says so in one plain line instead of failing quietly.
+   -------------------------------------------------------------------------- */
+
+const NOT_YET = "This needs a database update first. Ask StellaXafe to switch it on.";
+const isMissingColumn = (error) => ["42703", "PGRST204", "PGRST202", "42883"].includes(error?.code);
+
+/* A weekly limit, or none (null). */
+export async function setWeeklyLimit(staffId, limit) {
+  const wanted = limit ? Math.min(Math.max(Math.floor(Number(limit) || 0), 1), 500) : null;
+  const { data, error } = await supabase.from("staff").update({ weekly_limit: wanted }).eq("id", staffId).select("id, weekly_limit");
+  if (error) return { ok: false, reason: isMissingColumn(error) ? NOT_YET : "Could not change that. Try again." };
+  if (!data?.length) return { ok: false, reason: "That did not save. You may not have permission." };
+  return { ok: true, limit: data[0].weekly_limit };
+}
+
+/* Pause (true) or resume (false). While paused, the assistant refuses every
+   turn for this person with a plain line saying so. */
+export async function setPaused(staffId, paused) {
+  const { data, error } = await supabase
+    .from("staff")
+    .update({ paused_at: paused ? new Date().toISOString() : null })
+    .eq("id", staffId)
+    .select("id, paused_at");
+  if (error) return { ok: false, reason: isMissingColumn(error) ? NOT_YET : "Could not change that. Try again." };
+  if (!data?.length) return { ok: false, reason: "That did not save. You may not have permission." };
+  return { ok: true, pausedAt: data[0].paused_at };
+}
+
+/* The admin control columns for every person: weekly limit and pause.
+   Read straight from staff, because the limits view predates them. Empty
+   when the database update has not run. */
+export async function staffControls(companyId) {
+  const { data, error } = await supabase.from("staff").select("*").eq("company_id", companyId);
+  if (error) return new Map();
+  return new Map((data ?? []).map((r) => [r.id, { weekly: r.weekly_limit ?? null, pausedAt: r.paused_at ?? null, ready: "paused_at" in r }]));
+}
+
+/* Signed in, last active and signed out, per person, for an admin only.
+   An empty map when the database update has not run. */
+export async function staffActivity() {
+  try {
+    const { data, error } = await supabase.rpc("staff_activity");
+    if (error) return new Map();
+    return new Map((data ?? []).map((r) => [r.staff_id, r]));
+  } catch {
+    return new Map();
+  }
+}
+
+/* Documents each person made in the last seven days: today's count, the
+   week's count, and their recent work for the dropdown under their name. */
+export async function staffWork(companyId) {
+  const weekAgo = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+  const { data, error } = await supabase
+    .from("work_history")
+    .select("id, staff_id, title, skill, summary, created_at")
+    .eq("company_id", companyId)
+    .order("created_at", { ascending: false })
+    .limit(500);
+  if (error) return new Map();
+  const startOfToday = new Date();
+  startOfToday.setUTCHours(0, 0, 0, 0);
+  const out = new Map();
+  for (const row of data ?? []) {
+    const entry = out.get(row.staff_id) ?? { today: 0, week: 0, recent: [] };
+    const at = new Date(row.created_at);
+    if (row.created_at >= weekAgo) entry.week += 1;
+    if (at >= startOfToday) entry.today += 1;
+    if (entry.recent.length < 8) entry.recent.push(row);
+    out.set(row.staff_id, entry);
+  }
+  return out;
+}
 
 export async function setDailyLimit(staffId, limit) {
   const wanted = Math.min(Math.max(Math.floor(Number(limit) || 0), 1), 100);

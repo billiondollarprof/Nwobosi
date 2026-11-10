@@ -26,6 +26,12 @@
 /* --------------------------------------------------------------------------
    SECTION 1: The words, per stage
 
+   "RESPONDING IN A BIT" COMES FIRST. Anthony, 2026-11-10: something has to
+   be on screen within about two seconds, so a person is never left
+   wondering whether it heard them. "It doesn't leave somebody hanging."
+   The three stages a person talks to open with it, then say what they are
+   actually doing.
+
    Three lines each, shown in order. The last one repeats for as long as the
    turn runs, so it never runs out of things to say and never starts lying.
 
@@ -37,14 +43,14 @@
 
 const WORDS = {
   /* Reading the request against everything the company has. */
-  orient: ["Reading your files", "Going through your material", "Still reading"],
+  orient: ["Responding in a bit", "Reading your files", "Going through your material", "Still reading"],
 
   /* A short back and forth. Usually quick, so the first line does most of
      the work here. */
-  interview: ["Thinking", "Putting that together", "Still thinking"],
+  interview: ["Responding in a bit", "Putting that together", "Still thinking"],
 
   /* Working out what it has and what it is missing, then reading back. */
-  analyse: ["Working out what is missing", "Checking your files again", "Still working"],
+  analyse: ["Responding in a bit", "Working out what is missing", "Checking your files again", "Still working"],
 
   /* The only stage that goes outside. Says so, because a person who
      approved a search should see it happening. */
@@ -75,7 +81,10 @@ export const WORD_HOLD_MS = 7000;
    find out.
    -------------------------------------------------------------------------- */
 
-export function thinkingWord(stage, elapsedMs = 0, { stalled = false } = {}) {
+export function thinkingWord(stage, elapsedMs = 0, { stalled = false, retrying = false } = {}) {
+  /* The first try failed before a word came back and it is asking again,
+     once, on its own. Said plainly so nobody presses send a second time. */
+  if (retrying) return "That did not come back, trying again";
   /* Said only after the request has gone quiet for a long time, and it is
      the one line that is about the connection rather than the work. It
      stops short of claiming anything has failed, because at this point
@@ -90,5 +99,5 @@ export function thinkingWord(stage, elapsedMs = 0, { stalled = false } = {}) {
 /* Every line this can ever show, so a test can check the whole surface
    rather than the handful somebody thought of. */
 export function everyThinkingWord() {
-  return [...new Set([...Object.values(WORDS).flat(), ...FALLBACK, "This is taking longer than usual"])];
+  return [...new Set([...Object.values(WORDS).flat(), ...FALLBACK, "This is taking longer than usual", "That did not come back, trying again"])];
 }

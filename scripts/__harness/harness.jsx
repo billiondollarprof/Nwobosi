@@ -16,11 +16,12 @@
 
 import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
-import { ThemeProvider } from "../../src/shared/theme.jsx";
+import { ThemeProvider, useTheme } from "../../src/shared/theme.jsx";
 import Support from "../../src/pages/Support.jsx";
 import Chat, { ChatBubble } from "../../src/pages/Chat.jsx";
 import { AccessSection } from "../../src/pages/Admin.jsx";
 import RefreshOrKeep from "../../src/shared/RefreshOrKeep.jsx";
+import KnowledgeMapPanel from "../../src/shared/KnowledgeMapPanel.jsx";
 import "../../src/index.css";
 
 /* HANDED TO THE TESTS, not to the app.
@@ -105,6 +106,26 @@ function AccessPreview() {
   );
 }
 
+/* The knowledge map panel, with two sources and some text behind them. */
+function MapPreview() {
+  const { vars } = useTheme();
+  const items = [
+    { id: "k1", name: "Brand voice guide", description: "How we sound", kind: "file", status: "ready" },
+    { id: "k9", name: "Amara partners", description: "Partner prices and payment terms", kind: "file", status: "ready" },
+  ];
+  __rows("knowledge_chunks").push(
+    { source_id: "k1", content: "# Voice\nWarm and plain.\n## Words we avoid\nJargon." },
+    { source_id: "k9", content: "PARTNER RATES\n" + "rate ".repeat(900) + "\nPayment terms:\nNet 30." },
+  );
+  return (
+    <div className="min-h-screen p-4" style={{ ...vars, backgroundColor: "var(--bg)" }}>
+      <div className="max-w-3xl mx-auto">
+        <KnowledgeMapPanel items={items} company={{ brand_color: "#20B255", brand_color_source: "Amara logo" }} />
+      </div>
+    </div>
+  );
+}
+
 const page = new URLSearchParams(window.location.search).get("page");
 
 /* WorkSwitch and the chat both call useNavigate, so the tree needs a
@@ -115,6 +136,8 @@ createRoot(document.getElementById("root")).render(
         <Chat />
       ) : page === "replace" ? (
         <ReplacePreview />
+      ) : page === "map" ? (
+        <MapPreview />
       ) : page === "access" ? (
         <AccessPreview />
       ) : (

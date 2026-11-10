@@ -101,6 +101,9 @@ for (const walk of [
      skip the search." A failed search has to give the permission card back,
      both answers with it, or the person is trapped in it. */
   "scripts/__harness/search-skip.cjs",
+  /* Added 2026-11-10. The interview's own search question runs the search
+     after the answers, never before, and a no runs nothing. */
+  "scripts/__harness/search-after.cjs",
 ]) {
   const run = spawn("node", [walk], { stdio: "inherit" });
   const code = await new Promise((resolve) => run.on("close", resolve));

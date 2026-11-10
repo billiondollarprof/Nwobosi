@@ -409,7 +409,7 @@ export function TypewriterText({ text, speed = 18 }) {
    again rather than carrying on from wherever the last one had got to.
    -------------------------------------------------------------------------- */
 
-export function Thinking({ stage = "orient", stalled = false }) {
+export function Thinking({ stage = "orient", stalled = false, retrying = false }) {
   const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
@@ -421,41 +421,49 @@ export function Thinking({ stage = "orient", stalled = false }) {
     return () => clearInterval(id);
   }, [stage]);
 
-  const word = thinkingWord(stage, elapsed, { stalled });
+  const word = thinkingWord(stage, elapsed, { stalled, retrying });
+  const seconds = Math.floor(elapsed / 1000);
 
   return (
     /* aria-live so somebody using a screen reader hears the line change
        rather than sitting in silence. polite, not assertive, because it
        must not cut across them mid sentence. */
     <div
-      className="flex items-baseline text-[13px] font-medium"
+      className="flex items-center gap-2 text-[13px] font-medium"
       /* THE PLATFORM'S OWN NAVY, not the faintest grey in the palette.
          Anthony, 2026-09-21: "reading, thinking is too faint... use the
          platform's color, which is the navy blue, when the system is
-         running." The moment this line matters most is the moment somebody
-         is wondering whether the thing has died, so it has to be seen. */
+         running." */
       style={{ color: "var(--working)", animation: "sx-rise 0.35s ease" }}
       aria-live="polite"
     >
-      <span>{word}</span>
+      {/* THE PULSING MARK. Anthony, 2026-11-10, pointing at Claude's own
+          "Musing..." line: a mark that breathes beside a word that
+          shimmers, so it reads as alive from across the room. */}
+      <span aria-hidden="true" className="sx-working-mark" />
 
-      {/* THE DOTS BELONG TO THE WORD, not beside it.
+      {/* THE WORD SHIMMERS. A light band passes over the letters; the
+          colour underneath is still the navy, so it stays readable. */}
+      <span className="sx-working-word">{word}</span>
 
-          An earlier version put a row of dots to the left and the word to
-          the right, and it read as two separate things both saying "wait". One
-          animated ellipsis on the end of the sentence is what a person
-          already understands, and it is what Anthony asked for: "analyzing
-          ..., getting ready...".
-
-          aria-hidden because "dot dot dot" read out three times a second is
-          not information, it is noise. The word above already said it. */}
-      <span aria-hidden="true" className="inline-flex">
+      {/* THE DOTS BELONG TO THE WORD. aria-hidden because "dot dot dot" read
+          out three times a second is noise. */}
+      <span aria-hidden="true" className="inline-flex -ml-2">
         {[0, 1, 2].map((i) => (
           <span key={i} style={{ animation: "sx-dot 1.4s ease infinite", animationDelay: `${i * 0.18}s` }}>
             .
           </span>
         ))}
       </span>
+
+      {/* THE CLOCK, after a few seconds. A count that keeps moving is the
+          plainest proof it has not frozen. It counts up, never down, so it
+          never promises when it will finish. */}
+      {seconds >= 4 && (
+        <span aria-hidden="true" className="text-[12px] font-normal" style={{ color: "var(--text-3)" }}>
+          · {seconds}s
+        </span>
+      )}
     </div>
   );
 }

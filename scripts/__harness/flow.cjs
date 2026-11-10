@@ -52,14 +52,14 @@ function check(name, cond) { (cond ? OK : BAD).push(name); }
   await page.waitForTimeout(1200);
 
   check('the first turn raises the search card', await page.locator('text=May I look this up online?').count() > 0);
-  check('it has NOT offered the interview yet', await page.locator('text=Want me to ask you a few questions?').count() === 0);
+  check('it has NOT offered the interview yet', await page.locator('text=Is that right?').count() === 0);
 
   /* 2. Turn the search down. This is where it used to die: orient runs
         again, asks to search again, and there is no way onward. */
   await page.locator('button', { hasText: 'No, work with what you have' }).first().click();
   await page.waitForTimeout(1400);
 
-  const offered = await page.locator('text=Want me to ask you a few questions?').count() > 0;
+  const offered = await page.locator('text=Is that right?').count() > 0;
   check('THE FIX: the offer goes up even though it asked to search again', offered);
   check('and it does not raise a second search card', await page.locator('text=May I look this up online?').count() === 0);
 
@@ -71,7 +71,7 @@ function check(name, cond) { (cond ? OK : BAD).push(name); }
   /* 3. Take the interview, which should hand off to the analysis on its
         own and land on the Build card with nobody pressing anything. */
   if (offered) {
-    await page.locator('button', { hasText: 'Ask me a few questions' }).first().click();
+    await page.locator('button', { hasText: 'Yes, ask what you need' }).first().click();
     await page.waitForTimeout(2200);
     check('the read back arrived and the Build card is up', await page.locator('text=Did I get that right?').count() > 0);
     await page.screenshot({ path: '/tmp/claude-0/flow-build.png', fullPage: true });
@@ -109,12 +109,12 @@ function check(name, cond) { (cond ? OK : BAD).push(name); }
   await page.waitForTimeout(1400);
 
   check('the offer and the search card can be on screen together',
-    (await page.locator('text=Want me to ask you a few questions?').count()) > 0 &&
+    (await page.locator('text=Is that right?').count()) > 0 &&
     (await page.locator('text=May I look this up online?').count()) > 0);
 
   /* Take the interview, which lands on a read back that also suggests a
      search. Both cards again, and this is the case he described. */
-  await page.locator('button', { hasText: 'Ask me a few questions' }).first().click();
+  await page.locator('button', { hasText: 'Yes, ask what you need' }).first().click();
   await page.waitForTimeout(2400);
 
   const bothAfterReadback =
@@ -185,7 +185,7 @@ function check(name, cond) { (cond ? OK : BAD).push(name); }
   await page.locator('textarea').first().fill('Make me a one page FAQ');
   await page.keyboard.press('Enter');
   await page.waitForTimeout(1400);
-  await page.locator('button', { hasText: 'Just get on with it' }).first().click();
+  await page.locator('button', { hasText: 'Yes, start now' }).first().click();
   await page.waitForTimeout(2200);
 
   check('the first read back arrived', (await page.locator('text=Did I get that right?').count()) > 0);
@@ -246,9 +246,9 @@ function check(name, cond) { (cond ? OK : BAD).push(name); }
   await page.locator('textarea').first().fill('Make me a one page FAQ');
   await page.keyboard.press('Enter');
   await page.waitForTimeout(1400);
-  await page.locator('button', { hasText: 'Just get on with it' }).first().click();
+  await page.locator('button', { hasText: 'Yes, start now' }).first().click();
   await page.waitForTimeout(2200);
-  await page.locator('button', { hasText: 'Go ahead, build it' }).first().click();
+  await page.locator('button', { hasText: 'Go ahead with' }).first().click();
   await page.waitForTimeout(2600);
 
   /* THE FILE IS THE DELIVERABLE, NOT THE MESSAGE.
@@ -340,7 +340,7 @@ function check(name, cond) { (cond ? OK : BAD).push(name); }
   await page.locator('textarea').first().fill('Make me a one page FAQ as a document');
   await page.keyboard.press('Enter');
   await page.waitForTimeout(1400);
-  await page.locator('button', { hasText: 'Ask me a few questions' }).first().click();
+  await page.locator('button', { hasText: 'Yes, ask what you need' }).first().click();
   await page.waitForTimeout(2400);
 
   check('THE GUARD: a read back with no marker still offers the Build card',
@@ -387,9 +387,9 @@ function check(name, cond) { (cond ? OK : BAD).push(name); }
   await page.locator('textarea').first().fill('Make me a one page FAQ');
   await page.keyboard.press('Enter');
   await page.waitForTimeout(1400);
-  await page.locator('button', { hasText: 'Just get on with it' }).first().click();
+  await page.locator('button', { hasText: 'Yes, start now' }).first().click();
   await page.waitForTimeout(2200);
-  await page.locator('button', { hasText: 'Go ahead, build it' }).first().click();
+  await page.locator('button', { hasText: 'Go ahead with' }).first().click();
   await page.waitForTimeout(2200);
 
   check('an empty plan does NOT silently build a document',
@@ -412,9 +412,9 @@ function check(name, cond) { (cond ? OK : BAD).push(name); }
   await page.locator('textarea').first().fill('Make me a one page FAQ');
   await page.keyboard.press('Enter');
   await page.waitForTimeout(1400);
-  await page.locator('button', { hasText: 'Just get on with it' }).first().click();
+  await page.locator('button', { hasText: 'Yes, start now' }).first().click();
   await page.waitForTimeout(2200);
-  await page.locator('button', { hasText: 'Go ahead, build it' }).first().click();
+  await page.locator('button', { hasText: 'Go ahead with' }).first().click();
   await page.waitForTimeout(2600);
 
   check('an empty document says so rather than leaving a stopped spinner',

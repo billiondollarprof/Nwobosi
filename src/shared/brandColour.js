@@ -122,20 +122,31 @@ export async function colourFromImage(blob) {
 }
 
 /* --------------------------------------------------------------------------
-   4. Save it, only if the company has none yet
+   4. Save it, and where it came from, only if the company has none yet
    The update itself carries the "is null" condition, so two uploads at once
    cannot both write, and an admin's own colour is never replaced.
    -------------------------------------------------------------------------- */
 
-export async function rememberBrandColour(companyId, colour) {
+export async function rememberBrandColour(companyId, colour, fromName = "") {
   if (!companyId || !/^#[0-9A-F]{6}$/i.test(colour ?? "")) return false;
-  try {
-    const { data, error } = await supabase
+
+  /* WHERE IT CAME FROM goes beside it, so the knowledge map can say "found
+     in Amara brand guide". Anthony, 2026-11-10. The column is new
+     (20261110120000_brand_color_source.sql). Until it exists the update is
+     refused for naming it, so it is tried again without, and the colour
+     itself is never lost to a missing column. */
+  const attempt = (fields) =>
+    supabase
       .from("companies")
-      .update({ brand_color: colour })
+      .update(fields)
       .eq("id", companyId)
       .is("brand_color", null)
       .select("id");
+
+  try {
+    const from = String(fromName ?? "").trim().slice(0, 200);
+    let { data, error } = await attempt(from ? { brand_color: colour, brand_color_source: from } : { brand_color: colour });
+    if (error && from) ({ data, error } = await attempt({ brand_color: colour }));
     return !error && (data ?? []).length > 0;
   } catch {
     return false;

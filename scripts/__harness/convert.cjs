@@ -67,7 +67,7 @@ async function convertWalk(browser, label, { file, words, to, converter }) {
 
   check(`${label}: the card says what it made`, text.includes(expected) && text.includes(to === 'pdf' ? 'Ready as a PDF' : 'Ready as a Word file'));
   check(`${label}: the word check ran and is said`, /Every word came across|did not come across/.test(text));
-  check(`${label}: no interview, no read back`, (await page.locator('text=Want me to ask you a few questions?').count()) === 0
+  check(`${label}: no interview, no read back`, (await page.locator('text=Is that right?').count()) === 0
     && (await page.evaluate(() => (window.__TURNS || []).join(','))) === 'orient');
   check(`${label}: the CONVERT line never shows`, !(await page.locator('text=CONVERT:').count()));
 
@@ -126,7 +126,7 @@ async function convertWalk(browser, label, { file, words, to, converter }) {
     await page.locator('button', { hasText: 'Arrange it for me' }).first().click();
     await page.waitForTimeout(1800);
     check('ARRANGE: it is asked for in words the person can see', (await page.locator('text=Lay out engagement.docx properly').count()) === 1);
-    check('ARRANGE: it goes the normal way, starting with the offer', (await page.locator('text=Want me to ask you a few questions?').count()) === 1);
+    check('ARRANGE: it goes the normal way, starting with the offer', (await page.locator('text=Is that right?').count()) === 1);
     check('ARRANGE: nothing is built without a read back', (await page.evaluate(() => (window.__TURNS || []).filter((s) => s === 'generate').length)) === 0);
     check('ARRANGE: no page errors' + (errs.length ? ' -> ' + errs.join(' | ') : ''), errs.length === 0);
     await page.close();

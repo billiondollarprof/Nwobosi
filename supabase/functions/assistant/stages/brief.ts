@@ -1,0 +1,103 @@
+/* THE PROMPT. Anthony, 2026-09-10, and this is the part he says the whole
+   product turns on: "it's the prompt and the build that are together."
+
+   WHERE IT SITS. The read back is conversation. It happens in the chat,
+   the person corrects it, and the conversation carries on until they are
+   happy. The moment they say go, this runs and the writing follows it
+   with nobody pressing anything else. Prompt and build are one action.
+
+   WHY A SEPARATE STAGE AT ALL, when one model runs both halves today.
+   Two reasons. It is the second guardrail: the writing stage is handed
+   this and may not go outside it, so nothing reaches the document that
+   was not agreed in the conversation. And it is the boundary a bigger
+   model is handed the work at, for a deployment that needs one. See
+   DIRECTION.md, "Which model runs which part".
+
+   THE PERSON NEVER READS THIS. The product principle keeps two things
+   visible, the read back and the sources, and hides everything else.
+   This is machinery. It is stored so it can be looked at later, and it
+   does not go on screen. */
+export const BRIEF = [
+  "",
+  "RIGHT NOW: WRITE THE BRIEF THAT THE DOCUMENT WILL BE BUILT FROM",
+  "They have confirmed your read back. Turn everything agreed in this",
+  "conversation into one complete instruction for producing the work.",
+  "",
+  "Nobody reads this except the step that writes the document, so write it for",
+  "that. No greeting, no commentary, no explaining what you are about to do.",
+  "Start with the words WHAT IS BEING MADE. Nothing before them: not \"I have what I",
+  "need\", not \"Now the brief\". The person can open this plan and read it.",
+  "",
+  "COVER EVERY ONE OF THESE, and nothing else:",
+  "  - what is being made, in one line",
+  "  - which file it becomes: Word, PDF, slides or a spreadsheet. Their last",
+  "    message says which, and it wins over anything said before it. Plan the",
+  "    shape for that file: slides are short sections of a few points each, and",
+  "    a spreadsheet is the work laid out as a table.",
+  "  - who reads it, and what they should think or do afterwards",
+  "  - the shape: length, sections, and the order they come in",
+  "  - LENGTH IS A PROMISE. One page means one printed A4 page: about 250 words in",
+  "    all, three short sections at most, and ONE design block only (one stat, or one",
+  "    set of cards, or one set of steps, or one table). Two pages, about 600 words.",
+  "    Plan the length they asked for, and cut to fit rather than squeeze. Text stays",
+  "    at a readable size.",
+  "  - FIT, NEVER TRUNCATE. Anthony, 2026-11-10: \"Fitting into a page doesn't mean",
+  "    that it will truncate the details, it still has to end every file well.\" So",
+  "    write HOW the content fits the pages, as part of the plan: what is said in",
+  "    full, what is tightened to a line, what becomes a table or a stat because that",
+  "    says more in less room, and what is left out because it matters least. Every",
+  "    point that was agreed still has a place. The last section is planned too, so",
+  "    the document ends properly (a close, a next step, a contact) and never just",
+  "    stops where the space ran out.",
+  "  - THE DESIGN PLAN for that file. Anthony: \"I don't want it to be doing basic",
+  "    output but top tier formatted documents that the staff won't have any need to",
+  "    edit.\" So plan how it LOOKS, not only what it says. The writing step has these",
+  "    layouts: cards (two to four side by side, each a title, a one or two word",
+  "    kicker and two or three lines), steps (the same, numbered, for a sequence),",
+  "    stat (one real figure, its caption, and the story beside it), a table, and a",
+  "    takeaway strip (the one line a section means). Each main section can also",
+  "    carry a short label, like Problem, Pricing or Next steps.",
+  "      Slides: plan slide by slide. For each slide, its label, its title, and ONE",
+  "      layout from that list or a few short bullet points, plus its takeaway line.",
+  "      Six to twelve slides. No slide is a wall of text.",
+  "      Word or PDF: say where a comparison becomes cards, where one figure is",
+  "      pulled out as a stat, where numbers go in a table, which sections close on a",
+  "      takeaway, and the label for each main section.",
+  "      Pictures: which picture goes where, by its exact file name, and its",
+  "      caption. Only pictures attached in this conversation or named in the",
+  "      company sources, or a named spot they chose to fill later.",
+  "      If they said skip, write exactly \"Pictures: none\" and nothing else here.",
+  "      Each picture's credit, when they gave one.",
+  "      Charts: where a set of numbers is easier to see than to read, one chart,",
+  "      its kind, its caption, and the source its numbers come from, by name.",
+  "      Pick the kind by what the numbers say: a comparison of things is column",
+  "      (or bar when the names are long), a change over time is line (area for a",
+  "      running total), parts of one whole is pie or doughnut (six slices at most),",
+  "      parts that add up across groups is stacked, how raw values spread is",
+  "      histogram, one number against another is scatter. No chart where a sentence",
+  "      or a small table says it better, and never a chart of one number.",
+  "      Layout: ONLY if they asked for an attached file's layout, write the line",
+  "      \"Layout: like <its exact file name>\" and plan the sections to follow that",
+  "      file's LAYOUT block (the same sections in the same order, lists, tables and",
+  "      pictures where it has them). Its style (font, colour, margins) is applied by",
+  "      the app from that line. Without their ask, write no Layout line at all.",
+  "      Spreadsheet: each table, its columns in order, what kind each column is",
+  "      (money, percent, number, date or text), and a Total row wherever the",
+  "      numbers add up.",
+  "  - the voice, and where that voice came from",
+  "  - every company fact the document must use, written out in full, with the",
+  "    source named beside it. Do not write 'use the pricing from the pricing",
+  "    file'. Write the actual price. The writing step should not have to go",
+  "    looking for anything.",
+  "  - anything found outside the company that they approved, with its source",
+  "  - anything they told you NOT to do, and any number or claim they ruled",
+  "    out. These matter more than the rest, because they are the corrections",
+  "    somebody made on purpose.",
+  "  - what is missing, if anything, and what the document does about it",
+  "",
+  "DO NOT ADD ANYTHING THAT WAS NOT AGREED. This is the fence the writing step",
+  "runs inside. A fact that appears here for the first time is a fact nobody",
+  "approved, and it will end up in their document with your name on it.",
+  "",
+  "Output the brief and nothing else.",
+].join("\n");

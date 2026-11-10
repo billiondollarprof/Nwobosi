@@ -54,7 +54,7 @@ export const FORMAT_SHORT = {
   docx: "Word",
   pdf: "PDF",
   pptx: "Slides",
-  xlsx: "Spreadsheet",
+  xlsx: "Excel",
 };
 
 /* THE LINE IN THE REPLY. `FORMAT: docx` on its own, anywhere in the turn.

@@ -85,6 +85,7 @@ export const THEME_VARS = {
        navyLift rather than the brand navy, because #1420A0 reads as almost
        black on this ground. The light theme below uses the real navy. */
     "--working": "#2E42E0",
+    "--working-shine": "rgba(190, 200, 255, 1)",
     /* Caution and all clear, as text on their own tinted panels. Both are
        theme aware because the brand amber and green were picked to sit on
        a near black ground, and on a white card they turn into pale text
@@ -178,6 +179,7 @@ export const THEME_VARS = {
 
     /* The brand navy itself here, which is what it was made for. */
     "--working": "#1420A0",
+    "--working-shine": "rgba(120, 140, 255, 1)",
     "--caution": "#9A5B00",
     "--all-clear": "#0C7A31",
     "--audience-open": "#1420A0",
