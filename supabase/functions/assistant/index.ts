@@ -42,6 +42,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk@0.68.0";
 import { centsExact, clientFor, modelFor, supportsAdaptiveThinking, vendorForCompany, type Vendor } from "../_shared/brain.ts";
 import { readPage, SEARCH_TOOL_SCHEMAS, webSearch, MAX_FETCHES, MAX_SEARCHES } from "../_shared/search.ts";
+import { knowledgeMap } from "../_shared/knowledgeMap.ts";
 /* Each stage's instruction lives in its own file, so one stage can be read
    and changed without scrolling past the others. Anthony, 2026-11-10: each
    stage its own skill. */
@@ -810,7 +811,7 @@ Deno.serve(async (req: Request) => {
      exists by name. The words themselves follow further down. */
   const { data: sources } = await asUser
     .from("knowledge_sources")
-    .select("id, name, description, status")
+    .select("id, name, description, status, kind, location")
     .eq("company_id", staff.company_id);
 
   /* Only sources that finished being read. Offering the model something
@@ -994,8 +995,25 @@ Deno.serve(async (req: Request) => {
         parts.push(`--- FROM: ${byName.get(chunk.source_id) ?? "a company source"} ---\n${slice}`);
       }
 
+      /* THE KNOWLEDGE MAP goes first, so the model can find the right
+         source by name before it reads the text. Built from every word each
+         source holds, before the ceiling above trims anything, so it is
+         honest about what exists even when not all of it is sent. */
+      const fullText = new Map<string, string>();
+      for (const chunk of chunks) {
+        fullText.set(chunk.source_id, (fullText.get(chunk.source_id) ?? "") + "\n" + String(chunk.content ?? ""));
+      }
+      const map = knowledgeMap(
+        readySources.map((s) => ({ name: s.name, description: s.description, kind: s.kind, location: s.location, text: fullText.get(s.id) ?? "" })),
+        { colour: company.brand_color as string | null, from: (company as Record<string, unknown>).brand_color_source as string | null },
+      );
+
       if (parts.length) {
         sourceContents = [
+          "",
+          map,
+          "Use the map to find the right source, then read that source below. Do not",
+          "read the map out to people; name a source only when it matters.",
           "",
           "WHAT THOSE SOURCES ACTUALLY SAY",
           "The text of the company material listed above. This is theirs, it is",

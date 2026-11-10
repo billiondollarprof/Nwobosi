@@ -207,7 +207,7 @@ export async function addTextSource({
 
   /* A brand colour named in their own material becomes the company's colour,
      if it has none yet. Never fails the upload. See brandColour.js. */
-  await rememberBrandColour(companyId, colourFromText(text));
+  await rememberBrandColour(companyId, colourFromText(text), name);
 
   return { ok: true, source: { ...source, status: "ready" }, chunks: chunks.length };
 }
@@ -329,7 +329,7 @@ export async function addImageSource({
      happens inside it, so nothing is left saying "being read" forever. */
   /* A logo or brand picture: its strongest colour becomes the company's
      colour, if it has none yet. Never fails the upload. See brandColour.js. */
-  await rememberBrandColour(companyId, await colourFromImage(blob));
+  await rememberBrandColour(companyId, await colourFromImage(blob), name);
 
   let read = 0;
   try {

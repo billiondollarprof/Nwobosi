@@ -37,6 +37,7 @@ import PublishGate from "../shared/PublishGate.jsx";
 import ConfirmDelete from "../shared/ConfirmDelete.jsx";
 import RefreshOrKeep from "../shared/RefreshOrKeep.jsx";
 import AudienceControl from "../shared/AudienceControl.jsx";
+import KnowledgeMapPanel from "../shared/KnowledgeMapPanel.jsx";
 import { BRAND, GRADIENTS, FONTS } from "../shared/tokens";
 import {
   PageShell,
@@ -1783,6 +1784,9 @@ export function KnowledgeSection({ me, loading: loadingMe }) {
       </div>
 
       <Disagreements items={clashes} onResolve={markSorted} busyId={clashBusy} />
+
+      {/* The same short map the assistant reads first. See KnowledgeMapPanel.jsx. */}
+      <KnowledgeMapPanel items={items} company={me?.company} />
 
       {/* What is in the index */}
       <GlassPanel className="p-6">
