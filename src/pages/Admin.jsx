@@ -2109,6 +2109,10 @@ export function AccessSection({ me }) {
              this version of the product understands. */
           ceiling: levelOf(r.model_ceiling),
           canSupport: r.can_support === true,
+          /* Admins have no document limits: the money meter is their cap
+             (Anthony, 2026-11-10). Their row says so instead of offering
+             a number that would do nothing. */
+          isAdmin: r.access_level === "admin",
           limit: r.daily_limit ?? 20,
           /* ADMIN CONTROL, 2026-11-10: what they made, when they were last
              around, a weekly limit and whether they are paused. */
@@ -2656,6 +2660,12 @@ export function AccessSection({ me }) {
                   is picking from one list in both places. The meter stays
                   underneath it, because how many they have used is the
                   thing that tells you whether to raise it. */}
+              {person.isAdmin && (
+                <span className="shrink-0 text-[12.5px]" style={{ color: "var(--text-3)" }}>
+                  No document limit
+                </span>
+              )}
+              {!person.isAdmin && (
               <div className="shrink-0 w-[112px]">
                 <SelectInput
                   value={String(person.limit)}
@@ -2673,11 +2683,12 @@ export function AccessSection({ me }) {
                   <UsageMeter used={person.used} limit={person.limit} />
                 </div>
               </div>
+              )}
 
               {/* A WEEKLY LIMIT, as well as the daily one. "No weekly limit"
                   leaves only the daily one in force. Offered once the
                   database update has run, so it never pretends to save. */}
-              {controlsReady && (
+              {controlsReady && !person.isAdmin && (
                 <div className="shrink-0 w-[152px]">
                   <SelectInput
                     value={person.weekly ? String(person.weekly) : ""}
