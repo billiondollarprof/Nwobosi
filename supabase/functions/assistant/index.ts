@@ -577,6 +577,12 @@ async function streamWithRoomToWrite(
    arrived closes cleanly instead of being cut off mid question. */
 const MAX_INTERVIEW_TURNS = 5;
 
+/* Changes to a finished document a person may make in one day. Anthony,
+   2026-11-10: changes do not count as new documents, "but you can cap the
+   total changes to maybe 20... in case the person keeps making changes."
+   The money meter stays the cap over everything. */
+const CHANGES_A_DAY = 20;
+
 /* What this particular turn is for. Appended after the cached base so the
    prefix above stays byte identical across stages. */
 const STAGE_PROMPT: Record<string, string> = {
@@ -841,7 +847,15 @@ Deno.serve(async (req: Request) => {
     }, 403);
   }
 
-  if (stage === "brief") {
+  /* Anthony, 2026-11-10: "let admin not get any limits. The cap is just
+     the $2." And a change to a finished document is not a new document:
+     changes have their own cap of CHANGES_A_DAY, and only new documents
+     count against the daily and weekly limits. The app says which a build
+     is; a client lying about it still meets the change cap and the meter. */
+  const isAdmin = staff.access_level === "admin";
+  const revision = body?.revision === true;
+
+  if (stage === "brief" && !isAdmin) {
     const dailyLimit = Number(staff.daily_limit ?? mine.daily_limit ?? 0) || 0;
     const weeklyLimit = Number(mine.weekly_limit ?? 0) || 0;
     const startOfToday = new Date();
@@ -850,13 +864,26 @@ Deno.serve(async (req: Request) => {
 
     const { data: made } = await serviceClient
       .from("work_history")
-      .select("created_at")
+      .select("created_at, brief")
       .eq("staff_id", user.id)
       .gte("created_at", weekAgo.toISOString());
-    const thisWeek = (made ?? []).length;
-    const today = (made ?? []).filter((r) => new Date(r.created_at as string) >= startOfToday).length;
+    const isChange = (r: { brief?: unknown }) => (r.brief as { revision?: boolean } | null)?.revision === true;
+    const isToday = (r: { created_at?: unknown }) => new Date(r.created_at as string) >= startOfToday;
+    const documents = (made ?? []).filter((r) => !isChange(r));
+    const thisWeek = documents.length;
+    const today = documents.filter(isToday).length;
+    const changesToday = (made ?? []).filter((r) => isChange(r) && isToday(r)).length;
 
-    if (dailyLimit > 0 && today >= dailyLimit) {
+    if (revision) {
+      if (changesToday >= CHANGES_A_DAY) {
+        return json({
+          ok: false,
+          reason: "daily_limit",
+          message: `You have made ${changesToday} changes to documents today, which is the most for one day. ` +
+            "It starts again tomorrow, or ask your admin.",
+        }, 429);
+      }
+    } else if (dailyLimit > 0 && today >= dailyLimit) {
       return json({
         ok: false,
         reason: "daily_limit",
@@ -864,7 +891,7 @@ Deno.serve(async (req: Request) => {
           "It starts again tomorrow, or ask your admin for more.",
       }, 429);
     }
-    if (weeklyLimit > 0 && thisWeek >= weeklyLimit) {
+    if (!revision && weeklyLimit > 0 && thisWeek >= weeklyLimit) {
       return json({
         ok: false,
         reason: "weekly_limit",

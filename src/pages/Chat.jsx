@@ -465,6 +465,10 @@ export default function Chat() {
      again on its own (assistantApi.js, "One quiet retry"). The waiting line
      says so. Cleared the moment the turn ends either way. */
   const [retrying, setRetrying] = useState(false);
+
+  /* Whether the build running now is a change to a document this chat
+     already made. Read when the finished work is saved. */
+  const revisionRef = useRef(false);
   useEffect(() => {
     if (!typing) setRetrying(false);
   }, [typing]);
@@ -1717,6 +1721,12 @@ export default function Chat() {
     const current = messagesRef.current.filter((m) => m.type !== "build");
     const convo = said ? [...current, said] : current;
 
+    /* A CHANGE, NOT A NEW DOCUMENT, when this chat already finished one.
+       Anthony, 2026-11-10: changes do not count against the daily
+       documents; they have their own cap. The server counts them apart. */
+    const revision = current.some((m) => m.type === "result");
+    revisionRef.current = revision;
+
     setGenerating(true);
     updateMessages((prev) => [
       ...prev.filter((m) => m.type !== "build"),
@@ -1738,6 +1748,7 @@ export default function Chat() {
 
     abortTurnRef.current = sendTurn({
       stage: "brief",
+      revision,
       /* The build does not go through runTurn, so it has to carry the
          accepted findings itself. Missing this once meant a person could
          approve a figure, watch it appear on screen, and never see it in
@@ -2094,6 +2105,7 @@ export default function Chat() {
             title,
             skill: autoSkill,
             content: finished,
+            revision: revisionRef.current,
           });
         }
 

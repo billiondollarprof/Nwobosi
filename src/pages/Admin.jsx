@@ -2109,7 +2109,7 @@ export function AccessSection({ me }) {
              this version of the product understands. */
           ceiling: levelOf(r.model_ceiling),
           canSupport: r.can_support === true,
-          limit: r.daily_limit ?? 5,
+          limit: r.daily_limit ?? 20,
           /* ADMIN CONTROL, 2026-11-10: what they made, when they were last
              around, a weekly limit and whether they are paused. */
           used: work.get(r.id)?.today ?? 0,
@@ -2128,7 +2128,7 @@ export function AccessSection({ me }) {
   const [inviteName, setInviteName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("");
-  const [inviteLimit, setInviteLimit] = useState(5);
+  const [inviteLimit, setInviteLimit] = useState(20);
   const [inviting, setInviting] = useState(false);
   const [inviteError, setInviteError] = useState("");
 
@@ -2184,7 +2184,7 @@ export function AccessSection({ me }) {
       email: inviteEmail.trim(),
       role: inviteRole.trim(),
       ceiling: DEFAULT_LEVEL,
-      dailyLimit: Number(inviteLimit) || 5,
+      dailyLimit: Number(inviteLimit) || 20,
     });
 
     setInviting(false);
@@ -2213,7 +2213,7 @@ export function AccessSection({ me }) {
              so that the day anything does show it, it shows a level
              this version of the product understands. */
           ceiling: levelOf(r.model_ceiling),
-          limit: r.daily_limit ?? 5,
+          limit: r.daily_limit ?? 20,
           used: 0,
         }))
       );
@@ -2223,7 +2223,7 @@ export function AccessSection({ me }) {
     setInviteName("");
     setInviteEmail("");
     setInviteRole("");
-    setInviteLimit(5);
+    setInviteLimit(20);
   }
 
   /* WHO THE CONFIRMATION IS ASKING ABOUT. null means no dialog is open.
@@ -2900,7 +2900,8 @@ function PersonWork({ person }) {
       {recent.map((w) => (
         <div key={w.id}>
           <p className="text-[13.5px] font-medium break-words" style={{ color: "var(--text-1)" }}>
-            {w.title || "Untitled"}{" "}
+            {w.title || "Untitled"}
+            {w.change ? <span className="font-normal" style={{ color: "var(--text-3)" }}> (a change)</span> : null}{" "}
             <span className="font-normal text-[12px]" style={{ color: "var(--text-3)" }}>
               · {sinceWords(w.created_at)}
             </span>
