@@ -381,22 +381,24 @@ const RUNNING = "running-header-or-footer";
 /* `plain`: a conversion (convert/convertFile.js). No title block, no
    running header and no page numbers, because the original did not have
    them and a conversion adds nothing. */
-export function pdfDefinition(doc, t = themeFor(), brand = null, images = null, { plain = false } = {}) {
+export function pdfDefinition(doc, t = themeFor(), brand = null, images = null, { plain = false, compact = false } = {}) {
   const titleBlock = plain || !doc.title ? [] : [
     ...(brand?.name ? [{ text: brand.name.toUpperCase(), fontSize: 9.5, bold: true, color: hex(t.accent), characterSpacing: 1.2, margin: [0, 0, 0, 6] }] : []),
-    { text: doc.title, fontSize: THEME.size.title, bold: true, color: hex(THEME.ink), lineHeight: 1.15 },
+    { text: doc.title, fontSize: compact ? 20 : THEME.size.title, bold: true, color: hex(THEME.ink), lineHeight: 1.15 },
     ...(doc.subtitle
       ? [{ text: doc.subtitle, fontSize: THEME.size.subtitle, color: hex(THEME.muted), margin: [0, 6, 0, 0] }]
       : []),
     /* A short accent bar under the title. */
-    { canvas: [{ type: "rect", x: 0, y: 0, w: 44, h: 3, color: hex(t.accent) }], margin: [0, 14, 0, 18] },
+    { canvas: [{ type: "rect", x: 0, y: 0, w: 44, h: 3, color: hex(t.accent) }], margin: compact ? [0, 8, 0, 8] : [0, 14, 0, 18] },
   ];
 
   return {
     pageSize: "A4",
-    pageMargins: [56, 64, 56, 64],
+    /* COMPACT is the one page fit, see pdfBlob below: narrower margins and
+       tighter lines. The text size never changes. */
+    pageMargins: compact ? [40, 40, 40, 40] : [56, 64, 56, 64],
     info: { title: doc.title },
-    defaultStyle: { font: "Roboto", fontSize: THEME.size.body, color: hex(THEME.body), lineHeight: 1.35 },
+    defaultStyle: { font: "Roboto", fontSize: THEME.size.body, color: hex(THEME.body), lineHeight: compact ? 1.2 : 1.35 },
 
     /* The title again, small, from page two on, so a printed page that gets
        separated from the rest still says what it belongs to. */
@@ -413,7 +415,7 @@ export function pdfDefinition(doc, t = themeFor(), brand = null, images = null, 
       margin: [0, 26, 0, 0],
     }),
 
-    content: [...titleBlock, ...blocksToPdf(doc.blocks, t, images)],
+    content: [...titleBlock, ...(compact ? tighten(blocksToPdf(doc.blocks, t, images)) : blocksToPdf(doc.blocks, t, images))],
 
     /* A HEADING NEVER ENDS A PAGE. If nothing that follows a heading fits
        on the same page, the heading moves to the next page with it. */
@@ -437,5 +439,46 @@ export async function pdfBlob(doc, t = themeFor(), brand = null, images = null, 
     import("pdfmake/build/vfs_fonts.js"),
   ]);
   pdfMake.addVirtualFileSystem(fonts.default ?? fonts);
-  return pdfMake.createPdf(pdfDefinition(doc, t, brand, images, options)).getBlob();
+  const first = await pdfMake.createPdf(pdfDefinition(doc, t, brand, images, options)).getBlob();
+
+  /* ONE PAGE MEANS ONE PAGE. Anthony, 2026-11-10: a "one page summary" came
+     out at a page and a half, which he called a deal breaker. When the person
+     asked for one page and the first build runs over, it is built again with
+     the spacing tightened. The text size is never touched (11 point floor).
+     If even that does not fit, the tighter one is still the better file. */
+  if (options.pages === 1) {
+    try {
+      if ((await pageCount(first)) > 1) {
+        return await pdfMake.createPdf(pdfDefinition(doc, t, brand, images, { ...options, compact: true })).getBlob();
+      }
+    } catch (error) {
+      /* The fit is a nicety. A failure here must never cost them the file. */
+      console.warn("could not fit to one page, giving the normal file", error);
+    }
+  }
+  return first;
+}
+
+/* Pages in a finished PDF, counted from the file itself. */
+async function pageCount(blob) {
+  const text = await blob.text();
+  return (text.match(/\/Type\s*\/Page(?!s)\b/g) ?? []).length;
+}
+
+/* Every vertical margin in the content, scaled down, for the one page fit. */
+function tighten(nodes) {
+  const shrink = (margin) =>
+    Array.isArray(margin) && margin.length === 4
+      ? [margin[0], Math.round(margin[1] * 0.55), margin[2], Math.round(margin[3] * 0.55)]
+      : margin;
+  const walk = (node) => {
+    if (Array.isArray(node)) return node.map(walk);
+    if (!node || typeof node !== "object") return node;
+    const out = { ...node };
+    if (out.margin) out.margin = shrink(out.margin);
+    for (const key of ["stack", "columns", "ul", "ol"]) if (out[key]) out[key] = walk(out[key]);
+    if (out.table?.body) out.table = { ...out.table, body: out.table.body.map((row) => row.map(walk)) };
+    return out;
+  };
+  return walk(nodes);
 }

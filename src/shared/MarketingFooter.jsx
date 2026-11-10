@@ -34,7 +34,7 @@ const COLUMNS = [
          card describing it. `href` instead of `to` is what the renderer
          reads to know this one leaves the site. */
       { label: "Amara", href: "https://amara.ng" },
-      { label: "XALOM", to: "/#products" },
+      { label: "XALOM", href: "https://xalom.stellaxafe.com" },
     ],
   },
 ];

@@ -38,7 +38,6 @@ import { PRODUCT } from "./config.js";
    picture of one, so there is nothing else to send someone to see. */
 export const NAV_LINKS = [
   { label: "Services", to: "/services" },
-  { label: "Products", to: "/#products" },
   { label: "Demo", to: "/setup" },
   { label: "Insights", to: "/insights" },
   { label: "Founder", to: "/founder" },
