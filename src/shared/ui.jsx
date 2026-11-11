@@ -8,6 +8,7 @@ import { forwardRef, useEffect, useRef, useState } from "react";
 import { Sun, Moon } from "lucide-react";
 import { useTheme } from "./theme.jsx";
 import { BRAND, GRADIENTS, FONTS } from "./tokens";
+import { LogoMark } from "./icons.jsx";
 import { thinkingWord } from "./thinkingWords.js";
 
 /* --------------------------------------------------------------------------
@@ -415,8 +416,6 @@ export function Thinking({ stage = "orient", stalled = false, retrying = false }
   useEffect(() => {
     setElapsed(0);
     const started = Date.now();
-    /* Ticks faster than the words change so the line never sits a beat
-       longer than it should. Cheap: one setState of a number. */
     const id = setInterval(() => setElapsed(Date.now() - started), 1000);
     return () => clearInterval(id);
   }, [stage]);
@@ -425,46 +424,36 @@ export function Thinking({ stage = "orient", stalled = false, retrying = false }
   const seconds = Math.floor(elapsed / 1000);
 
   return (
-    /* aria-live so somebody using a screen reader hears the line change
-       rather than sitting in silence. polite, not assertive, because it
-       must not cut across them mid sentence. */
-    <div
-      className="flex items-center gap-2 text-[13px] font-medium"
-      /* THE PLATFORM'S OWN NAVY, not the faintest grey in the palette.
-         Anthony, 2026-09-21: "reading, thinking is too faint... use the
-         platform's color, which is the navy blue, when the system is
-         running." */
-      style={{ color: "var(--working)", animation: "sx-rise 0.35s ease" }}
-      aria-live="polite"
-    >
-      {/* THE PULSING MARK. Anthony, 2026-11-10, pointing at Claude's own
-          "Musing..." line: a mark that breathes beside a word that
-          shimmers, so it reads as alive from across the room. */}
-      <span aria-hidden="true" className="sx-working-mark" />
+    /* aria-live so a screen reader hears the line change; polite, so it
+       never cuts across them. */
+    <div className="flex items-center gap-2.5" style={{ animation: "sx-rise 0.35s ease" }} aria-live="polite">
+      {/* THE PLATFORM'S OWN MARK, BREATHING. Anthony, 2026-11-11: "the
+          pausing can even come with the platform's own logo instead of a
+          generic blue pausing." */}
+      <WorkingMark />
 
-      {/* THE WORD SHIMMERS. A light band passes over the letters; the
-          colour underneath is still the navy, so it stays readable. */}
-      <span className="sx-working-word">{word}</span>
+      {/* CHAT SIZE AND WEIGHT. Anthony: "make the write up a bit bolder".
+          The shimmer is a soft light drifting across the words, see
+          .sx-working-word in index.css. */}
+      <span className="sx-working-word text-[15px] font-semibold leading-snug">{word}</span>
 
-      {/* THE DOTS BELONG TO THE WORD. aria-hidden because "dot dot dot" read
-          out three times a second is noise. */}
-      <span aria-hidden="true" className="inline-flex -ml-2">
-        {[0, 1, 2].map((i) => (
-          <span key={i} style={{ animation: "sx-dot 1.4s ease infinite", animationDelay: `${i * 0.18}s` }}>
-            .
-          </span>
-        ))}
-      </span>
-
-      {/* THE CLOCK, after a few seconds. A count that keeps moving is the
-          plainest proof it has not frozen. It counts up, never down, so it
-          never promises when it will finish. */}
+      {/* The clock, after a few seconds. It counts up and never promises
+          when it will finish. */}
       {seconds >= 4 && (
-        <span aria-hidden="true" className="text-[12px] font-normal" style={{ color: "var(--text-3)" }}>
-          · {seconds}s
+        <span aria-hidden="true" className="text-[12.5px]" style={{ color: "var(--text-3)" }}>
+          {seconds}s
         </span>
       )}
     </div>
+  );
+}
+
+/* The StellaXafe mark, breathing slowly, for anything that is working. */
+export function WorkingMark({ size = 20 }) {
+  return (
+    <span aria-hidden="true" className="sx-working-logo inline-flex shrink-0">
+      <LogoMark size={size} />
+    </span>
   );
 }
 

@@ -26,6 +26,10 @@
 /* --------------------------------------------------------------------------
    SECTION 1: The words, per stage
 
+   WRITTEN AS THE ASSISTANT TALKING. Anthony, 2026-11-11: the line should
+   read "as if it's in the chat", not like a status log. So each one is a
+   sentence it would say, first person where it fits, ending in "…".
+
    "RESPONDING IN A BIT" COMES FIRST. Anthony, 2026-11-10: something has to
    be on screen within about two seconds, so a person is never left
    wondering whether it heard them. "It doesn't leave somebody hanging."
@@ -43,30 +47,23 @@
 
 const WORDS = {
   /* Reading the request against everything the company has. */
-  orient: ["Responding in a bit", "Reading your files", "Going through your material", "Still reading"],
-
-  /* A short back and forth. Usually quick, so the first line does most of
-     the work here. */
-  interview: ["Responding in a bit", "Putting that together", "Still thinking"],
-
-  /* Working out what it has and what it is missing, then reading back. */
-  analyse: ["Responding in a bit", "Working out what is missing", "Checking your files again", "Still working"],
-
+  orient: ["Responding in a bit…", "Reading through your files…", "Looking at what you already have…", "Still reading…"],
+  /* Working out the few questions worth asking. */
+  interview: ["Responding in a bit…", "Thinking about what to ask you…", "Still thinking…"],
+  /* Checking what it has and what is missing, then reading back. */
+  analyse: ["Responding in a bit…", "Checking what I have against your files…", "Working out what is missing…", "Still checking…"],
   /* The only stage that goes outside. Says so, because a person who
      approved a search should see it happening. */
-  research: ["Looking it up", "Reading what came back", "Still looking"],
-
-  /* Writing the prompt. Named as the brief, which is the word used
-     everywhere else a person can see. */
-  brief: ["Writing the brief", "Getting it right", "Still writing"],
-
+  research: ["Searching online…", "Reading what I found…", "Still looking…"],
+  /* Writing the plan the document is built from. */
+  brief: ["Writing the plan…", "Getting the plan right…", "Still writing the plan…"],
   /* The document itself. */
-  generate: ["Building your document", "Putting it together", "Still building"],
+  generate: ["Writing your document…", "Putting it together…", "Still writing…"],
 };
 
 /* Anything unrecognised. Never left to crash, and never left blank: a blank
    line here is the three dots again. */
-const FALLBACK = ["Working on it", "Still working", "Still working"];
+const FALLBACK = ["Working on it…", "Still working…", "Still working…"];
 
 /* How long each line holds before the next one. Long enough to read, short
    enough that the screen never looks frozen. */
@@ -84,12 +81,12 @@ export const WORD_HOLD_MS = 7000;
 export function thinkingWord(stage, elapsedMs = 0, { stalled = false, retrying = false } = {}) {
   /* The first try failed before a word came back and it is asking again,
      once, on its own. Said plainly so nobody presses send a second time. */
-  if (retrying) return "That did not come back, trying again";
+  if (retrying) return "That did not come back, so I am trying again…";
   /* Said only after the request has gone quiet for a long time, and it is
      the one line that is about the connection rather than the work. It
      stops short of claiming anything has failed, because at this point
      nothing has: the turn is still running and still worth waiting for. */
-  if (stalled) return "This is taking longer than usual";
+  if (stalled) return "This is taking longer than usual…";
 
   const list = WORDS[stage] ?? FALLBACK;
   const step = Math.floor(Math.max(0, elapsedMs) / WORD_HOLD_MS);
@@ -99,5 +96,5 @@ export function thinkingWord(stage, elapsedMs = 0, { stalled = false, retrying =
 /* Every line this can ever show, so a test can check the whole surface
    rather than the handful somebody thought of. */
 export function everyThinkingWord() {
-  return [...new Set([...Object.values(WORDS).flat(), ...FALLBACK, "This is taking longer than usual", "That did not come back, trying again"])];
+  return [...new Set([...Object.values(WORDS).flat(), ...FALLBACK, "This is taking longer than usual…", "That did not come back, so I am trying again…"])];
 }

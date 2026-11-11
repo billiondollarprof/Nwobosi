@@ -271,9 +271,9 @@ them**, because some may have been done since. Full detail is in
   What a client runs on depends on what they want and where they deploy.
 - **2026-11-10: the repo stays public and the CI rule stays as it is.** No
   CI minute savings. Item 13 is closed.
-- **2026-11-10: Gemini runs support only, on this platform**, on the free
-  Flash tier, to save money. DeepSeek does the work. His key is in Supabase
-  secrets as `GEMINI_API_KEY`.
+- **2026-11-11: Gemini is disconnected; DeepSeek runs support.** His words:
+  "if Gemini is failing, then disconnect it and let DeepSeek do the job." Its
+  free tier failed every real message on 2026-11-10.
 - **2026-11-10: the knowledge map decides what a turn reads.** A turn reads
   the map, then only the sources it needs; everything only when the task
   needs everything.
