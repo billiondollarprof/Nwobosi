@@ -150,6 +150,31 @@ async function answer(page) {
     await page.close();
   }
 
+  /* 5. The questions step reads back by itself (seen live 2026-11-11).
+        The build card goes under it and no second read back runs. */
+  {
+    const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
+    await page.addInitScript(() => {
+      try { localStorage.setItem('stellaxafe.theme', 'dark'); } catch {}
+      window.__SCRIPT = {
+        orient: ['If I understand, you want a welcome message.\nOFFER_INTERVIEW'],
+        interview: ['Understood.\n\n**What:** a welcome message.\n**Format:** Word.'],
+        analyse: ['**What:** should not run.\nREADBACK_COMPLETE'],
+      };
+    });
+    await page.goto('http://localhost:5301/?page=chat', { waitUntil: 'networkidle' });
+    await page.waitForTimeout(900);
+    await page.locator('textarea').first().fill('A welcome message');
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(1500);
+    await page.locator('button', { hasText: 'Yes, ask what you need' }).first().click();
+    await page.waitForTimeout(2500);
+    const turns = await page.evaluate(() => (window.__TURNS || []).join(','));
+    check(`READ BACK ONCE: no second read back runs (${turns})`, turns === 'orient,interview');
+    check('READ BACK ONCE: the build card is under it', (await page.locator('text=Did I get that right?').count()) === 1);
+    await page.close();
+  }
+
   await browser.close();
   console.log('');
   for (const n of OK) console.log('  ok   ' + n);

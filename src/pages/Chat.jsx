@@ -1278,6 +1278,24 @@ export default function Chat() {
              no button. A turn here that asks no question is done, so the
              work moves on to the read back exactly as INTERVIEW_COMPLETE
              would have moved it. */
+          /* IT ALREADY READ BACK. Seen live 2026-11-11: after a correction
+             the questions step wrote the five line read back itself, and the
+             next step then read back a second time. A reply here that carries
+             the read back's own lines is the read back: the build card goes
+             under it and nothing runs twice. */
+          const isReadBack = /(^|\n)\s*\**What:\**/i.test(clean) && /(^|\n)\s*\**Format:\**/i.test(clean);
+          if (!clean.includes("?") && isReadBack) {
+            interviewTurnsRef.current = 0;
+            missingRef.current = "";
+            setFlowStage("analyse");
+            const withBuild = updateMessages((prev) => [
+              ...prev,
+              { id: nextId(), role: "assistant", type: "build", format: formatRef.current },
+            ]);
+            persist(withBuild, "analyse");
+            return;
+          }
+
           if (!clean.includes("?")) {
             interviewTurnsRef.current = 0;
             persist(next, "interview");
