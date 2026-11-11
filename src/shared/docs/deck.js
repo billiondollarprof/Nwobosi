@@ -189,9 +189,16 @@ export function toDeck(doc) {
         continue;
       }
       if (piece.kind === "takeaway") {
-        /* It belongs to the slide it follows. If that slide is too full to
-           take the strip too, or already has one, it moves on. */
-        if (slide.takeaway || slide.used > room() - TAKEAWAY_H - 0.25) next();
+        /* It belongs to the slide it follows. A slide with cards, steps, a
+           figure or a table keeps it: that feature is drawn to the space
+           left, so it shrinks to make room. Seen 2026-11-11: the strip moved
+           on alone and left a "(continued)" slide holding nothing else.
+           Only a slide already full of plain text, or one that already has
+           a strip, passes it on. */
+        const fits = slide.feature && !BESIDE.has(slide.feature.kind)
+          ? true
+          : slide.used <= room() - TAKEAWAY_H - 0.25;
+        if (slide.takeaway || !fits) next();
         slide.takeaway = piece.runs;
         continue;
       }
@@ -206,15 +213,47 @@ export function toDeck(doc) {
         slide.used += piece.h + 0.2;
         continue;
       }
-      /* Plain text never goes under a feature or a takeaway. */
-      if (slide.feature || slide.takeaway || (slide.used + piece.h > room() && slide.text.length)) next();
+      /* Plain text after a feature joins the slide's text, above the
+         feature, when there is room for both: a line on a slide of its own
+         reads as a mistake (seen 2026-11-11). Otherwise it starts the next
+         slide, and it never goes under a takeaway. */
+      const joinsAbove = slide.feature && !BESIDE.has(slide.feature.kind) && !slide.takeaway &&
+        slide.used + piece.h <= room();
+      if (!joinsAbove && (slide.feature || slide.takeaway || (slide.used + piece.h > room() && slide.text.length))) next();
       slide.text.push(piece);
       slide.used += piece.h;
     }
     if (slide.text.length || slide.feature || slide.takeaway) slides.push(slide);
   }
 
-  return slides;
+  return foldThinSlides(slides);
+}
+
+/* A "(continued)" slide holding only a strip, or one short line and nothing
+   else, goes back onto the slide before it when that slide can take it.
+   The look agent found three of these in one deck on 2026-11-11. */
+function foldThinSlides(slides) {
+  const out = [];
+  for (const slide of slides) {
+    const prev = out[out.length - 1];
+    const thin = slide.kind === "content" && /\(continued\)$/.test(slide.title) && !slide.feature &&
+      slide.text.length <= 1 && slide.text.reduce((n, p) => n + p.h, 0) < 0.8;
+    if (thin && prev && prev.kind === "content" && !(slide.takeaway && prev.takeaway)) {
+      if (slide.takeaway) prev.takeaway = slide.takeaway;
+      if (slide.text.length) {
+        const roomLeft = FOOT_Y - 0.25 - BODY_TOP - (prev.takeaway ? TAKEAWAY_H + 0.25 : 0) - prev.used;
+        if (roomLeft < slide.text[0].h && !prev.feature) {
+          out.push(slide);
+          continue;
+        }
+        prev.text.push(...slide.text);
+        prev.used += slide.text[0].h;
+      }
+      continue;
+    }
+    out.push(slide);
+  }
+  return out;
 }
 
 /* --------------------------------------------------------------------------
