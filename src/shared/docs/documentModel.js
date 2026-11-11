@@ -56,6 +56,14 @@
      | Quarter | 2025 |  ...  :::         a chart, drawn by code from a table
                                           (charts/chartData.js)
 
+   SLIDE DIAGRAMS, 2026-11-11 (section 3, where each is read):
+     :::flow  - A  - **B**  - C  :::      boxes joined by arrows, B lit
+     :::hub Centre | caption  - item ... :::   one box fanning out to a list
+     :::phases  ### Name | 3 weeks ... Outcome: ... :::   phase rows
+     :::tree Top | caption  ### Child | role ... :::     an org chart
+     :::statement The line, **lit** words.          a closing statement
+     ### [church] Title                   a card with an icon on the slide
+
    FIGURES, 2026-09-23 (DOCUMENT-HARNESS.md, sections 2 and 3)
    A picture can carry its source, printed small under the caption. It can
    also carry a tag, and the text can point at it with [[fig:team]]. CODE
@@ -313,11 +321,21 @@ export function readBlocks(markdown) {
    card with no title is a paragraph, an unknown block is its own lines.
    -------------------------------------------------------------------------- */
 
-/* "Title | kicker" -> both halves. The kicker is optional. */
+/* "Title | kicker" -> both halves. The kicker is optional. A title may
+   start with an icon's name in square brackets, "[church] Our church",
+   which the slides draw and the other formats leave out (slides/slideIcons.js
+   has the list). */
 function splitTitle(text) {
-  const [title, ...rest] = String(text ?? "").split("|");
+  let raw = String(text ?? "");
+  let icon = "";
+  const named = raw.trim().match(/^\[([a-z0-9-]+)\]\s*(.*)$/i);
+  if (named) {
+    icon = named[1].toLowerCase();
+    raw = named[2];
+  }
+  const [title, ...rest] = raw.split("|");
   const kicker = rest.join("|").trim();
-  return { title: readInline(title.trim()), kicker: isOnlyANumber(kicker) ? "" : kicker };
+  return { title: readInline(title.trim()), kicker: isOnlyANumber(kicker) ? "" : kicker, icon };
 }
 
 /* The lines of a block up to its closing ":::". A block that is never
@@ -351,7 +369,7 @@ function readItems(body) {
       items.push(current);
     }
   }
-  return items.map((item) => ({ title: item.title, kicker: item.kicker, blocks: readBlocks(item.lines.join("\n")) }));
+  return items.map((item) => ({ title: item.title, kicker: item.kicker, icon: item.icon ?? "", blocks: readBlocks(item.lines.join("\n")) }));
 }
 
 /* The first line of a figure: "lobby.jpg #lobby | caption | source".
@@ -444,10 +462,111 @@ function readDesignBlock(kind, rest, lines, index, blocks) {
     return used;
   }
 
+  /* SLIDE DIAGRAMS, 2026-11-11. Anthony sent a designed deck as the
+     standard: a row of boxes joined by arrows, phases, a hub fanning out to
+     a list, an org chart, a closing statement. The slides draw each one as
+     real, editable PowerPoint shapes (slides/slideDiagrams.js). The PDF and
+     Word files show the same content plainly: a flow is one line with
+     arrows, a hub is its name and a list, phases are numbered steps, a tree
+     is cards, a statement is a takeaway strip. */
+
+  /* :::flow, then one step per line ("- Member"). The step in **bold** is
+     the one the slide lights up. One line "A > B > C" works too. */
+  if (kind === "flow") {
+    const { body, used } = bodyLines(lines, index);
+    const source = rest.trim() ? rest.split(/\s*(?:>|→)\s*/) : body.map((l) => l.replace(/^\s*(?:[-*]|\d+[.)])\s+/, ""));
+    const steps = source.map((t) => t.trim()).filter(Boolean).slice(0, 7).map((t) => {
+      const lit = /^\*\*.*\*\*$/.test(t);
+      return { runs: readInline(t.replace(/^\*\*(.*)\*\*$/, "$1")), lit };
+    });
+    if (steps.length >= 2) blocks.push({ type: "flow", steps });
+    else blocks.push(...readBlocks(body.join("\n")));
+    return rest.trim() ? 1 : used;
+  }
+
+  /* :::hub The centre | what it is, then a list of what comes out of it. */
+  if (kind === "hub") {
+    const { body, used } = bodyLines(lines, index);
+    const [centre = "", ...caption] = rest.split("|");
+    const list = readBlocks(body.join("\n")).find((b) => b.type === "list");
+    const intro = readBlocks(body.join("\n")).filter((b) => b.type === "p");
+    if (centre.trim() && list) {
+      blocks.push({ type: "hub", centre: readInline(centre.trim()), caption: caption.join("|").trim(), items: list.items, intro });
+    } else {
+      blocks.push(...readBlocks(body.join("\n")));
+    }
+    return used;
+  }
+
+  /* :::phases, each "### Foundation | 3 to 4 weeks", its points, and an
+     optional "Outcome: ..." line. Read like steps, so every format that
+     draws steps draws these. */
+  if (kind === "phases") {
+    const { body, used } = bodyLines(lines, index);
+    const items = readItems(body).filter((item) => item.title.length || item.blocks.length).map((item) => {
+      const outcomeAt = item.blocks.findIndex((b) => b.type === "p" && /^outcome\s*:/i.test(plainText(b.runs).trim()));
+      if (outcomeAt < 0) return item;
+      /* The line stays in the item's text for the PDF and Word files; the
+         slides draw it in its own column and skip the line (slideOutcome). */
+      const outcome = plainText(item.blocks[outcomeAt].runs).replace(/^outcome\s*:\s*/i, "").trim();
+      return { ...item, outcome };
+    });
+    if (items.length) blocks.push({ type: "steps", variant: "phases", items });
+    return used;
+  }
+
+  /* :::tree The top box | what it is, then "### Child | role" items, each
+     with an optional list under it. Read as cards everywhere else. */
+  if (kind === "tree") {
+    const { body, used } = bodyLines(lines, index);
+    const [top = "", ...caption] = rest.split("|");
+    const items = readItems(body).filter((item) => item.title.length || item.blocks.length);
+    if (items.length) {
+      /* The top box is also a bold line above the cards, so the PDF and
+         Word files keep it. The slides draw it as the top box instead. */
+      if (top.trim()) blocks.push({ type: "p", treeTop: true, runs: readInline(`**${top.trim()}**${caption.join("|").trim() ? `: ${caption.join("|").trim()}` : ""}`) });
+      blocks.push({ type: "cards", variant: "tree", top: readInline(top.trim()), topCaption: caption.join("|").trim(), items });
+    }
+    return used;
+  }
+
+  /* :::statement One line, said big. **Bold** words are lit. */
+  if (kind === "statement") {
+    if (rest.trim()) {
+      blocks.push({ type: "takeaway", variant: "statement", runs: readInline(rest.trim()) });
+      return 1;
+    }
+    const { body, used } = bodyLines(lines, index);
+    const text = body.map((l) => l.trim()).filter(Boolean).join(" ");
+    if (text) blocks.push({ type: "takeaway", variant: "statement", runs: readInline(text) });
+    return used;
+  }
+
   /* Not a block we know. Its lines are kept as ordinary text. */
   const { body, used } = bodyLines(lines, index);
   blocks.push(...readBlocks(body.join("\n")));
   return used;
+}
+
+/* A slide diagram as the plain blocks every other format already draws.
+   The PDF and Word writers pass their blocks through this first. A flow is
+   one line with arrows, its lit step in bold. A hub is its name in bold,
+   then its list. */
+export function plainForm(block) {
+  if (block.type === "flow") {
+    const runs = [];
+    block.steps.forEach((step, i) => {
+      if (i) runs.push({ text: "  →  " });
+      runs.push(...step.runs.map((r) => ({ ...r, bold: r.bold || step.lit })));
+    });
+    return [{ type: "p", runs }];
+  }
+  if (block.type === "hub") {
+    const head = [{ text: plainText(block.centre), bold: true }];
+    if (block.caption) head.push({ text: `: ${block.caption}` });
+    return [{ type: "p", runs: head }, ...block.intro, { type: "list", ordered: false, start: 1, items: block.items }];
+  }
+  return [block];
 }
 
 /* --------------------------------------------------------------------------
@@ -524,6 +643,8 @@ export function blockText(block) {
   }
   if (block.type === "stat") return [block.value, block.caption, ...block.blocks.map(blockText)].join("\n");
   if (block.type === "label") return block.text;
+  if (block.type === "flow") return block.steps.map((st) => plainText(st.runs)).join(" > ");
+  if (block.type === "hub") return [plainText(block.centre), block.caption, ...block.intro.map(blockText), ...block.items.map((i) => plainText(i.runs))].join("\n");
   if (block.type === "image") return [block.caption || block.name, block.source].filter(Boolean).join("\n");
   if (block.type === "chart") {
     const table = block.table ? blockText(block.table) : "";

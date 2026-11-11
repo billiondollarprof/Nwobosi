@@ -22,7 +22,7 @@
    ========================================================================== */
 
 import { THEME, themeFor } from "./documentTheme.js";
-import { plainText } from "./documentModel.js";
+import { plainText, plainForm } from "./documentModel.js";
 import { imageKey } from "./imageKey.js";
 
 /* Half points. Word measures font size in halves. */
@@ -308,7 +308,7 @@ function blocksToWord(docx, doc, t, images, charts = null) {
   /* A chart with no picture copy (it could not be drawn, or there is no
      browser to draw it) becomes its own table, with its caption under it,
      so the numbers still reach the reader. */
-  const blocks = doc.blocks.flatMap((block) =>
+  const blocks = doc.blocks.flatMap(plainForm).flatMap((block) =>
     block.type === "chart" && !charts?.get(block.chartIndex)
       ? [block.table, { type: "figureCaption", of: block }].filter(Boolean)
       : [block]);
