@@ -44,7 +44,7 @@
      2. The document
    ========================================================================== */
 
-import { readDocument } from "./docs/documentModel.js";
+import { readDocument, plainForm } from "./docs/documentModel.js";
 import { imageKey } from "./docs/imageKey.js";
 import { chartSvg } from "./docs/charts/chartSvg.js";
 import { themeFor } from "./docs/documentTheme.js";
@@ -338,7 +338,7 @@ export default function DocumentView({ markdown, images = null }) {
       {doc.subtitle && (
         <p style={{ color: "var(--text-3)", marginBottom: "10px" }}>{doc.subtitle}</p>
       )}
-      {doc.blocks.map((block, i) => (
+      {doc.blocks.flatMap(plainForm).map((block, i) => (
         <Block key={i} block={block} previous={i > 0 || Boolean(doc.title)} images={images} />
       ))}
     </div>

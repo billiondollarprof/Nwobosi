@@ -112,6 +112,90 @@ export async function styleOfDocx(buffer) {
 }
 
 /* --------------------------------------------------------------------------
+   A POWERPOINT'S LOOK, 2026-11-11
+   Anthony: "show them a PowerPoint that they have done, so the system can
+   just copy the design color and pattern and use it. Use a normal
+   PowerPoint that is not designed, is okay."
+   Read from the file's own XML:
+     accent      the colour the deck actually uses most on its slides (a
+                 company's real colour), else the theme's first accent
+     mode        dark or light, from the background most slides have
+     font        the theme's body font, headingFont its heading font
+     slides      how many slides it has
+   -------------------------------------------------------------------------- */
+
+function channelsOf(hex) {
+  return [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+}
+
+function lightnessOf(hex) {
+  const [r, g, b] = channelsOf(hex).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/* How much colour a colour has: 0 for greys, white and black. */
+function saturationOf(hex) {
+  const c = channelsOf(hex);
+  return Math.max(...c) - Math.min(...c);
+}
+
+export async function styleOfPptx(buffer) {
+  try {
+    const JSZip = (await import("jszip")).default;
+    const zip = await JSZip.loadAsync(buffer);
+    const read = async (name) => (await zip.file(name)?.async("string")) ?? "";
+    const theme = await read("ppt/theme/theme1.xml");
+    const master = await read("ppt/slideMasters/slideMaster1.xml");
+    const slideNames = Object.keys(zip.files).filter((n) => /^ppt\/slides\/slide\d+\.xml$/.test(n));
+    const slides = await Promise.all(slideNames.map(read));
+
+    /* The theme's named colours, so "bg1" or "accent2" can be turned into
+       a real colour. */
+    const scheme = {};
+    for (const name of ["dk1", "lt1", "dk2", "lt2", "accent1", "accent2", "accent3", "accent4", "accent5", "accent6"]) {
+      const block = theme.match(new RegExp(`<a:${name}>([\\s\\S]*?)</a:${name}>`))?.[1] ?? "";
+      const value = attr(block, /srgbClr val="([0-9A-Fa-f]{6})"/) || attr(block, /lastClr="([0-9A-Fa-f]{6})"/);
+      if (value) scheme[name] = value.toUpperCase();
+    }
+    const alias = { bg1: "lt1", tx1: "dk1", bg2: "lt2", tx2: "dk2" };
+    const colourIn = (xml) => {
+      const rgb = attr(xml, /<a:srgbClr val="([0-9A-Fa-f]{6})"/);
+      if (rgb) return rgb.toUpperCase();
+      const named = attr(xml, /<a:schemeClr val="(\w+)"/);
+      return scheme[alias[named] ?? named] ?? "";
+    };
+
+    /* The background: a slide's own, else the master's, else white. */
+    const bgOf = (xml) => colourIn(xml.match(/<p:bg>[\s\S]*?<\/p:bg>/)?.[0] ?? "");
+    const masterBg = bgOf(master) || scheme.lt1 || "FFFFFF";
+    const backgrounds = slides.map((x) => bgOf(x) || masterBg);
+    const dark = backgrounds.filter((c) => lightnessOf(c) < 0.25).length;
+
+    /* The colour the slides use most, among real colours (not greys). */
+    const counts = new Map();
+    for (const xml of slides) {
+      for (const [, value] of xml.matchAll(/<a:srgbClr val="([0-9A-Fa-f]{6})"/g)) {
+        const c = value.toUpperCase();
+        if (saturationOf(c) < 0.25) continue;
+        counts.set(c, (counts.get(c) ?? 0) + 1);
+      }
+    }
+    const used = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+    const accent = used || scheme.accent1 || "";
+
+    const style = { slides: slides.length, mode: dark > slides.length / 2 ? "dark" : "light" };
+    if (accent) style.accent = accent;
+    const minor = attr(theme, /<a:minorFont>\s*<a:latin typeface="([^"]+)"/);
+    const major = attr(theme, /<a:majorFont>\s*<a:latin typeface="([^"]+)"/);
+    if (minor) style.font = minor;
+    if (major) style.headingFont = major;
+    return style;
+  } catch {
+    return null;
+  }
+}
+
+/* --------------------------------------------------------------------------
    The one entry point: { outline, style } for an attached file, or null.
    -------------------------------------------------------------------------- */
 
@@ -126,6 +210,15 @@ export async function readLayout(file) {
       const { doc } = await pdfToDocument(file);
       return { outline: outlineOf(doc), style: null };
     }
+    if (kind === "pptx") {
+      const buffer = await file.arrayBuffer();
+      const { readPptx } = await import("../readFile.js");
+      const text = await readPptx(buffer);
+      const style = await styleOfPptx(buffer);
+      const titles = text.split("\n\n").map((slide) => slide.split("\n")[0]).slice(0, MAX_LINES);
+      const look = style ? `Look: ${style.mode}, colour #${style.accent ?? "none"}, fonts ${style.headingFont ?? "?"} / ${style.font ?? "?"}` : "";
+      return { outline: [`${style?.slides ?? titles.length} slides`, look, ...titles].filter(Boolean).join("\n"), style };
+    }
   } catch (error) {
     console.warn("could not read the layout of", file?.name, error);
   }
@@ -134,5 +227,5 @@ export async function readLayout(file) {
 
 /* The line in the approved brief that says which upload to lay it out like. */
 export function layoutFromBrief(brief) {
-  return String(brief ?? "").match(/Layout:\s*like\s+(.+?\.(?:docx|pdf))\b/i)?.[1]?.trim() ?? null;
+  return String(brief ?? "").match(/Layout:\s*like\s+(.+?\.(?:docx|pdf|pptx))\b/i)?.[1]?.trim() ?? null;
 }

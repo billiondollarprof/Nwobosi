@@ -32,12 +32,13 @@ export function fileKind(name) {
   if (PLAIN.includes(ext)) return "text";
   if (ext === "pdf") return "pdf";
   if (ext === "docx") return "docx";
+  if (ext === "pptx") return "pptx";
   if (IMAGE.includes(ext)) return "image";
   return "unreadable";
 }
 
 export function canBecomeText(name) {
-  return ["text", "pdf", "docx"].includes(fileKind(name));
+  return ["text", "pdf", "docx", "pptx"].includes(fileKind(name));
 }
 
 /* --------------------------------------------------------------------------
@@ -106,6 +107,33 @@ async function readDocx(file) {
 }
 
 /* --------------------------------------------------------------------------
+   SECTION: PowerPoint, 2026-11-11
+   Anthony: a person can "show them a PowerPoint that they have done, so the
+   system can just copy the design". The words come out slide by slide,
+   "Slide 3: ..." so the model can say which slide it means. The look of the
+   deck (its colours, fonts, light or dark) is read by convert/layoutOf.js.
+   -------------------------------------------------------------------------- */
+
+export async function readPptx(buffer) {
+  const JSZip = (await import("jszip")).default;
+  const zip = await JSZip.loadAsync(buffer);
+  const names = Object.keys(zip.files)
+    .filter((n) => /^ppt\/slides\/slide\d+\.xml$/.test(n))
+    .sort((a, b) => Number(a.match(/(\d+)\.xml$/)[1]) - Number(b.match(/(\d+)\.xml$/)[1]));
+  const slides = [];
+  for (const [i, name] of names.entries()) {
+    const xml = await zip.file(name).async("string");
+    /* One line per paragraph: the runs of an <a:p> joined. */
+    const paras = (xml.match(/<a:p>[\s\S]*?<\/a:p>/g) ?? [])
+      .map((p) => (p.match(/<a:t>([^<]*)<\/a:t>/g) ?? []).map((t) => t.replace(/<\/?a:t>/g, "")).join(""))
+      .map((t) => t.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'").trim())
+      .filter(Boolean);
+    if (paras.length) slides.push(`Slide ${i + 1}: ${paras[0]}\n${paras.slice(1).join("\n")}`.trim());
+  }
+  return slides.join("\n\n");
+}
+
+/* --------------------------------------------------------------------------
    SECTION: The one entry point
    Returns { ok, text } or { ok: false, reason } with a reason written for
    a person, never a parser error.
@@ -134,10 +162,15 @@ export async function readFileAsText(file, { maxChars = 40000 } = {}) {
       if (!text.trim()) {
         return { ok: false, reason: `${file.name} came back empty. Paste what matters instead.` };
       }
+    } else if (kind === "pptx") {
+      text = await readPptx(await file.arrayBuffer());
+      if (!text.trim()) {
+        return { ok: false, reason: `${file.name} has no words in it that can be read. Paste what matters instead.` };
+      }
     } else {
       return {
         ok: false,
-        reason: `${file.name} is not a kind of file this can read. Plain text, PDF, Word, CSV or JSON.`,
+        reason: `${file.name} is not a kind of file this can read. Plain text, PDF, Word, PowerPoint, CSV or JSON.`,
       };
     }
 

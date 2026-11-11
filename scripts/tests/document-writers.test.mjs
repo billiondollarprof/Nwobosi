@@ -98,5 +98,56 @@ check('the quote has no ">"', !slides.some((s) => (s.text ?? []).some((p) => pla
   check("on a slide the picture sits with the text, not after it", lobby?.feature?.kind === "image" && lobby.text.length === 1);
 }
 
+/* 5. SLIDE DIAGRAMS, 2026-11-11 ------------------------------------------- */
+{
+  const { themeFor } = await import("../../src/shared/docs/documentTheme.js");
+  const { iconSvg } = await import("../../src/shared/docs/slides/slideIcons.js");
+  const { slideThemeFor, contrast } = await import("../../src/shared/docs/slides/slideTheme.js");
+  const md = readFileSync("scripts/__harness/fixtures/diagrams.md", "utf8");
+  const doc = readDocument(md, "x");
+  const types = doc.blocks.map((b) => b.variant ?? b.type);
+  check(`the reader finds every diagram (${types.join(", ")})`,
+    ["flow", "hub", "phases", "tree", "statement"].every((t) => types.includes(t)));
+  const flow = doc.blocks.find((b) => b.type === "flow");
+  check("a flow keeps its steps and lights the bold one", flow.steps.length === 4 && flow.steps[2].lit && !flow.steps[0].lit);
+  const phases = doc.blocks.find((b) => b.variant === "phases");
+  check("a phase keeps its time and its outcome", phases.items[0].kicker === "3 to 4 weeks" && phases.items[0].outcome.startsWith("a working"));
+  const cards = doc.blocks.find((b) => b.type === "cards" && !b.variant);
+  check("a card's icon is read and kept out of its title", cards.items[0].icon === "church" && plainText(cards.items[0].title) === "Our church");
+
+  const deck = toDeck(doc);
+  const kinds = deck.filter((s) => s.kind === "content").map((s) => s.feature?.kind);
+  check(`each diagram gets its own slide (${kinds.join(", ")})`,
+    ["flow", "hub", "phases", "tree", "statement", "cards"].every((k) => kinds.includes(k)));
+
+  const pdf = JSON.stringify(pdfDefinition(doc, themeFor("#C8102E"), { name: "Church" }));
+  check("THE PDF KEEPS EVERY WORD of the diagrams",
+    ["Member", "Knowledge base", "Answers questions", "a working", "Leadership", "Digital team", "One connected church"].every((w) => pdf.includes(w)));
+  check("no icon name reaches the PDF", !pdf.includes("[church]"));
+
+  check("an icon on the list is drawn, one off it is not", Boolean(iconSvg("church", "FFFFFF")) && iconSvg("no-such-icon", "FFFFFF") === null);
+  for (const colour of ["1A7F3C", "C8102E", "1E3A8A", "F5C400"]) {
+    const s = slideThemeFor(themeFor(colour));
+    check(`dark slides in ${colour}: text and lit words read on the panels`,
+      contrast(s.body, s.panel) >= 4.5 && contrast(s.lit, s.panel) >= 4.5 && contrast(s.onLit, s.litFill) >= 4.5);
+  }
+}
+
+/* 6. A LOOK ASKED FOR, OR COPIED FROM THEIR OWN POWERPOINT, 2026-11-11 ------ */
+{
+  const asked = readDocument(":::style light | #0B6E4F\n# Plan\n\nShort line.\n\n## One\n\nText.", "x");
+  check("a :::style line is read, even above the title, and never printed",
+    asked.title === "Plan" && asked.style?.mode === "light" && asked.style?.accent === "0B6E4F" && !JSON.stringify(asked.blocks).includes("style"));
+  const { styleOfPptx, layoutFromBrief } = await import("../../src/shared/convert/layoutOf.js");
+  const { readPptx } = await import("../../src/shared/readFile.js");
+  const plain = readFileSync("scripts/__harness/fixtures/plain-deck.pptx");
+  const style = await styleOfPptx(plain);
+  check(`a plain PowerPoint's look is read (${JSON.stringify(style)})`,
+    style?.mode === "light" && style?.accent === "0B6E4F" && style?.font === "Arial" && style?.headingFont === "Georgia" && style?.slides === 3);
+  const words = await readPptx(plain);
+  check("its words come out slide by slide", words.startsWith("Slide 1: Quarterly review") && words.includes("Slide 3: Next steps"));
+  check("the brief can name a PowerPoint to copy", layoutFromBrief("Layout: like Q3 review.pptx") === "Q3 review.pptx");
+}
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

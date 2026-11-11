@@ -1998,7 +1998,7 @@ export default function Chat() {
      Anything failing here only means "not looked at": the card finishes
      and the file is handed over as before.
      -------------------------------------------------------------------- */
-  async function lookAndReport(resultId, markdown, title, convo, stepsSoFar) {
+  async function lookAndReport(resultId, markdown, title, convo, stepsSoFar, layoutStyle = null) {
     const format = formatRef.current;
     const noun = format === "pptx" ? "slide" : "page";
     let steps = stepsSoFar;
@@ -2006,7 +2006,12 @@ export default function Chat() {
     let looked = false;
     try {
       const { lookAtFile, asImageBlock } = await import("../shared/docs/look/lookAtFile.js");
-      const seen = await lookAtFile(format, title, markdown, me?.company, convo);
+      /* The same look the download will have, so what is checked is what
+         they get: the company's brand (companyBrand, the shape buildFile
+         reads; the raw company row gave the default navy until 2026-11-11)
+         and a PowerPoint they showed (convert/layoutOf.js). */
+      const company = layoutStyle ? { ...companyBrand, layoutStyle } : companyBrand;
+      const seen = await lookAtFile(format, title, markdown, company, convo);
       if (seen?.pictures?.length) {
         const intro =
           `This is the finished ${format === "pptx" ? "slide deck" : "PDF"}, ${seen.pages} ${noun}${seen.pages === 1 ? "" : "s"}, ` +
@@ -2219,9 +2224,11 @@ export default function Chat() {
            (its font, heading colour and margins) rides on this result, so
            every download of it uses that style instead of the house one. */
         const layoutName = layoutFromBrief(brief);
+        let layoutStyle = null;
         if (layoutName) {
           const source = (convo ?? []).flatMap((m) => m.attachments ?? []).find((a) => a.name?.toLowerCase() === layoutName.toLowerCase());
           if (source?.style) {
+            layoutStyle = source.style;
             updateMessages((prev) => prev.map((m) => (m.id === resultId ? { ...m, style: source.style, layoutFrom: source.name } : m)));
           }
         }
@@ -2283,7 +2290,7 @@ export default function Chat() {
           const noun = formatRef.current === "pptx" ? "slide" : "page";
           steps = advance(steps, `Looking at every ${noun} the way you will see it…`);
           updateMessages((prev) => prev.map((m) => (m.id === resultId ? { ...m, steps, looking: true } : m)));
-          lookAndReport(resultId, finished, title, convo, steps);
+          lookAndReport(resultId, finished, title, convo, steps, layoutStyle);
         } else {
           steps = advance(steps, "Done. It is ready below.", "done");
           updateMessages((prev) => prev.map((m) => (m.id === resultId ? { ...m, steps } : m)));
@@ -2773,7 +2780,7 @@ export default function Chat() {
 
       const sizeKB = Math.round(file.size / 1024);
       const kind = fileKind(file.name);
-      const isDocument = kind === "text" || kind === "pdf" || kind === "docx";
+      const isDocument = kind === "text" || kind === "pdf" || kind === "docx" || kind === "pptx";
 
       /* Pictures get the generous cap and text gets the strict one. A
          picture shrinks to almost nothing before it is sent, so its size
@@ -2830,7 +2837,7 @@ export default function Chat() {
         /* The layout is read alongside the words (convert/layoutOf.js), so
            it is there if they ask for "one like this". It is only USED when
            they do. A layout that cannot be read is simply left out. */
-        const layout = kind === "pdf" || kind === "docx" ? readLayout(file) : Promise.resolve(null);
+        const layout = kind === "pdf" || kind === "docx" || kind === "pptx" ? readLayout(file) : Promise.resolve(null);
         Promise.all([readFileAsText(file, { maxChars: MAX_FILE_CHARS }), layout]).then(([result, shape]) => {
           if (!result.ok) {
             showUploadError(result.reason);

@@ -78,6 +78,8 @@ async function brandFor(brand) {
         ...(layout.font ? { officeFont: layout.font } : {}),
         ...(layout.headingFont ? { headingFont: layout.headingFont } : {}),
         ...(layout.margins ? { margins: layout.margins } : {}),
+        /* From a PowerPoint they showed: its own dark or light look. */
+        ...(layout.mode ? { slideMode: layout.mode } : {}),
       },
       brand: brand?.name ? { name: brand.name, logoData: await logoData(brand.logoUrl) } : null,
     };
@@ -159,7 +161,14 @@ export function askedForOnePage(messages = []) {
 
 export async function buildFile(format, title, markdown, company, messages = [], { deckEngine = null } = {}) {
   const doc = readDocument(markdown, title);
-  const { theme, brand } = await brandFor(company);
+  const found = await brandFor(company);
+  const { brand } = found;
+  let { theme } = found;
+  /* THE LOOK THEY ASKED FOR in words (":::style dark | #1E3A8A",
+     documentModel.js), on top of the company's own. A colour they named
+     replaces the brand colour for this one piece of work. */
+  if (doc.style?.accent) theme = { ...theme, ...themeFor(doc.style.accent), officeFont: theme.officeFont, headingFont: theme.headingFont, margins: theme.margins };
+  if (doc.style?.mode) theme = { ...theme, slideMode: doc.style.mode };
   const { collectImages } = await import("./docs/images.js");
   const images = await collectImages(doc, messages, company?.id);
   /* Word and Excel need a picture copy of each chart; the PDF and Slides

@@ -44,9 +44,12 @@ export class SlideRecorder {
   }
 
   addSlide(options = {}) {
-    const slide = { master: options.masterName ? this.masters[options.masterName] : null, items: [] };
+    const slide = { master: options.masterName ? this.masters[options.masterName] : null, items: [], background: null };
     this.slides.push(slide);
     return {
+      /* deck.js sets a slide's own background with "page.background = ". */
+      set background(value) { slide.background = value; },
+      get background() { return slide.background; },
       addText: (text, o = {}) => slide.items.push({ kind: "text", text, o }),
       addShape: (shape, o = {}) => slide.items.push({ kind: "shape", shape, o }),
       addImage: (o = {}) => slide.items.push({ kind: "image", o }),
@@ -179,18 +182,55 @@ function drawText(ctx, item, problems, slideNo) {
    3. Shapes, pictures, tables and charts
    -------------------------------------------------------------------------- */
 
+/* Shapes: boxes, rounded boxes, circles and lines, with their fill, their
+   see-through amount (PowerPoint's "transparency", 0 to 100) and their
+   outline. A line is a box with a diagonal, flipped to go up or left. */
 function drawShape(ctx, item) {
   const o = item.o;
   const x = (o.x ?? 0) * PPI;
   const y = (o.y ?? 0) * PPI;
   const w = (o.w ?? 0) * PPI;
   const h = (o.h ?? 0) * PPI;
-  ctx.fillStyle = hex(o.fill?.color, "#DDDDDD");
+  ctx.save();
+  if (item.shape === "line") {
+    const x1 = o.flipH ? x + w : x;
+    const x2 = o.flipH ? x : x + w;
+    const y1 = o.flipV ? y + h : y;
+    const y2 = o.flipV ? y : y + h;
+    ctx.strokeStyle = hex(o.line?.color, "#888888");
+    ctx.lineWidth = Math.max(1, ((o.line?.width ?? 1) / 72) * PPI);
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+    if (o.line?.endArrowType) {
+      const angle = Math.atan2(y2 - y1, x2 - x1);
+      const size = 0.09 * PPI;
+      ctx.fillStyle = ctx.strokeStyle;
+      ctx.beginPath();
+      ctx.moveTo(x2, y2);
+      ctx.lineTo(x2 - size * Math.cos(angle - 0.45), y2 - size * Math.sin(angle - 0.45));
+      ctx.lineTo(x2 - size * Math.cos(angle + 0.45), y2 - size * Math.sin(angle + 0.45));
+      ctx.fill();
+    }
+    ctx.restore();
+    return;
+  }
   ctx.beginPath();
   if (item.shape === "ellipse") ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
   else if (item.shape === "roundRect" && ctx.roundRect) ctx.roundRect(x, y, w, h, (o.rectRadius ?? 0.1) * PPI);
   else ctx.rect(x, y, w, h);
+  ctx.globalAlpha = 1 - (o.fill?.transparency ?? 0) / 100;
+  ctx.fillStyle = hex(o.fill?.color, "#DDDDDD");
   ctx.fill();
+  const outline = o.line?.color && (o.line?.transparency ?? 0) < 100 && o.line.color !== o.fill?.color;
+  if (outline) {
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = hex(o.line.color, "#888888");
+    ctx.lineWidth = Math.max(1, ((o.line.width ?? 1) / 72) * PPI);
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 
 function loadImage(src) {
@@ -236,7 +276,7 @@ function drawTable(ctx, item, problems, slideNo) {
       const opt = cell.options ?? {};
       ctx.fillStyle = hex(opt.fill?.color, "#FFFFFF");
       ctx.fillRect(x + c * cw, y, cw, rh);
-      ctx.strokeStyle = "#CCCCCC";
+      ctx.strokeStyle = hex(o.border?.color, "#CCCCCC");
       ctx.strokeRect(x + c * cw, y, cw, rh);
       ctx.font = fontFor(size, opt.bold);
       ctx.fillStyle = hex(opt.color, "#333333");
@@ -259,9 +299,9 @@ function drawChartBox(ctx, item) {
   const y = (o.y ?? 0) * PPI;
   const w = (o.w ?? 4) * PPI;
   const h = (o.h ?? 3) * PPI;
-  ctx.fillStyle = "#F2F3F7";
+  ctx.fillStyle = "#3A3F4A";
   ctx.fillRect(x, y, w, h);
-  ctx.fillStyle = "#666666";
+  ctx.fillStyle = "#E5E7EB";
   ctx.font = fontFor(14, true);
   ctx.fillText(`${item.type} chart, drawn by PowerPoint`, x + 12, y + 28);
 }
@@ -275,7 +315,7 @@ async function drawSlide(slide, slideNo, problems) {
   canvas.width = Math.round(W_IN * PPI);
   canvas.height = Math.round(H_IN * PPI);
   const ctx = canvas.getContext("2d");
-  ctx.fillStyle = hex(slide.master?.background?.color, "#FFFFFF");
+  ctx.fillStyle = hex(slide.background?.color ?? slide.master?.background?.color, "#FFFFFF");
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   for (const obj of slide.master?.objects ?? []) {

@@ -34,7 +34,7 @@
    ========================================================================== */
 
 import { THEME, themeFor, hex } from "./documentTheme.js";
-import { plainText, runningLine } from "./documentModel.js";
+import { plainText, plainForm, runningLine } from "./documentModel.js";
 import { imageKey } from "./imageKey.js";
 import { chartSvg } from "./charts/chartSvg.js";
 
@@ -330,7 +330,7 @@ export function blocksToPdf(blocks, t = themeFor(), images = null) {
   const shift = levels.length ? Math.min(...levels) - 1 : 0;
 
   const out = [];
-  for (const block of blocks) {
+  for (const block of blocks.flatMap(plainForm)) {
     if (block.type === "h") {
       const level = Math.max(1, Math.min(4, block.level - shift));
       const style = headingStyle(level, t);
