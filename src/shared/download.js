@@ -157,7 +157,7 @@ export function askedForOnePage(messages = []) {
   );
 }
 
-export async function buildFile(format, title, markdown, company, messages = []) {
+export async function buildFile(format, title, markdown, company, messages = [], { deckEngine = null } = {}) {
   const doc = readDocument(markdown, title);
   const { theme, brand } = await brandFor(company);
   const { collectImages } = await import("./docs/images.js");
@@ -174,7 +174,7 @@ export async function buildFile(format, title, markdown, company, messages = [])
   else if (format === "pptx") {
     if (!doc.blocks.length) throw new Error("nothing to put on a slide");
     const { deckBlob } = await import("./docs/deck.js");
-    blob = await deckBlob(doc, theme, brand, images);
+    blob = await deckBlob(doc, theme, brand, images, deckEngine);
   } else if (format === "xlsx") {
     const { sheetBlob } = await import("./downloadSheet.js");
     blob = await sheetBlob(title, markdown, theme, charts);

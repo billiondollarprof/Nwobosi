@@ -104,6 +104,9 @@ for (const walk of [
   /* Added 2026-11-10. The interview's own search question runs the search
      after the answers, never before, and a no runs nothing. */
   "scripts/__harness/search-after.cjs",
+  /* Added 2026-11-11. Slides and PDFs are drawn and looked at before they
+     are handed over; Word is not. */
+  "scripts/__harness/look.cjs",
 ]) {
   const run = spawn("node", [walk], { stdio: "inherit" });
   const code = await new Promise((resolve) => run.on("close", resolve));

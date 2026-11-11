@@ -535,9 +535,11 @@ function drawCover(deck, slide, theme, brand) {
    nothing, and the cover then carries the company name instead.
    -------------------------------------------------------------------------- */
 
-export async function deckBlob(doc, theme = { ...THEME, highlight: "DDE2EE", onAccentSoft: "EEF0F6", kicker: "1B347C" }, brand = null, images = null) {
-  const { default: PptxGenJS } = await import("pptxgenjs");
-  const deck = new PptxGenJS();
+/* `engine` stands in for PptxGenJS when the slides are only to be drawn
+   and looked at (look/drawSlides.js). The same code places everything, so
+   the pictures are the file's own layout. */
+export async function deckBlob(doc, theme = { ...THEME, highlight: "DDE2EE", onAccentSoft: "EEF0F6", kicker: "1B347C" }, brand = null, images = null, engine = null) {
+  const deck = engine ?? new (await import("pptxgenjs")).default();
   deck.layout = "LAYOUT_WIDE";
   deck.title = doc.title;
 

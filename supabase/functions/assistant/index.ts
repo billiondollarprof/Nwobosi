@@ -52,6 +52,7 @@ import { ANALYSE } from "./stages/analyse.ts";
 import { RESEARCH } from "./stages/research.ts";
 import { BRIEF } from "./stages/brief.ts";
 import { GENERATE } from "./stages/generate.ts";
+import { LOOK } from "./stages/look.ts";
 
 /* --------------------------------------------------------------------------
    CAPABILITY LEVELS, AND THE ONE PLACE A MODEL IS NAMED
@@ -483,6 +484,9 @@ const MAX_OUTPUT: Record<string, number> = {
   research: 8000,
   brief: 8000,
   generate: 16000,
+  /* The look reports at most five short lines; the rest is room to think,
+     which stays on here like every stage but the first two. */
+  look: 4000,
 };
 
 /* --------------------------------------------------------------------------
@@ -587,6 +591,7 @@ const STAGE_PROMPT: Record<string, string> = {
   research: RESEARCH,
   brief: BRIEF,
   generate: GENERATE,
+  look: LOOK,
 };
 
 /* -------------------------------------------------------------------------- */
@@ -984,7 +989,9 @@ Deno.serve(async (req: Request) => {
      still processing would have it confidently name a source that cannot
      answer, which reads to the staff member as the assistant making
      things up. */
-  const readySources = (sources ?? []).filter((s) => s.status === "ready");
+  /* The look sees only pictures of a finished file, so it reads none of the
+     company's material: nothing in it would change what is on the page. */
+  const readySources = stage === "look" ? [] : (sources ?? []).filter((s) => s.status === "ready");
 
   /* Base first, then the contents, then the stage instruction. That order
      is what makes caching possible at all: the cache is a prefix match, so
