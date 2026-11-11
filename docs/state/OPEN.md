@@ -48,9 +48,17 @@ other.** Nothing comes off until it is built, checked and live.
    his words: "check each of the steps and look for any broken process, any
    step that feels broken or out of normal, so we fix that"). A live walk of
    every stage on Amara, findings fixed one by one.
-0b. **WhatsApp support went silent** (2026-11-10): Gemini's free tier
-   answered "high demand" (503). Fixed: one Gemini failure and support uses
-   DeepSeek. Shipping.
+0b. **WhatsApp support went silent** (2026-11-10 and 11). Two causes, both
+   found in the logs. First Gemini's free tier refused (503). Then it did
+   not refuse but took 75 seconds, and Amara's `receive-whatsapp-webhook`
+   (the other Supabase project) waits 12 seconds for StellaXafe. Fixed:
+   Gemini gets 4 seconds, then DeepSeek answers. Shipping; needs his test
+   message on WhatsApp to confirm.
+0c. **Support has its own map and does not read everything** (2026-11-11,
+   his words: "support doesn't have to read the entire knowledge base...
+   Support can have its own map as well"). Built: a map of published
+   sources only; all read under 20,000 characters, otherwise the sources
+   holding the customer's words. Shipping with 0b.
 
 3. **The waiting line.** Something on screen within about 2 seconds
    ("Responding in a bit"); the word shimmers with a pulsing mark, like
