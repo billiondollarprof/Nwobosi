@@ -142,6 +142,14 @@ other.** Nothing comes off until it is built, checked and live.
 15. **Connected tools, per client** (written in `docs/product/DIRECTION.md`):
     ask before using any, one at a time in task order, connected knowledge
     before the internet, Canva offered for designs.
+15a. **Slides that look designed, and Canva that works.** (2026-11-11) He sent
+    a Canva deck he made ("Streams of Grace Digital Strategy", uploaded in chat,
+    not in the repo) as the standard: dark theme, big two-colour
+    headlines, few words, diagrams (a flow of boxes with arrows, phase rows,
+    an org chart, a capabilities list fanning out). Ours read as a document
+    cut into slides. He also wants Canva working, so a person who wants a
+    real slide deck can connect their own Canva. Waiting for his yes on the
+    plan given in chat.
 16. **Research:** similar tools and how they orchestrate agents to make
     files; MCP and the browser; keeping search cheap.
 
