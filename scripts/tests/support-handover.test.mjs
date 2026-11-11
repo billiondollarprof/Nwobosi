@@ -59,6 +59,11 @@ if (!/export function withoutOurLines/.test(code)) {
   code = code.replace("function withoutOurLines", "export function withoutOurLines");
 }
 code = code.replace(BRAIN_IMPORT_RE, BRAIN_STUB);
+/* The support map comes from _shared/knowledgeMap.ts since 2026-11-11. It
+   cannot resolve from the temp folder, and these checks are about the
+   handover, so it is stubbed to an empty map. Its own test is
+   knowledge-map.test.mjs. */
+code = code.replace(/import \{ knowledgeMap \} from "[^"]+";/, 'const knowledgeMap = () => "";');
 writeFileSync(join(dir, "fn2.mjs"), code);
 globalThis.Deno = { serve: () => {}, env: { get: () => "" } };
 
