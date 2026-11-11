@@ -28,6 +28,15 @@ jobs:
           cache: npm
       - run: npm ci
       # The flow walks drive a real browser, so it has to be installed here.
+      # --with-deps also installs extra fonts through apt. On 2026-11-11 the
+      # Ubuntu mirrors stopped resolving and every run died here before a
+      # single test ran. The runner image already has the libraries Chromium
+      # needs, so when apt fails the browser is installed on its own and the
+      # full verify still runs. Nothing is skipped.
       - name: Install the test browser
-        run: npx playwright install --with-deps chromium
+        run: |
+          npx playwright install --with-deps chromium || {
+            echo "::warning::System packages could not be installed (apt mirror unreachable). Installing the browser alone."
+            npx playwright install chromium
+          }
       - run: npm run verify
