@@ -37,7 +37,6 @@ import { TYPE, mix } from "./slideTheme.js";
 import { iconData } from "./slideIcons.js";
 import { textHeight, blocksHeight, linesHeight, slideRuns, oneRun, plainText, blockText } from "./slideText.js";
 
-const F = TYPE.font;
 const GAP = 0.3;
 
 /* --------------------------------------------------------------------------
@@ -142,7 +141,7 @@ export function drawCards(page, piece, box, s) {
     if (steps) {
       page.addShape("ellipse", { x: tx, y, w: 0.5, h: 0.5, fill: { color: s.litFill }, line: { color: s.litFill } });
       page.addText(String((piece.start ?? 0) + i + 1), {
-        x: tx, y, w: 0.5, h: 0.5, fontSize: 15, bold: true, color: s.onLit, align: "center", valign: "middle", fontFace: F, margin: 0,
+        x: tx, y, w: 0.5, h: 0.5, fontSize: 15, bold: true, color: s.onLit, align: "center", valign: "middle", fontFace: s.font, margin: 0,
       });
       y += 0.7;
       if (i < count - 1) line(page, x + cw + 0.08, box.y + box.h / 2, x + cw + gap - 0.08, box.y + box.h / 2, s.line, { arrow: true, width: 1.75 });
@@ -150,19 +149,19 @@ export function drawCards(page, piece, box, s) {
       y += ICON + 0.2;
     }
     const titleH = textHeight(plainText(item.title).length, TYPE.cardTitle, tw);
-    page.addText(slideRuns(item.title, { fontSize: TYPE.cardTitle, bold: true, color: s.ink, fontFace: F }), {
+    page.addText(slideRuns(item.title, { fontSize: TYPE.cardTitle, bold: true, color: s.ink, fontFace: s.font }), {
       x: tx, y, w: tw, h: titleH, valign: "top", margin: 0,
     });
     y += titleH;
     if (item.kicker) {
       page.addText(item.kicker.toUpperCase(), {
-        x: tx, y, w: tw, h: 0.3, fontSize: TYPE.small, bold: true, color: s.lit, charSpacing: 1, fontFace: F, margin: 0,
+        x: tx, y, w: tw, h: 0.3, fontSize: TYPE.small, bold: true, color: s.lit, charSpacing: 1, fontFace: s.font, margin: 0,
       });
       y += 0.36;
     }
     const lines = itemLines(item.blocks);
     if (lines.length) {
-      page.addText(linesToRuns(lines, { fontSize: TYPE.card, color: s.body, fontFace: F }, s), {
+      page.addText(linesToRuns(lines, { fontSize: TYPE.card, color: s.body, fontFace: s.font }, s), {
         x: tx, y: y + 0.04, w: tw, h: Math.max(0.3, box.y + box.h - y - 0.22), valign: "top", margin: 0,
       });
     }
@@ -218,24 +217,24 @@ export function drawPhases(page, piece, box, s) {
     page.addText([
       { text: "PHASE", options: { fontSize: 11, bold: true, color: s.lit, charSpacing: 2, breakLine: true } },
       { text: number, options: { fontSize: 30, bold: true, color: s.litLarge } },
-    ], { x: box.x, y, w: TAG_W, h, align: "center", valign: "middle", fontFace: F, margin: 0 });
+    ], { x: box.x, y, w: TAG_W, h, align: "center", valign: "middle", fontFace: s.font, margin: 0 });
     if (i < piece.items.length - 1) line(page, box.x + TAG_W / 2, y + h + 0.02, box.x + TAG_W / 2, y + h + 0.2, s.line, { arrow: true });
 
     /* The row. */
     const rx = box.x + TAG_W + 0.25;
     const rw = box.w - TAG_W - 0.25;
     panel(page, rx, y, rw, h, s);
-    const name = slideRuns(item.title, { fontSize: 17, bold: true, color: s.ink, fontFace: F }, { upper: true });
+    const name = slideRuns(item.title, { fontSize: 17, bold: true, color: s.ink, fontFace: s.font }, { upper: true });
     if (item.kicker) {
       name[name.length - 1].options.breakLine = true;
-      name.push({ text: item.kicker, options: { fontSize: 13, bold: true, color: s.lit, fontFace: F } });
+      name.push({ text: item.kicker, options: { fontSize: 13, bold: true, color: s.lit, fontFace: s.font } });
     }
     page.addText(name, { x: rx + 0.3, y, w: NAME_W - 0.3, h, valign: "middle", margin: 0 });
 
     const { cols, colW } = phaseParts(item, box.w);
     cols.forEach((col, c) => {
       if (!col.length) return;
-      page.addText(linesToRuns(col, { fontSize: size, color: s.body, fontFace: F }, s), {
+      page.addText(linesToRuns(col, { fontSize: size, color: s.body, fontFace: s.font }, s), {
         x: rx + NAME_W + 0.1 + c * (colW + 0.3), y, w: colW, h, valign: "middle", margin: 0,
       });
     });
@@ -245,7 +244,7 @@ export function drawPhases(page, piece, box, s) {
       page.addText([
         { text: "OUTCOME", options: { fontSize: 11, bold: true, color: s.lit, charSpacing: 2, breakLine: true } },
         { text: item.outcome, options: { fontSize: size, color: s.body } },
-      ], { x: ox, y, w: OUTCOME_W - 0.3, h, valign: "middle", fontFace: F, margin: 0 });
+      ], { x: ox, y, w: OUTCOME_W - 0.3, h, valign: "middle", fontFace: s.font, margin: 0 });
     }
     y += h + 0.22;
   });
@@ -273,7 +272,7 @@ export function drawFlow(page, piece, box, s) {
   piece.steps.forEach((step, i) => {
     const x = box.x + i * (bw + gap);
     panel(page, x, y, bw, bh, s, { lit: step.lit, outline: step.lit ? null : s.line });
-    page.addText(slideRuns(step.runs, { fontSize: size, bold: true, color: step.lit ? s.onLit : s.ink, fontFace: F }, { upper: true }), {
+    page.addText(slideRuns(step.runs, { fontSize: size, bold: true, color: step.lit ? s.onLit : s.ink, fontFace: s.font }, { upper: true }), {
       x: x + 0.12, y, w: bw - 0.24, h: bh, align: "center", valign: "middle", margin: 0,
     });
     if (i < n - 1) line(page, x + bw + 0.06, y + bh / 2, x + bw + gap - 0.06, y + bh / 2, s.line, { arrow: true, width: 1.75 });
@@ -306,10 +305,10 @@ export function drawHub(page, piece, box, s) {
   const centreH = Math.min(1.5, box.h);
   const cy = box.y + box.h / 2;
   panel(page, box.x, cy - centreH / 2, centreW, centreH, s, { lit: true });
-  const centre = slideRuns(piece.centre, { fontSize: 24, bold: true, color: s.onLit, fontFace: F }, { upper: true });
+  const centre = slideRuns(piece.centre, { fontSize: 24, bold: true, color: s.onLit, fontFace: s.font }, { upper: true });
   if (piece.caption) {
     centre[centre.length - 1].options.breakLine = true;
-    centre.push({ text: piece.caption, options: { fontSize: 12, color: s.onLit, fontFace: F } });
+    centre.push({ text: piece.caption, options: { fontSize: 12, color: s.onLit, fontFace: s.font } });
   }
   page.addText(centre, { x: box.x + 0.15, y: cy - centreH / 2, w: centreW - 0.3, h: centreH, align: "center", valign: "middle", margin: 0 });
 
@@ -320,7 +319,7 @@ export function drawHub(page, piece, box, s) {
     const dotY = y + h / 2;
     line(page, fromX, cy, box.x + listX - 0.12, dotY, s.line, { width: 1 });
     page.addShape("ellipse", { x: box.x + listX - 0.12, y: dotY - 0.06, w: 0.12, h: 0.12, fill: { color: s.lit }, line: { color: s.lit } });
-    page.addText(slideRuns(item.runs, { fontSize: size, color: s.body, fontFace: F }, { lit: s.lit }), {
+    page.addText(slideRuns(item.runs, { fontSize: size, color: s.body, fontFace: s.font }, { lit: s.lit }), {
       x: box.x + listX + 0.15, y, w: listW - 0.2, h, valign: "middle", margin: 0,
     });
     y += h;
@@ -355,12 +354,12 @@ export function drawTree(page, piece, box, s) {
   const topH = 0.9;
   const topX = box.x + (box.w - topW) / 2;
   panel(page, topX, box.y, topW, topH, s, { lit: true });
-  const top = slideRuns(piece.top, { fontSize: 18, bold: true, color: s.onLit, fontFace: F }, { upper: true });
+  const top = slideRuns(piece.top, { fontSize: 18, bold: true, color: s.onLit, fontFace: s.font }, { upper: true });
   if (piece.topCaption) {
     top[top.length - 1].options.breakLine = true;
     top.push({ text: piece.topCaption, options: { fontSize: 12, color: s.onLit } });
   }
-  page.addText(top, { x: topX + 0.1, y: box.y, w: topW - 0.2, h: topH, align: "center", valign: "middle", fontFace: F, margin: 0 });
+  page.addText(top, { x: topX + 0.1, y: box.y, w: topW - 0.2, h: topH, align: "center", valign: "middle", fontFace: s.font, margin: 0 });
 
   const railY = box.y + topH + 0.35;
   const childY = railY + 0.35;
@@ -371,7 +370,7 @@ export function drawTree(page, piece, box, s) {
     const x = rowX + i * (cw + GAP);
     line(page, x + cw / 2, railY, x + cw / 2, childY - 0.03, s.line, { arrow: true });
     panel(page, x, childY, cw, childH, s, { outline: s.line });
-    const head = slideRuns(item.title, { fontSize: 15, bold: true, color: s.lit, fontFace: F }, { upper: true });
+    const head = slideRuns(item.title, { fontSize: 15, bold: true, color: s.lit, fontFace: s.font }, { upper: true });
     if (item.kicker) {
       head[head.length - 1].options.breakLine = true;
       head.push({ text: item.kicker, options: { fontSize: 12, color: s.body } });
@@ -380,10 +379,10 @@ export function drawTree(page, piece, box, s) {
     const lines = itemLines(item.blocks);
     page.addText(head, {
       x: x + 0.15, y: childY + 0.15, w: cw - 0.3, h: lines.length ? headH : childH - 0.3,
-      align: "center", valign: lines.length ? "top" : "middle", fontFace: F, margin: 0,
+      align: "center", valign: lines.length ? "top" : "middle", fontFace: s.font, margin: 0,
     });
     if (lines.length) {
-      page.addText(linesToRuns(lines, { fontSize: 12.5, color: s.body, fontFace: F }, s), {
+      page.addText(linesToRuns(lines, { fontSize: 12.5, color: s.body, fontFace: s.font }, s), {
         x: x + 0.2, y: childY + 0.2 + headH, w: cw - 0.4, h: Math.max(0.3, childH - headH - 0.35), valign: "top", margin: 0,
       });
     }
@@ -403,16 +402,16 @@ export function statHeight(piece, width) {
 export function drawStat(page, piece, box, s) {
   panel(page, box.x, box.y, STAT_W, box.h, s, { lit: true, radius: 0.12 });
   page.addText(piece.block.value, {
-    x: box.x + 0.15, y: box.y + 0.2, w: STAT_W - 0.3, h: box.h * 0.55, fontSize: 56, bold: true, color: s.onLit, align: "center", valign: "middle", fontFace: F, fit: "shrink",
+    x: box.x + 0.15, y: box.y + 0.2, w: STAT_W - 0.3, h: box.h * 0.55, fontSize: 56, bold: true, color: s.onLit, align: "center", valign: "middle", fontFace: s.font, fit: "shrink",
   });
   if (piece.block.caption) {
     page.addText(piece.block.caption, {
-      x: box.x + 0.25, y: box.y + box.h * 0.62, w: STAT_W - 0.5, h: box.h * 0.33, fontSize: 14, color: s.onLit, align: "center", valign: "top", fontFace: F,
+      x: box.x + 0.25, y: box.y + box.h * 0.62, w: STAT_W - 0.5, h: box.h * 0.33, fontSize: 14, color: s.onLit, align: "center", valign: "top", fontFace: s.font,
     });
   }
   const lines = itemLines(piece.block.blocks);
   if (lines.length) {
-    page.addText(linesToRuns(lines, { fontSize: TYPE.lead, color: s.body, fontFace: F }, s), {
+    page.addText(linesToRuns(lines, { fontSize: TYPE.lead, color: s.body, fontFace: s.font }, s), {
       x: box.x + STAT_W + 0.45, y: box.y, w: box.w - STAT_W - 0.45, h: box.h, valign: "middle", margin: 0,
     });
   }
@@ -424,7 +423,7 @@ export function statementHeight(piece, width) {
 
 export function drawStatement(page, piece, box, s) {
   panel(page, box.x, box.y, box.w, box.h, s, { outline: s.line, radius: 0.14 });
-  page.addText(slideRuns(piece.runs, { fontSize: 34, bold: true, color: s.ink, fontFace: F }, { lit: s.litLarge, upper: true }), {
+  page.addText(slideRuns(piece.runs, { fontSize: 34, bold: true, color: s.ink, fontFace: s.font }, { lit: s.litLarge, upper: true }), {
     x: box.x + 0.6, y: box.y + 0.2, w: box.w - 1.2, h: box.h - 0.4, align: "center", valign: "middle", margin: 0,
   });
 }
@@ -434,7 +433,7 @@ export const TAKEAWAY_H = 0.7;
 export function drawTakeaway(page, runs, box, s) {
   panel(page, box.x, box.y, box.w, box.h, s, { outline: s.line, radius: 0.08 });
   page.addShape("ellipse", { x: box.x + 0.3, y: box.y + box.h / 2 - 0.08, w: 0.16, h: 0.16, fill: { color: s.lit }, line: { color: s.lit } });
-  page.addText(slideRuns(runs, { fontSize: 15, bold: true, color: s.ink, fontFace: F }, { lit: s.lit }), {
+  page.addText(slideRuns(runs, { fontSize: 15, bold: true, color: s.ink, fontFace: s.font }, { lit: s.lit }), {
     x: box.x + 0.65, y: box.y, w: box.w - 0.95, h: box.h, valign: "middle", margin: 0, fit: "shrink",
   });
 }

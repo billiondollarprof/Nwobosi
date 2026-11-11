@@ -50,7 +50,6 @@ import * as D from "./slides/slideDiagrams.js";
    -------------------------------------------------------------------------- */
 
 const { W, H, X, BODY_W, FOOT } = PAGE;
-const F = TYPE.font;
 const TAKEAWAY_H = D.TAKEAWAY_H;
 
 /* Where the headline starts: under the brand chip, with room for a small
@@ -281,7 +280,7 @@ function foldThinSlides(slides) {
 function textBody(pieces, s) {
   const out = [];
   for (const piece of pieces) {
-    const base = { fontSize: BODY_SIZE, color: s.body, fontFace: F, paraSpaceAfter: 6 };
+    const base = { fontSize: BODY_SIZE, color: s.body, fontFace: s.font, paraSpaceAfter: 6 };
     let opts = piece.style === "para" ? { ...base, paraSpaceBefore: 6 } : base;
     if (piece.style === "sub") opts = { ...base, bold: true, color: s.ink, fontSize: BODY_SIZE + 1, paraSpaceBefore: 6 };
     if (piece.style === "bullet") opts = { ...base, bullet: { indent: 18 }, paraSpaceAfter: 5 };
@@ -317,7 +316,7 @@ function drawTable(page, block, y, s) {
     }));
   });
   page.addTable([head, ...rows], {
-    x: X, y, w: BODY_W, fontSize: block.rows.length <= 6 ? 15 : 13, fontFace: F,
+    x: X, y, w: BODY_W, fontSize: block.rows.length <= 6 ? 15 : 13, fontFace: s.font,
     border: { type: "solid", color: s.panelLine, pt: 0.75 }, rowH: rowHeight(block), valign: "middle", margin: [0.06, 0.14, 0.06, 0.14],
   });
 }
@@ -343,7 +342,7 @@ function drawCaption(page, block, box, s) {
   if (text) runs.push({ text, options: { fontSize: 12, italic: true, color: s.muted, breakLine: Boolean(block.source) } });
   if (block.source) runs.push({ text: block.source, options: { fontSize: 11, color: s.muted } });
   page.addText(runs, {
-    x: box.x, y: box.y + box.h - h + 0.05, w: box.w, h: h - 0.05, align: "center", valign: "top", fontFace: F, margin: 0,
+    x: box.x, y: box.y + box.h - h + 0.05, w: box.w, h: h - 0.05, align: "center", valign: "top", fontFace: s.font, margin: 0,
   });
 }
 
@@ -354,7 +353,7 @@ function drawImage(page, piece, box, s, images) {
     /* Never an empty hole: a marked space saying which picture goes here. */
     D.panel(page, box.x, box.y, box.w, box.h - captionH, s);
     page.addText(`Picture to add here: ${piece.block.name}`, {
-      x: box.x, y: box.y, w: box.w, h: box.h - captionH, fontSize: 14, color: s.muted, align: "center", valign: "middle", fontFace: F,
+      x: box.x, y: box.y, w: box.w, h: box.h - captionH, fontSize: 14, color: s.muted, align: "center", valign: "middle", fontFace: s.font,
     });
   } else {
     const fit = fitInto(found, box.w, box.h - captionH);
@@ -390,7 +389,7 @@ function drawChart(page, piece, box, s, docTheme) {
   const few = data.categories.length * data.series.length <= 16;
   const common = {
     ...area,
-    fontFace: F,
+    fontFace: s.font,
     /* One set of numbers is one colour. Pies are the exception. */
     chartColors: data.series.length > 1 || data.kind === "pie" || data.kind === "doughnut" ? palette : [palette[0]],
     catAxisLabelColor: s.muted,
@@ -477,7 +476,7 @@ function drawBrandChip(page, brand, s, { big = false } = {}) {
     page.addImage({ data: brand.logoData, x: X + 0.2, y: CHIP_Y + 0.06, w: w - 0.4, h: h - 0.12, sizing: { type: "contain", w: w - 0.4, h: h - 0.12 } });
   } else if (brand?.name) {
     page.addText(brand.name.toUpperCase(), {
-      x: X, y: CHIP_Y, w: 6, h, fontSize: big ? 14 : 12, bold: true, charSpacing: 2, color: s.muted, fontFace: F, valign: "middle", margin: 0,
+      x: X, y: CHIP_Y, w: 6, h, fontSize: big ? 14 : 12, bold: true, charSpacing: 2, color: s.muted, fontFace: s.font, valign: "middle", margin: 0,
     });
   }
 }
@@ -501,16 +500,16 @@ function drawCover(deck, slide, s, brand) {
   const lines = Math.min(3, headlineLines(slide.title, size, W - 2 * X - 2));
   const titleH = (lines * size * 1.08) / 72 + 0.1;
   const titleY = 3.9 - titleH;
-  page.addText(slideRuns(coverRuns(slide.title), { fontSize: size, bold: true, color: s.ink, fontFace: F }, { lit: s.litLarge, upper: true }), {
+  page.addText(slideRuns(coverRuns(slide.title), { fontSize: size, bold: true, color: s.ink, fontFace: s.headFont }, { lit: s.litLarge, upper: true }), {
     x: X, y: titleY, w: W - 2 * X - 2, h: titleH, valign: "bottom", margin: 0, fit: "shrink",
   });
   if (slide.subtitle) {
     page.addText(slide.subtitle, {
-      x: X, y: 4.15, w: W * 0.55, h: 1.2, fontSize: 19, color: s.body, fontFace: F, valign: "top", margin: 0,
+      x: X, y: 4.15, w: W * 0.55, h: 1.2, fontSize: 19, color: s.body, fontFace: s.font, valign: "top", margin: 0,
     });
   }
   if (brand?.name) {
-    page.addText(brand.name, { x: X, y: H - 0.8, w: 6, h: 0.35, fontSize: 12, color: s.muted, fontFace: F, margin: 0 });
+    page.addText(brand.name, { x: X, y: H - 0.8, w: 6, h: 0.35, fontSize: 12, color: s.muted, fontFace: s.font, margin: 0 });
   }
 }
 
@@ -518,10 +517,10 @@ function drawHeadline(page, slide, s) {
   const box = headlineBox(slide.title, slide.label);
   if (slide.label) {
     page.addText(slide.label.toUpperCase(), {
-      x: X, y: HEAD_Y, w: BODY_W, h: 0.3, fontSize: 12, bold: true, charSpacing: 3, color: s.lit, fontFace: F, valign: "middle", margin: 0,
+      x: X, y: HEAD_Y, w: BODY_W, h: 0.3, fontSize: 12, bold: true, charSpacing: 3, color: s.lit, fontFace: s.font, valign: "middle", margin: 0,
     });
   }
-  page.addText(slideRuns(slide.titleRuns, { fontSize: box.size, bold: true, color: s.ink, fontFace: F }, { lit: s.litLarge, upper: true }), {
+  page.addText(slideRuns(slide.titleRuns, { fontSize: box.size, bold: true, color: s.ink, fontFace: s.headFont }, { lit: s.litLarge, upper: true }), {
     x: X, y: box.y, w: BODY_W, h: box.h, valign: "top", margin: 0, fit: "shrink",
   });
   return box.bodyTop;
@@ -542,15 +541,17 @@ export async function deckBlob(doc, theme = { ...THEME }, brand = null, images =
   const deck = engine ?? new (await import("pptxgenjs")).default();
   deck.layout = "LAYOUT_WIDE";
   deck.title = doc.title;
-  const s = slideThemeFor(theme, mode);
+  /* Dark or light: what they asked for, or the PowerPoint they showed
+     (theme.slideMode), else the default. */
+  const s = slideThemeFor(theme, theme.slideMode ?? mode);
 
   deck.defineSlideMaster({
     title: "CONTENT",
     background: { color: s.bg },
     objects: [
-      { text: { text: runningLine(brand?.name, doc.title), options: { x: X, y: FOOT + 0.05, w: BODY_W - 1, h: 0.3, fontSize: 11, color: s.muted, fontFace: F } } },
+      { text: { text: runningLine(brand?.name, doc.title), options: { x: X, y: FOOT + 0.05, w: BODY_W - 1, h: 0.3, fontSize: 11, color: s.muted, fontFace: s.font } } },
     ],
-    slideNumber: { x: W - X - 0.6, y: FOOT + 0.05, w: 0.6, h: 0.3, fontSize: 11, color: s.muted, align: "right", fontFace: F },
+    slideNumber: { x: W - X - 0.6, y: FOOT + 0.05, w: 0.6, h: 0.3, fontSize: 11, color: s.muted, align: "right", fontFace: s.font },
   });
 
   for (const slide of toDeck(doc)) {

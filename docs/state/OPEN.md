@@ -157,7 +157,21 @@ other.** Nothing comes off until it is built, checked and live.
        tools that can be connected.
     f. Canva comes later. How it works: the agent writes the prompt, Canva's
        own AI does the design, on the person's Canva credits. Not an import.
-    Waiting for his yes on the read back.
+    **Done, on testing (2026-11-11):** a, b and d. The deck writer draws a
+    dark (or light) theme in the company colour, two-colour headlines, cards
+    with SVG icons (Lucide, ISC), steps, phases, flow, hub, org chart, big
+    figure, statement and styled native charts, all editable shapes. Reused
+    the design rules of anthropics/skills pptx (Apache 2.0) and
+    MiniMax-AI/skills pptx-generator (MIT); licences checked in the repos.
+    **Also done (2026-11-11, his yes):** the assistant function's brief.ts
+    and generate.ts teach the writer the new blocks, a requested slide count,
+    a "Look:" line (":::style dark | #hex") when a person names a look, and
+    copying a PowerPoint they attach ("Layout: like deck.pptx": its colour,
+    fonts, dark or light). PowerPoint uploads are now read (words and look).
+    The look step now checks the deck in the company colour (it was getting
+    the raw company row and drawing the default navy).
+    **Still to do:** the rest of e (Excel and Word skills, free PowerPoint builders such as Presenton,
+    Apache 2.0), f (Canva).
 16. **Research:** similar tools and how they orchestrate agents to make
     files; MCP and the browser; keeping search cheap.
 

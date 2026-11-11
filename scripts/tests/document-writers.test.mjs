@@ -133,5 +133,21 @@ check('the quote has no ">"', !slides.some((s) => (s.text ?? []).some((p) => pla
   }
 }
 
+/* 6. A LOOK ASKED FOR, OR COPIED FROM THEIR OWN POWERPOINT, 2026-11-11 ------ */
+{
+  const asked = readDocument(":::style light | #0B6E4F\n# Plan\n\nShort line.\n\n## One\n\nText.", "x");
+  check("a :::style line is read, even above the title, and never printed",
+    asked.title === "Plan" && asked.style?.mode === "light" && asked.style?.accent === "0B6E4F" && !JSON.stringify(asked.blocks).includes("style"));
+  const { styleOfPptx, layoutFromBrief } = await import("../../src/shared/convert/layoutOf.js");
+  const { readPptx } = await import("../../src/shared/readFile.js");
+  const plain = readFileSync("scripts/__harness/fixtures/plain-deck.pptx");
+  const style = await styleOfPptx(plain);
+  check(`a plain PowerPoint's look is read (${JSON.stringify(style)})`,
+    style?.mode === "light" && style?.accent === "0B6E4F" && style?.font === "Arial" && style?.headingFont === "Georgia" && style?.slides === 3);
+  const words = await readPptx(plain);
+  check("its words come out slide by slide", words.startsWith("Slide 1: Quarterly review") && words.includes("Slide 3: Next steps"));
+  check("the brief can name a PowerPoint to copy", layoutFromBrief("Layout: like Q3 review.pptx") === "Q3 review.pptx");
+}
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

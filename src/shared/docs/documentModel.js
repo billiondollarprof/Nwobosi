@@ -530,6 +530,18 @@ function readDesignBlock(kind, rest, lines, index, blocks) {
     return used;
   }
 
+  /* :::style dark | #1E3A8A   THE LOOK THE PERSON ASKED FOR, 2026-11-11.
+     Anthony: "the person that is designing it can decide, tell the model
+     the design they want". Dark or light, and a colour. It is taken out of
+     the document by readDocument (doc.style) and never printed. */
+  if (kind === "style") {
+    const [modeWord = "", colour = ""] = rest.split("|").map((t) => t.trim());
+    const mode = /light|white/i.test(modeWord) ? "light" : /dark|black/i.test(modeWord) ? "dark" : "";
+    const accent = (colour.match(/#?([0-9a-f]{6})\b/i)?.[1] ?? modeWord.match(/#?([0-9a-f]{6})\b/i)?.[1] ?? "").toUpperCase();
+    blocks.push({ type: "style", mode, accent });
+    return 1;
+  }
+
   /* :::statement One line, said big. **Bold** words are lit. */
   if (kind === "statement") {
     if (rest.trim()) {
@@ -598,6 +610,16 @@ export function readDocument(markdown, fallbackTitle = "Document") {
     (inNotes !== null ? notes : blocks).push(block);
   }
 
+  /* The look the person asked for (":::style"), taken out of the text
+     first, so it can sit anywhere, even above the title. */
+  let style = null;
+  for (let i = blocks.length - 1; i >= 0; i -= 1) {
+    if (blocks[i].type === "style") {
+      const { mode, accent } = blocks.splice(i, 1)[0];
+      style = { ...(mode ? { mode } : {}), ...(accent ? { accent } : {}), ...(style ?? {}) };
+    }
+  }
+
   let title = fallbackTitle;
   if (blocks[0]?.type === "h" && blocks[0].level === 1) {
     title = plainText(blocks.shift().runs).trim() || fallbackTitle;
@@ -618,7 +640,7 @@ export function readDocument(markdown, fallbackTitle = "Document") {
       findings.push(`${block.caption ? `The chart "${block.caption}"` : "A chart"} could not be drawn, so its numbers are shown as a table. ${block.data.problem}`);
     }
   });
-  return { title, subtitle, blocks, notes, findings };
+  return { title, subtitle, blocks, notes, findings, style };
 }
 
 /* The notes as plain lines, for showing in the chat. */

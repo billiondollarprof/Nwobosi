@@ -99,8 +99,11 @@ export const TYPE = {
 
 export function slideThemeFor(docTheme, mode = "dark") {
   const brand = docTheme.accent;
+  /* Fonts: the company's (or the PowerPoint they showed), else Calibri. */
+  const fonts = { font: docTheme.officeFont || TYPE.font, headFont: docTheme.headingFont || docTheme.officeFont || TYPE.font };
   if (mode === "light") {
     return {
+      ...fonts,
       mode,
       bg: "FFFFFF",
       panel: mix(brand, 0.93),
@@ -121,6 +124,7 @@ export function slideThemeFor(docTheme, mode = "dark") {
   const bg = mix(brand, -0.86);
   const panel = mix(bg, 0.06);
   return {
+    ...fonts,
     mode: "dark",
     bg,
     panel,
