@@ -84,6 +84,13 @@ other.** Nothing comes off until it is built, checked and live.
    **Built, on testing:** questions in one numbered message; "Yes, after my answers" arms the search, which runs once they answer (the server's yes gate unchanged); five line read back; build card "Go ahead with PDF" plus Word, Excel, Slides. Walk: `search-after.cjs`.
 6. **Change a document after it is built, with no new interview.** The
    instruction is live (assistant v55); test it.
+7a. **The look before handing over** (2026-11-11, "do the screenshot"):
+   built. Slides are drawn from the slide writer's own placements
+   (`src/shared/docs/look/`), PDFs from the real file; code measures text
+   spilling out of its box and text under 11 point; a new look agent
+   (`stages/look.ts`) reads the pictures and answers ALL CLEAR or one line
+   per problem, shown on the build card. Downloads wait for it. Word and
+   Excel are not drawn. Walk: `look.cjs`.
 7. **Excel and PowerPoint, checked for real.** Make both, screenshot every
    slide and sheet, text at least 11 point. The system should look at what
    it made (screenshot) before handing it over, especially slides.

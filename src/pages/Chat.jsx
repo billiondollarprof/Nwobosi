@@ -1573,7 +1573,9 @@ export default function Chat() {
     deliveredRef.current = log.delivered;
     briefRef.current = row.brief ?? "";
 
-    const restored = settled.messages.map((m) => ({ id: nextId(), ...m }));
+    /* A look that was running when the page closed is over: its card gets
+       its download buttons back rather than waiting for ever. */
+    const restored = settled.messages.map((m) => ({ id: nextId(), ...m, ...(m.looking ? { looking: false } : {}) }));
 
     /* Said only when something came back that they cannot see on screen.
        The conversation itself is right there, so announcing it would be
@@ -1987,6 +1989,63 @@ export default function Chat() {
     }
   }
 
+  /* --------------------------------------------------------------------
+     THE LOOK AGENT. The file is drawn as pictures (docs/look/lookAtFile.js,
+     with what measuring already found) and sent to the "look" stage
+     (supabase/functions/assistant/stages/look.ts), which answers ALL CLEAR
+     or one line per problem. What it says goes on the build card; it never
+     changes the file, the person decides whether to ask for a change.
+     Anything failing here only means "not looked at": the card finishes
+     and the file is handed over as before.
+     -------------------------------------------------------------------- */
+  async function lookAndReport(resultId, markdown, title, convo, stepsSoFar) {
+    const format = formatRef.current;
+    const noun = format === "pptx" ? "slide" : "page";
+    let steps = stepsSoFar;
+    let problems = [];
+    let looked = false;
+    try {
+      const { lookAtFile, asImageBlock } = await import("../shared/docs/look/lookAtFile.js");
+      const seen = await lookAtFile(format, title, markdown, me?.company, convo);
+      if (seen?.pictures?.length) {
+        const intro =
+          `This is the finished ${format === "pptx" ? "slide deck" : "PDF"}, ${seen.pages} ${noun}${seen.pages === 1 ? "" : "s"}, ` +
+          `drawn as pictures in order.` +
+          (seen.problems.length ? `\nThe app already measured these:\n${seen.problems.join("\n")}` : "");
+        const said = await new Promise((resolve) => {
+          let text = "";
+          const stop = setTimeout(() => resolve(null), 60000);
+          sendTurn({
+            stage: "look",
+            messages: [{ role: "user", content: [{ type: "text", text: intro }, ...seen.pictures.map(asImageBlock)] }],
+            onText: (chunk) => { text += chunk; },
+            onDone: () => { clearTimeout(stop); resolve(text); },
+            onError: () => { clearTimeout(stop); resolve(null); },
+          });
+        });
+        looked = said !== null;
+        const fromLook = said && !/ALL CLEAR/i.test(said)
+          ? said.split("\n").map((l) => l.replace(/^[-*•\s]+/, "").trim()).filter(Boolean)
+          : [];
+        problems = [...new Set([...seen.problems, ...fromLook])].slice(0, 5);
+      }
+    } catch (error) {
+      console.warn("could not look at the file", error);
+    }
+
+    if (looked && !problems.length) {
+      steps = advance(steps, `Looked at every ${noun} the way you will see it. Nothing is out of place.`, "done");
+    } else if (problems.length) {
+      steps = advance(steps, `Looked at every ${noun}. ${problems.length === 1 ? "One thing" : "A few things"} you may want changed:`, "done");
+      steps = [...steps, ...problems.map((text) => ({ text, tone: "error" }))];
+    } else {
+      steps = steps.filter((step) => step.tone !== "active");
+    }
+    steps = [...steps, { text: problems.length ? "Done. Tell me what to change, or download it as it is." : "Done. It is ready below.", tone: "done" }];
+    const next = updateMessages((prev) => prev.map((m) => (m.id === resultId ? { ...m, steps, looking: false } : m)));
+    persist(next, "analyse");
+  }
+
   function buildFromBrief(brief, convo = messages) {
     /* Held here as well as written to the row, so the rest of this visit
        knows a brief exists without going back to the database for it. */
@@ -2213,8 +2272,22 @@ export default function Chat() {
            fold away, and the card keeps the steps that matter. */
         steps = steps.filter((step) => step.tone !== "info");
         steps = advance(steps, "Checked every figure against your files", "done");
-        steps = advance(steps, "Done. It is ready below.", "done");
-        updateMessages((prev) => prev.map((m) => (m.id === resultId ? { ...m, steps } : m)));
+
+        /* THE LOOK, BEFORE IT IS HANDED OVER. Anthony, 2026-11-10: "The
+           system should look at what it made (screenshot) before handing
+           it over, especially slides." Slides and PDFs are drawn as
+           pictures and looked at; the download buttons wait until it is
+           done. See lookAndReport. */
+        const lookable = formatRef.current === "pptx" || formatRef.current === "pdf";
+        if (lookable) {
+          const noun = formatRef.current === "pptx" ? "slide" : "page";
+          steps = advance(steps, `Looking at every ${noun} the way you will see it…`);
+          updateMessages((prev) => prev.map((m) => (m.id === resultId ? { ...m, steps, looking: true } : m)));
+          lookAndReport(resultId, finished, title, convo, steps);
+        } else {
+          steps = advance(steps, "Done. It is ready below.", "done");
+          updateMessages((prev) => prev.map((m) => (m.id === resultId ? { ...m, steps } : m)));
+        }
         checkNumbers(resultId, finished, brief, convo);
       },
 
@@ -4626,6 +4699,13 @@ export function ChatBubble({ message, brief, buildFormat = DEFAULT_FORMAT, build
               The others are still there, because an office converts things
               all day: a report to PDF to send out where nobody can change
               it, a deck to PDF after it has been checked. */}
+          {/* Held back while the look runs, so nothing is handed over
+              before it has been looked at (Anthony, 2026-11-10). */}
+          {message.looking ? (
+            <p className="text-[13.5px]" style={{ color: "var(--text-3)" }}>
+              The download is ready the moment I have finished looking.
+            </p>
+          ) : (
           <div className="flex flex-wrap gap-2.5">
             <PrimaryButton
               onClick={() => onDownload(made)}
@@ -4641,6 +4721,7 @@ export function ChatBubble({ message, brief, buildFormat = DEFAULT_FORMAT, build
               <GhostButton onClick={() => onDownload("xlsx")}>Excel</GhostButton>
             )}
           </div>
+          )}
 
           {/* THE SECOND ROW IS A DIFFERENT QUESTION. The row above is
               "what shall I take away". This one is "what shall I do now".
