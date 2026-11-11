@@ -142,14 +142,22 @@ other.** Nothing comes off until it is built, checked and live.
 15. **Connected tools, per client** (written in `docs/product/DIRECTION.md`):
     ask before using any, one at a time in task order, connected knowledge
     before the internet, Canva offered for designs.
-15a. **Slides that look designed, and Canva that works.** (2026-11-11) He sent
-    a Canva deck he made ("Streams of Grace Digital Strategy", uploaded in chat,
-    not in the repo) as the standard: dark theme, big two-colour
-    headlines, few words, diagrams (a flow of boxes with arrows, phase rows,
-    an org chart, a capabilities list fanning out). Ours read as a document
-    cut into slides. He also wants Canva working, so a person who wants a
-    real slide deck can connect their own Canva. Waiting for his yes on the
-    plan given in chat.
+15a. **Slides that look designed, and Canva later.** (2026-11-11) He sent a
+    Canva deck he made ("Streams of Grace Digital Strategy", uploaded in
+    chat, not in the repo) as the standard. His brief, same day:
+    a. A normal, good-looking slide deck first, from our own system, as good
+       as what Claude makes on its own. His view: ours looks like a long,
+       short landscape strip, not a normal slide.
+    b. A slide skill the agents use: boxes, diagrams, SVG icons first (emoji
+       only if needed), premium charts, premium design.
+    c. Copy a company's own plain PowerPoint style when they give one.
+    d. Every PowerPoint, Excel and Word file stays editable. Only PDF is not.
+    e. Look for free, open source skills for PowerPoint, Excel and other
+       documents (like ScrollCraft) to reuse, and free PowerPoint builder
+       tools that can be connected.
+    f. Canva comes later. How it works: the agent writes the prompt, Canva's
+       own AI does the design, on the person's Canva credits. Not an import.
+    Waiting for his yes on the read back.
 16. **Research:** similar tools and how they orchestrate agents to make
     files; MCP and the browser; keeping search cheap.
 
