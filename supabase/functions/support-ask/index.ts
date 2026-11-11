@@ -41,6 +41,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk@0.68.0";
+import { knowledgeMap } from "../_shared/knowledgeMap.ts";
 import { centsExact, clientFor, modelFor, vendorForCompany, vendorForSupport, type Tier } from "../_shared/brain.ts";
 
 /* --------------------------------------------------------------------------
@@ -632,6 +633,12 @@ async function notifyMore(
    SECTION: The handler
    -------------------------------------------------------------------------- */
 
+/* How long Gemini gets before the company's own brain answers instead. */
+const GEMINI_WAIT_MS = 4000;
+
+/* Published material smaller than this is read whole on every message. */
+const READ_ALL_BELOW_CHARS = 20000;
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ ok: false, reason: "POST only" }, 405);
@@ -827,10 +834,56 @@ Deno.serve(async (req) => {
     return json({ ok: false, reason: "could not read the material" }, 500);
   }
 
+  /* SUPPORT HAS ITS OWN MAP, AND READS ONLY WHAT THE QUESTION NEEDS.
+     Anthony, 2026-11-11: "support doesn't have to read the entire knowledge
+     base... Support can have its own map as well, since support cannot read
+     everything that assistants can read."
+
+     The map lists every PUBLISHED source (name, what it holds, its size),
+     never a staff one: it is built from customer_knowledge, the same door
+     as the text. Under READ_ALL_BELOW_CHARS everything published is read,
+     because it is small. Above it, the sources are ranked by how many of
+     the customer's own words they contain, and only the best are read in
+     full, up to that many characters. No extra model call: a customer on
+     WhatsApp is waiting, and the webhook gives this 12 seconds in all.
+     A question whose answer sits in a source that was not read goes to a
+     person, which the prompt already does for anything it cannot answer. */
+  const perSource = new Map<string, { description: string | null; text: string }>();
+  for (const row of knowledge ?? []) {
+    const name = String(row.source_name ?? "Untitled");
+    const entry = perSource.get(name) ?? { description: row.source_description ?? null, text: "" };
+    entry.text += "\n" + String(row.content ?? "");
+    perSource.set(name, entry);
+  }
+  const publishedChars = [...perSource.values()].reduce((n, e) => n + e.text.length, 0);
+  const supportMap = knowledgeMap(
+    [...perSource.entries()].map(([name, e]) => ({ name, description: e.description, text: e.text })),
+  ).replace("KNOWLEDGE MAP", "WHAT IS PUBLISHED (the support map)").split("\n").filter((l) => !l.startsWith("Brand colour")).join("\n");
+
+  let readOnly: Set<string> | null = null;
+  if (publishedChars > READ_ALL_BELOW_CHARS) {
+    const asked = (text + " " + (state?.open_questions ?? []).join(" ")).toLowerCase().match(/[a-z0-9₦]{4,}/g) ?? [];
+    const words = [...new Set(asked)];
+    const ranked = [...perSource.entries()]
+      .map(([name, e]) => {
+        const hay = (name + " " + (e.description ?? "") + " " + e.text).toLowerCase();
+        return { name, size: e.text.length, score: words.filter((w) => hay.includes(w)).length };
+      })
+      .sort((a, b) => b.score - a.score);
+    readOnly = new Set<string>();
+    let room = READ_ALL_BELOW_CHARS;
+    for (const r of ranked) {
+      if (readOnly.size && room - r.size < 0) continue;
+      readOnly.add(r.name);
+      room -= r.size;
+    }
+  }
+
   const sources: Source[] = [];
   let budget = MAX_SOURCE_CHARS;
   for (const row of knowledge ?? []) {
     if (budget <= 0) break;
+    if (readOnly && !readOnly.has(String(row.source_name ?? "Untitled"))) continue;
     const slice = String(row.content ?? "").slice(0, budget);
     budget -= slice.length;
 
@@ -923,7 +976,12 @@ Deno.serve(async (req) => {
   const systemBlocks: Anthropic.TextBlockParam[] = [
     {
       type: "text",
-      text: buildSystem(company.name, company.what_we_do, sources, routeLabels ?? []),
+      text: buildSystem(company.name, company.what_we_do, sources, routeLabels ?? []) +
+        "\n\n" + supportMap +
+        (readOnly
+          ? "\nOnly some of these are above in full, chosen for this question. If the answer " +
+            "would be in one that is not above, hand the question to a person."
+          : ""),
       cache_control: { type: "ephemeral" },
     },
   ];
@@ -949,7 +1007,16 @@ Deno.serve(async (req) => {
       messages,
     });
     try {
-      return await call(vendor);
+      if (vendor !== "gemini") return await call(vendor);
+      /* FOUR SECONDS, THEN THE COMPANY'S OWN BRAIN. Seen live 2026-11-10:
+         Gemini's free tier did not refuse, it took 75 seconds to say hello.
+         The WhatsApp webhook on Amara's side waits 12 seconds and then gives
+         up, so the customer saw typing and never an answer. A healthy Gemini
+         answers in one or two seconds; one that has not answered in four is
+         not going to make the 12. */
+      const slow = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("gemini took longer than 4 seconds")), GEMINI_WAIT_MS));
+      return await Promise.race([call(vendor), slow]);
     } catch (err) {
       if (vendor !== "gemini") throw err;
       console.warn("gemini failed for support, using the company's own brain", err instanceof Error ? err.message.slice(0, 200) : err);
