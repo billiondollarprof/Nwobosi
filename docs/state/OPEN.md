@@ -120,7 +120,10 @@ other.** Nothing comes off until it is built, checked and live.
     `docs/rules/WRITING.md`.
     **Landing page done, on testing.** Also fixed two lines left stale by the
     products section going, and took Amazon Bedrock off the public page.
-    **The app's own text is not done yet.**
+    **App text done 2026-11-11:** the search card speaks as "I", "outputs"
+    and "drew down" became documents and allowance, the knowledge base and
+    link hints were rewritten without staging, and the meter message says
+    plainly what happened.
 12. **Gemini for support, DeepSeek for the work.** Needs his Gemini key in
     Supabase secrets as `GEMINI_API_KEY`.
 13. **CI minute savings** (his yes given): skip CI on doc-only pushes, no
