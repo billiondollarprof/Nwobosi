@@ -1,5 +1,5 @@
 """
-THE CONVERTER: A WORD FILE TO PDF, OR A PDF TO WORD, AND NOTHING ELSE.
+THE CONVERTER: AN OFFICE FILE TO PDF, OR A PDF TO WORD, AND NOTHING ELSE.
 
 Anthony, 2026-09-23: "it's a conversion, meaning nothing inside the
 original document is missing and no new thing is added."
@@ -9,8 +9,11 @@ WHAT THIS IS
 A small web service, run on Google Cloud Run in Anthony's own Google Cloud
 project. It does two things:
 
-  Word to PDF   LibreOffice prints the Word file exactly as it is laid out:
-                its letterhead, its fonts, its margins. Nothing restyled.
+  Office to PDF LibreOffice prints a Word, PowerPoint or Excel file exactly
+                as it is laid out: its letterhead, fonts and margins, every
+                slide with its shapes and charts, every sheet. Nothing
+                restyled. (PowerPoint and Excel added 2026-11-11, Anthony:
+                "convert those files to PDF for easy sending and opening".)
   PDF to Word   pdf2docx rebuilds the page as an editable Word file,
                 keeping tables, pictures and the layout far better than
                 reading the text out and starting again.
@@ -36,11 +39,13 @@ READ TOP TO BOTTOM
 """
 
 import hmac
+import io
 import logging
 import os
 import shutil
 import subprocess
 import tempfile
+import zipfile
 
 from fastapi import FastAPI, Header, HTTPException, Request, Response
 
@@ -68,7 +73,20 @@ logging.getLogger().setLevel(logging.WARNING)
 # ---------------------------------------------------------------------------
 
 
-def word_to_pdf(folder: str, source: str) -> str:
+def office_kind(body: bytes) -> str:
+    """Which Office file a zip is, from the folders inside it: word/, ppt/
+    or xl/. Decided by what the file holds, never by what the caller says."""
+    try:
+        names = zipfile.ZipFile(io.BytesIO(body)).namelist()
+    except zipfile.BadZipFile:
+        return ""
+    for folder, kind in (("word/", "docx"), ("ppt/", "pptx"), ("xl/", "xlsx")):
+        if any(name.startswith(folder) for name in names):
+            return kind
+    return ""
+
+
+def office_to_pdf(folder: str, source: str) -> str:
     """LibreOffice, headless, with its own profile folder so two requests at
     once never fight over one profile."""
     profile = os.path.join(folder, "profile")
@@ -136,19 +154,23 @@ async def convert(
     is_pdf = body[:4] == b"%PDF"
     is_zip = body[:2] == b"PK"
     if to == "pdf" and not is_zip:
-        raise HTTPException(status_code=400, detail="a Word file is needed to make a PDF")
+        raise HTTPException(status_code=400, detail="a Word, PowerPoint or Excel file is needed to make a PDF")
+    kind = office_kind(body) if to == "pdf" else "pdf"
+    if not kind:
+        raise HTTPException(status_code=400, detail="a Word, PowerPoint or Excel file is needed to make a PDF")
     if to == "docx" and not is_pdf:
         raise HTTPException(status_code=400, detail="a PDF is needed to make a Word file")
 
     folder = tempfile.mkdtemp(prefix="convert-")
     try:
-        source = os.path.join(folder, "in.docx" if to == "pdf" else "in.pdf")
+        # The right extension matters: LibreOffice picks its reader by it.
+        source = os.path.join(folder, f"in.{kind}")
         with open(source, "wb") as handle:
             handle.write(body)
-        target = word_to_pdf(folder, source) if to == "pdf" else pdf_to_word(folder, source)
+        target = office_to_pdf(folder, source) if to == "pdf" else pdf_to_word(folder, source)
         with open(target, "rb") as handle:
             result = handle.read()
-        print(f"converted to={to} in_bytes={len(body)} out_bytes={len(result)}", flush=True)
+        print(f"converted from={kind} to={to} in_bytes={len(body)} out_bytes={len(result)}", flush=True)
         return Response(content=result, media_type=MIME[to])
     except subprocess.TimeoutExpired:
         print(f"timed out to={to} in_bytes={len(body)}", flush=True)

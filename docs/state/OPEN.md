@@ -172,6 +172,17 @@ other.** Nothing comes off until it is built, checked and live.
     the raw company row and drawing the default navy).
     **Still to do:** the rest of e (Excel and Word skills, free PowerPoint builders such as Presenton,
     Apache 2.0), f (Canva).
+15b. **A number they name is a rule** (2026-11-11). Exact is exact, "not more
+    than 10" is 10 or fewer, "more than 10" is 11 or more; no number, the
+    system decides. Slides, pages (Word/PDF) and sheets (Excel). Done on
+    testing: the app reads the number (docs/askedCount.js); a named slide
+    count keeps each section on one slide, shrinking to fit; a page ceiling
+    makes the PDF fit. Waiting for his yes: the assistant function's
+    analyse, brief and generate instructions.
+15c. **Send as PDF** (2026-11-11, his choice A). Converter (converter/) now
+    takes PowerPoint and Excel too, on testing. His step: deploy it on Cloud
+    Run from converter/README.md (needs billing on). Mine after: a "Send as
+    PDF" button, and a browser fallback for slides.
 16. **Research:** similar tools and how they orchestrate agents to make
     files; MCP and the browser; keeping search cheap.
 

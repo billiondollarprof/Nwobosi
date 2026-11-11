@@ -446,9 +446,11 @@ export async function pdfBlob(doc, t = themeFor(), brand = null, images = null, 
      asked for one page and the first build runs over, it is built again with
      the spacing tightened. The text size is never touched (11 point floor).
      If even that does not fit, the tighter one is still the better file. */
-  if (options.pages === 1) {
+  /* The same for any ceiling they named, 2026-11-11 ("not more than three
+     pages", "4 pages"): over it, built again tighter. */
+  if (options.pages >= 1) {
     try {
-      if ((await pageCount(first)) > 1) {
+      if ((await pageCount(first)) > options.pages) {
         return await pdfMake.createPdf(pdfDefinition(doc, t, brand, images, { ...options, compact: true })).getBlob();
       }
     } catch (error) {
