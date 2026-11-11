@@ -3359,7 +3359,7 @@ export default function Chat() {
 
             {libraryFiles.length === 0 && (
               <div className="rounded-[10px] px-3.5 py-2 text-[12.5px]" style={{ color: "var(--text-3)" }}>
-                Nothing generated yet
+                Nothing made yet
               </div>
             )}
 
@@ -3433,7 +3433,7 @@ export default function Chat() {
               Nothing here yet
             </span>
             <span className="block text-[12px] mt-0.5" style={{ color: "var(--text-3)" }}>
-              Start your first output above
+              Your finished documents will show here
             </span>
           </button>
         </div>
@@ -4265,8 +4265,8 @@ export function ChatBubble({ message, brief, buildFormat = DEFAULT_FORMAT, build
             </p>
           </div>
           <p className="text-[13.5px] mb-4 leading-relaxed" style={{ color: "var(--text-3)" }}>
-            It has said above what it wants to find. Nothing goes into your work until you
-            have seen it and said yes.
+            I have said above what I want to find. Nothing I find goes into your work until
+            you have seen it and said yes.
           </p>
           <PrimaryButton onClick={onAllowLookup} className="w-full flex items-center justify-center gap-2">
             <Search size={15} />

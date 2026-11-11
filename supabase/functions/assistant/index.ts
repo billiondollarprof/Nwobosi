@@ -884,8 +884,8 @@ Deno.serve(async (req: Request) => {
       ok: false,
       reason: "out_of_budget",
       message:
-        "This workspace has used up its included outputs. This was a temporary build, " +
-        "talk to StellaXafe about running it inside your own systems.",
+        "This workspace has used up the allowance it came with, so it cannot make anything new. " +
+        "Talk to StellaXafe about running it inside your own systems.",
     }, 402);
   }
 

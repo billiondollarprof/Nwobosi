@@ -1718,7 +1718,7 @@ export function KnowledgeSection({ me, loading: loadingMe }) {
             is opened up from the list below, which is one tap and now says
             plainly what it does. The hint says so rather than leaving
             somebody hunting for a control that is not there. */}
-        <SectionHeading hint="Give the assistant a page to learn from. It is read once, now, and what it says is saved here. The assistant never opens a link itself. A link starts as staff only, set who can read it in the list below.">
+        <SectionHeading hint="Give the assistant a web page to learn from. It reads the page once, now, and keeps what it says here, so it never has to open the link again. A new link is for staff only until you change who can read it in the list below.">
           Add a link
         </SectionHeading>
 
@@ -1796,7 +1796,7 @@ export function KnowledgeSection({ me, loading: loadingMe }) {
 
       {/* What is in the index */}
       <GlassPanel className="p-6">
-        <SectionHeading hint="This is the assistant's entire world. Nothing outside this list is read. Your staff read all of it. Customers only ever see what you switch on.">
+        <SectionHeading hint="The assistant works only from what is in this list. Your staff can draw on all of it, and customers see only what you switch on for them.">
           In the knowledge base
         </SectionHeading>
 
@@ -2411,7 +2411,7 @@ export function AccessSection({ me }) {
 
       {/* Invite */}
       <GlassPanel className="p-6">
-        <SectionHeading hint="Name and role matter. They are what let the assistant greet someone properly from their first session.">
+        <SectionHeading hint="The assistant uses their name and role to greet them properly from their very first session.">
           Invite a staff member
         </SectionHeading>
 
@@ -2442,7 +2442,7 @@ export function AccessSection({ me }) {
               placeholder="Marketing associate"
             />
           </Field>
-          <Field label="Outputs a day" hint="How many finished pieces this person may make each day.">
+          <Field label="Documents a day" hint="How many documents this person can make in a day. You can change it later.">
             <SelectInput value={inviteLimit} onChange={(e) => setInviteLimit(e.target.value)}>
               {[3, 5, 10, 20, 50].map((n) => (
                 <option key={n} value={n}>
@@ -2480,7 +2480,7 @@ export function AccessSection({ me }) {
       {/* Staff list */}
       {/* Company defaults */}
       <GlassPanel className="p-6">
-        <SectionHeading hint="What everybody's work runs at. Outputs a day is set per person, on the invite above.">
+        <SectionHeading hint="How everyone's work runs. The number of documents a day is set for each person when you invite them, and you can change it under Staff.">
           Company defaults
         </SectionHeading>
 
@@ -2671,7 +2671,7 @@ export function AccessSection({ me }) {
                   value={String(person.limit)}
                   onChange={(e) => changeDailyLimit(person, e.target.value)}
                   className="py-1.5 text-[12.5px]"
-                  aria-label={`Outputs a day for ${person.name}`}
+                  aria-label={`Documents a day for ${person.name}`}
                 >
                   {[3, 5, 10, 20, 50].map((n) => (
                     <option key={n} value={n}>
@@ -2773,7 +2773,7 @@ export function AccessSection({ me }) {
       )}
 
       <GlassPanel className="p-6">
-        <SectionHeading hint="What each person worked on, and what it drew down.">
+        <SectionHeading hint="What each person made, and how much of your allowance it used.">
           Recent work
         </SectionHeading>
 
