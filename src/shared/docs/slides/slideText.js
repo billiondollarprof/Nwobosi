@@ -37,9 +37,13 @@ export function blocksHeight(blocks, fontSize, width) {
   return (blocks ?? []).reduce((sum, b) => sum + linesHeight(blockText(b), fontSize, width), 0);
 }
 
-/* How many lines a headline takes at a size, capitals being wider. */
+/* How many lines a headline takes at a size. Bold capitals in Calibri
+   measured about 0.46 of the point size per character on a render
+   (2026-11-11); 0.52 leaves room for wider fonts copied from a company's
+   own deck. A headline that still wraps further is reported by the look
+   step (look/drawSlides.js), which measures the real text. */
 export function headlineLines(text, size, width) {
-  const perLine = Math.max(6, Math.floor((width * 72) / (size * 0.6)));
+  const perLine = Math.max(6, Math.floor((width * 72) / (size * 0.52)));
   return Math.max(1, Math.ceil(String(text ?? "").length / perLine));
 }
 
