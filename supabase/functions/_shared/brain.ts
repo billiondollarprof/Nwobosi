@@ -423,12 +423,15 @@ const WIRE_BASE: Record<Vendor, string> = {
   gemini: "https://generativelanguage.googleapis.com/v1beta/openai",
 };
 
-/* Which brain answers SUPPORT. Anthony, 2026-11-10: on this platform the
-   support line runs on Gemini's free tier and the work runs on the company's
-   own vendor. So when a Gemini key is set, support uses it; a client's own
-   deployment simply never sets that key and keeps its vendor everywhere. */
+/* Which brain answers SUPPORT. Since 2026-11-11, the company's own vendor,
+   the same as the work. See the note inside. */
 export async function vendorForSupport(companyId: string | null | undefined): Promise<Vendor> {
-  if (Deno.env.get("GEMINI_API_KEY")) return "gemini";
+  /* GEMINI IS DISCONNECTED. Anthony, 2026-11-11: "if Gemini is failing,
+     then disconnect it and let DeepSeek do the job." Its free tier failed
+     every real message on 2026-11-10: one 503 and two replies so slow that
+     WhatsApp gave up. Support now uses the company's own brain (DeepSeek
+     here). The gemini vendor stays in the table above so it can come back
+     by changing this one line, if a paid key ever makes it reliable. */
   return await vendorForCompany(companyId);
 }
 

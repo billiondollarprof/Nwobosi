@@ -94,6 +94,7 @@ import {
   ThemeToggle,
   TypewriterText,
   Thinking,
+  WorkingMark,
   IconBtn,
   PrimaryButton,
   GhostButton,
@@ -1818,7 +1819,7 @@ export default function Chat() {
         role: "assistant",
         type: "generating",
         /* The live lines and the plan, see BuildProgress.jsx. */
-        steps: advance([{ text: "Read everything we agreed", tone: "done" }], "Writing the plan"),
+        steps: advance([{ text: "I have read everything we agreed", tone: "done" }], "Writing the plan…"),
         plan: "",
       },
     ]);
@@ -2013,7 +2014,7 @@ export default function Chat() {
     updateMessages((prev) =>
       prev.map((m) => {
         if (m.type !== "generating") return m;
-        steps = advance(m.steps, "Writing the first draft");
+        steps = advance(m.steps, "Writing the first draft…");
         return { ...m, steps, plan: brief };
       })
     );
@@ -2061,7 +2062,7 @@ export default function Chat() {
         /* One grey line per section, the moment its heading arrives. */
         const heads = sectionsSoFar(finished);
         if (heads.length > sections) {
-          for (const head of heads.slice(sections)) steps = note(steps, `Writing: ${head}`);
+          for (const head of heads.slice(sections)) steps = note(steps, `Writing “${head}”`);
           sections = heads.length;
         }
         updateMessages((prev) =>
@@ -2211,8 +2212,8 @@ export default function Chat() {
         /* The section lines were live progress. Once the document is done they
            fold away, and the card keeps the steps that matter. */
         steps = steps.filter((step) => step.tone !== "info");
-        steps = advance(steps, "Checked the figures against your sources", "done");
-        steps = advance(steps, "Done", "done");
+        steps = advance(steps, "Checked every figure against your files", "done");
+        steps = advance(steps, "Done. It is ready below.", "done");
         updateMessages((prev) => prev.map((m) => (m.id === resultId ? { ...m, steps } : m)));
         checkNumbers(resultId, finished, brief, convo);
       },
@@ -4428,8 +4429,8 @@ export function ChatBubble({ message, brief, buildFormat = DEFAULT_FORMAT, build
           style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
         >
           <div className="flex items-center gap-2.5 mb-3">
-            <Spinner size={16} />
-            <span className="text-[14.5px] font-medium" style={{ color: "var(--text-1)" }}>
+            <WorkingMark size={20} />
+            <span className="text-[15.5px] font-semibold" style={{ color: "var(--text-1)" }}>
               Building it now
             </span>
           </div>

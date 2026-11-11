@@ -1050,29 +1050,44 @@ body {
   .sx-progress-pulse { animation: none; }
 }
 
-/* The waiting line (Thinking in ui.jsx). Anthony, 2026-11-10: like Claude's
-   "Musing...", a mark that breathes and a word that shimmers. */
-.sx-working-mark {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: currentColor;
-  display: inline-block;
-  flex-shrink: 0;
-  animation: sx-progress-pulse 1.1s ease-in-out infinite;
+/* The working line (Thinking in ui.jsx, and the running line in
+   BuildProgress.jsx). Anthony, 2026-11-11: bolder, the platform's own mark
+   instead of a blue dot, and a shimmer that "feels real, not forced".
+
+   THE MARK breathes: a slow swell and settle, never a blink.
+   THE WORDS sit in the readable text colour with a soft, wide band of
+   light drifting across them, slowly, with a rest between passes. A narrow
+   bright band moving fast is what made the old one feel forced. */
+.sx-working-logo {
+  animation: sx-breathe 2.4s ease-in-out infinite;
+  transform-origin: 50% 50%;
+}
+@keyframes sx-breathe {
+  0%, 100% { transform: scale(0.9); opacity: 0.7; }
+  50% { transform: scale(1); opacity: 1; }
 }
 .sx-working-word {
-  background: linear-gradient(90deg, currentColor 0%, currentColor 40%, var(--working-shine, #fff) 50%, currentColor 60%, currentColor 100%);
-  background-size: 300% 100%;
+  color: var(--text-2);
+  background-image: linear-gradient(
+    100deg,
+    var(--text-2) 0%,
+    var(--text-2) 35%,
+    var(--text-1) 50%,
+    var(--text-2) 65%,
+    var(--text-2) 100%
+  );
+  background-size: 250% 100%;
+  background-position: 100% 0;
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: sx-word-shimmer 2.2s linear infinite;
+  animation: sx-word-drift 3.2s ease-in-out infinite;
 }
-@keyframes sx-word-shimmer {
+@keyframes sx-word-drift {
   0% { background-position: 100% 0; }
-  100% { background-position: -200% 0; }
+  70%, 100% { background-position: 0% 0; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .sx-working-mark, .sx-working-word { animation: none; }
+  .sx-working-logo, .sx-working-word { animation: none; }
+  .sx-working-word { -webkit-text-fill-color: var(--text-1); }
 }

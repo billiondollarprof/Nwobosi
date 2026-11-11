@@ -29,6 +29,7 @@
 import { useState } from "react";
 import { Check, X, ChevronDown } from "lucide-react";
 import { BRAND } from "./tokens";
+import { WorkingMark } from "./ui.jsx";
 
 /* --------------------------------------------------------------------------
    1. The colour and mark for each kind of line
@@ -45,6 +46,9 @@ function Mark({ tone }) {
   const { color, mark } = TONE[tone] ?? TONE.info;
   if (mark === "tick") return <Check size={13} strokeWidth={3} style={{ color }} />;
   if (mark === "cross") return <X size={13} strokeWidth={3} style={{ color }} />;
+  /* The line running now carries the platform's own mark, breathing, the
+     same as the chat's working line (Anthony, 2026-11-11). */
+  if (mark === "pulse") return <WorkingMark size={16} />;
   return (
     <span
       className={mark === "pulse" ? "sx-progress-pulse" : ""}
@@ -69,14 +73,16 @@ export default function BuildProgress({ steps = [], plan = "", working = false }
           const tone = TONE[step.tone] ? step.tone : "info";
           return (
             <li key={`${i}-${step.text}`} className="flex items-start gap-2.5">
-              <span className="shrink-0 w-[14px] h-[18px] flex items-center justify-center">
+              <span className="shrink-0 w-[18px] h-[20px] flex items-center justify-center">
                 <Mark tone={tone} />
               </span>
+              {/* Bolder and at chat size, so it reads as the assistant
+                  telling them what it is doing (Anthony, 2026-11-11). */}
               <span
-                className="text-[13.5px] leading-[18px]"
+                className={`text-[14.5px] leading-[20px] ${tone === "active" ? "sx-working-word font-semibold" : ""}`}
                 style={{
-                  color: tone === "info" ? "var(--text-3)" : tone === "error" ? BRAND.red : "var(--text-1)",
-                  fontWeight: tone === "active" ? 500 : 400,
+                  color: tone === "info" ? "var(--text-2)" : tone === "error" ? BRAND.red : "var(--text-1)",
+                  fontWeight: tone === "active" ? 600 : 500,
                 }}
               >
                 {step.text}
