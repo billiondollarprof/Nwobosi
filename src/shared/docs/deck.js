@@ -86,7 +86,6 @@ const GROW_TO = { cards: 3.0, steps: 2.8, flow: 1.5, hub: 3.4, stat: 3.0, statem
    1.1 inches), and each row is as tall as its tallest cell wrapped in its
    column. */
 function tableLayout(block, fontSize) {
-  const cols = block.header.length;
   const all = [block.header, ...block.rows];
   const longest = block.header.map((_, i) => Math.max(4, ...all.map((r) => plainText(r[i] ?? []).length)));
   /* Long text columns get room, but a short column is never squeezed. */
@@ -113,6 +112,16 @@ function tableLayout(block, fontSize) {
    tall even then, it is cut into pieces of rows, each with its header,
    each on its own slide. */
 const TABLE_ROOM = 4.2;
+
+/* The table in one piece, at the largest size that fits, else at 12
+   point (used when a slide count was named and nothing may be cut). */
+function wholeTable(block) {
+  for (const size of [15, 14, 13, 12]) {
+    const layout = tableLayout(block, size);
+    if (layout.h <= TABLE_ROOM || size === 12) return { kind: "table", block, layout, h: layout.h };
+  }
+  return null;
+}
 
 function tablePieces(block) {
   for (const size of [15, 14, 13, 12]) {
@@ -148,7 +157,7 @@ function textPiece(runs, style, extra = {}) {
   return { kind: "text", runs, style, h, ...extra };
 }
 
-function piecesOf(blocks) {
+function piecesOf(blocks, { whole = false } = {}) {
   const pieces = [];
   for (const block of blocks) {
     if (block.type === "label") {
@@ -185,13 +194,13 @@ function piecesOf(blocks) {
       const piece = { kind: "stat", block };
       pieces.push({ ...piece, h: D.statHeight(piece, BODY_W) });
     } else if (block.type === "table") {
-      pieces.push(...tablePieces(block));
+      pieces.push(...(whole ? [wholeTable(block)] : tablePieces(block)));
     } else if (block.type === "image") {
       pieces.push({ kind: "image", block, h: 3.4 });
     } else if (block.type === "chart") {
       /* A chart that could not be drawn is its table, like everywhere else. */
       if (!block.data.problem) pieces.push({ kind: "chart", block, h: 3.6 });
-      else if (block.table) pieces.push(...tablePieces(block.table));
+      else if (block.table) pieces.push(...(whole ? [wholeTable(block.table)] : tablePieces(block.table)));
     } else if (block.type === "h") {
       pieces.push(textPiece(block.runs, "sub"));
     } else if (block.type === "list") {
@@ -263,6 +272,30 @@ export function toDeck(doc) {
       slides.push(slide);
       slide = fresh(true);
     };
+
+    /* ONE SECTION, ONE SLIDE, WHEN THEY NAMED A NUMBER. Anthony,
+       2026-11-11: "If a person chooses a number of slides, the system
+       should give them that number." The writer writes exactly that many
+       sections, so no section may spill onto a "(continued)" slide. Its
+       pieces all stay here and the drawing shrinks them to fit (deckBlob,
+       "FITTING A FULL SLIDE"). A table is one piece, never cut. */
+    if (doc.slideCount) {
+      for (const piece of piecesOf(section.blocks, { whole: true })) {
+        if (piece.kind === "label") slide.label = piece.text;
+        else if (piece.kind === "takeaway" && !slide.takeaway) slide.takeaway = piece.runs;
+        else if (piece.kind === "takeaway") slide.text.push(textPiece(piece.runs, "para"));
+        else if (FEATURES.has(piece.kind) && !slide.feature) slide.feature = piece;
+        else if (FEATURES.has(piece.kind)) {
+          /* A second diagram on one slide cannot be drawn well. It is the
+             one case that still takes a slide of its own. */
+          next();
+          slide.feature = piece;
+        } else slide.text.push(piece);
+        slide.used += (piece.h ?? 0) + (FEATURES.has(piece.kind) ? 0.2 : 0);
+      }
+      if (slide.text.length || slide.feature || slide.takeaway) slides.push(slide);
+      continue;
+    }
 
     for (let piece of piecesOf(section.blocks)) {
       if (piece.kind === "label") {
@@ -353,12 +386,12 @@ function foldThinSlides(slides) {
    SECTION 3: Drawing text, tables, pictures and charts
    -------------------------------------------------------------------------- */
 
-function textBody(pieces, s) {
+function textBody(pieces, s, size = BODY_SIZE) {
   const out = [];
   for (const piece of pieces) {
-    const base = { fontSize: BODY_SIZE, color: s.body, fontFace: s.font, paraSpaceAfter: 6 };
+    const base = { fontSize: size, color: s.body, fontFace: s.font, paraSpaceAfter: 6 };
     let opts = piece.style === "para" ? { ...base, paraSpaceBefore: 6 } : base;
-    if (piece.style === "sub") opts = { ...base, bold: true, color: s.ink, fontSize: BODY_SIZE + 1, paraSpaceBefore: 6 };
+    if (piece.style === "sub") opts = { ...base, bold: true, color: s.ink, fontSize: size + 1, paraSpaceBefore: 6 };
     if (piece.style === "bullet") opts = { ...base, bullet: { indent: 18 }, paraSpaceAfter: 5 };
     if (piece.style === "number") opts = { ...base, bullet: { type: "number", numberStartAt: piece.number, indent: 22 }, paraSpaceAfter: 5 };
     if (piece.style === "quote") opts = { ...base, italic: true, color: s.lit };
@@ -657,10 +690,28 @@ export async function deckBlob(doc, theme = { ...THEME }, brand = null, images =
       continue;
     }
 
+    /* FITTING A FULL SLIDE. When a slide count was named, a section never
+       spills onto another slide, so its text and diagram may need more
+       than the room there is. The text then steps down in size, never
+       under 12 point, leaving the diagram at least its smallest
+       comfortable height. On an ordinary slide nothing changes. */
+    let textSize = BODY_SIZE;
+    const textNeed = slide.text.reduce((sum, p) => sum + p.h, 0);
+    if (slide.text.length) {
+      const f0 = slide.feature;
+      /* A table cannot be drawn shorter than its rows at 12 point, so that
+         is its floor; other diagrams shrink into the box they are given. */
+      const floor = !f0 ? 0 : f0.kind === "table" ? tableLayout(f0.block, 12).h
+        : Math.min(f0.h, ["image", "chart"].includes(f0.kind) ? 2.2 : 1.5);
+      const diagramFloor = f0 ? floor + 0.2 : 0;
+      const roomForText = bottom - bodyTop - diagramFloor;
+      if (textNeed > roomForText) textSize = Math.max(12, Math.floor((BODY_SIZE * roomForText) / textNeed * 2) / 2);
+    }
+
     let y = bodyTop;
     if (slide.text.length) {
-      const h = slide.text.reduce((sum, p) => sum + p.h, 0) + 0.05;
-      page.addText(textBody(slide.text, s), { x: X, y, w: BODY_W, h, valign: "top", margin: 0 });
+      const h = Math.min(textNeed * (textSize / BODY_SIZE), bottom - bodyTop) + 0.05;
+      page.addText(textBody(slide.text, s, textSize), { x: X, y, w: BODY_W, h, valign: "top", margin: 0 });
       y += h + 0.2;
     }
     const f = slide.feature;
@@ -682,7 +733,16 @@ export async function deckBlob(doc, theme = { ...THEME }, brand = null, images =
       else if (f.kind === "tree") D.drawTree(page, f, box, s);
       else if (f.kind === "stat") D.drawStat(page, f, box, s);
       else if (f.kind === "statement") D.drawStatement(page, f, box, s);
-      else drawTable(page, f, box.y, s);
+      else {
+        /* The table at the largest size that fits the room left here. */
+        let fitted = f;
+        for (const size of [15, 14, 13, 12]) {
+          const layout = tableLayout(f.block, size);
+          fitted = { ...f, layout, h: layout.h };
+          if (layout.h <= space) break;
+        }
+        drawTable(page, fitted, y, s);
+      }
     }
     if (slide.takeaway) D.drawTakeaway(page, slide.takeaway, takeawayBox, s);
   }

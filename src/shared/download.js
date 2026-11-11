@@ -25,6 +25,7 @@ import { readDocument } from "./docs/documentModel.js";
 import { pdfBlob } from "./docs/pdf.js";
 import { wordBlob } from "./docs/word.js";
 import { themeFor } from "./docs/documentTheme.js";
+import { askedCount, ceilingOf } from "./docs/askedCount.js";
 
 /* --------------------------------------------------------------------------
    SECTION: Whose document it is
@@ -169,6 +170,10 @@ export async function buildFile(format, title, markdown, company, messages = [],
      replaces the brand colour for this one piece of work. */
   if (doc.style?.accent) theme = { ...theme, ...themeFor(doc.style.accent), officeFont: theme.officeFont, headingFont: theme.headingFont, margins: theme.margins };
   if (doc.style?.mode) theme = { ...theme, slideMode: doc.style.mode };
+  /* THE NUMBER THEY ASKED FOR (docs/askedCount.js). A named slide count
+     keeps every section on one slide; a page ceiling makes the PDF fit. */
+  doc.slideCount = askedCount(messages, "slide");
+  const pages = askedCount(messages, "page");
   const { collectImages } = await import("./docs/images.js");
   const images = await collectImages(doc, messages, company?.id);
   /* Word and Excel need a picture copy of each chart; the PDF and Slides
@@ -179,7 +184,7 @@ export async function buildFile(format, title, markdown, company, messages = [],
     charts = await chartPictures(doc, theme);
   }
   let blob;
-  if (format === "pdf") blob = await pdfBlob(doc, theme, brand, images, { pages: askedForOnePage(messages) ? 1 : 0 });
+  if (format === "pdf") blob = await pdfBlob(doc, theme, brand, images, { pages: Number.isFinite(ceilingOf(pages)) ? ceilingOf(pages) : askedForOnePage(messages) ? 1 : 0 });
   else if (format === "pptx") {
     if (!doc.blocks.length) throw new Error("nothing to put on a slide");
     const { deckBlob } = await import("./docs/deck.js");

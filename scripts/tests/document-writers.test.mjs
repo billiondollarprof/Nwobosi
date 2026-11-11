@@ -163,5 +163,24 @@ check('the quote has no ">"', !slides.some((s) => (s.text ?? []).some((p) => pla
     deck[0].note === "amara.ng" && !deck.some((s) => s.kind === "content" && s.title === doc.title));
 }
 
+/* 8. THE NUMBER THEY ASKED FOR, 2026-11-11 --------------------------------- */
+{
+  const { countIn, askedCount } = await import("../../src/shared/docs/askedCount.js");
+  const read = (t, u) => JSON.stringify(countIn(t, u));
+  check("an exact number of slides", read("Make a 4 slide deck", "slide") === '{"kind":"exact","n":4}' && read("make it four slides", "slide") === '{"kind":"exact","n":4}');
+  check("NOT MORE THAN is a ceiling", read("not more than 10 slides", "slide") === '{"kind":"max","n":10}' && read("3 pages max", "page") === '{"kind":"max","n":3}');
+  check("MORE THAN is a floor above it, AT LEAST includes it",
+    read("it should be more than 10 slides", "slide") === '{"kind":"min","n":11}' && read("at least 12 slides", "slide") === '{"kind":"min","n":12}' && read("no less than 5 slides", "slide") === '{"kind":"min","n":5}');
+  check("a one pager is one page", read("a one-page summary", "page") === '{"kind":"exact","n":1}');
+  check("no number named means none", countIn("Make it look good", "slide") === null);
+  check("the latest number wins", JSON.stringify(askedCount([{ role: "user", content: "5 slides" }, { role: "assistant", content: "ok" }, { role: "user", content: "make it 3 slides instead" }], "slide")) === '{"kind":"exact","n":3}');
+
+  const doc = readDocument(readFileSync("scripts/__harness/fixtures/long-table.md", "utf8"), "x");
+  doc.slideCount = { kind: "exact", n: 1 };
+  const deck = toDeck(doc).filter((s) => s.kind === "content");
+  check(`WITH A NAMED COUNT, A SECTION NEVER SPILLS: 1 section, ${deck.length} slide(s)`, deck.length === 1 && !deck.some((s) => /continued/.test(s.title)));
+  check("and its text and table are both on that slide", deck[0].text.length >= 1 && deck[0].feature?.kind === "table" && deck[0].feature.block.rows.length === 3);
+}
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);
