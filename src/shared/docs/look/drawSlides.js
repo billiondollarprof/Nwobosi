@@ -260,6 +260,10 @@ async function drawPicture(ctx, item) {
   ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
 }
 
+/* A table, cell by cell: each column its own width (colW), each row its
+   own height (rowH), each cell's text wrapped in its column. A cell whose
+   wrapped text is taller than its row, or a table that runs past the
+   bottom of the slide, is reported. */
 function drawTable(ctx, item, problems, slideNo) {
   const o = item.o;
   const rows = item.rows ?? [];
@@ -267,29 +271,42 @@ function drawTable(ctx, item, problems, slideNo) {
   const cols = rows[0].length || 1;
   const x = (o.x ?? 0) * PPI;
   const w = (o.w ?? 10) * PPI;
-  const cw = w / cols;
-  const rh = (Array.isArray(o.rowH) ? o.rowH[0] : o.rowH ?? 0.4) * PPI;
+  const colW = Array.isArray(o.colW) ? o.colW.map((c) => c * PPI) : Array(cols).fill(w / cols);
+  const rowH = (r) => (Array.isArray(o.rowH) ? o.rowH[r] ?? o.rowH[o.rowH.length - 1] : o.rowH ?? 0.4) * PPI;
+  const pad = 0.12 * PPI;
   let y = (o.y ?? 0) * PPI;
   const size = o.fontSize ?? 13;
-  for (const row of rows) {
+  rows.forEach((row, r) => {
+    const rh = rowH(r);
+    let cx = x;
     row.forEach((cell, c) => {
+      const cw = colW[c] ?? colW[colW.length - 1];
       const opt = cell.options ?? {};
       ctx.fillStyle = hex(opt.fill?.color, "#FFFFFF");
-      ctx.fillRect(x + c * cw, y, cw, rh);
+      ctx.fillRect(cx, y, cw, rh);
       ctx.strokeStyle = hex(o.border?.color, "#CCCCCC");
-      ctx.strokeRect(x + c * cw, y, cw, rh);
-      ctx.font = fontFor(size, opt.bold);
-      ctx.fillStyle = hex(opt.color, "#333333");
-      const text = String(cell.text ?? "");
-      const tw = ctx.measureText(text).width;
-      if (tw > cw - 0.24 * PPI && !text.includes(" ")) {
-        problems.push(`Slide ${slideNo}: "${text.slice(0, 30)}" is too wide for its table cell.`);
+      ctx.strokeRect(cx, y, cw, rh);
+      const paras = [[{ text: String(cell.text ?? ""), opt: { fontSize: size, bold: opt.bold, color: opt.color } }]];
+      const { lines, height } = layOut(ctx, paras, Math.max(10, cw - pad * 2));
+      if (height > rh + 0.05 * PPI) {
+        problems.push(`Slide ${slideNo}: the table cell "${String(cell.text ?? "").slice(0, 30)}…" holds more than its row shows.`);
       }
-      const tx = opt.align === "right" ? x + (c + 1) * cw - 0.12 * PPI - tw : x + c * cw + 0.12 * PPI;
-      ctx.fillText(text, tx, y + rh / 2 + (size / 72) * PPI * 0.35, cw - 0.24 * PPI);
+      let ty = y + Math.max(0, (rh - height) / 2);
+      for (const line of lines) {
+        const lh = (line.size / 72) * PPI * 1.2;
+        let tx = opt.align === "right" ? cx + cw - pad - line.width : cx + pad;
+        for (const piece of line.words) {
+          ctx.font = fontFor(size, opt.bold);
+          ctx.fillStyle = hex(opt.color, "#333333");
+          ctx.fillText(piece.word, tx, ty + lh * 0.8);
+          tx += piece.w;
+        }
+        ty += lh;
+      }
+      cx += cw;
     });
     y += rh;
-  }
+  });
   if (y > H_IN * PPI) problems.push(`Slide ${slideNo}: the table runs off the bottom of the slide.`);
 }
 

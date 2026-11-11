@@ -24,31 +24,32 @@ The old deploy log, up to 2026-11-02: `docs/history/DEPLOYS-to-2026-11-02.md`.
 ## 2. Edge functions
 
 Supabase project `cbunsqzkhidwjtxdsmxd`. Read from the live project on
-2026-11-02 (times in UTC).
+2026-11-11 (times in UTC), after main `861c564` (designed slides, the look a
+person asks for or copies from their PowerPoint) deployed `assistant` v70.
 
 | Function | Version | Last deployed |
 |---|---|---|
-| `assistant` | 53 | 2026-09-26 17:57 |
-| `support-ask` | 27 | 2026-09-25 12:10 |
-| `add-link` | 22 | 2026-09-25 12:10 |
-| `read-before-publish` | 16 | 2026-09-25 12:10 |
-| `describe-source` | 13 | 2026-09-25 12:10 |
-| `canva-design` | 14 | 2026-09-25 12:10 |
-| `read-image` | 13 | 2026-09-25 12:10 |
-| `group-images` | 14 | 2026-09-25 12:11 |
-| `invite-staff` | 23 | 2026-09-23 17:31 |
-| `oauth-callback` | 16 | 2026-09-23 17:31 |
-| `support-reply` | 12 | 2026-09-23 17:31 |
-| `revoke-staff` | 9 | 2026-09-23 17:31 |
-| `convert-document` | 3 | 2026-09-23 17:31 |
-| `drive-connect` | 3 | 2026-09-23 17:31 |
-| `drive-upload` | 3 | 2026-09-23 17:31 |
-| `check-access-code` | 23 | 2026-09-16 14:12 |
-| `create-workspace` | 21 | 2026-09-16 14:12 |
-| `send-contact` | 14 | 2026-09-16 14:12 |
-| `resume-demo` | 14 | 2026-09-16 14:12 |
-| `accept-invite` | 14 | 2026-09-16 14:12 |
-| `canva-connect` | 15 | 2026-09-16 14:12 |
+| `assistant` | 70 | 2026-11-11 16:33 |
+| `support-ask` | 33 | 2026-11-11 04:39 |
+| `add-link` | 26 | 2026-11-11 04:38 |
+| `read-before-publish` | 20 | 2026-11-11 04:39 |
+| `describe-source` | 17 | 2026-11-11 04:38 |
+| `canva-design` | 18 | 2026-11-11 04:38 |
+| `read-image` | 17 | 2026-11-11 04:39 |
+| `group-images` | 18 | 2026-11-11 04:39 |
+| `invite-staff` | 25 | 2026-09-23 17:31 |
+| `oauth-callback` | 18 | 2026-09-23 17:31 |
+| `support-reply` | 14 | 2026-09-23 17:31 |
+| `revoke-staff` | 11 | 2026-09-23 17:31 |
+| `convert-document` | 5 | 2026-09-23 17:31 |
+| `drive-connect` | 5 | 2026-09-23 17:31 |
+| `drive-upload` | 5 | 2026-09-23 17:31 |
+| `check-access-code` | 25 | 2026-09-16 14:12 |
+| `create-workspace` | 23 | 2026-09-16 14:12 |
+| `send-contact` | 16 | 2026-09-16 14:12 |
+| `resume-demo` | 16 | 2026-09-16 14:12 |
+| `accept-invite` | 16 | 2026-09-16 14:12 |
+| `canva-connect` | 17 | 2026-09-16 14:12 |
 
 **Compared 2026-11-02: every live function carries the repo copy**, all 21,
 including `assistant` v53 (648 of 648 markers). Run by GitHub

@@ -149,5 +149,19 @@ check('the quote has no ">"', !slides.some((s) => (s.text ?? []).some((p) => pla
   check("the brief can name a PowerPoint to copy", layoutFromBrief("Layout: like Q3 review.pptx") === "Q3 review.pptx");
 }
 
+/* 7. A TABLE WITH LONG CELLS STAYS ON THE SLIDE, 2026-11-11 (seen live) ---- */
+{
+  const doc = readDocument(readFileSync("scripts/__harness/fixtures/long-table.md", "utf8"), "x");
+  const deck = toDeck(doc);
+  const tables = deck.filter((s) => s.feature?.kind === "table");
+  check(`the long plans table is measured by its wrapped cells (${tables.map((t) => t.feature.h.toFixed(2)).join(", ")} in)`,
+    tables.length >= 1 && tables.every((t) => t.feature.h > 2 && t.feature.layout.rowH.length === t.feature.block.rows.length + 1));
+  check("NO TABLE IS TALLER THAN ITS ROOM", tables.every((t) => t.feature.h <= 4.2 + 1e-9));
+  check("every row is there across the pieces", tables.reduce((n, t) => n + t.feature.block.rows.length, 0) === 3);
+  check("the wide text column gets the most room", tables.every((t) => Math.max(...t.feature.layout.colW) === t.feature.layout.colW[4]));
+  check("A LONE LINE BEFORE THE FIRST SECTION GOES ON THE COVER, not a slide of its own",
+    deck[0].note === "amara.ng" && !deck.some((s) => s.kind === "content" && s.title === doc.title));
+}
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

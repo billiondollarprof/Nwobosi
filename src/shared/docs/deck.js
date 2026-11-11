@@ -79,8 +79,61 @@ const BODY_SIZE = 16;
 /* How tall a diagram grows to when the slide has the room, in inches. */
 const GROW_TO = { cards: 3.0, steps: 2.8, flow: 1.5, hub: 3.4, stat: 3.0, statement: 2.6, tree: 3.4, phases: 1.5, table: 0 };
 
-function rowHeight(block) {
-  return block.rows.length <= 6 ? 0.5 : 0.4;
+/* A TABLE IS MEASURED CELL BY CELL, 2026-11-11. Every row used to count
+   as one line tall; on Amara's live plans deck the long "What else you
+   get" cells wrapped to five lines and the table ran off the slide. Now
+   each column gets a width in proportion to what it holds (never under
+   1.1 inches), and each row is as tall as its tallest cell wrapped in its
+   column. */
+function tableLayout(block, fontSize) {
+  const cols = block.header.length;
+  const all = [block.header, ...block.rows];
+  const longest = block.header.map((_, i) => Math.max(4, ...all.map((r) => plainText(r[i] ?? []).length)));
+  /* Long text columns get room, but a short column is never squeezed. */
+  const weight = longest.map((n) => Math.min(n, 60));
+  const total = weight.reduce((a, b) => a + b, 0);
+  let colW = weight.map((w) => Math.max(1.1, (BODY_W * w) / total));
+  const scale = BODY_W / colW.reduce((a, b) => a + b, 0);
+  colW = colW.map((w) => w * scale);
+  /* A cell's own measure: tighter than running text (one line is the
+     font's height and a little, no paragraph gap), checked against
+     LibreOffice renders of the live plans table. The look step measures
+     the real wrap afterwards and reports any cell that still spills. */
+  const cellHeight = (text, width) => {
+    const perLine = Math.max(4, Math.floor((width * 72) / (fontSize * 0.5)));
+    const lines = String(text).split("\n").reduce((n, line) => n + Math.max(1, Math.ceil(line.length / perLine)), 0);
+    return (lines * fontSize * 1.22) / 72 + 0.16;
+  };
+  const rowH = all.map((row, r) => Math.max(r === 0 ? 0.45 : 0.42,
+    ...row.map((cell, i) => cellHeight(plainText(cell), colW[i] - 0.26))));
+  return { colW, rowH, h: rowH.reduce((a, b) => a + b, 0) + 0.1, fontSize };
+}
+
+/* The table at the largest size that fits ROOM, down to 12 point. Too
+   tall even then, it is cut into pieces of rows, each with its header,
+   each on its own slide. */
+const TABLE_ROOM = 4.2;
+
+function tablePieces(block) {
+  for (const size of [15, 14, 13, 12]) {
+    const layout = tableLayout(block, size);
+    if (layout.h <= TABLE_ROOM) return [{ kind: "table", block, layout, h: layout.h }];
+  }
+  const pieces = [];
+  let rows = [];
+  const flush = () => {
+    if (!rows.length) return;
+    const part = { ...block, rows };
+    const layout = tableLayout(part, 12);
+    pieces.push({ kind: "table", block: part, layout, h: layout.h });
+    rows = [];
+  };
+  for (const row of block.rows) {
+    if (rows.length && tableLayout({ ...block, rows: [...rows, row] }, 12).h > TABLE_ROOM) flush();
+    rows.push(row);
+  }
+  flush();
+  return pieces;
 }
 
 /* --------------------------------------------------------------------------
@@ -132,13 +185,13 @@ function piecesOf(blocks) {
       const piece = { kind: "stat", block };
       pieces.push({ ...piece, h: D.statHeight(piece, BODY_W) });
     } else if (block.type === "table") {
-      pieces.push({ kind: "table", block, h: (block.rows.length + 1) * rowHeight(block) + 0.1 });
+      pieces.push(...tablePieces(block));
     } else if (block.type === "image") {
       pieces.push({ kind: "image", block, h: 3.4 });
     } else if (block.type === "chart") {
       /* A chart that could not be drawn is its table, like everywhere else. */
       if (!block.data.problem) pieces.push({ kind: "chart", block, h: 3.6 });
-      else if (block.table) pieces.push({ kind: "table", block: block.table, h: (block.table.rows.length + 1) * rowHeight(block.table) + 0.1 });
+      else if (block.table) pieces.push(...tablePieces(block.table));
     } else if (block.type === "h") {
       pieces.push(textPiece(block.runs, "sub"));
     } else if (block.type === "list") {
@@ -180,7 +233,17 @@ export function toDeck(doc) {
   }
   if (current.title || current.blocks.length) sections.push(current);
 
-  const slides = [{ kind: "cover", title: doc.title, subtitle: doc.subtitle }];
+  const slides = [{ kind: "cover", title: doc.title, subtitle: doc.subtitle, note: "" }];
+
+  /* A short line before the first section (a web address, a date) goes on
+     the cover. Seen live 2026-11-11: "amara.ng" made a slide of its own
+     that only repeated the deck's title. */
+  const lead = sections[0];
+  if (lead && !lead.title && lead.blocks.every((b) => b.type === "p") && lead.blocks.length <= 2 &&
+      lead.blocks.reduce((n, b) => n + plainText(b.runs).length, 0) <= 120) {
+    slides[0].note = lead.blocks.map((b) => plainText(b.runs)).join("  ·  ");
+    sections.shift();
+  }
 
   for (const section of sections) {
     const title = section.title || doc.title;
@@ -201,7 +264,7 @@ export function toDeck(doc) {
       slide = fresh(true);
     };
 
-    for (const piece of piecesOf(section.blocks)) {
+    for (let piece of piecesOf(section.blocks)) {
       if (piece.kind === "label") {
         slide.label = piece.text;
         continue;
@@ -218,6 +281,19 @@ export function toDeck(doc) {
         if (slide.takeaway || !fits) next();
         slide.takeaway = piece.runs;
         continue;
+      }
+      if (piece.kind === "table" && slide.text.length && !slide.feature && !slide.takeaway) {
+        /* A table first tries to fit under the text already on this slide,
+           at a smaller size (down to 12 point), before it moves on and
+           leaves the text alone on a slide (seen 2026-11-11). */
+        const left = room() - slide.used - 0.2;
+        for (const size of [15, 14, 13, 12]) {
+          const layout = tableLayout(piece.block, size);
+          if (layout.h <= left) {
+            piece = { ...piece, layout, h: layout.h };
+            break;
+          }
+        }
       }
       if (FEATURES.has(piece.kind)) {
         /* A picture goes BESIDE the text, so what has to fit is the text at
@@ -296,7 +372,8 @@ function textBody(pieces, s) {
 
 const NUMERIC = /^[₦$€£¥]?\s?-?[\d,]+(\.\d+)?\s?%?$/;
 
-function drawTable(page, block, y, s) {
+function drawTable(page, piece, y, s) {
+  const { block, layout } = piece;
   const isNum = block.header.map((_, i) => block.rows.length > 0 && block.rows.every((r) => NUMERIC.test(plainText(r[i] ?? []).trim()) || !plainText(r[i] ?? []).trim()));
   const head = block.header.map((cell, i) => ({
     text: plainText(cell),
@@ -316,8 +393,8 @@ function drawTable(page, block, y, s) {
     }));
   });
   page.addTable([head, ...rows], {
-    x: X, y, w: BODY_W, fontSize: block.rows.length <= 6 ? 15 : 13, fontFace: s.font,
-    border: { type: "solid", color: s.panelLine, pt: 0.75 }, rowH: rowHeight(block), valign: "middle", margin: [0.06, 0.14, 0.06, 0.14],
+    x: X, y, w: BODY_W, colW: layout.colW, fontSize: layout.fontSize, fontFace: s.font,
+    border: { type: "solid", color: s.panelLine, pt: 0.75 }, rowH: layout.rowH, valign: "middle", margin: [0.04, 0.12, 0.04, 0.12],
   });
 }
 
@@ -508,8 +585,9 @@ function drawCover(deck, slide, s, brand) {
       x: X, y: 4.15, w: W * 0.55, h: 1.2, fontSize: 19, color: s.body, fontFace: s.font, valign: "top", margin: 0,
     });
   }
-  if (brand?.name) {
-    page.addText(brand.name, { x: X, y: H - 0.8, w: 6, h: 0.35, fontSize: 12, color: s.muted, fontFace: s.font, margin: 0 });
+  const foot = [brand?.name, slide.note].filter(Boolean).join("  ·  ");
+  if (foot) {
+    page.addText(foot, { x: X, y: H - 0.8, w: W - 2 * X, h: 0.35, fontSize: 12, color: s.muted, fontFace: s.font, margin: 0 });
   }
 }
 
@@ -604,7 +682,7 @@ export async function deckBlob(doc, theme = { ...THEME }, brand = null, images =
       else if (f.kind === "tree") D.drawTree(page, f, box, s);
       else if (f.kind === "stat") D.drawStat(page, f, box, s);
       else if (f.kind === "statement") D.drawStatement(page, f, box, s);
-      else drawTable(page, f.block, box.y, s);
+      else drawTable(page, f, box.y, s);
     }
     if (slide.takeaway) D.drawTakeaway(page, slide.takeaway, takeawayBox, s);
   }
