@@ -185,6 +185,36 @@ other.** Nothing comes off until it is built, checked and live.
     finished file, a browser fallback for slides, and a live check.
 16. **Research:** similar tools and how they orchestrate agents to make
     files; MCP and the browser; keeping search cheap.
+    **Document part done 2026-11-22:** `docs/history/REVIEW-2026-11-22-document-workflow.md`.
+16a. **The look step fixes, not only reports** (2026-11-22, his words: "it
+    just show the error with red line, but it will not go back to adjust it").
+    Proposed: code measures, the writer is sent the exact fault, at most two
+    rounds, the card says what was fixed. **His yes given 2026-11-22**
+    ("your plan looks nice, you are also free to review your plans before
+    you start"), edge function changes included.
+    **Built and checked 2026-11-22**, going to testing and live: look.ts
+    graded, new revise.ts stage, `docs/look/fixLoop.js`. Needs his live test
+    on a one pager and a deck. To check in the logs: whether `deepseek-flash`
+    sees the pictures (an UNSEEN reply or an error means it does not;
+    PPTAgent names `deepseek-v4-flash-vision` for this).
+16b. **References on a one pager go behind a QR code** (2026-11-22). A
+    references page made separately, its link as a QR code in one card.
+    **His yes given 2026-11-22.** Where it lives: a private link on
+    stellaxafe.com for now; for a client's own build, a private link on the
+    company's own platform or Google Drive, chosen when we deploy for them.
+16c. **Take the best of each** (2026-11-22, his words: "maybe a combination
+    of all three, but each to where it's best at"). A proper study of
+    Anthropic's slide and Word skills, PPTAgent/DeepPresenter and Presenton,
+    then use each where it is strongest.
+16d. **Every stage under 2 minutes, with a time estimate on screen**
+    (2026-11-22, his words: "Anything less than 2mins for each stage
+    especially the building stage is okay... put an estimate completion
+    time for each task, including when the agent searches online so the
+    person can wait with time in mind"). Study how similar platforms keep
+    it fast.
+    Studied 2026-11-22 (review doc, section 7). Next: measure each stage's
+    real time, then the estimate on the working line, then slides written
+    in parallel.
 
 **Background, kept for its findings:** the demo flow audit. 2026-10-31. Dreef may book a
    call to see it. They need to see three things and nothing else:
