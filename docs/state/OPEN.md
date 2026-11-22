@@ -185,6 +185,15 @@ other.** Nothing comes off until it is built, checked and live.
     PDF" button, and a browser fallback for slides.
 16. **Research:** similar tools and how they orchestrate agents to make
     files; MCP and the browser; keeping search cheap.
+    **Document part done 2026-11-22:** `docs/history/REVIEW-2026-11-22-document-workflow.md`.
+16a. **The look step fixes, not only reports** (2026-11-22, his words: "it
+    just show the error with red line, but it will not go back to adjust it").
+    Proposed: code measures, the writer is sent the exact fault, at most two
+    rounds, the card says what was fixed. Waiting for his yes (edge function
+    change: look.ts, generate.ts).
+16b. **References on a one pager go behind a QR code** (2026-11-22). A
+    references page made separately, its link as a QR code in one card.
+    Waiting for his yes and his choice of where the references page lives.
 
 **Background, kept for its findings:** the demo flow audit. 2026-10-31. Dreef may book a
    call to see it. They need to see three things and nothing else:
