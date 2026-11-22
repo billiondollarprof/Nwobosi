@@ -17,6 +17,9 @@
           active  blue pulse       the step running right now
           info    grey dot         a detail, such as the section being written
           error   red cross        something went wrong
+          warn    amber dot        still worth a look after the fixes
+                                   (2026-11-22: what was put right shows
+                                   green, only what is left shows amber)
      2. "See the plan": the written brief the document is built from, folded
         away by default and filling in live as it is written.
 
@@ -40,6 +43,7 @@ const TONE = {
   active: { color: BRAND.accentSoft, mark: "pulse" },
   info: { color: "var(--text-3)", mark: "dot" },
   error: { color: BRAND.red, mark: "cross" },
+  warn: { color: "var(--caution)", mark: "dot" },
 };
 
 function Mark({ tone }) {

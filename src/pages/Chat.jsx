@@ -1990,65 +1990,146 @@ export default function Chat() {
   }
 
   /* --------------------------------------------------------------------
-     THE LOOK AGENT. The file is drawn as pictures (docs/look/lookAtFile.js,
-     with what measuring already found) and sent to the "look" stage
-     (supabase/functions/assistant/stages/look.ts), which answers ALL CLEAR
-     or one line per problem. What it says goes on the build card; it never
-     changes the file, the person decides whether to ask for a change.
-     Anything failing here only means "not looked at": the card finishes
-     and the file is handed over as before.
+     THE LOOK AGENT, AND NOW THE FIX. The file is drawn as pictures
+     (docs/look/lookAtFile.js, with what measuring found) and sent to the
+     "look" stage (supabase/functions/assistant/stages/look.ts).
+
+     Until 2026-11-22 what it found went on the card in red and stopped
+     there. Anthony: "it just show the error with red line, but it will not
+     go back to adjust it and correct the problem." Now every fault code
+     measured and every one the look marked MAJOR goes to the "revise" stage
+     (stages/revise.ts), which sends back the sections it changed. They are
+     put in place, the file is drawn and looked at again, at most twice
+     (docs/look/fixLoop.js). The card says what was fixed, in green, and only
+     what is still wrong, in amber. MINOR lines are never shown.
+
+     Anything failing here only means "not looked at" or "not fixed": the
+     card finishes and the draft as it stands is handed over. `keep` saves
+     the finished document, always, whatever happened here.
      -------------------------------------------------------------------- */
-  async function lookAndReport(resultId, markdown, title, convo, stepsSoFar, layoutStyle = null) {
+  function askLook(intro, pictures, asImageBlock) {
+    return new Promise((resolve) => {
+      let text = "";
+      const stop = setTimeout(() => resolve(null), 60000);
+      sendTurn({
+        stage: "look",
+        messages: [{ role: "user", content: [{ type: "text", text: intro }, ...pictures.map(asImageBlock)] }],
+        onText: (chunk) => { text += chunk; },
+        onDone: () => { clearTimeout(stop); resolve(text); },
+        onError: () => { clearTimeout(stop); resolve(null); },
+      });
+    });
+  }
+
+  function askRevise(request, brief) {
+    return new Promise((resolve) => {
+      let text = "";
+      const stop = setTimeout(() => resolve(null), 90000);
+      sendTurn({
+        stage: "revise",
+        brief,
+        findings: findingsRef.current.join("\n\n"),
+        messages: [{ role: "user", content: request }],
+        onText: (chunk) => { text += chunk; },
+        onDone: ({ stopReason } = {}) => { clearTimeout(stop); resolve(stopReason === "max_tokens" ? null : text); },
+        onError: () => { clearTimeout(stop); resolve(null); },
+      });
+    });
+  }
+
+  async function lookAndReport(resultId, markdown, title, convo, stepsSoFar, layoutStyle = null, brief = "", keep = () => {}) {
     const format = formatRef.current;
     const noun = format === "pptx" ? "slide" : "page";
     let steps = stepsSoFar;
-    let problems = [];
+    let current = markdown;
     let looked = false;
+    let fixed = [];
+    let remaining = [];
+    const showSteps = () => updateMessages((prev) => prev.map((m) => (m.id === resultId ? { ...m, steps } : m)));
     try {
       const { lookAtFile, asImageBlock } = await import("../shared/docs/look/lookAtFile.js");
+      const loop = await import("../shared/docs/look/fixLoop.js");
       /* The same look the download will have, so what is checked is what
          they get: the company's brand (companyBrand, the shape buildFile
          reads; the raw company row gave the default navy until 2026-11-11)
          and a PowerPoint they showed (convert/layoutOf.js). */
       const company = layoutStyle ? { ...companyBrand, layoutStyle } : companyBrand;
-      const seen = await lookAtFile(format, title, markdown, company, convo);
-      if (seen?.pictures?.length) {
-        const intro =
-          `This is the finished ${format === "pptx" ? "slide deck" : "PDF"}, ${seen.pages} ${noun}${seen.pages === 1 ? "" : "s"}, ` +
-          `drawn as pictures in order.` +
-          (seen.problems.length ? `\nThe app already measured these:\n${seen.problems.join("\n")}` : "");
-        const said = await new Promise((resolve) => {
-          let text = "";
-          const stop = setTimeout(() => resolve(null), 60000);
-          sendTurn({
-            stage: "look",
-            messages: [{ role: "user", content: [{ type: "text", text: intro }, ...seen.pictures.map(asImageBlock)] }],
-            onText: (chunk) => { text += chunk; },
-            onDone: () => { clearTimeout(stop); resolve(text); },
-            onError: () => { clearTimeout(stop); resolve(null); },
-          });
-        });
-        looked = said !== null;
-        const fromLook = said && !/ALL CLEAR/i.test(said)
-          ? said.split("\n").map((l) => l.replace(/^[-*•\s]+/, "").trim()).filter(Boolean)
-          : [];
-        problems = [...new Set([...seen.problems, ...fromLook])].slice(0, 5);
+      const began = Date.now();
+      let sent = null;
+      for (let round = 0; ; round += 1) {
+        const seen = await lookAtFile(format, title, current, company, convo);
+        if (!seen) break;
+        const measured = loop.measuredFaults(seen.problems);
+        const overPages = format === "pdf" ? loop.pageFault(seen.pages, seen.ceiling, current) : null;
+        if (overPages) measured.push(overPages);
+
+        let issues = [];
+        if (seen.pictures?.length) {
+          const intro =
+            `This is the finished ${format === "pptx" ? "slide deck" : "PDF"}, ${seen.pages} ${noun}${seen.pages === 1 ? "" : "s"}, ` +
+            `drawn as pictures in order.` +
+            (measured.length ? `\nThe app already measured these, and is fixing them:\n${measured.map(loop.stillLine).join("\n")}` : "");
+          const said = await askLook(intro, seen.pictures, asImageBlock);
+          const read = said === null ? null : loop.parseLook(said);
+          /* UNSEEN: the model could not see the pictures. Said in the
+             console, so the logs show it, and treated as not looked at. */
+          if (read?.unseen) console.warn("the look agent could not see the pictures");
+          if (read && !read.unseen) looked = true;
+          issues = read?.issues ?? [];
+        }
+
+        const faults = loop.faultsToFix([...measured, ...issues]);
+        if (sent) fixed = [...fixed, ...loop.fixedSince(sent, faults)];
+        remaining = faults;
+        if (!faults.length) break;
+        if (round >= loop.MAX_ROUNDS || Date.now() - began > loop.LOOP_BUDGET_MS) break;
+
+        steps = advance(
+          steps,
+          round === 0
+            ? `Found ${faults.length === 1 ? "one thing" : `${faults.length} things`} to put right. Fixing ${faults.length === 1 ? "it" : "them"} now…`
+            : "Not quite right yet. One more pass…",
+        );
+        showSteps();
+        const reply = await askRevise(loop.reviseRequest(current, faults, { format, round: round + 1 }), brief);
+        const { markdown: next, changed } = loop.applyRevision(current, reply);
+        /* Nothing changed, or changed back to the same words: another look
+           would find the same faults, so stop and say what is left. */
+        if (!changed.length || next === current) break;
+        current = next;
+        sent = faults;
+        updateMessages((prev) => prev.map((m) => (m.id === resultId ? { ...m, content: current } : m)));
+        steps = advance(steps, `Looking at every ${noun} again…`);
+        showSteps();
       }
     } catch (error) {
-      console.warn("could not look at the file", error);
+      console.warn("could not look at or fix the file", error);
     }
 
-    if (looked && !problems.length) {
-      steps = advance(steps, `Looked at every ${noun} the way you will see it. Nothing is out of place.`, "done");
-    } else if (problems.length) {
-      steps = advance(steps, `Looked at every ${noun}. ${problems.length === 1 ? "One thing" : "A few things"} you may want changed:`, "done");
-      steps = [...steps, ...problems.map((text) => ({ text, tone: "error" }))];
+    const loopLib = await import("../shared/docs/look/fixLoop.js").catch(() => null);
+    const fixedLines = loopLib ? fixed.map((f) => ({ text: loopLib.fixedLine(f), tone: "done" })) : [];
+    const stillLines = loopLib ? remaining.slice(0, 5).map((f) => ({ text: loopLib.stillLine(f), tone: "warn" })) : [];
+
+    if (remaining.length) {
+      steps = advance(steps, `Looked at every ${noun}.${fixed.length ? " Put right what it could." : ""}`, "done");
+      steps = [...steps, ...fixedLines];
+      steps = [...steps, { text: "Still worth a look:", tone: "info" }, ...stillLines];
+    } else if (looked || fixed.length) {
+      steps = advance(
+        steps,
+        fixed.length
+          ? `Looked at every ${noun} again. It is right now.`
+          : `Looked at every ${noun} the way you will see it. Nothing is out of place.`,
+        "done",
+      );
+      steps = [...steps, ...fixedLines];
     } else {
       steps = steps.filter((step) => step.tone !== "active");
     }
-    steps = [...steps, { text: problems.length ? "Done. Tell me what to change, or download it as it is." : "Done. It is ready below.", tone: "done" }];
-    const next = updateMessages((prev) => prev.map((m) => (m.id === resultId ? { ...m, steps, looking: false } : m)));
+    steps = [...steps, { text: remaining.length ? "Done. Tell me what to change, or download it as it is." : "Done. It is ready below.", tone: "done" }];
+    const next = updateMessages((prev) => prev.map((m) => (m.id === resultId ? { ...m, content: current, steps, looking: false } : m)));
     persist(next, "analyse");
+    keep(current);
   }
 
   function buildFromBrief(brief, convo = messages) {
@@ -2255,25 +2336,33 @@ export default function Chat() {
            heading. */
         const title = titleOf(finished, docTitle(convo));
 
-        setLibraryFiles((prev) => [
-          { id: nextId(), title, skill: autoSkill, savedToStorage: false, when: "Just now", content: finished },
-          ...prev,
-        ]);
+        /* KEPT ONCE IT IS FINAL. For a PDF or slides that is after the look
+           and its fixes (lookAndReport), so the Library and the database hold
+           the corrected document, not the first draft. The numbers are
+           checked on that same final text. */
+        const keep = (final) => {
+          const keptTitle = titleOf(final, title);
+          setLibraryFiles((prev) => [
+            { id: nextId(), title: keptTitle, skill: autoSkill, savedToStorage: false, when: "Just now", content: final },
+            ...prev,
+          ]);
 
-        /* And to the database, so it is still there tomorrow. Written
-           under this person's own identity, which is what the row level
-           security expects, so a failure here is a permission problem
-           worth seeing in the console rather than a silent loss. */
-        if (me?.company?.id && me?.user?.id) {
-          saveWork({
-            companyId: me.company.id,
-            staffId: me.user.id,
-            title,
-            skill: autoSkill,
-            content: finished,
-            revision: revisionRef.current,
-          });
-        }
+          /* And to the database, so it is still there tomorrow. Written
+             under this person's own identity, which is what the row level
+             security expects, so a failure here is a permission problem
+             worth seeing in the console rather than a silent loss. */
+          if (me?.company?.id && me?.user?.id) {
+            saveWork({
+              companyId: me.company.id,
+              staffId: me.user.id,
+              title: keptTitle,
+              skill: autoSkill,
+              content: final,
+              revision: revisionRef.current,
+            });
+          }
+          checkNumbers(resultId, final, brief, convo);
+        };
 
         /* The section lines were live progress. Once the document is done they
            fold away, and the card keeps the steps that matter. */
@@ -2283,19 +2372,19 @@ export default function Chat() {
         /* THE LOOK, BEFORE IT IS HANDED OVER. Anthony, 2026-11-10: "The
            system should look at what it made (screenshot) before handing
            it over, especially slides." Slides and PDFs are drawn as
-           pictures and looked at; the download buttons wait until it is
-           done. See lookAndReport. */
+           pictures, looked at and fixed; the download buttons wait until it
+           is done. See lookAndReport. */
         const lookable = formatRef.current === "pptx" || formatRef.current === "pdf";
         if (lookable) {
           const noun = formatRef.current === "pptx" ? "slide" : "page";
           steps = advance(steps, `Looking at every ${noun} the way you will see it…`);
           updateMessages((prev) => prev.map((m) => (m.id === resultId ? { ...m, steps, looking: true } : m)));
-          lookAndReport(resultId, finished, title, convo, steps, layoutStyle);
+          lookAndReport(resultId, finished, title, convo, steps, layoutStyle, brief, keep);
         } else {
           steps = advance(steps, "Done. It is ready below.", "done");
           updateMessages((prev) => prev.map((m) => (m.id === resultId ? { ...m, steps } : m)));
+          keep(finished);
         }
-        checkNumbers(resultId, finished, brief, convo);
       },
 
       onError: ({ reason, message }) => {

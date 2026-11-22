@@ -144,3 +144,60 @@ false alarms, numbers with no source.
 Sources: arxiv.org/abs/2501.03936 (PPTAgent), arxiv.org/abs/2602.22839
 (DeepPresenter), github.com/presenton/presenton, api-docs.deepseek.com/guides/vision,
 presentbench.github.io, chatslide.ai/guides/best-ai-model-for-presentations-benchmark.
+
+## 6. The study of the three, second pass (2026-11-22, his ask 16c)
+
+Read from their own repositories, cloned and read, not from summaries.
+
+| | What it is best at | What we take |
+|---|---|---|
+| **Anthropic skills** (pptx, docx; Apache 2.0) | Design judgement and QA discipline. A floor for text size ("body 14pt, captions 10pt"); at the floor, cut words, split or enlarge, never shrink further. "Your first render usually has a few real issues... fix those, re-render only the slides you changed, and stop." Look at the pictures with fresh eyes, ideally a separate reviewer. | The fix loop's shape and its stop rule (two rounds). Design rules were already taken for the deck (2026-11-11). It assumes an agent that writes code and runs LibreOffice, which a browser app cannot; we keep our own drawers. |
+| **PPTAgent / DeepPresenter** (Apache 2.0) | The review contract. Each finding has a severity (blocker, major, minor), a place, a description and a suggested fix. "A pass with major or blocker issues is rejected." "A missing key or failed visual call is a failed review, never an implicit pass." Delivery is strict unless the person accepts a draft, and then the failed checks are disclosed. It recommends `deepseek-v4-flash-vision` as the reviewer model, a separate name from `deepseek-flash`. | Graded findings (MAJOR / MINOR) with a fix, built 2026-11-22. UNSEEN when the model cannot see the pictures. Next: check which DeepSeek model name takes images, and use that one for the look. |
+| **Presenton** (Apache 2.0) | Speed and fit. Each layout is a template with a character limit on every text field (`max_length` 10, 17, 100, 159...). The outline comes first, then every slide is written at the same time, ten at once. | Character limits per block, given to the writer as numbers. Writing a deck slide by slide in parallel is the biggest speed win available. |
+
+So the combination: Presenton's templates and limits for the shape and the
+speed, PPTAgent's graded review for the check, Anthropic's design rules and
+"fix, re-render, stop" for the quality. Our drawers (`deck.js`, `pdf.js`,
+`word.js`) are already templates in Presenton's sense; what is missing is
+the limit on each slot and the parallel writing.
+
+## 7. Speed, and a time on screen (his ask 16d)
+
+His target: every stage under two minutes, the build included, with an
+estimate on screen, search included.
+
+What is known: the 2026-11-10 live run's search took 87 seconds. No other
+stage has a measured time: the server logs tokens per stage, not seconds.
+
+What similar tools do: Presenton writes every slide at once after the
+outline; Gamma and similar tools stream the outline first, then fill.
+Anthropic's QA re-renders only the slides that changed.
+
+What fits here, in order of payoff:
+1. **Measure first.** Each stage's real time, logged by the app and kept,
+   so estimates come from real runs, not guesses.
+2. **The estimate.** Shown on the working line: "About 40 seconds" before,
+   counting down while it works, "Taking longer than usual" past it. From the
+   last runs of the same stage and size, with a fixed starting guess until
+   there are enough.
+3. **The fix loop has a budget.** Built: no new round starts after 75
+   seconds of looking and fixing.
+4. **Faster building.** Slides written in parallel, section by section, the
+   way Presenton does, once the plan (the brief) fixes each slide's layout.
+   This is the change that can bring a ten slide deck under two minutes.
+5. **The look sees only what changed** on the second pass.
+
+## 8. Built 2026-11-22: the fix loop (16a)
+
+- `stages/look.ts`: each finding graded MAJOR or MINOR, with where and a fix;
+  UNSEEN when it cannot see the pictures; told that a clear page is normal.
+- `stages/revise.ts`, a new stage: puts the listed faults right, answers with
+  only the sections it changed, inside the same approved brief.
+- `src/shared/docs/look/fixLoop.js`: reading the look, the page fault (code
+  counts the pages against what they asked for), swapping sections in by
+  heading, what counts as fixed. Tested in `scripts/tests/fix-loop.test.mjs`.
+- `Chat.jsx` `lookAndReport`: look, fix, look again, at most two rounds,
+  75 seconds; green "Fixed:" lines, amber "Still worth a look" lines, no red.
+  The Library and the database now keep the fixed document, not the draft.
+- Walked in `scripts/__harness/look.cjs`: a slide fault fixed, a one page PDF
+  over its page cut to fit, a fault that stays shown in amber.
