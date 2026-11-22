@@ -192,7 +192,10 @@ other.** Nothing comes off until it is built, checked and live.
     rounds, the card says what was fixed. **His yes given 2026-11-22**
     ("your plan looks nice, you are also free to review your plans before
     you start"), edge function changes included.
-    **Built and checked 2026-11-22**, going to testing and live: look.ts
+    **Built and checked 2026-11-22, on testing, NOT live.** GitHub gave the
+    CI and smoke jobs no machine (runner 0, no steps, failed in 3 seconds),
+    twice. Likely Actions minutes or the spending limit: his step. Once the
+    checks run green, merge to main. Contents: look.ts
     graded, new revise.ts stage, `docs/look/fixLoop.js`. Needs his live test
     on a one pager and a deck. To check in the logs: whether `deepseek-flash`
     sees the pictures (an UNSEEN reply or an error means it does not;
