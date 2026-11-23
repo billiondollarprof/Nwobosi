@@ -19,6 +19,41 @@ How this file works:
 
 ## 1. Now, in his order
 
+**RESUME HERE (saved 2026-11-23, his ask: "save this entire plan... when I
+want you to continue with this work").**
+
+A. **The fix loop (16a) is finished and waits on GitHub only.** It is on
+   `testing` (merge `b4c74a6`) and on the branch
+   `claude/nwobosi-workflow-analysis-08o0hb`. GitHub ran no checks because
+   the repo is private and out of Actions minutes. His plan: make the repo
+   public for about an hour. Then, in order:
+   1. Re-run CI and the smoke test on `testing` (GitHub tool:
+      rerun the latest runs for `b4c74a6`, or push an empty merge from the
+      branch; never an empty commit).
+   2. All green: skill `ship` from step 4 (merge testing into main, wait for
+      CI, smoke and the edge function deploy of `assistant`).
+   3. Update `LIVE.md`, take 16a off this list, one line in SESSIONS.md.
+   4. Tell him to make the repo private again.
+   5. His live test: a one pager that runs over, and a deck. Then read the
+      `assistant` logs for `stage=look` and an UNSEEN reply.
+B. **References behind a QR code (16b):** waiting for his yes on the
+   database batch (four lines, in the chat of 2026-11-22: a table for each
+   document's reference list with a long random code, insert by that
+   company's staff only, a function that returns one list by its exact
+   code, and permission for anyone holding the code to call it). Page at
+   `stellaxafe.com/r/<code>`. Then build with skill `new-migration`.
+C. **Speed and a time on screen (16d):** measure each stage's real time,
+   then the estimate on the working line, then slides written in
+   parallel. Notes: `docs/history/REVIEW-2026-11-22-document-workflow.md`,
+   sections 6 to 8.
+D. **Dreef quotation (2026-11-23).** Dreef (InfraIQ.africa) asked for a
+   quotation for their own build on their Microsoft Azure. The plan, the
+   price and the contract advice are in his Drive, folder "StellaXafe -
+   Clients - Dreef", file "Dreef - Quotation plan and pricing (never
+   sent)". Never in this repo. Next: his answers to its section 10, then
+   the client quotation, also in Drive.
+
+
 **Done on 2026-11-10** (moves to the session log at the end of the day):
 client trial code issued with a $2 meter; every new workspace starts on
 DeepSeek; setup fixed for every new workspace (73 character password);
@@ -192,7 +227,10 @@ other.** Nothing comes off until it is built, checked and live.
     rounds, the card says what was fixed. **His yes given 2026-11-22**
     ("your plan looks nice, you are also free to review your plans before
     you start"), edge function changes included.
-    **Built and checked 2026-11-22**, going to testing and live: look.ts
+    **Built and checked 2026-11-22, on testing, NOT live.** GitHub gave the
+    CI and smoke jobs no machine (runner 0, no steps, failed in 3 seconds),
+    twice. Likely Actions minutes or the spending limit: his step. Once the
+    checks run green, merge to main. Contents: look.ts
     graded, new revise.ts stage, `docs/look/fixLoop.js`. Needs his live test
     on a one pager and a deck. To check in the logs: whether `deepseek-flash`
     sees the pictures (an UNSEEN reply or an error means it does not;
