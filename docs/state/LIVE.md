@@ -26,10 +26,13 @@ The old deploy log, up to 2026-11-02: `docs/history/DEPLOYS-to-2026-11-02.md`.
 Supabase project `cbunsqzkhidwjtxdsmxd`. Read from the live project on
 2026-11-11 (times in UTC), after main `861c564` (designed slides, the look a
 person asks for or copies from their PowerPoint) deployed `assistant` v70.
+`assistant` since: v72 on 2026-11-23 23:38, from main `5e55226` (the look
+grades what it finds, the new revise stage fixes it), check CLEAN, 839 of
+839 markers.
 
 | Function | Version | Last deployed |
 |---|---|---|
-| `assistant` | 70 | 2026-11-11 16:33 |
+| `assistant` | 72 | 2026-11-23 23:38 |
 | `support-ask` | 33 | 2026-11-11 04:39 |
 | `add-link` | 26 | 2026-11-11 04:38 |
 | `read-before-publish` | 20 | 2026-11-11 04:39 |
