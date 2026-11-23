@@ -160,6 +160,13 @@ export function askedForOnePage(messages = []) {
   );
 }
 
+/* The most pages the PDF may run to, or 0 when they named none. Shared with
+   the fix loop (docs/look/fixLoop.js), so the page it checks against is the
+   page the file was built to. */
+export function pageCeiling(messages = [], pages = askedCount(messages, "page")) {
+  return Number.isFinite(ceilingOf(pages)) ? ceilingOf(pages) : askedForOnePage(messages) ? 1 : 0;
+}
+
 export async function buildFile(format, title, markdown, company, messages = [], { deckEngine = null } = {}) {
   const doc = readDocument(markdown, title);
   const found = await brandFor(company);
@@ -184,7 +191,7 @@ export async function buildFile(format, title, markdown, company, messages = [],
     charts = await chartPictures(doc, theme);
   }
   let blob;
-  if (format === "pdf") blob = await pdfBlob(doc, theme, brand, images, { pages: Number.isFinite(ceilingOf(pages)) ? ceilingOf(pages) : askedForOnePage(messages) ? 1 : 0 });
+  if (format === "pdf") blob = await pdfBlob(doc, theme, brand, images, { pages: pageCeiling(messages, pages) });
   else if (format === "pptx") {
     if (!doc.blocks.length) throw new Error("nothing to put on a slide");
     const { deckBlob } = await import("./docs/deck.js");

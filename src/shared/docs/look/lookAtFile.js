@@ -57,7 +57,7 @@ async function drawPdfPages(blob) {
    format is not looked at or anything went wrong. */
 export async function lookAtFile(format, title, markdown, company, messages = []) {
   try {
-    const { buildFile } = await import("../../download.js");
+    const { buildFile, pageCeiling } = await import("../../download.js");
     if (format === "pptx") {
       const recorder = new SlideRecorder();
       const { blob: slides } = await buildFile("pptx", title, markdown, company, messages, { deckEngine: recorder });
@@ -67,7 +67,7 @@ export async function lookAtFile(format, title, markdown, company, messages = []
     if (format === "pdf") {
       const { blob } = await buildFile("pdf", title, markdown, company, messages);
       const out = await drawPdfPages(blob);
-      return { kind: "pages", ...out };
+      return { kind: "pages", ...out, ceiling: pageCeiling(messages) };
     }
     return null;
   } catch (err) {

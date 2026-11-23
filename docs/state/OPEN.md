@@ -19,6 +19,41 @@ How this file works:
 
 ## 1. Now, in his order
 
+**RESUME HERE (saved 2026-11-23, his ask: "save this entire plan... when I
+want you to continue with this work").**
+
+A. **The fix loop (16a) is finished and waits on GitHub only.** It is on
+   `testing` (merge `b4c74a6`) and on the branch
+   `claude/nwobosi-workflow-analysis-08o0hb`. GitHub ran no checks because
+   the repo is private and out of Actions minutes. His plan: make the repo
+   public for about an hour. Then, in order:
+   1. Re-run CI and the smoke test on `testing` (GitHub tool:
+      rerun the latest runs for `b4c74a6`, or push an empty merge from the
+      branch; never an empty commit).
+   2. All green: skill `ship` from step 4 (merge testing into main, wait for
+      CI, smoke and the edge function deploy of `assistant`).
+   3. Update `LIVE.md`, take 16a off this list, one line in SESSIONS.md.
+   4. Tell him to make the repo private again.
+   5. His live test: a one pager that runs over, and a deck. Then read the
+      `assistant` logs for `stage=look` and an UNSEEN reply.
+B. **References behind a QR code (16b):** waiting for his yes on the
+   database batch (four lines, in the chat of 2026-11-22: a table for each
+   document's reference list with a long random code, insert by that
+   company's staff only, a function that returns one list by its exact
+   code, and permission for anyone holding the code to call it). Page at
+   `stellaxafe.com/r/<code>`. Then build with skill `new-migration`.
+C. **Speed and a time on screen (16d):** measure each stage's real time,
+   then the estimate on the working line, then slides written in
+   parallel. Notes: `docs/history/REVIEW-2026-11-22-document-workflow.md`,
+   sections 6 to 8.
+D. **Dreef quotation (2026-11-23).** Dreef (InfraIQ.africa) asked for a
+   quotation for their own build on their Microsoft Azure. The plan, the
+   price and the contract advice are in his Drive, folder "StellaXafe -
+   Clients - Dreef", file "Dreef - Quotation plan and pricing (never
+   sent)". Never in this repo. Next: his answers to its section 10, then
+   the client quotation, also in Drive.
+
+
 **Done on 2026-11-10** (moves to the session log at the end of the day):
 client trial code issued with a $2 meter; every new workspace starts on
 DeepSeek; setup fixed for every new workspace (73 character password);
@@ -172,19 +207,52 @@ other.** Nothing comes off until it is built, checked and live.
     the raw company row and drawing the default navy).
     **Still to do:** the rest of e (Excel and Word skills, free PowerPoint builders such as Presenton,
     Apache 2.0), f (Canva).
-15b. **A number they name is a rule** (2026-11-11). Exact is exact, "not more
-    than 10" is 10 or fewer, "more than 10" is 11 or more; no number, the
-    system decides. Slides, pages (Word/PDF) and sheets (Excel). Done on
-    testing: the app reads the number (docs/askedCount.js); a named slide
-    count keeps each section on one slide, shrinking to fit; a page ceiling
-    makes the PDF fit. Waiting for his yes: the assistant function's
-    analyse, brief and generate instructions.
-15c. **Send as PDF** (2026-11-11, his choice A). Converter (converter/) now
-    takes PowerPoint and Excel too, on testing. His step: deploy it on Cloud
-    Run from converter/README.md (needs billing on). Mine after: a "Send as
-    PDF" button, and a browser fallback for slides.
+15b. **A number they name is a rule** (2026-11-11). LIVE (main b5c6493):
+    the app reads the number (docs/askedCount.js), a named slide count keeps
+    each section on one slide, a page ceiling makes the PDF fit, and the
+    assistant's analyse, brief and generate instructions keep to it. Not yet
+    tried end to end on a live chat with a named number.
+15c. **Send as PDF** (2026-11-11, his choice A). LIVE: the converter
+    (converter/) takes PowerPoint, Excel and Word, and its README on main is
+    current. HIS STEP, in progress 2026-11-12: new Google Cloud account with
+    billing on; deploy from converter/README.md, then add CONVERTER_URL and
+    CONVERTER_SECRET in Supabase. MINE after: a "Send as PDF" button on every
+    finished file, a browser fallback for slides, and a live check.
 16. **Research:** similar tools and how they orchestrate agents to make
     files; MCP and the browser; keeping search cheap.
+    **Document part done 2026-11-22:** `docs/history/REVIEW-2026-11-22-document-workflow.md`.
+16a. **The look step fixes, not only reports** (2026-11-22, his words: "it
+    just show the error with red line, but it will not go back to adjust it").
+    Proposed: code measures, the writer is sent the exact fault, at most two
+    rounds, the card says what was fixed. **His yes given 2026-11-22**
+    ("your plan looks nice, you are also free to review your plans before
+    you start"), edge function changes included.
+    **Built and checked 2026-11-22, on testing, NOT live.** GitHub gave the
+    CI and smoke jobs no machine (runner 0, no steps, failed in 3 seconds),
+    twice. Likely Actions minutes or the spending limit: his step. Once the
+    checks run green, merge to main. Contents: look.ts
+    graded, new revise.ts stage, `docs/look/fixLoop.js`. Needs his live test
+    on a one pager and a deck. To check in the logs: whether `deepseek-flash`
+    sees the pictures (an UNSEEN reply or an error means it does not;
+    PPTAgent names `deepseek-v4-flash-vision` for this).
+16b. **References on a one pager go behind a QR code** (2026-11-22). A
+    references page made separately, its link as a QR code in one card.
+    **His yes given 2026-11-22.** Where it lives: a private link on
+    stellaxafe.com for now; for a client's own build, a private link on the
+    company's own platform or Google Drive, chosen when we deploy for them.
+16c. **Take the best of each** (2026-11-22, his words: "maybe a combination
+    of all three, but each to where it's best at"). A proper study of
+    Anthropic's slide and Word skills, PPTAgent/DeepPresenter and Presenton,
+    then use each where it is strongest.
+16d. **Every stage under 2 minutes, with a time estimate on screen**
+    (2026-11-22, his words: "Anything less than 2mins for each stage
+    especially the building stage is okay... put an estimate completion
+    time for each task, including when the agent searches online so the
+    person can wait with time in mind"). Study how similar platforms keep
+    it fast.
+    Studied 2026-11-22 (review doc, section 7). Next: measure each stage's
+    real time, then the estimate on the working line, then slides written
+    in parallel.
 
 **Background, kept for its findings:** the demo flow audit. 2026-10-31. Dreef may book a
    call to see it. They need to see three things and nothing else:

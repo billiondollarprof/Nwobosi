@@ -53,6 +53,7 @@ import { RESEARCH } from "./stages/research.ts";
 import { BRIEF } from "./stages/brief.ts";
 import { GENERATE } from "./stages/generate.ts";
 import { LOOK } from "./stages/look.ts";
+import { REVISE } from "./stages/revise.ts";
 
 /* --------------------------------------------------------------------------
    CAPABILITY LEVELS, AND THE ONE PLACE A MODEL IS NAMED
@@ -487,6 +488,9 @@ const MAX_OUTPUT: Record<string, number> = {
   /* The look reports at most five short lines; the rest is room to think,
      which stays on here like every stage but the first two. */
   look: 4000,
+  /* The fix sends back only the sections it changed, or the whole document
+     when most of it changes, so it gets the writer's room. */
+  revise: 16000,
 };
 
 /* --------------------------------------------------------------------------
@@ -592,6 +596,7 @@ const STAGE_PROMPT: Record<string, string> = {
   brief: BRIEF,
   generate: GENERATE,
   look: LOOK,
+  revise: REVISE,
 };
 
 /* -------------------------------------------------------------------------- */
@@ -991,7 +996,10 @@ Deno.serve(async (req: Request) => {
      things up. */
   /* The look sees only pictures of a finished file, so it reads none of the
      company's material: nothing in it would change what is on the page. */
-  const readySources = stage === "look" ? [] : (sources ?? []).filter((s) => s.status === "ready");
+  /* The fix (revise.ts) works from the approved brief, which already holds
+     every fact written out, so it reads none either. That keeps a round of
+     fixing to seconds. */
+  const readySources = stage === "look" || stage === "revise" ? [] : (sources ?? []).filter((s) => s.status === "ready");
 
   /* Base first, then the contents, then the stage instruction. That order
      is what makes caching possible at all: the cache is a prefix match, so
@@ -1072,7 +1080,7 @@ Deno.serve(async (req: Request) => {
      is handed the brief as the last thing it reads, after everything else,
      and told plainly that anything outside it was never approved. */
   const approvedBrief =
-    stage === "generate" && brief
+    (stage === "generate" || stage === "revise") && brief
       ? [
           "",
           "",

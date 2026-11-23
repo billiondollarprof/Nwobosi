@@ -355,3 +355,14 @@ away. this only happens if they say it."
 This is round 2 item 7 ("a one off style", `OUTPUT-QUALITY.md`) made
 concrete. The company wide version, where an admin uploads a style for
 every file, uses the same reading.
+
+## 10. The look and the fix (2026-11-22)
+
+The finished PDF or deck is drawn as pictures, measured by code, and looked
+at by the look stage. Every measured fault and every MAJOR finding goes to
+the fix stage (`stages/revise.ts`), which sends back only the sections it
+changed; the file is drawn and looked at again. At most two rounds and 75
+seconds. The card shows what was fixed in green and what is left in amber.
+MINOR findings are never acted on or shown. Logic: `src/shared/docs/look/fixLoop.js`.
+Why and how it was designed: `docs/history/REVIEW-2026-11-22-document-workflow.md`.
+
