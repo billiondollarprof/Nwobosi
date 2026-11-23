@@ -22,20 +22,10 @@ How this file works:
 **RESUME HERE (saved 2026-11-23, his ask: "save this entire plan... when I
 want you to continue with this work").**
 
-A. **The fix loop (16a) is finished and waits on GitHub only.** It is on
-   `testing` (merge `b4c74a6`) and on the branch
-   `claude/nwobosi-workflow-analysis-08o0hb`. GitHub ran no checks because
-   the repo is private and out of Actions minutes. His plan: make the repo
-   public for about an hour. Then, in order:
-   1. Re-run CI and the smoke test on `testing` (GitHub tool:
-      rerun the latest runs for `b4c74a6`, or push an empty merge from the
-      branch; never an empty commit).
-   2. All green: skill `ship` from step 4 (merge testing into main, wait for
-      CI, smoke and the edge function deploy of `assistant`).
-   3. Update `LIVE.md`, take 16a off this list, one line in SESSIONS.md.
-   4. Tell him to make the repo private again.
-   5. His live test: a one pager that runs over, and a deck. Then read the
-      `assistant` logs for `stage=look` and an UNSEEN reply.
+A. **The fix loop (16a) is live** (2026-11-23, `assistant` v72). Left: his
+   live test on a one pager that runs over and on a deck, then read the
+   `assistant` logs for `stage=look` and an UNSEEN reply. **Remind him to
+   make the repo private again.**
 B. **References behind a QR code (16b):** waiting for his yes on the
    database batch (four lines, in the chat of 2026-11-22: a table for each
    document's reference list with a long random code, insert by that
@@ -221,20 +211,6 @@ other.** Nothing comes off until it is built, checked and live.
 16. **Research:** similar tools and how they orchestrate agents to make
     files; MCP and the browser; keeping search cheap.
     **Document part done 2026-11-22:** `docs/history/REVIEW-2026-11-22-document-workflow.md`.
-16a. **The look step fixes, not only reports** (2026-11-22, his words: "it
-    just show the error with red line, but it will not go back to adjust it").
-    Proposed: code measures, the writer is sent the exact fault, at most two
-    rounds, the card says what was fixed. **His yes given 2026-11-22**
-    ("your plan looks nice, you are also free to review your plans before
-    you start"), edge function changes included.
-    **Built and checked 2026-11-22, on testing, NOT live.** GitHub gave the
-    CI and smoke jobs no machine (runner 0, no steps, failed in 3 seconds),
-    twice. Likely Actions minutes or the spending limit: his step. Once the
-    checks run green, merge to main. Contents: look.ts
-    graded, new revise.ts stage, `docs/look/fixLoop.js`. Needs his live test
-    on a one pager and a deck. To check in the logs: whether `deepseek-flash`
-    sees the pictures (an UNSEEN reply or an error means it does not;
-    PPTAgent names `deepseek-v4-flash-vision` for this).
 16b. **References on a one pager go behind a QR code** (2026-11-22). A
     references page made separately, its link as a QR code in one card.
     **His yes given 2026-11-22.** Where it lives: a private link on
