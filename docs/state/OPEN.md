@@ -40,8 +40,11 @@ D. **Dreef quotation (2026-11-23).** Dreef (InfraIQ.africa) asked for a
    quotation for their own build on their Microsoft Azure. The plan, the
    price and the contract advice are in his Drive, folder "StellaXafe -
    Clients - Dreef", file "Dreef - Quotation plan and pricing (never
-   sent)". Never in this repo. Next: his answers to its section 10, then
-   the client quotation, also in Drive.
+   sent)". Never in this repo. 2026-11-24: price, timing and the lessons
+   register settled in that Drive file. He sends the IT contact the plain
+   questions first (drafted in chat), then the client quotation follows,
+   also in Drive. Also in Drive: "Dreef - InfraIQ explained simply (for
+   Anthony)".
 
 
 **Done on 2026-11-10** (moves to the session log at the end of the day):
