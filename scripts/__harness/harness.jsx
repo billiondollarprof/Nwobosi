@@ -15,7 +15,8 @@
    analyse, build, in order, with no model and no network. */
 
 import { createRoot } from "react-dom/client";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Routes, Route } from "react-router-dom";
+import References from "../../src/pages/References.jsx";
 import { ThemeProvider, useTheme } from "../../src/shared/theme.jsx";
 import Support from "../../src/pages/Support.jsx";
 import Chat, { ChatBubble } from "../../src/pages/Chat.jsx";
@@ -128,11 +129,29 @@ function MapPreview() {
 
 const page = new URLSearchParams(window.location.search).get("page");
 
+/* /?page=refs&code=<code>: the page a QR code opens. One list is seeded
+   under a known code, so the walk can open it and a wrong code. */
+const REFS_CODE = "0123456789abcdef0123456789abcdef";
+if (page === "refs") {
+  __rows("document_references").push({
+    code: REFS_CODE,
+    title: "Hotel pricing, one page",
+    items: [
+      { text: "Rural Electrification Agency, Mini grid report, 2025. https://rea.example.org/report", url: "https://rea.example.org/report" },
+      { text: "Company price list, 2026.", url: "" },
+    ],
+    created_at: new Date().toISOString(),
+  });
+}
+const refsCode = new URLSearchParams(window.location.search).get("code") ?? REFS_CODE;
+
 /* WorkSwitch and the chat both call useNavigate, so the tree needs a
    router even here. */
 createRoot(document.getElementById("root")).render(
-  <MemoryRouter>
-    <ThemeProvider>{page === "chat" ? (
+  <MemoryRouter initialEntries={[page === "refs" ? `/r/${refsCode}` : "/"]}>
+    <ThemeProvider>{page === "refs" ? (
+        <Routes><Route path="/r/:code" element={<References />} /></Routes>
+      ) : page === "chat" ? (
         <Chat />
       ) : page === "replace" ? (
         <ReplacePreview />

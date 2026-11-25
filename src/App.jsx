@@ -28,6 +28,7 @@ import Anthony from "./pages/Anthony.jsx";
 import CV from "./pages/CV.jsx";
 import RouteMeta from "./shared/meta.jsx";
 import Insights from "./pages/Insights.jsx";
+import References from "./pages/References.jsx";
 
 /* Every page opens at its top.
 
@@ -64,6 +65,9 @@ export default function App() {
           {/* An invitation link. Above the /:slug routes on purpose, or
               "join" would be read as a company slug. */}
           <Route path="/join/:token" element={<Join />} />
+          {/* A document's references, opened from the QR code on a one pager
+              (pages/References.jsx). A fixed segment, so it ranks above /:slug. */}
+          <Route path="/r/:code" element={<References />} />
 
           {/* Retired. It was a public page for months, so it is in search
               results and in links. Without this it falls through to the

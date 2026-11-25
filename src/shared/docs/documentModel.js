@@ -80,6 +80,7 @@
      5. Figure numbers
    ========================================================================== */
 
+import { readReference } from "./references.js";
 import { isTableLine, isDivider, rawCells } from "../structure.js";
 import { chartData } from "./charts/chartData.js";
 
@@ -539,6 +540,23 @@ function readDesignBlock(kind, rest, lines, index, blocks) {
     const mode = /light|white/i.test(modeWord) ? "light" : /dark|black/i.test(modeWord) ? "dark" : "";
     const accent = (colour.match(/#?([0-9a-f]{6})\b/i)?.[1] ?? modeWord.match(/#?([0-9a-f]{6})\b/i)?.[1] ?? "").toUpperCase();
     blocks.push({ type: "style", mode, accent });
+    return 1;
+  }
+
+  /* :::references, the list of sources at the end (docs/references.js).
+     On a one pager it is swapped for :::sourcesqr once the list is saved. */
+  if (kind === "references") {
+    const { body, used } = bodyLines(lines, index);
+    const items = body.map(readReference).filter((r) => r.text);
+    if (items.length) blocks.push({ type: "references", items });
+    return used;
+  }
+
+  /* :::sourcesqr <link> | <how many>: the QR card that stands in for the
+     references on a one pager. */
+  if (kind === "sourcesqr") {
+    const [url = "", count = ""] = rest.split("|").map((p) => p.trim());
+    if (/^https?:\/\//i.test(url)) blocks.push({ type: "sourcesqr", url, count: Number(count) || 0 });
     return 1;
   }
 

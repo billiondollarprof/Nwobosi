@@ -93,6 +93,8 @@ function builder(table) {
         const gone = missing(table);
         if (gone) return gone;
         const made = { id: `new-${Date.now()}`, created_at: new Date().toISOString(), ...row };
+        /* The database makes the code for a reference list. */
+        if (table === "document_references") made.code = Array.from({ length: 32 }, () => "0123456789abcdef"[Math.floor(Math.random() * 16)]).join("");
         (ROWS[table] = ROWS[table] ?? []).unshift(made);
         return { data: made, error: null };
       };
@@ -136,7 +138,7 @@ function builder(table) {
    database actually holds after a delete, rather than what the screen
    decided to draw. */
 export function __rows(table) {
-  return ROWS[table] ?? [];
+  return (ROWS[table] = ROWS[table] ?? []);
 }
 
 /* Everything the pages actually reach for. Anything missing here shows up
@@ -145,6 +147,12 @@ export function __rows(table) {
    connected on mount, and it asks who is signed in. */
 export const supabase = {
   from: (table) => builder(table),
+  /* The one function a public page calls: a reference list by its code. */
+  rpc: async (name, args) => {
+    if (name !== "references_by_code") return { data: null, error: { message: `no function ${name}` } };
+    const row = (ROWS.document_references ?? []).find((r) => r.code === args?.p_code);
+    return { data: row ? [{ title: row.title, items: row.items, company: "Greenwich", created_at: row.created_at }] : [], error: null };
+  },
   auth: {
     getSession: async () => ({ data: { session: { access_token: "fake", user: { id: "s1" } } } }),
     getUser: async () => ({ data: { user: { id: "s1", email: "anthony@example.com" } }, error: null }),

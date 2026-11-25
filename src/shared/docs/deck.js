@@ -207,6 +207,13 @@ function piecesOf(blocks, { whole = false } = {}) {
       block.items.forEach((item, i) => pieces.push(textPiece(item.runs, block.ordered ? "number" : "bullet", { number: block.ordered ? block.start + i : null })));
     } else if (block.type === "quote") {
       pieces.push(textPiece(block.runs, "quote"));
+    } else if (block.type === "references") {
+      /* The sources, numbered, as on the page (docs/references.js). */
+      pieces.push(textPiece([{ text: "References", bold: true }], "sub"));
+      block.items.forEach((r, i) => pieces.push(textPiece([{ text: r.text }], "number", { number: i + 1 })));
+    } else if (block.type === "sourcesqr") {
+      /* Slides carry the link itself; the QR card is for printed pages. */
+      pieces.push(textPiece([{ text: "Sources: ", bold: true }, { text: block.url }], "para"));
     } else if (block.type === "p" && block.treeTop) {
       /* The org chart draws its own top box; this line is for the PDF. */
       continue;
