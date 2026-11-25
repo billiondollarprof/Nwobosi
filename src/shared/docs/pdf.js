@@ -312,9 +312,11 @@ function sourcesQrBlock(block, t) {
   const words = qrCardText(block.count);
   return {
     table: {
-      widths: [64, "*"],
+      /* About an inch square: small enough for a one pager, large enough
+         for a phone to read from arm's length. */
+      widths: [84, "*"],
       body: [[
-        { qr: block.url, fit: 64, foreground: hex(THEME.ink), eccLevel: "M" },
+        { qr: block.url, fit: 84, foreground: hex(THEME.ink), eccLevel: "M" },
         {
           stack: [
             { text: words.title, bold: true, color: hex(THEME.ink) },

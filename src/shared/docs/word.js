@@ -307,7 +307,7 @@ function referencesParagraphs(docx, block) {
 function sourcesQrTable(docx, block, t, png) {
   const { Table, TableRow, TableCell, WidthType, Paragraph, TextRun, ImageRun, ExternalHyperlink, VerticalAlign } = docx;
   const words = qrCardText(block.count);
-  const qrWidth = 1300;
+  const qrWidth = 1700;
   const line = () => ({ style: "single", size: 6, color: "E3E6F0" });
   return new Table({
     width: { size: contentTwips(t), type: WidthType.DXA },
@@ -320,7 +320,7 @@ function sourcesQrTable(docx, block, t, png) {
           width: { size: qrWidth, type: WidthType.DXA },
           margins: { top: 120, bottom: 120, left: 140, right: 60 },
           verticalAlign: VerticalAlign.CENTER,
-          children: [new Paragraph({ children: png ? [new ImageRun({ type: "png", data: png, transformation: { width: 64, height: 64 } })] : [] })],
+          children: [new Paragraph({ children: png ? [new ImageRun({ type: "png", data: png, transformation: { width: 84, height: 84 } })] : [] })],
         }),
         new TableCell({
           width: { size: contentTwips(t) - qrWidth, type: WidthType.DXA },
