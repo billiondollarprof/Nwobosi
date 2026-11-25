@@ -40,8 +40,8 @@ C. **Speed and a time on screen (16d):** measure each stage's real time,
    "about 15s", then "12s of about 15s"; the build card shows the whole
    build's estimate; past it, "This is taking longer than usual. Please
    bear with me a little longer." (his wording ask). App only, no SQL, no
-   edge function. Walk: `timing.cjs`. To ship it needs the GitHub checks,
-   so the repo public for about half an hour. Next: slides in parallel. Notes: `docs/history/REVIEW-2026-11-22-document-workflow.md`,
+   edge function. Walk: `timing.cjs`. **Live 2026-11-25** (main `5a9c4a8`).
+   Next: once real runs have built up timings, slides in parallel. Notes: `docs/history/REVIEW-2026-11-22-document-workflow.md`,
    sections 6 to 8.
 D. **Dreef quotation (2026-11-23).** Dreef (InfraIQ.africa) asked for a
    quotation for their own build on their Microsoft Azure. The plan, the
