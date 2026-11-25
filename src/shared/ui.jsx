@@ -4,12 +4,13 @@
    chat, admin, landing, and auth surfaces feel like one product.
    ========================================================================== */
 
-import { forwardRef, useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
 import { Sun, Moon } from "lucide-react";
 import { useTheme } from "./theme.jsx";
 import { BRAND, GRADIENTS, FONTS } from "./tokens";
 import { LogoMark } from "./icons.jsx";
 import { thinkingWord } from "./thinkingWords.js";
+import { estimateMs, isOverdue, timeHint, OVERDUE_LINE } from "./stageTimes.js";
 
 /* --------------------------------------------------------------------------
    SECTION: Ambient glow
@@ -420,8 +421,12 @@ export function Thinking({ stage = "orient", stalled = false, retrying = false }
     return () => clearInterval(id);
   }, [stage]);
 
-  const word = thinkingWord(stage, elapsed, { stalled, retrying });
-  const seconds = Math.floor(elapsed / 1000);
+  /* THE ESTIMATE (stageTimes.js). Anthony, 2026-11-22: "put an estimate
+     completion time for each task... so the person can wait with time in
+     mind." Read once per stage, so it does not jump while they watch. */
+  const estimate = useMemo(() => estimateMs(stage), [stage]);
+  const overdue = isOverdue(elapsed, estimate);
+  const word = overdue ? OVERDUE_LINE : thinkingWord(stage, elapsed, { stalled, retrying });
 
   return (
     /* aria-live so a screen reader hears the line change; polite, so it
@@ -437,14 +442,45 @@ export function Thinking({ stage = "orient", stalled = false, retrying = false }
           .sx-working-word in index.css. */}
       <span className="sx-working-word text-[15px] font-semibold leading-snug">{word}</span>
 
-      {/* The clock, after a few seconds. It counts up and never promises
-          when it will finish. */}
-      {seconds >= 4 && (
-        <span aria-hidden="true" className="text-[12.5px]" style={{ color: "var(--text-3)" }}>
-          {seconds}s
-        </span>
-      )}
+      {/* The estimate, then the time so far against it ("12s of about
+          40s"), and once it runs long just the time so far. */}
+      <span aria-hidden="true" className="text-[12.5px] whitespace-nowrap" style={{ color: "var(--text-3)" }}>
+        {timeHint(elapsed, estimate)}
+      </span>
     </div>
+  );
+}
+
+/* THE BUILD'S CLOCK. The build card changes shape as it goes (the plan,
+   the writing, the look), so the clock counts from when the build started
+   rather than from when this card appeared. */
+export function BuildClock({ since, estimate }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  if (!since || !estimate) return null;
+  const elapsed = now - since;
+  return (
+    <span aria-hidden="true" className="text-[12.5px] whitespace-nowrap" style={{ color: "var(--text-3)" }}>
+      {timeHint(elapsed, estimate)}
+    </span>
+  );
+}
+
+/* The line under the build card once it runs well past its estimate. */
+export function BuildOverdue({ since, estimate }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  if (!since || !estimate || !isOverdue(now - since, estimate)) return null;
+  return (
+    <p className="text-[13px] mt-2" style={{ color: "var(--text-2)" }} aria-live="polite">
+      {OVERDUE_LINE}
+    </p>
   );
 }
 

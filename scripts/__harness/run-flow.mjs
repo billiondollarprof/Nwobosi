@@ -107,6 +107,9 @@ for (const walk of [
   /* Added 2026-11-11. Slides and PDFs are drawn and looked at before they
      are handed over; Word is not. */
   "scripts/__harness/look.cjs",
+  /* Added 2026-11-25. The time on screen, and the line asking for a little
+     patience when a stage runs well past it. */
+  "scripts/__harness/timing.cjs",
 ]) {
   const run = spawn("node", [walk], { stdio: "inherit" });
   const code = await new Promise((resolve) => run.on("close", resolve));
