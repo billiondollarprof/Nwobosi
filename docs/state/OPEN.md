@@ -26,12 +26,15 @@ A. **The fix loop (16a) is live** (2026-11-23, `assistant` v72). Left: his
    live test on a one pager that runs over and on a deck, then read the
    `assistant` logs for `stage=look` and an UNSEEN reply. (The repo is
    private again.)
-B. **References behind a QR code (16b):** waiting for his yes on the
-   database batch (four lines, in the chat of 2026-11-22: a table for each
-   document's reference list with a long random code, insert by that
-   company's staff only, a function that returns one list by its exact
-   code, and permission for anyone holding the code to call it). Page at
-   `stellaxafe.com/r/<code>`. Then build with skill `new-migration`.
+B. **References behind a QR code (16b): built 2026-11-25, waiting to ship.**
+   His yes on the database batch the same day ("yes you can start all").
+   Applied after a dry run that rolled back: `document_references` and
+   `references_by_code` (migration and undo in `supabase/`). On a one page
+   PDF or Word file the writer's `:::references` block is saved and
+   swapped for a QR card (an inch square, decodes to the link); longer
+   documents keep the list. Page: `/r/<code>` (`pages/References.jsx`),
+   noindex. Writer instructions changed in generate.ts and brief.ts, so
+   shipping deploys `assistant`. Needs the repo public for the checks.
 C. **Speed and a time on screen (16d):** measure each stage's real time,
    then the estimate on the working line, then slides written in
    parallel. **Built 2026-11-25** (his yes, "start with item 1"):
