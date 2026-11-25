@@ -164,6 +164,12 @@ translation is the actual job.
 
 ## The Humanizer checks, for every piece of prose
 
+**Always, without being asked** (Anthony, 2026-11-24): every client
+document, proposal, quotation, message and any other prose, in every
+project, goes through skill `humanizer` before it is handed over, and the
+reply says it was done. A proposal went out unchecked on 2026-11-24 and he
+had to ask.
+
 From Anthony's Drive, "01 - Humanizer: writing rules for every output",
 which summarises github.com/blader/humanizer (MIT). Run these before handing
 back a CV, an email, a proposal, website copy or any other prose.

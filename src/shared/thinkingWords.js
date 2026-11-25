@@ -20,8 +20,15 @@
    both of those are worth saying out loud.
 
    So the words come from the stage, and they advance with time. Nothing
-   here counts anything down, and nothing promises it is nearly finished.
+   here promises it is nearly finished.
+
+   THE ESTIMATE, SINCE 2026-11-25. Anthony asked for a time on screen so a
+   person can wait with time in mind. It sits beside these words, comes from
+   real runs (stageTimes.js), always says "about", and once a stage runs well
+   past it the line says so (OVERDUE_LINE). That keeps the rule above.
    ========================================================================== */
+
+import { OVERDUE_LINE } from "./stageTimes.js";
 
 /* --------------------------------------------------------------------------
    SECTION 1: The words, per stage
@@ -86,7 +93,7 @@ export function thinkingWord(stage, elapsedMs = 0, { stalled = false, retrying =
      the one line that is about the connection rather than the work. It
      stops short of claiming anything has failed, because at this point
      nothing has: the turn is still running and still worth waiting for. */
-  if (stalled) return "This is taking longer than usual…";
+  if (stalled) return OVERDUE_LINE;
 
   const list = WORDS[stage] ?? FALLBACK;
   const step = Math.floor(Math.max(0, elapsedMs) / WORD_HOLD_MS);
@@ -96,5 +103,5 @@ export function thinkingWord(stage, elapsedMs = 0, { stalled = false, retrying =
 /* Every line this can ever show, so a test can check the whole surface
    rather than the handful somebody thought of. */
 export function everyThinkingWord() {
-  return [...new Set([...Object.values(WORDS).flat(), ...FALLBACK, "This is taking longer than usual…", "That did not come back, so I am trying again…"])];
+  return [...new Set([...Object.values(WORDS).flat(), ...FALLBACK, OVERDUE_LINE, "That did not come back, so I am trying again…"])];
 }

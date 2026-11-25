@@ -24,8 +24,8 @@ want you to continue with this work").**
 
 A. **The fix loop (16a) is live** (2026-11-23, `assistant` v72). Left: his
    live test on a one pager that runs over and on a deck, then read the
-   `assistant` logs for `stage=look` and an UNSEEN reply. **Remind him to
-   make the repo private again.**
+   `assistant` logs for `stage=look` and an UNSEEN reply. (The repo is
+   private again.)
 B. **References behind a QR code (16b):** waiting for his yes on the
    database batch (four lines, in the chat of 2026-11-22: a table for each
    document's reference list with a long random code, insert by that
@@ -34,14 +34,24 @@ B. **References behind a QR code (16b):** waiting for his yes on the
    `stellaxafe.com/r/<code>`. Then build with skill `new-migration`.
 C. **Speed and a time on screen (16d):** measure each stage's real time,
    then the estimate on the working line, then slides written in
-   parallel. Notes: `docs/history/REVIEW-2026-11-22-document-workflow.md`,
+   parallel. **Built 2026-11-25** (his yes, "start with item 1"):
+   `src/shared/stageTimes.js` records each stage's real time in the
+   browser and estimates from the last ten runs; the working line shows
+   "about 15s", then "12s of about 15s"; the build card shows the whole
+   build's estimate; past it, "This is taking longer than usual. Please
+   bear with me a little longer." (his wording ask). App only, no SQL, no
+   edge function. Walk: `timing.cjs`. To ship it needs the GitHub checks,
+   so the repo public for about half an hour. Next: slides in parallel. Notes: `docs/history/REVIEW-2026-11-22-document-workflow.md`,
    sections 6 to 8.
 D. **Dreef quotation (2026-11-23).** Dreef (InfraIQ.africa) asked for a
    quotation for their own build on their Microsoft Azure. The plan, the
    price and the contract advice are in his Drive, folder "StellaXafe -
    Clients - Dreef", file "Dreef - Quotation plan and pricing (never
-   sent)". Never in this repo. Next: his answers to its section 10, then
-   the client quotation, also in Drive.
+   sent)". Never in this repo. 2026-11-24: price, timing and the lessons
+   register settled in that Drive file. He sends the IT contact the plain
+   questions first (drafted in chat), then the client quotation follows,
+   also in Drive. Also in Drive: "Dreef - InfraIQ explained simply (for
+   Anthony)".
 
 
 **Done on 2026-11-10** (moves to the session log at the end of the day):
