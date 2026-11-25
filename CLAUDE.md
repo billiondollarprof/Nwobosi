@@ -43,6 +43,24 @@ it needs no signpost of its own. If another tool needs its own name, such as
 - **Say what is already done before saying what is left.** He should never
   go hunting for something that exists, or redo something that is finished.
 
+### The Humanizer runs on every piece of writing
+
+Anthony, 2026-11-24 and 2026-11-25: every client document, reply, commit
+message, doc and screen text goes through the Humanizer before it is
+returned, without being asked. The working rules are in his Drive, "01 -
+Humanizer: writing rules for every output", and the skill itself is in
+`.claude/skills/humanizer` (blader/humanizer, MIT). A client document is not
+finished until it has been through it, and the reply says that it was.
+
+- Keep every fact. Never add a name, number, date, quote, client or result
+  he did not supply. If a sentence needs a missing detail, ask for it or
+  write a simpler sentence.
+- Cut the tells, strongest first: "not X but Y", one line closers and
+  dramatic fragments, sayings that sound deep, staged run ups, arguing with
+  nobody, forced triads, repeated openings, dashes, stock AI words, sales
+  language, bold labels, decorative headings.
+- His own voice and the copy rules above win over it.
+
 ### Write so it can be read once
 
 Anthony, 2026-09-10: "the English language you are using sometimes I don't
