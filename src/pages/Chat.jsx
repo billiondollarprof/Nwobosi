@@ -95,6 +95,8 @@ import {
   TypewriterText,
   Thinking,
   WorkingMark,
+  BuildClock,
+  BuildOverdue,
   IconBtn,
   PrimaryButton,
   GhostButton,
@@ -136,6 +138,7 @@ import { withoutMarks } from "../shared/findings.js";
 import { formatAsked } from "../shared/formatAsked.js";
 import { formatFromReply, withoutFormatLine, DEFAULT_FORMAT, FORMAT_NAMES, FORMAT_SHORT } from "../shared/outputFormat.js";
 import BuildProgress, { advance, note, sectionsSoFar } from "../shared/BuildProgress.jsx";
+import { buildEstimateMs, OVERDUE_LINE } from "../shared/stageTimes.js";
 
 /* ==========================================================================
    1. INTERVIEW HELPERS
@@ -1575,7 +1578,7 @@ export default function Chat() {
 
     /* A look that was running when the page closed is over: its card gets
        its download buttons back rather than waiting for ever. */
-    const restored = settled.messages.map((m) => ({ id: nextId(), ...m, ...(m.looking ? { looking: false } : {}) }));
+    const restored = settled.messages.map((m) => ({ id: nextId(), ...m, ...(m.looking ? { looking: false } : {}), ...(m.building ? { building: false } : {}) }));
 
     /* Said only when something came back that they cannot see on screen.
        The conversation itself is right there, so announcing it would be
@@ -1823,6 +1826,10 @@ export default function Chat() {
         /* The live lines and the plan, see BuildProgress.jsx. */
         steps: advance([{ text: "I have read everything we agreed", tone: "done" }], "Writing the plan…"),
         plan: "",
+        /* The build's clock (stageTimes.js): when it started and about how
+           long it takes, carried onto the result card when that appears. */
+        startedAt: Date.now(),
+        estimate: buildEstimateMs(formatRef.current),
       },
     ]);
 
@@ -2127,7 +2134,7 @@ export default function Chat() {
       steps = steps.filter((step) => step.tone !== "active");
     }
     steps = [...steps, { text: remaining.length ? "Done. Tell me what to change, or download it as it is." : "Done. It is ready below.", tone: "done" }];
-    const next = updateMessages((prev) => prev.map((m) => (m.id === resultId ? { ...m, content: current, steps, looking: false } : m)));
+    const next = updateMessages((prev) => prev.map((m) => (m.id === resultId ? { ...m, content: current, steps, looking: false, building: false } : m)));
     persist(next, "analyse");
     keep(current);
   }
@@ -2191,6 +2198,11 @@ export default function Chat() {
           updateMessages((prev) => [
             ...prev.filter((m) => m.type !== "generating"),
             {
+              ...(() => {
+                const card = prev.find((m) => m.type === "generating");
+                return { startedAt: card?.startedAt ?? Date.now(), estimate: card?.estimate ?? buildEstimateMs(formatRef.current) };
+              })(),
+              building: true,
               id: resultId,
               role: "assistant",
               type: "result",
@@ -2262,7 +2274,7 @@ export default function Chat() {
            person is told plainly and the build card comes back. */
         if (stopReason === "max_tokens") {
           const withRetry = updateMessages((prev) => [
-            ...prev.map((m) => (m.id === resultId ? { ...m, cutOff: true } : m)),
+            ...prev.map((m) => (m.id === resultId ? { ...m, cutOff: true, building: false } : m)),
             {
               id: nextId(),
               role: "assistant",
@@ -2382,7 +2394,7 @@ export default function Chat() {
           lookAndReport(resultId, finished, title, convo, steps, layoutStyle, brief, keep);
         } else {
           steps = advance(steps, "Done. It is ready below.", "done");
-          updateMessages((prev) => prev.map((m) => (m.id === resultId ? { ...m, steps } : m)));
+          updateMessages((prev) => prev.map((m) => (m.id === resultId ? { ...m, steps, building: false } : m)));
           keep(finished);
         }
       },
@@ -2392,7 +2404,7 @@ export default function Chat() {
         setStalled(false);
         abortTurnRef.current = null;
         updateMessages((prev) => [
-          ...prev.filter((m) => m.type !== "generating"),
+          ...prev.filter((m) => m.type !== "generating").map((m) => (m.id === resultId ? { ...m, building: false } : m)),
           {
             id: nextId(),
             role: "assistant",
@@ -4602,6 +4614,9 @@ export function ChatBubble({ message, brief, buildFormat = DEFAULT_FORMAT, build
             <span className="text-[15.5px] font-semibold" style={{ color: "var(--text-1)" }}>
               Building it now
             </span>
+            {/* How long a build usually takes, and how long this one has
+                taken (stageTimes.js). */}
+            <span className="ml-auto"><BuildClock since={message.startedAt} estimate={message.estimate} /></span>
           </div>
 
           {message.steps?.length ? (
@@ -4611,10 +4626,15 @@ export function ChatBubble({ message, brief, buildFormat = DEFAULT_FORMAT, build
               <Thinking stage={buildStage} stalled={buildStalled} />
             </div>
           )}
-          {buildStalled && message.steps?.length > 0 && (
-            <p className="text-[12.5px] mt-2" style={{ color: "var(--text-3)" }}>
-              Still working. Longer documents take a minute or two.
+          {/* Quiet for a long time, or well past the usual time: said
+              plainly, with a request for a little patience (Anthony,
+              2026-11-25). */}
+          {buildStalled && message.steps?.length > 0 ? (
+            <p className="text-[13px] mt-2" style={{ color: "var(--text-2)" }}>
+              {OVERDUE_LINE}
             </p>
+          ) : (
+            <BuildOverdue since={message.startedAt} estimate={message.estimate} />
           )}
         </div>
       </div>
@@ -4687,6 +4707,9 @@ export function ChatBubble({ message, brief, buildFormat = DEFAULT_FORMAT, build
             <span className="text-[13px] font-semibold truncate" style={{ color: "var(--text-1)" }}>
               {title}
             </span>
+            {message.building && (
+              <span className="ml-auto pl-2"><BuildClock since={message.startedAt} estimate={message.estimate} /></span>
+            )}
           </div>
 
           {/* THE FILE IS THE DELIVERABLE, NOT THIS MESSAGE.
@@ -4709,6 +4732,7 @@ export function ChatBubble({ message, brief, buildFormat = DEFAULT_FORMAT, build
           {message.steps?.length > 0 && (
             <div className="mb-4 mt-2">
               <BuildProgress steps={message.steps} plan={message.plan} />
+              {message.building && <BuildOverdue since={message.startedAt} estimate={message.estimate} />}
             </div>
           )}
 

@@ -14,6 +14,7 @@
    thinking and feeling like it has hung.
    ========================================================================== */
 
+import { recordStageTime } from "./stageTimes.js";
 import { supabase } from "./supabase.js";
 import { FUNCTIONS } from "./config.js";
 
@@ -421,7 +422,11 @@ function sendTurnOnce({ stage = "orient", askedSoFar = 0, brief = "", findings =
 const RETRY_REASONS = new Set(["network", "stalled", "stream", "failed"]);
 
 export function sendTurn(args) {
-  const { onText, onError, onRetry } = args;
+  const { onText, onError, onRetry, onDone } = args;
+  /* How long this stage really took, retries included, because that is
+     what the person waited (stageTimes.js, the estimate on screen). Only a
+     turn that finished properly is kept. */
+  const startedAt = Date.now();
   let wroteSomething = false;
   let tried = 0;
   let abortCurrent = () => {};
@@ -431,6 +436,10 @@ export function sendTurn(args) {
     tried += 1;
     abortCurrent = sendTurnOnce({
       ...args,
+      onDone: (info = {}) => {
+        if (!cancelled && info?.stopReason !== "max_tokens") recordStageTime(args.stage ?? "orient", Date.now() - startedAt);
+        onDone?.(info);
+      },
       onText: (t) => {
         if (t) wroteSomething = true;
         onText?.(t);

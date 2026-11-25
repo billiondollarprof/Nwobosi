@@ -66,6 +66,9 @@ Also in `docs/product/`: `HOW-IT-WORKS.md`, `ROADMAP.md`, `STYLE-MEMORY.md`,
 - **Say what is already done before what is left.**
 - Client facing or public text follows `docs/rules/WRITING.md` in full: his
   voice, and the Humanizer checks.
+- **Run skill `humanizer` on every client document and every piece of
+  prose, in every project, without being asked**, and say in the reply that
+  it was done. Not finished until then. (His rule, 2026-11-24.)
 
 ## 4. Taking direction
 
