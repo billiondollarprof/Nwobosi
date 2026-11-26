@@ -21,6 +21,7 @@
      3. Styles, numbering, footer, and writing the file
    ========================================================================== */
 
+import { qrCardText, shortLinkText } from "./references.js";
 import { THEME, themeFor } from "./documentTheme.js";
 import { plainText, plainForm } from "./documentModel.js";
 import { imageKey } from "./imageKey.js";
@@ -285,7 +286,58 @@ function chartParagraphs(docx, block, picture) {
   ];
 }
 
-function blocksToWord(docx, doc, t, images, charts = null) {
+/* THE REFERENCES (docs/references.js): a small heading and a numbered
+   list. */
+function referencesParagraphs(docx, block) {
+  const { Paragraph, TextRun, ExternalHyperlink } = docx;
+  const out = [new Paragraph({ keepNext: true, spacing: { before: 200, after: 80 }, children: [new TextRun({ text: "References", bold: true, size: half(THEME.size.h3), color: THEME.ink })] })];
+  block.items.forEach((r, i) => {
+    const lead = new TextRun({ text: `${i + 1}. ` });
+    const body = r.url
+      ? [new TextRun({ text: r.text.replace(r.url, "").trim() + " " }), new ExternalHyperlink({ link: r.url, children: [new TextRun({ text: r.url, style: "Hyperlink" })] })]
+      : [new TextRun({ text: r.text })];
+    out.push(new Paragraph({ spacing: { after: 60 }, children: [lead, ...body] }));
+  });
+  return out;
+}
+
+/* THE QR CARD on a one pager: the code beside a short line and the link.
+   The picture is made before the document is (wordBlob), because drawing a
+   QR code is not instant and this step is. */
+function sourcesQrTable(docx, block, t, png) {
+  const { Table, TableRow, TableCell, WidthType, Paragraph, TextRun, ImageRun, ExternalHyperlink, VerticalAlign } = docx;
+  const words = qrCardText(block.count);
+  const qrWidth = 1700;
+  const line = () => ({ style: "single", size: 6, color: "E3E6F0" });
+  return new Table({
+    width: { size: contentTwips(t), type: WidthType.DXA },
+    columnWidths: [qrWidth, contentTwips(t) - qrWidth],
+    borders: { top: line(), bottom: line(), left: line(), right: line(), insideHorizontal: { style: "none" }, insideVertical: { style: "none" } },
+    rows: [new TableRow({
+      cantSplit: true,
+      children: [
+        new TableCell({
+          width: { size: qrWidth, type: WidthType.DXA },
+          margins: { top: 120, bottom: 120, left: 140, right: 60 },
+          verticalAlign: VerticalAlign.CENTER,
+          children: [new Paragraph({ children: png ? [new ImageRun({ type: "png", data: png, transformation: { width: 84, height: 84 } })] : [] })],
+        }),
+        new TableCell({
+          width: { size: contentTwips(t) - qrWidth, type: WidthType.DXA },
+          margins: { top: 120, bottom: 120, left: 140, right: 140 },
+          verticalAlign: VerticalAlign.CENTER,
+          children: [
+            new Paragraph({ spacing: { after: 40 }, children: [new TextRun({ text: words.title, bold: true, color: THEME.ink })] }),
+            new Paragraph({ spacing: { after: 40 }, children: [new TextRun({ text: words.line })] }),
+            new Paragraph({ spacing: { after: 0 }, children: [new ExternalHyperlink({ link: block.url, children: [new TextRun({ text: shortLinkText(block.url), color: t.accent })] })] }),
+          ],
+        }),
+      ],
+    })],
+  });
+}
+
+function blocksToWord(docx, doc, t, images, charts = null, qrs = null) {
   const { Paragraph, HeadingLevel, Table, TableRow, TableCell, WidthType, BorderStyle, ShadingType, AlignmentType } = docx;
   const out = [];
   /* After a design block, an empty paragraph: two tables touching are
@@ -338,6 +390,15 @@ function blocksToWord(docx, doc, t, images, charts = null) {
     }
     if (block.type === "takeaway") {
       out.push(takeawayTable(docx, block, t));
+      spacer();
+      continue;
+    }
+    if (block.type === "references") {
+      out.push(...referencesParagraphs(docx, block));
+      continue;
+    }
+    if (block.type === "sourcesqr") {
+      out.push(sourcesQrTable(docx, block, t, qrs?.get(block.url)));
       spacer();
       continue;
     }
@@ -439,6 +500,19 @@ function blocksToWord(docx, doc, t, images, charts = null) {
    original did not have them and a conversion adds nothing. */
 export async function wordBlob(doc, t = themeFor(), images = null, charts = null, { plain = false } = {}) {
   const docx = await import("docx");
+  /* The QR codes, drawn before the document because drawing takes a moment.
+     A code that cannot be drawn leaves an empty space beside the link, and
+     the link still works. */
+  const qrs = new Map();
+  for (const block of doc.blocks.filter((b) => b.type === "sourcesqr")) {
+    try {
+      const QRCode = (await import("qrcode")).default;
+      const url = await QRCode.toDataURL(block.url, { margin: 1, width: 300, errorCorrectionLevel: "M", color: { dark: `#${THEME.ink}`, light: "#FFFFFF" } });
+      qrs.set(block.url, dataBytes(url));
+    } catch (error) {
+      console.warn("could not draw the QR code", error);
+    }
+  }
   const { Document, Packer, Paragraph, TextRun, Footer, AlignmentType, PageNumber, LevelFormat } = docx;
 
   const heading = (id, name, size, color, before, after) => ({
@@ -498,7 +572,7 @@ export async function wordBlob(doc, t = themeFor(), images = null, charts = null
             ],
           }),
         },
-        children: blocksToWord(docx, doc, t, images, charts),
+        children: blocksToWord(docx, doc, t, images, charts, qrs),
       },
     ],
   });

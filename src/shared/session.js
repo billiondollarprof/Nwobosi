@@ -785,6 +785,36 @@ export async function listWork(companyId, staffId) {
   return rows.map((row) => ({ ...row, content: byId.get(row.id) ?? row.summary }));
 }
 
+/* REFERENCES BEHIND A QR CODE (docs/references.js). Saves a document's
+   reference list under a long random code made by the database, and gives
+   the code back, or null when it could not be saved: then the references
+   simply print as a list. supabase/migrations/20261125120000_document_references.sql */
+export async function saveReferences({ companyId, title, items }) {
+  try {
+    const { data, error } = await supabase
+      .from("document_references")
+      .insert({ company_id: companyId, title: String(title ?? "").slice(0, 300), items })
+      .select("code")
+      .single();
+    if (error) {
+      console.warn("could not save the references", error);
+      return null;
+    }
+    return data?.code ?? null;
+  } catch (error) {
+    console.warn("could not save the references", error);
+    return null;
+  }
+}
+
+/* One reference list by its exact code, for the page a QR code opens.
+   Anyone holding the link may read it; nothing else can be listed. */
+export async function referencesByCode(code) {
+  const { data, error } = await supabase.rpc("references_by_code", { p_code: String(code ?? "") });
+  if (error) throw error;
+  return Array.isArray(data) ? data[0] ?? null : data ?? null;
+}
+
 /* `revision` marks a change to a document already made in the same chat,
    so the admin's list can say "(a change)". It counts toward the daily
    limit like any other build (Anthony, 2026-11-10). */

@@ -33,6 +33,7 @@
      5. Writing the file
    ========================================================================== */
 
+import { qrCardText, shortLinkText } from "./references.js";
 import { THEME, themeFor, hex } from "./documentTheme.js";
 import { plainText, plainForm, runningLine } from "./documentModel.js";
 import { imageKey } from "./imageKey.js";
@@ -287,6 +288,55 @@ function takeawayBlock(block, t) {
   };
 }
 
+/* THE REFERENCES (docs/references.js): a numbered list under a small
+   heading, each web address a link. */
+function referencesBlock(block, t) {
+  return {
+    stack: [
+      { text: "References", bold: true, fontSize: THEME.size.h3, color: hex(THEME.ink), margin: [0, 10, 0, 4], headlineLevel: 3 },
+      {
+        ol: block.items.map((r) => (r.url
+          ? { text: r.text, link: r.url, margin: [0, 0, 0, 3] }
+          : { text: r.text, margin: [0, 0, 0, 3] })),
+        markerColor: hex(t.accent),
+        margin: [4, 0, 0, 10],
+      },
+    ],
+  };
+}
+
+/* THE QR CARD that stands in for the references on a one pager. Anthony,
+   2026-11-22: the references go to their own page, and a QR code on the
+   one pager leads to them. pdfmake draws the code itself. */
+function sourcesQrBlock(block, t) {
+  const words = qrCardText(block.count);
+  return {
+    table: {
+      /* About an inch square: small enough for a one pager, large enough
+         for a phone to read from arm's length. */
+      widths: [84, "*"],
+      body: [[
+        { qr: block.url, fit: 84, foreground: hex(THEME.ink), eccLevel: "M" },
+        {
+          stack: [
+            { text: words.title, bold: true, color: hex(THEME.ink) },
+            { text: words.line, color: hex(THEME.body), margin: [0, 2, 0, 2] },
+            { text: shortLinkText(block.url), link: block.url, color: hex(t.accent) },
+          ],
+          margin: [8, 4, 0, 0],
+        },
+      ]],
+    },
+    layout: {
+      hLineWidth: () => 0.8, vLineWidth: () => 0.8,
+      hLineColor: () => "#E3E6F0", vLineColor: () => "#E3E6F0",
+      paddingLeft: () => 8, paddingRight: () => 8, paddingTop: () => 8, paddingBottom: () => 8,
+    },
+    unbreakable: true,
+    margin: [0, 8, 0, 10],
+  };
+}
+
 /* --------------------------------------------------------------------------
    SECTION 3: All blocks
    -------------------------------------------------------------------------- */
@@ -364,6 +414,8 @@ export function blocksToPdf(blocks, t = themeFor(), images = null) {
     else if (block.type === "label") out.push(labelText(block.text, t));
     else if (block.type === "image") out.push(imageBlock(block, t, images));
     else if (block.type === "chart") out.push(chartBlock(block, t));
+    else if (block.type === "references") out.push(referencesBlock(block, t));
+    else if (block.type === "sourcesqr") out.push(sourcesQrBlock(block, t));
     else if (block.runs) out.push({ text: textOf(block.runs), margin: [0, 0, 0, 9] });
   }
   return keepHeadingsWithFigures(out);
