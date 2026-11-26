@@ -31,6 +31,11 @@ B. **References behind a QR code (16b): live 2026-11-26** (main `1573701`,
    then scan the code with a phone.
 B2. **Word budgets per block: live 2026-11-26** (main `bb437a4`). Left: his
    test of a one pager and a deck.
+B3. **The timer's silver shimmer (2026-11-26, his ask): built, checked,
+   not live.** 16px, silver shimmer and a soft pulse, both themes
+   (`.sx-timer` in index.css, tokens `--timer-silver`, `--timer-glint`). On
+   the feature branch, full check green. To ship: repo public, then skill
+   `ship`. App only.
 C. **Speed and a time on screen (16d):** measure each stage's real time,
    then the estimate on the working line, then slides written in
    parallel. **Built 2026-11-25** (his yes, "start with item 1"):
