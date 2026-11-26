@@ -29,12 +29,8 @@ A. **The fix loop (16a) is live** (2026-11-23, `assistant` v72). Left: his
 B. **References behind a QR code (16b): live 2026-11-26** (main `1573701`,
    `assistant` v73). Left: his live test, a one page PDF that cites sources,
    then scan the code with a phone.
-B2. **Word budgets per block (Presenton lesson): built 2026-11-26, not
-   shipped.** His go-ahead: "continue finish up with the remaining". Only
-   the writer's instructions changed (generate.ts: a budget per block;
-   brief.ts: a word budget per section). On the feature branch
-   `claude/nwobosi-workflow-analysis-08o0hb`. To ship: repo public, then
-   skill `ship` (deploys `assistant`), then his test of a one pager.
+B2. **Word budgets per block: live 2026-11-26** (main `bb437a4`). Left: his
+   test of a one pager and a deck.
 C. **Speed and a time on screen (16d):** measure each stage's real time,
    then the estimate on the working line, then slides written in
    parallel. **Built 2026-11-25** (his yes, "start with item 1"):

@@ -30,6 +30,8 @@ person asks for or copies from their PowerPoint) deployed `assistant` v70.
 grades what it finds, the new revise stage fixes it), check CLEAN, 839 of
 839 markers. v73 on 2026-11-26 07:13, from main `1573701` (references in
 their own block, left out of a one pager's word budget), CLEAN, 846 of 846.
+Next deploy on 2026-11-26 08:59, from main `bb437a4` (a word budget per
+block), CLEAN, 857 of 857; expected v74 (read the dashboard to confirm).
 
 | Function | Version | Last deployed |
 |---|---|---|
