@@ -49,6 +49,8 @@ export const BRIEF = [
   "    and at most three design blocks. Each design block takes the room of about",
   "    100 words, so count it. \"Front and back\" is two pages. References are not counted:",
   "    on a one page PDF or Word file the app moves them behind a QR code.",
+  "    Give every section its word budget in the plan (\"Pricing: about 80 words, one",
+  "    set of cards\"), so the sections add up to the length they asked for.",
   "    Plan the length they asked for, and cut to fit rather than squeeze. Text stays",
   "    at a readable size.",
   "  - FIT, NEVER TRUNCATE. Anthony, 2026-11-10: \"Fitting into a page doesn't mean",

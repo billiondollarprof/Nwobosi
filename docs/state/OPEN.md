@@ -26,15 +26,15 @@ A. **The fix loop (16a) is live** (2026-11-23, `assistant` v72). Left: his
    live test on a one pager that runs over and on a deck, then read the
    `assistant` logs for `stage=look` and an UNSEEN reply. (The repo is
    private again.)
-B. **References behind a QR code (16b): built 2026-11-25, waiting to ship.**
-   His yes on the database batch the same day ("yes you can start all").
-   Applied after a dry run that rolled back: `document_references` and
-   `references_by_code` (migration and undo in `supabase/`). On a one page
-   PDF or Word file the writer's `:::references` block is saved and
-   swapped for a QR card (an inch square, decodes to the link); longer
-   documents keep the list. Page: `/r/<code>` (`pages/References.jsx`),
-   noindex. Writer instructions changed in generate.ts and brief.ts, so
-   shipping deploys `assistant`. Needs the repo public for the checks.
+B. **References behind a QR code (16b): live 2026-11-26** (main `1573701`,
+   `assistant` v73). Left: his live test, a one page PDF that cites sources,
+   then scan the code with a phone.
+B2. **Word budgets per block (Presenton lesson): built 2026-11-26, not
+   shipped.** His go-ahead: "continue finish up with the remaining". Only
+   the writer's instructions changed (generate.ts: a budget per block;
+   brief.ts: a word budget per section). On the feature branch
+   `claude/nwobosi-workflow-analysis-08o0hb`. To ship: repo public, then
+   skill `ship` (deploys `assistant`), then his test of a one pager.
 C. **Speed and a time on screen (16d):** measure each stage's real time,
    then the estimate on the working line, then slides written in
    parallel. **Built 2026-11-25** (his yes, "start with item 1"):
@@ -44,7 +44,15 @@ C. **Speed and a time on screen (16d):** measure each stage's real time,
    build's estimate; past it, "This is taking longer than usual. Please
    bear with me a little longer." (his wording ask). App only, no SQL, no
    edge function. Walk: `timing.cjs`. **Live 2026-11-25** (main `5a9c4a8`).
-   Next: once real runs have built up timings, slides in parallel. Notes: `docs/history/REVIEW-2026-11-22-document-workflow.md`,
+   Next: once real runs have built up timings, slides in parallel.
+   **Plan for slides in parallel (item 4, not started):** after the brief,
+   split it by slide (the brief already plans slide by slide); send one
+   `generate` call per slide at once (at most 4 together), each with the
+   brief and its own slide; join the answers in order; then the look and
+   fix loop as now. Needs an edge function change (a `slide` stage or a
+   `slideOf` field on generate) and his yes. Check the timings in the
+   browser first (localStorage `stellaxafe.stageTimes`) to see if generate
+   is the slow stage. Notes: `docs/history/REVIEW-2026-11-22-document-workflow.md`,
    sections 6 to 8.
 D. **Dreef quotation (2026-11-23).** Dreef (InfraIQ.africa) asked for a
    quotation for their own build on their Microsoft Azure. The plan, the
