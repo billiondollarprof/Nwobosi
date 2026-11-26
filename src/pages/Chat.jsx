@@ -59,6 +59,7 @@ import {
   loadMe,
   listWork,
   saveWork,
+  saveReferences,
   listConversations,
   loadConversation,
   saveConversation,
@@ -71,7 +72,8 @@ import RefreshOrKeep from "../shared/RefreshOrKeep.jsx";
 import { readFileAsText, fileKind } from "../shared/readFile.js";
 import { shrinkImage } from "../shared/shrinkImage.js";
 import { askCanva } from "../shared/canvaApi.js";
-import { downloadPdf, downloadDocx, buildFile, saveBlob } from "../shared/download.js";
+import { downloadPdf, downloadDocx, buildFile, saveBlob, pageCeiling } from "../shared/download.js";
+import { findReferences, withQrCard, referencesLink, withoutReferences } from "../shared/docs/references.js";
 import { askDrive, fileInDrive } from "../shared/driveApi.js";
 /* Each in its own file, and each loaded only when somebody actually asks
    for that format. The deck and spreadsheet libraries are megabytes, and
@@ -1986,7 +1988,7 @@ export default function Chat() {
       const sources = await companySourceText(me?.company?.id);
       const said = (convo ?? []).map((m) => (typeof m.content === "string" ? m.content : "")).join("\n");
       const allowed = [brief, findingsRef.current.join("\n"), said, sources].join("\n");
-      const lines = numberFindings(numbersNotInSources(markdown, allowed));
+      const lines = numberFindings(numbersNotInSources(withoutReferences(markdown), allowed));
       if (!lines.length) return;
       const next = updateMessages((prev) =>
         prev.map((m) => (m.id === resultId ? { ...m, checks: [...(m.checks ?? []), ...lines] } : m)));
@@ -2227,7 +2229,7 @@ export default function Chat() {
         );
       },
 
-      onDone: ({ stopReason } = {}) => {
+      onDone: async ({ stopReason } = {}) => {
         setGenerating(false);
         setStalled(false);
         abortTurnRef.current = null;
@@ -2310,6 +2312,26 @@ export default function Chat() {
           }
         } catch (error) {
           console.warn("the checker could not read this document", error);
+        }
+
+        /* REFERENCES BEHIND A QR CODE. Anthony, 2026-11-22: a one pager stays
+           one page; its references go to their own page and a QR code on the
+           page leads to them (docs/references.js). Only for a one page PDF
+           or Word file. If the list cannot be saved, nothing changes and the
+           references print as a list. */
+        try {
+          const refs = findReferences(finished);
+          const printed = formatRef.current === "pdf" || formatRef.current === "docx";
+          if (refs?.items.length && printed && pageCeiling(convo) === 1 && me?.company?.id) {
+            const code = await saveReferences({ companyId: me.company.id, title: titleOf(finished, docTitle(convo)), items: refs.items });
+            const link = referencesLink(code);
+            if (link) {
+              finished = withQrCard(finished, link, refs.items.length);
+              updateMessages((prev) => prev.map((m) => (m.id === resultId ? { ...m, content: finished } : m)));
+            }
+          }
+        } catch (error) {
+          console.warn("could not move the references behind a QR code", error);
         }
 
         /* LAID OUT LIKE AN UPLOAD, ONLY WHEN THE AGREED BRIEF SAYS SO

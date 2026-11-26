@@ -110,6 +110,9 @@ for (const walk of [
   /* Added 2026-11-25. The time on screen, and the line asking for a little
      patience when a stage runs well past it. */
   "scripts/__harness/timing.cjs",
+  /* Added 2026-11-25. References behind a QR code on a one pager, and the
+     page the code opens. */
+  "scripts/__harness/refs.cjs",
 ]) {
   const run = spawn("node", [walk], { stdio: "inherit" });
   const code = await new Promise((resolve) => run.on("close", resolve));

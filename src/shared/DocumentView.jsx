@@ -210,6 +210,33 @@ function Block({ block, previous, images }) {
     );
   }
 
+  /* The sources at the end, numbered, each web address a link. */
+  if (block.type === "references") {
+    return (
+      <div style={{ margin: "14px 0 10px" }}>
+        <p className="font-semibold text-[13px] mb-1.5" style={{ color: "var(--text-1)" }}>References</p>
+        {block.items.map((r, i) => (
+          <div key={i} className="flex gap-2" style={{ marginBottom: "4px" }}>
+            <span className="shrink-0 tabular-nums" style={{ color: "var(--text-3)" }}>{i + 1}.</span>
+            <span className="min-w-0 break-words" style={{ color: "var(--text-2)" }}>
+              {r.url ? <>{r.text.replace(r.url, "").trim()} <a href={r.url} target="_blank" rel="noreferrer" className="underline break-all">{r.url}</a></> : r.text}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  /* On a one pager the references live behind a link; here it is plain. */
+  if (block.type === "sourcesqr") {
+    return (
+      <p className="rounded-[10px] border px-3.5 py-2.5 my-3 text-[12.5px]" style={{ borderColor: "var(--border)", color: "var(--text-2)" }}>
+        <span className="font-semibold" style={{ color: "var(--text-1)" }}>Sources: </span>
+        <a href={block.url} target="_blank" rel="noreferrer" className="underline break-all">{block.url}</a>
+      </p>
+    );
+  }
+
   if (block.type === "label") {
     return (
       <p className="text-[10.5px] font-semibold uppercase tracking-[0.08em] mt-4" style={{ color: "var(--text-3)" }}>

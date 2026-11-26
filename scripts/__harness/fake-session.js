@@ -168,3 +168,17 @@ export async function setPaused(_id, paused) { return { ok: true, pausedAt: paus
 export async function staffActivity() { return new Map(Object.entries(window.__ACTIVITY ?? {})); }
 export async function staffWork() { return new Map(Object.entries(window.__STAFF_WORK ?? {})); }
 export async function staffControls() { return new Map(Object.entries(window.__CONTROLS ?? {})); }
+
+/* REFERENCES BEHIND A QR CODE (src/shared/session.js). The harness keeps
+   the lists in the fake database, so a walk can read what was saved and
+   open it by its code. */
+import { supabase as fakeDb } from "./fake-supabase.js";
+export async function saveReferences({ companyId, title, items }) {
+  const { data, error } = await fakeDb.from("document_references").insert({ company_id: companyId, title, items }).select("code").single();
+  return error ? null : data?.code ?? null;
+}
+export async function referencesByCode(code) {
+  const { data, error } = await fakeDb.rpc("references_by_code", { p_code: String(code ?? "") });
+  if (error) throw error;
+  return Array.isArray(data) ? data[0] ?? null : data ?? null;
+}
