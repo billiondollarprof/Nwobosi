@@ -444,7 +444,7 @@ export function Thinking({ stage = "orient", stalled = false, retrying = false }
 
       {/* The estimate, then the time so far against it ("12s of about
           40s"), and once it runs long just the time so far. */}
-      <span aria-hidden="true" className="text-[12.5px] whitespace-nowrap" style={{ color: "var(--text-3)" }}>
+      <span aria-hidden="true" className="sx-timer whitespace-nowrap">
         {timeHint(elapsed, estimate)}
       </span>
     </div>
@@ -463,7 +463,7 @@ export function BuildClock({ since, estimate }) {
   if (!since || !estimate) return null;
   const elapsed = now - since;
   return (
-    <span aria-hidden="true" className="text-[12.5px] whitespace-nowrap" style={{ color: "var(--text-3)" }}>
+    <span aria-hidden="true" className="sx-timer whitespace-nowrap">
       {timeHint(elapsed, estimate)}
     </span>
   );

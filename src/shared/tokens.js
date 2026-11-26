@@ -92,6 +92,10 @@ export const THEME_VARS = {
        nobody can read at 13px. See PublishGate, where the amber carries a
        button label. */
     "--caution": "#E8980A",
+    /* The timer's silver shimmer (Anthony, 2026-11-26): a cool silver with a
+       white glint, bright enough to read on the dark ground. */
+    "--timer-silver": "#AEB6CC",
+    "--timer-glint": "#FFFFFF",
     "--all-clear": "#16B04A",
     /* The filled half of the audience control when a file is open to
        customers. It has to hold white text, so it is the lifted navy on
@@ -181,6 +185,10 @@ export const THEME_VARS = {
     "--working": "#1420A0",
     "--working-shine": "rgba(120, 140, 255, 1)",
     "--caution": "#9A5B00",
+    /* The same shimmer on white: a darker steel so it stays readable, with
+       a pale silver glint passing over it. */
+    "--timer-silver": "#4F586E",
+    "--timer-glint": "#B8C0D2",
     "--all-clear": "#0C7A31",
     "--audience-open": "#1420A0",
     "--danger": "#C42B2B",

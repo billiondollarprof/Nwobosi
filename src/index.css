@@ -1087,7 +1087,36 @@ body {
   0% { background-position: 100% 0; }
   70%, 100% { background-position: 0% 0; }
 }
+/* THE TIMER, SILVER AND SHIMMERING. Anthony, 2026-11-26: the time on the
+   working line a little larger, with a silvery shimmer that reads on both
+   themes and a soft pulse, like a gentle blink. The colours are theme
+   tokens (--timer-silver, --timer-glint in tokens.js). */
+.sx-timer {
+  font-size: 16px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--timer-silver);
+  background-image: linear-gradient(
+    100deg,
+    var(--timer-silver) 0%,
+    var(--timer-silver) 38%,
+    var(--timer-glint) 50%,
+    var(--timer-silver) 62%,
+    var(--timer-silver) 100%
+  );
+  background-size: 250% 100%;
+  background-position: 100% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: sx-word-drift 2.4s ease-in-out infinite, sx-timer-pulse 2.4s ease-in-out infinite;
+}
+@keyframes sx-timer-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.72; }
+}
 @media (prefers-reduced-motion: reduce) {
-  .sx-working-logo, .sx-working-word { animation: none; }
+  .sx-working-logo, .sx-working-word, .sx-timer { animation: none; }
   .sx-working-word { -webkit-text-fill-color: var(--text-1); }
+  .sx-timer { -webkit-text-fill-color: var(--timer-silver); }
 }
