@@ -36,6 +36,13 @@ B3. **The timer's silver shimmer (2026-11-26, his ask): built, checked,
    (`.sx-timer` in index.css, tokens `--timer-silver`, `--timer-glint`). On
    the feature branch, full check green. To ship: repo public, then skill
    `ship`. App only.
+B4. **Slides written in parallel (2026-11-26, his go-ahead): built, full
+   check green, not live.** `src/shared/slideParts.js`: a deck whose brief
+   numbers four or more slides is written slide by slide, four at once,
+   joined in order; any failure before a slide is shown falls back to the
+   whole deck in one go. Server: `assistant` reads a `part` field on
+   generate. Ships with B3 when he makes the repo public (deploys
+   `assistant`). Then his test: a 6 to 10 slide deck, and watch the time.
 C. **Speed and a time on screen (16d):** measure each stage's real time,
    then the estimate on the working line, then slides written in
    parallel. **Built 2026-11-25** (his yes, "start with item 1"):
