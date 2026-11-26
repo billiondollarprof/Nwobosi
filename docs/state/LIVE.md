@@ -28,11 +28,12 @@ Supabase project `cbunsqzkhidwjtxdsmxd`. Read from the live project on
 person asks for or copies from their PowerPoint) deployed `assistant` v70.
 `assistant` since: v72 on 2026-11-23 23:38, from main `5e55226` (the look
 grades what it finds, the new revise stage fixes it), check CLEAN, 839 of
-839 markers.
+839 markers. v73 on 2026-11-26 07:13, from main `1573701` (references in
+their own block, left out of a one pager's word budget), CLEAN, 846 of 846.
 
 | Function | Version | Last deployed |
 |---|---|---|
-| `assistant` | 72 | 2026-11-23 23:38 |
+| `assistant` | 73 | 2026-11-26 07:13 |
 | `support-ask` | 33 | 2026-11-11 04:39 |
 | `add-link` | 26 | 2026-11-11 04:38 |
 | `read-before-publish` | 20 | 2026-11-11 04:39 |
