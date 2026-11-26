@@ -144,7 +144,7 @@ function endingOnTheirTurn(list) {
   return out.length ? out : list;
 }
 
-function sendTurnOnce({ stage = "orient", askedSoFar = 0, brief = "", findings = "", revision = false, sources = null, messages, onMeta, onText, onDone, onError, onStall }) {
+function sendTurnOnce({ stage = "orient", askedSoFar = 0, brief = "", findings = "", revision = false, sources = null, part = null, messages, onMeta, onText, onDone, onError, onStall }) {
   const controller = new AbortController();
   messages = endingOnTheirTurn(messages);
 
@@ -180,7 +180,7 @@ function sendTurnOnce({ stage = "orient", askedSoFar = 0, brief = "", findings =
           Authorization: `Bearer ${session.access_token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ stage, askedSoFar, brief, findings, revision, sources, messages }),
+        body: JSON.stringify({ stage, askedSoFar, brief, findings, revision, sources, part, messages }),
         signal: controller.signal,
       });
     } catch (err) {
@@ -195,7 +195,7 @@ function sendTurnOnce({ stage = "orient", askedSoFar = 0, brief = "", findings =
          answer anyway, and if it does not, its error says what is really
          wrong instead of blaming their wifi. */
       const { data, error } = await supabase.functions.invoke(FUNCTIONS.assistant, {
-        body: { stage, askedSoFar, brief, findings, revision, sources, messages },
+        body: { stage, askedSoFar, brief, findings, revision, sources, part, messages },
       });
 
       if (error) {
@@ -437,7 +437,7 @@ export function sendTurn(args) {
     abortCurrent = sendTurnOnce({
       ...args,
       onDone: (info = {}) => {
-        if (!cancelled && info?.stopReason !== "max_tokens") recordStageTime(args.stage ?? "orient", Date.now() - startedAt);
+        if (!cancelled && !args.noRecord && info?.stopReason !== "max_tokens") recordStageTime(args.stage ?? "orient", Date.now() - startedAt);
         onDone?.(info);
       },
       onText: (t) => {

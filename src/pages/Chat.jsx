@@ -55,6 +55,7 @@ import {
 import { LogoMark } from "../shared/icons.jsx";
 import { useSpeechToText } from "../shared/useSpeechToText.js";
 import { sendTurn, toApiMessages } from "../shared/assistantApi.js";
+import { slidePlanParts, sendTurnInParts } from "../shared/slideParts.js";
 import {
   loadMe,
   listWork,
@@ -2165,15 +2166,21 @@ export default function Chat() {
        until the first words arrive, then the result card. */
     let steps = [];
     let sections = 0;
+    /* SLIDES WRITTEN AT THE SAME TIME (shared/slideParts.js). A deck whose
+       plan numbers four or more slides is written slide by slide, up to four
+       at once. Anything else, or anything that goes wrong, is written in one
+       go as before. */
+    const slideParts = formatRef.current === "pptx" ? slidePlanParts(brief) : null;
     updateMessages((prev) =>
       prev.map((m) => {
         if (m.type !== "generating") return m;
-        steps = advance(m.steps, "Writing the first draft…");
+        steps = advance(m.steps, slideParts ? `Writing ${slideParts.length} slides at the same time…` : "Writing the first draft…");
         return { ...m, steps, plan: brief };
       })
     );
+    const write = slideParts ? (turn) => sendTurnInParts({ ...turn, parts: slideParts, send: sendTurn }) : sendTurn;
 
-    abortTurnRef.current = sendTurn({
+    abortTurnRef.current = write({
       sources: sourcesRef.current,
       stage: "generate",
       brief,

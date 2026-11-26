@@ -113,6 +113,8 @@ for (const walk of [
   /* Added 2026-11-25. References behind a QR code on a one pager, and the
      page the code opens. */
   "scripts/__harness/refs.cjs",
+  /* Added 2026-11-26. A deck written slide by slide at the same time. */
+  "scripts/__harness/parallel.cjs",
 ]) {
   const run = spawn("node", [walk], { stdio: "inherit" });
   const code = await new Promise((resolve) => run.on("close", resolve));

@@ -11,13 +11,13 @@
 
 export { toApiMessages } from "../../src/shared/assistantApi.js";
 
-export function sendTurn({ stage = "orient", messages = [], onMeta, onText, onDone, onError, onRetry }) {
+export function sendTurn({ stage = "orient", messages = [], part = null, onMeta, onText, onDone, onError, onRetry }) {
   window.__TURNS = window.__TURNS || [];
   window.__TURNS.push(stage);
   /* What each stage was actually sent, so a walk can check the model was
      told something, not just that the screen shows it. */
   window.__SENT = window.__SENT || [];
-  window.__SENT.push({ stage, messages });
+  window.__SENT.push({ stage, messages, part });
 
   /* A TURN THAT FAILS, WHICH THIS STUB COULD NOT DO BEFORE.
 

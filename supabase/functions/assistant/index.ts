@@ -1126,8 +1126,41 @@ Deno.serve(async (req: Request) => {
       ].join("\n")
     : "";
 
+  /* ONE SLIDE OF A DECK, WRITTEN AT THE SAME TIME AS THE OTHERS. Anthony,
+     2026-11-26: "Do the slides written in parallel." The app splits the
+     approved brief by slide (src/shared/slideParts.js) and asks for each
+     slide at once, so a ten slide deck takes about as long as its slowest
+     slide. Each writer still works inside the whole brief, which rides
+     below as usual; this only narrows what it writes. */
+  const rawPart = (body?.part ?? null) as { index?: unknown; total?: unknown; plan?: unknown } | null;
+  const part = stage === "generate" && rawPart
+    && Number.isInteger(rawPart.index) && Number.isInteger(rawPart.total)
+    && (rawPart.index as number) >= 1 && (rawPart.index as number) <= (rawPart.total as number)
+    && (rawPart.total as number) <= 40
+    ? { index: rawPart.index as number, total: rawPart.total as number, plan: String(rawPart.plan ?? "").slice(0, 4000).trim() }
+    : null;
+  const onePart = part
+    ? [
+        "",
+        "",
+        `RIGHT NOW: WRITE ONLY SLIDE ${part.index} OF ${part.total}`,
+        "Other writers are writing the other slides at the same time, from the same brief.",
+        "Write this one slide only: one \"## \" section with its headline and its one diagram,",
+        "following every rule above. Nothing about the other slides.",
+        part.index === 1
+          ? "This is the first part: start with the Look line if the brief has one, then the \"# \" title and the one short line under it, then this slide."
+          : "No title line, no Look line, no other slide.",
+        part.index === part.total
+          ? "This is the last slide: it closes the deck as the brief says. If references were agreed, the :::references block goes after it, and the What would make this better section only here."
+          : "No :::references block and no What would make this better section here; the last slide carries them.",
+        "",
+        "THIS SLIDE, AS THE BRIEF PLANS IT:",
+        part.plan,
+      ].join("\n")
+    : "";
+
   const stageInstruction =
-    (STAGE_PROMPT[stage] ?? STAGE_PROMPT.orient) + pacing + approvedBrief + outsideMaterial;
+    (STAGE_PROMPT[stage] ?? STAGE_PROMPT.orient) + pacing + approvedBrief + outsideMaterial + onePart;
 
   /* ----------------------------------------------------------------------
      THE CONTENTS THEMSELVES
