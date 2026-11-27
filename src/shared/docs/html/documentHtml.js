@@ -20,6 +20,10 @@
             when the one before filled most of a page.
      short  a one or two pager, or anything short: no cover. The title sits
             in a band at the top of page one.
+     form   a receipt, an invoice, a statement of account (htmlForms.js):
+            a colour stripe, the brand and the number on one line, then the
+            amount panel, details, summary and schedule, as on his RHEMA
+            receipts.
 
    What it must never do:
      - Print the notes to the person. documentModel.js already took them out.
@@ -41,6 +45,7 @@ import { chartSvg } from "../charts/chartSvg.js";
 import { qrCardText, shortLinkText } from "../references.js";
 import { styleTokens, documentCss } from "./documentStyle.js";
 import { esc, runsHtml, iconHtml, flowHtml, hubHtml, treeHtml, phasesHtml, diagramCss } from "./htmlDiagrams.js";
+import { amountHtml, detailsHtml, progressHtml, summaryHtml, signatureHtml, pairHtml, statusBadge, formHeadHtml, formCss } from "./htmlForms.js";
 
 /* --------------------------------------------------------------------------
    1. Measuring and choosing the shape
@@ -58,7 +63,11 @@ function weightOf(block) {
   return 0;
 }
 
+/* Money documents: a receipt, an invoice, a statement of account. */
+const FORM_KIND = /\b(receipt|invoice|statement of account|payment advice)\b/i;
+
 export function shapeOf(doc, { pages = 0 } = {}) {
+  if (FORM_KIND.test(String(doc.title ?? ""))) return "form";
   const sections = doc.blocks.filter((b) => b.type === "h").length;
   const words = wordsIn(doc.blocks) + doc.blocks.reduce((n, b) => n + weightOf(b), 0);
   if (pages >= 1 && pages <= 2) return "short";
@@ -69,7 +78,7 @@ export function shapeOf(doc, { pages = 0 } = {}) {
    cover. Only words the title itself uses. */
 function kindLabel(title) {
   const t = String(title ?? "").toLowerCase();
-  for (const [word, label] of [["proposal", "Proposal"], ["quotation", "Quotation"], ["quote", "Quotation"], ["report", "Report"], ["plan", "Plan"], ["strategy", "Strategy"], ["policy", "Policy"], ["guide", "Guide"], ["handbook", "Handbook"], ["summary", "Summary"], ["brief", "Brief"], ["agreement", "Agreement"], ["invoice", "Invoice"], ["receipt", "Receipt"]]) {
+  for (const [word, label] of [["proposal", "Proposal"], ["quotation", "Quotation"], ["quote", "Quotation"], ["report", "Report"], ["plan", "Plan"], ["strategy", "Strategy"], ["policy", "Policy"], ["guide", "Guide"], ["handbook", "Handbook"], ["summary", "Summary"], ["brief", "Brief"], ["agreement", "Agreement"], ["invoice", "Invoice"], ["receipt", "Payment receipt"], ["statement of account", "Statement of account"]]) {
     if (new RegExp(`\\b${word}`).test(t)) return label;
   }
   return "";
@@ -87,7 +96,8 @@ function tableHtml(block) {
   const head = block.header.map((cell, i) => `<th${isNum[i] ? ' class="num"' : ""}>${runsHtml(cell)}</th>`).join("");
   const rows = block.rows.map((row) => {
     const total = /^total/i.test(plainText(row[0] ?? []).trim());
-    return `<tr${total ? ' class="total"' : ""}>${row.map((cell, i) => `<td${isNum[i] ? ' class="num"' : ""}>${runsHtml(cell)}</td>`).join("")}</tr>`;
+    /* A cell that says a status ("Paid in full", "Pending") is a badge. */
+    return `<tr${total ? ' class="total"' : ""}>${row.map((cell, i) => `<td${isNum[i] ? ' class="num"' : ""}>${statusBadge(plainText(cell)) ?? runsHtml(cell)}</td>`).join("")}</tr>`;
   }).join("");
   return `<table class="data"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table>`;
 }
@@ -154,6 +164,11 @@ function blockHtml(block, t, ctx = {}) {
         ? `<div class="statement">${runsHtml(block.runs)}</div>`
         : `<div class="note"><p>${runsHtml(block.runs)}</p></div>`;
     case "flow": return flowHtml(block);
+    case "amount": return amountHtml(block);
+    case "details": return detailsHtml(block);
+    case "progress": return progressHtml(block);
+    case "summary": return summaryHtml(block);
+    case "signature": return signatureHtml(block);
     case "hub": return hubHtml(block);
     case "image": {
       const found = ctx.images?.get(imageKey(block.name));
@@ -203,8 +218,28 @@ function sectionWords(section) {
   return wordsIn(section.blocks) + section.blocks.reduce((n, b) => n + weightOf(b), 0);
 }
 
+/* Blocks this engine draws itself; the rest pass through plainForm. */
+const NATIVE = new Set(["flow", "hub", "amount", "details", "progress", "summary", "signature"]);
+
+/* A section's blocks in order. A progress card next to a summary sit side
+   by side, as on the receipt. */
+function blocksInOrder(blocks, t, ctx) {
+  const out = [];
+  for (let i = 0; i < blocks.length; i += 1) {
+    const a = blocks[i];
+    const b = blocks[i + 1];
+    if (b && ((a.type === "progress" && b.type === "summary") || (a.type === "summary" && b.type === "progress"))) {
+      out.push(pairHtml(blockHtml(a, t, ctx), blockHtml(b, t, ctx)));
+      i += 1;
+      continue;
+    }
+    out.push(blockHtml(a, t, ctx));
+  }
+  return out.join("");
+}
+
 function bodyHtml(doc, t, ctx, shape) {
-  const sections = sectionsOf(doc.blocks.flatMap((b) => (["flow", "hub"].includes(b.type) ? [b] : plainForm(b))));
+  const sections = sectionsOf(doc.blocks.flatMap((b) => (NATIVE.has(b.type) ? [b] : plainForm(b))));
   const titled = sections.filter((s) => s.heading);
   /* Numbered as in his proposals ("1. Project blueprint") when it is a long
      document with four or more sections; an opening overview is not
@@ -227,10 +262,16 @@ function bodyHtml(doc, t, ctx, shape) {
   return (contents && !openingFirst ? `<section class="section">${contents}</section>` : "") + sections.map((s, i) => {
     const newPage = shape === "long" && i > 0 && previousWords > WORDS_PER_PAGE * 0.55;
     previousWords = sectionWords(s);
+    /* On a receipt or invoice a section title is a small coloured label,
+       as on his RHEMA receipts ("PAYMENT DETAILS"). */
+    if (shape === "form") {
+      const label = s.heading ? `<div class="kicker form-section">${runsHtml(s.heading.runs)}</div>` : "";
+      return `<section class="form-block">${label}${blocksInOrder(s.blocks, t, ctx)}</section>`;
+    }
     const head = s.heading
       ? `${s.heading.label ? `<div class="kicker">${esc(s.heading.label)}</div>` : ""}<h2>${numbers.has(s) ? `${numbers.get(s)}. ` : ""}${runsHtml(s.heading.runs)}</h2><div class="title-rule"></div>`
       : "";
-    const body = s.blocks.map((b) => blockHtml(b, t, ctx)).join("");
+    const body = blocksInOrder(s.blocks, t, ctx);
     const withContents = contents && openingFirst && i === 0 ? body + contents : body;
     return `<section class="section${newPage ? " new-page" : ""}">${head}${withContents}</section>`;
   }).join("");
@@ -327,7 +368,7 @@ function coverPageHtml(title, css, inner) {
 
 export async function documentHtml(doc, theme, brand = null, images = null, { fontCss = "", date = new Date(), pages = 0, compact = false } = {}) {
   const t = styleTokens(theme);
-  const css = documentCss(t, fontCss) + diagramCss(t);
+  const css = documentCss(t, fontCss) + diagramCss(t) + formCss(t);
   /* COMPACT: the second try at a page limit they named (printPdf.js).
      No cover, tighter spacing; the text size barely moves. */
   const shape = compact ? "short" : shapeOf(doc, { pages });
@@ -346,7 +387,13 @@ export async function documentHtml(doc, theme, brand = null, images = null, { fo
 
   const body = bodyHtml(doc, t, ctx, shape);
   const bodyPage = pageHtml(doc.title, css,
-    `<div class="page-body${compact ? " compact" : ""}">${shape === "short" ? titleBandHtml(doc, t, brand) : ""}${body}</div>`);
+    `<div class="page-body${compact ? " compact" : ""}">${shape === "short" ? titleBandHtml(doc, t, brand) : ""}${shape === "form" ? formHeadHtml(doc, t, brand, kindLabel(doc.title), dateText(date), brandMark(brand, t, 28)) : ""}${body}</div>`);
   const cover = shape === "long" ? coverPageHtml(doc.title, css, coverHtml(doc, t, brand, date)) : null;
-  return { shape, cover, body: bodyPage, header: headerHtml(doc, t, brand), footer: footerHtml(doc, t, brand) };
+  /* A form carries its own head on the page, so the running header is
+     empty there. */
+  /* The print margins, in millimetres: room for the running header and
+     footer on a body page. A form has no header: its colour stripe runs
+     along the very top edge of the paper, as on his receipts. */
+  const margins = shape === "form" ? { top: 0, bottom: 15 } : { top: 20, bottom: 17 };
+  return { shape, cover, body: bodyPage, header: shape === "form" ? "<div></div>" : headerHtml(doc, t, brand), footer: footerHtml(doc, t, brand), margins };
 }

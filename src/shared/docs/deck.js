@@ -38,7 +38,11 @@
    ========================================================================== */
 
 import { THEME } from "./documentTheme.js";
-import { plainText, figureCaption, runningLine } from "./documentModel.js";
+import { plainText, plainForm, figureCaption, runningLine } from "./documentModel.js";
+
+/* Receipt and invoice parts (documentModel.js) have no slide drawing; on a
+   slide they are their plain words. */
+const FORM_PARTS = new Set(["amount", "details", "summary", "progress", "signature"]);
 import { imageKey } from "./imageKey.js";
 import { chartPalette } from "./charts/chartSvg.js";
 import { PAGE, TYPE, slideThemeFor } from "./slides/slideTheme.js";
@@ -234,12 +238,13 @@ const BESIDE = new Set(["image", "chart"]);
 const TEXT_SHARE = 0.5;
 
 export function toDeck(doc) {
-  const levels = doc.blocks.filter((b) => b.type === "h").map((b) => b.level);
+  const all = doc.blocks.flatMap((b) => (FORM_PARTS.has(b.type) ? plainForm(b) : [b]));
+  const levels = all.filter((b) => b.type === "h").map((b) => b.level);
   const top = levels.length ? Math.min(...levels) : null;
 
   const sections = [];
   let current = { title: "", titleRuns: [], label: "", blocks: [] };
-  for (const block of doc.blocks) {
+  for (const block of all) {
     if (block.type === "h" && block.level === top) {
       if (current.title || current.blocks.length) sections.push(current);
       current = { title: plainText(block.runs), titleRuns: block.runs, label: block.label ?? "", blocks: [] };

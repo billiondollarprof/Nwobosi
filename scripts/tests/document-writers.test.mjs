@@ -206,5 +206,25 @@ check('the quote has no ">"', !slides.some((s) => (s.text ?? []).some((p) => pla
   check("a short note has the title band and no cover", short.shape === "short" && short.cover === null && short.body.includes("<h1"));
 }
 
+/* 10. RECEIPTS AND INVOICES, 2026-11-27 (his RHEMA receipts) --------------- */
+{
+  const { themeFor } = await import("../../src/shared/docs/documentTheme.js");
+  const { documentHtml } = await import("../../src/shared/docs/html/documentHtml.js");
+  const md = readFileSync("scripts/__harness/fixtures/receipt-html.md", "utf8");
+  const doc = readDocument(md, "x");
+  check("the receipt's parts are read", ["amount", "details", "progress", "summary", "signature"].every((t) => doc.blocks.some((b) => b.type === t)));
+  const html = await documentHtml(doc, themeFor("#1A7F3C"), { name: "Amara" }, null, { date: new Date("2026-11-27") });
+  check("a receipt is a form: no cover, its own head, no running header", html.shape === "form" && html.cover === null && html.body.includes("form-head") && html.header === "<div></div>");
+  check("a form prints with no top margin, so the stripe meets the edge", html.margins.top === 0);
+  check("EVERY FIGURE REACHES THE PAGE EXACTLY", ["₦400,000.00", "Four hundred thousand naira only", "Payment confirmed", "Eko Grand Hotel", "TRF|8KQ2Lz|5521093847", "40%", "₦600,000.00", "Chidi Okonkwo"].every((w) => html.body.includes(w)));
+  check("the balance is the lit summary row", /summary-row lit"><span>Balance remaining/.test(html.body));
+  check("statuses in a table are badges", html.body.includes('badge good">Paid in full') && html.body.includes('badge quiet">Pending'));
+  check("progress and summary sit side by side", html.body.includes('class="pair"'));
+  const pdf = JSON.stringify(pdfDefinition(doc, themeFor("#1A7F3C"), { name: "Amara" }));
+  check("THE OLD PDF WRITER KEEPS EVERY FIGURE TOO", ["₦400,000.00", "Eko Grand Hotel", "Balance remaining", "Chidi Okonkwo", "40%"].every((w) => pdf.includes(w)));
+  const deck = toDeck(doc);
+  check("and the slides show the receipt's words plainly", JSON.stringify(deck).includes("Eko Grand Hotel") && JSON.stringify(deck).includes("₦400,000.00"));
+}
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

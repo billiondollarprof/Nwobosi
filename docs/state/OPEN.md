@@ -325,6 +325,14 @@ other.** Nothing comes off until it is built, checked and live.
        one marked as its pick), changeable after.
     7. Fix by page: thumbnails, "page 2: ...", only those pages change.
     8. Installable app (PWA): manifest and service worker.
+    STATE 2026-11-27, main 280b95b: 1 is LIVE as code (the printed-page
+    engine, src/shared/docs/html/); PDFs still come from pdf.js until the
+    printer exists. Waiting: his Gotenberg deploy (docs/product/PRINTER.md)
+    and his yes for the NEW function print-pdf (held on branch
+    claude/merge-stellaxafe-nwobosi-blewyb). 8 is LIVE: Chromium reports no
+    installability errors. Next: 2 (receipt/invoice style), then 6, 7, 4, 5.
+    Repo went private and GitHub Actions stopped (billing); he made it
+    public again the same day.
 
 ## 2. Dreef, the first client
 
