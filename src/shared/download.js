@@ -191,7 +191,14 @@ export async function buildFile(format, title, markdown, company, messages = [],
     charts = await chartPictures(doc, theme);
   }
   let blob;
-  if (format === "pdf") blob = await pdfBlob(doc, theme, brand, images, { pages: pageCeiling(messages, pages) });
+  if (format === "pdf") {
+    /* THE PRINTED PAGE FIRST (docs/html/, 2026-11-27): designed in HTML and
+       printed by Chromium. When the printer is not there, the built in
+       writer makes it, as before. */
+    const ceiling = pageCeiling(messages, pages);
+    const { printedPdf } = await import("./docs/html/printPdf.js");
+    blob = (await printedPdf(doc, theme, brand, images, { pages: ceiling })) ?? (await pdfBlob(doc, theme, brand, images, { pages: ceiling }));
+  }
   else if (format === "pptx") {
     if (!doc.blocks.length) throw new Error("nothing to put on a slide");
     const { deckBlob } = await import("./docs/deck.js");
