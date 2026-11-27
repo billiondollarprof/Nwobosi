@@ -560,6 +560,46 @@ function readDesignBlock(kind, rest, lines, index, blocks) {
     return 1;
   }
 
+  /* FORMS: RECEIPTS, INVOICES AND STATEMENTS, 2026-11-27. Anthony sent his
+     RHEMA receipts as the standard. These blocks draw their parts; every
+     format that does not know them shows the same words plainly
+     (plainForm below).
+       :::amount ₦750,000.00 | Amount received | Seven hundred ... only | Payment confirmed
+       :::details   lines "Received from: RHEMA Medical Center"   :::
+       :::progress 50 | of project price | ₦1,000,000 paid of ₦2,000,000
+       :::summary   lines "Project price: ₦2,000,000", the line to light
+                    in **bold**                                   :::
+       :::signature Anthony Nwobosi | For StellaXafe Technologies Limited */
+  if (kind === "amount") {
+    const [value = "", label = "", words = "", status = ""] = rest.split("|").map((t) => t.trim());
+    if (value) blocks.push({ type: "amount", value, label, words, status });
+    return 1;
+  }
+  if (kind === "details" || kind === "summary") {
+    const { body, used } = bodyLines(lines, index);
+    const rows = body.map((l) => l.replace(/^\s*[-*]\s+/, "").trim()).filter(Boolean).map((line) => {
+      const lit = /^\*\*.*\*\*$/.test(line);
+      const bare = line.replace(/^\*\*(.*)\*\*$/, "$1");
+      const at = bare.indexOf(":");
+      return at > 0
+        ? { label: bare.slice(0, at).replace(/\*\*/g, "").trim(), runs: readInline(bare.slice(at + 1).trim()), lit }
+        : { label: "", runs: readInline(bare), lit };
+    });
+    if (rows.length) blocks.push({ type: kind, rows });
+    return used;
+  }
+  if (kind === "progress") {
+    const [pct = "", label = "", note = ""] = rest.split("|").map((t) => t.trim());
+    const percent = Math.max(0, Math.min(100, Number(pct.replace("%", ""))));
+    if (Number.isFinite(percent) && pct) blocks.push({ type: "progress", percent, label, note });
+    return 1;
+  }
+  if (kind === "signature") {
+    const [name = "", role = ""] = rest.split("|").map((t) => t.trim());
+    if (name) blocks.push({ type: "signature", name, role });
+    return 1;
+  }
+
   /* :::statement One line, said big. **Bold** words are lit. */
   if (kind === "statement") {
     if (rest.trim()) {
@@ -595,6 +635,28 @@ export function plainForm(block) {
     const head = [{ text: plainText(block.centre), bold: true }];
     if (block.caption) head.push({ text: `: ${block.caption}` });
     return [{ type: "p", runs: head }, ...block.intro, { type: "list", ordered: false, start: 1, items: block.items }];
+  }
+  if (block.type === "amount") {
+    const runs = [{ text: `${block.label ? `${block.label}: ` : ""}` }, { text: block.value, bold: true }];
+    if (block.status) runs.push({ text: `  (${block.status})` });
+    if (block.words) runs.push({ br: true }, { text: block.words, italic: true });
+    return [{ type: "p", runs }];
+  }
+  if (block.type === "details" || block.type === "summary") {
+    if (block.type === "summary") {
+      return [{
+        type: "table",
+        header: [[{ text: "Item" }], [{ text: "Amount" }]],
+        rows: block.rows.map((r) => [[{ text: r.label, bold: r.lit }], r.runs.map((x) => ({ ...x, bold: x.bold || r.lit }))]),
+      }];
+    }
+    return [{ type: "list", ordered: false, start: 1, items: block.rows.map((r) => ({ runs: [...(r.label ? [{ text: `${r.label}: `, bold: true }] : []), ...r.runs] })) }];
+  }
+  if (block.type === "progress") {
+    return [{ type: "p", runs: [{ text: `${block.percent}%`, bold: true }, { text: ` ${block.label}${block.note ? `. ${block.note}` : ""}` }] }];
+  }
+  if (block.type === "signature") {
+    return [{ type: "p", runs: [{ text: block.name, bold: true }, ...(block.role ? [{ br: true }, { text: block.role }] : [])] }];
   }
   return [block];
 }
@@ -684,6 +746,10 @@ export function blockText(block) {
   if (block.type === "stat") return [block.value, block.caption, ...block.blocks.map(blockText)].join("\n");
   if (block.type === "label") return block.text;
   if (block.type === "flow") return block.steps.map((st) => plainText(st.runs)).join(" > ");
+  if (block.type === "amount") return [block.label, block.value, block.words, block.status].filter(Boolean).join("\n");
+  if (block.type === "details" || block.type === "summary") return block.rows.map((r) => `${r.label}: ${plainText(r.runs)}`).join("\n");
+  if (block.type === "progress") return `${block.percent}% ${block.label} ${block.note}`;
+  if (block.type === "signature") return `${block.name}\n${block.role}`;
   if (block.type === "hub") return [plainText(block.centre), block.caption, ...block.intro.map(blockText), ...block.items.map((i) => plainText(i.runs))].join("\n");
   if (block.type === "image") return [block.caption || block.name, block.source].filter(Boolean).join("\n");
   if (block.type === "chart") {

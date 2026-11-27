@@ -37,7 +37,7 @@ async function pageCount(blob) {
 async function printOnce(doc, theme, brand, images, options) {
   const html = await documentHtml(doc, theme, brand, images, { ...options, fontCss: await fontFaceCss() });
   const { data, error } = await supabase.functions.invoke(FUNCTIONS.printPdf, {
-    body: { cover: html.cover, body: html.body, header: html.header, footer: html.footer },
+    body: { cover: html.cover, body: html.body, header: html.header, footer: html.footer, margins: html.margins },
   });
   if (error || !data?.ok || !data.base64) return null;
   return fromBase64(data.base64);

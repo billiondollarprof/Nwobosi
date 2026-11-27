@@ -108,7 +108,14 @@ async function call(printer: Printer, path: string, form: FormData, signal: Abor
   return new Uint8Array(await response.arrayBuffer());
 }
 
-async function printPage(printer: Printer, html: string, framed: { header: string; footer: string } | null, signal: AbortSignal) {
+type Margins = { top: number; bottom: number };
+
+/* Millimetres to the inches Gotenberg wants, kept to a sane range. */
+function inches(mm: number, fallback: number): string {
+  return String(Number.isFinite(mm) && mm >= 0 && mm <= 40 ? mm / 25.4 : fallback);
+}
+
+async function printPage(printer: Printer, html: string, framed: { header: string; footer: string; margins: Margins } | null, signal: AbortSignal) {
   const form = new FormData();
   form.append("files", new Blob([html], { type: "text/html" }), "index.html");
   if (framed) {
@@ -117,8 +124,10 @@ async function printPage(printer: Printer, html: string, framed: { header: strin
   }
   form.append("paperWidth", "8.27");
   form.append("paperHeight", "11.7");
-  form.append("marginTop", framed ? "0.79" : "0");
-  form.append("marginBottom", framed ? "0.67" : "0");
+  /* The page says how much room its header and footer need: 20 and 17 mm
+     on a body page, a slim top on a receipt (documentHtml.js). */
+  form.append("marginTop", framed ? inches(framed.margins.top, 0.79) : "0");
+  form.append("marginBottom", framed ? inches(framed.margins.bottom, 0.67) : "0");
   form.append("marginLeft", "0");
   form.append("marginRight", "0");
   form.append("printBackground", "true");
@@ -135,7 +144,8 @@ async function join(printer: Printer, first: Uint8Array, second: Uint8Array, sig
 
 /* ==========================================================================
    3. THE REQUEST
-   Body: { cover: html | null, body: html, header, footer }.
+   Body: { cover: html | null, body: html, header, footer, margins }, margins
+   in millimetres ({ top, bottom }), 20 and 17 when not sent.
    Answer: { ok: true, base64 } or { ok: false, reason, state }.
    ========================================================================== */
 
@@ -153,12 +163,15 @@ Deno.serve(async (req: Request) => {
   let body = "";
   let header = "";
   let footer = "";
+  let margins: Margins = { top: 20, bottom: 17 };
   try {
     const sent = await req.json() as Record<string, unknown>;
     cover = typeof sent.cover === "string" ? sent.cover : "";
     body = String(sent.body ?? "");
     header = String(sent.header ?? "");
     footer = String(sent.footer ?? "");
+    const m = sent.margins as Record<string, unknown> | undefined;
+    if (m) margins = { top: Number(m.top), bottom: Number(m.bottom) };
   } catch {
     return json({ ok: false, reason: "That did not arrive. Try again." }, 400);
   }
@@ -190,7 +203,7 @@ Deno.serve(async (req: Request) => {
   try {
     const [coverPdf, bodyPdf] = await Promise.all([
       cover ? printPage(printer, cover, null, controller.signal) : Promise.resolve(null),
-      printPage(printer, body, { header, footer }, controller.signal),
+      printPage(printer, body, { header, footer, margins }, controller.signal),
     ]);
     const pdf = coverPdf ? await join(printer, coverPdf, bodyPdf, controller.signal) : bodyPdf;
     console.log(`printed in_chars=${cover.length + body.length} out_bytes=${pdf.length} ms=${Date.now() - started}`);
