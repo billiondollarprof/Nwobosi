@@ -9,7 +9,6 @@ Anthony's own Google Cloud.
 The app talks to it only through the edge function `print-pdf`, which checks
 who is asking. Until it is set up, or if it ever stops answering, the app
 makes the PDF with its own writer (`src/shared/docs/pdf.js`), as before.
-Nobody is ever left without a file.
 
 Gotenberg also turns Word, PowerPoint and Excel into PDF. The older converter
 (`converter/`) stays as the second fallback.
@@ -49,12 +48,12 @@ tier and the trial credit.
     - `PDF_PRINTER_USER` = `stellaxafe`
     - `PDF_PRINTER_PASSWORD` = the password from step 1
 
-That is all. The next PDF anyone downloads comes from the printer.
+The next PDF anyone downloads comes from the printer.
 
 ## If something goes wrong
 
 - **The build or start fails:** the Cloud Run **Logs** tab says why.
-- **`/health` asks for a password:** fine, that is the password working;
-  the health page may be protected too.
+- **`/health` asks for a password:** the password is working. The health
+  page may be protected too.
 - **PDFs still look like the old ones:** check the three secret names in
   Supabase are spelled exactly as above.
