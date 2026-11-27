@@ -52,6 +52,21 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=3" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=3" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=3" />
+    <!-- INSTALLABLE AS AN APP, 2026-11-27 (public/manifest.webmanifest and
+         public/sw.js). Registered here rather than in the app's own code,
+         so it never depends on the app starting. Not on this computer's
+         own address (the dev server and the test harness), unless ?sw=1
+         asks for it in a check. A failure changes nothing. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <script>
+      (function () {
+        var local = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+        if (!("serviceWorker" in navigator) || (local && location.search.indexOf("sw=1") < 0)) return;
+        window.addEventListener("load", function () {
+          navigator.serviceWorker.register("/sw.js").catch(function () {});
+        });
+      })();
+    </script>
 
     <!-- Absolute URLs. LinkedIn, Slack and iMessage will not resolve a
          relative one, so a relative path here is a link preview with a
