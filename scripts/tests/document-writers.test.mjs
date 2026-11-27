@@ -182,5 +182,29 @@ check('the quote has no ">"', !slides.some((s) => (s.text ?? []).some((p) => pla
   check("and its text and table are both on that slide", deck[0].text.length >= 1 && deck[0].feature?.kind === "table" && deck[0].feature.block.rows.length === 3);
 }
 
+/* 9. THE PRINTED PAGE (docs/html/), 2026-11-27 ----------------------------- */
+{
+  const { themeFor } = await import("../../src/shared/docs/documentTheme.js");
+  const { documentHtml, shapeOf } = await import("../../src/shared/docs/html/documentHtml.js");
+  const { phaseWeeks } = await import("../../src/shared/docs/html/htmlDiagrams.js");
+  const doc = readDocument(readFileSync("scripts/__harness/fixtures/proposal-html.md", "utf8"), "x");
+  const html = await documentHtml(doc, themeFor("#1A7F3C"), { name: "Amara" }, null, { date: new Date("2026-11-27") });
+  check("a long proposal gets a cover and body pages", html.shape === "long" && html.cover && html.body.includes("page-body"));
+  const all = html.cover + html.body;
+  check("EVERY WORD REACHES THE PAGE", ["Eko Grand Hotel", "Rates privately", "Gold List of guests", "Guest relations", "Escalation routes set",
+    "no unhappy guest leaves unheard", "Average review score", "9 in 10", "₦1,000,000", "No bad review you did not see coming"].every((w) => all.includes(w)));
+  check("no ::: and no icon name reaches the page", !all.includes(":::") && !all.includes("[hotel]"));
+  check("sections are numbered after the opening overview", html.body.includes("1. How a complaint") && !html.body.includes(". The proposal at a glance"));
+  check("a contents list in a long document", html.body.includes("What this document contains"));
+  check("the phases become a week timeline", html.body.includes("class=\"gantt\"") && html.body.includes("W5"));
+  check("cards carry their icons as drawings", (html.body.match(/<svg/g) ?? []).length >= 6);
+  check("the footer counts the pages", html.footer.includes("pageNumber") && html.footer.includes("totalPages"));
+  check("the cover never invents who it is for", !html.cover.includes("Prepared for"));
+  check("a one pager has no cover", shapeOf(doc, { pages: 1 }) === "short");
+  check("weeks are read from the phase time", JSON.stringify(phaseWeeks("Weeks 2 to 3")) === '{"from":2,"to":3}' && JSON.stringify(phaseWeeks("3 to 4 weeks")) === '{"span":4}' && phaseWeeks("soon") === null);
+  const short = await documentHtml(readDocument("# Note\n\nOne line.\n\n## A\n\nText.", "x"), themeFor(), null, null, {});
+  check("a short note has the title band and no cover", short.shape === "short" && short.cover === null && short.body.includes("<h1"));
+}
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

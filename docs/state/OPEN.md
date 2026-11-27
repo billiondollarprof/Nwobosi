@@ -304,6 +304,28 @@ other.** Nothing comes off until it is built, checked and live.
    Start from what exists: our search already runs on Tavily's free plan and
    DuckDuckGo (`docs/state/LIVE.md`).
 
+17. **Documents as good as the ones he makes with Claude** (2026-11-27, his
+    yes to the plan; full plan in chat). He sent nine documents he made
+    (RHEMA hospital proposal and receipts, two DREEF proposals and a deck,
+    KEVCOM plan, Streams of Grace deck). His best ones are HTML printed by
+    Chromium, in one design language: cover with brand mark and meta row,
+    running header and "Page x of y" footer, section kicker + numbered title,
+    stat cards, contents, callouts, navy tables, Gantt timeline, box
+    diagrams, ticks and crosses, signature blocks. In his order:
+    1. HTML document engine printed by Gotenberg (MIT, Chromium + LibreOffice,
+       Cloud Run; his step), pdfmake stays as the fallback. The converter
+       (converter/) is finished later as a second fallback.
+    2. Document styles from his files: proposal, receipt/invoice, report,
+       letter, one pager.
+    3. A diagram and chart kit shared by PDF, Word and slides; SVG icons.
+    4. Each company's brand kit learned at setup (colours, fonts, sizes,
+       letterhead, layout); a house style when they have none. One SQL change.
+    5. Parallel writing of sections and slides, under a minute.
+    6. Slide colours offered before a deck (2 or 3 options from the brand,
+       one marked as its pick), changeable after.
+    7. Fix by page: thumbnails, "page 2: ...", only those pages change.
+    8. Installable app (PWA): manifest and service worker.
+
 ## 2. Dreef, the first client
 
 Client papers live in his Google Drive, not in this repo (moved 2026-11-10,
