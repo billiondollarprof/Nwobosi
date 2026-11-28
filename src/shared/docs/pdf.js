@@ -82,7 +82,24 @@ function tableBlock(block, t) {
   const room = PAGE_WIDTH - columns * 16 - 2;
   const weight = longest.map((len) => Math.max(len, 8));
   const total = weight.reduce((a, b) => a + b, 0);
-  const widths = weight.map((w) => (w / total) * room);
+  let widths = weight.map((w) => (w / total) * room);
+
+  /* NO WORD IS BROKEN IN HALF, 2026-11-28. On a six column receipt a long
+     text column took the room and "₦400,000" wrapped to "₦400,00" and "0".
+     Each column gets at least the width of its longest unbreakable word
+     (about 6.3 points a character at body size); the columns that have
+     room to spare give up the difference. */
+  const longestWord = block.header.map((cell, i) =>
+    Math.max(...[cell, ...block.rows.map((row) => row[i] ?? [])].map((c) =>
+      Math.max(0, ...plainText(c).split(/\s+/).map((w) => w.length)))),
+  );
+  const floors = longestWord.map((n) => n * 6.3);
+  const short = widths.reduce((sum, w, i) => sum + Math.max(0, floors[i] - w), 0);
+  if (short > 0) {
+    const spare = widths.reduce((sum, w, i) => sum + Math.max(0, w - floors[i]), 0);
+    const take = Math.min(1, short / (spare || 1));
+    widths = widths.map((w, i) => (w < floors[i] ? floors[i] : w - Math.max(0, w - floors[i]) * take));
+  }
 
   const numericColumn = block.header.map((_, i) =>
     block.rows.length > 0 && block.rows.every((row) => NUMERIC.test(plainText(row[i] ?? []).trim()) || !plainText(row[i] ?? []).trim()),
@@ -467,7 +484,7 @@ export function pdfDefinition(doc, t = themeFor(), brand = null, images = null, 
       margin: [0, 26, 0, 0],
     }),
 
-    content: [...titleBlock, ...(compact ? tighten(blocksToPdf(doc.blocks, t, images)) : blocksToPdf(doc.blocks, t, images))],
+    content: trimTail([...titleBlock, ...(compact ? tighten(blocksToPdf(doc.blocks, t, images)) : blocksToPdf(doc.blocks, t, images))]),
 
     /* A HEADING NEVER ENDS A PAGE. If nothing that follows a heading fits
        on the same page, the heading moves to the next page with it. */
@@ -511,6 +528,20 @@ export async function pdfBlob(doc, t = themeFor(), brand = null, images = null, 
     }
   }
   return first;
+}
+
+/* THE LAST THING ON THE PAGE HAS NO MARGIN BELOW IT. Seen live on Amara,
+   2026-11-28: a receipt filled page 1 to its last line, and the closing
+   paragraph's invisible bottom margin did not fit, so pdfmake began a second
+   page for it. Nothing was printed there but the header and "2 of 2", and
+   the look step flagged it twice. Without a bottom margin on the last item
+   there is nothing left to spill. */
+function trimTail(nodes) {
+  const last = nodes[nodes.length - 1];
+  if (last && Array.isArray(last.margin) && last.margin.length === 4) {
+    last.margin = [last.margin[0], last.margin[1], last.margin[2], 0];
+  }
+  return nodes;
 }
 
 /* Pages in a finished PDF, counted from the file itself. */

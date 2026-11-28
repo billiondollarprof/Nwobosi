@@ -226,5 +226,19 @@ check('the quote has no ">"', !slides.some((s) => (s.text ?? []).some((p) => pla
   check("and the slides show the receipt's words plainly", JSON.stringify(deck).includes("Eko Grand Hotel") && JSON.stringify(deck).includes("₦400,000.00"));
 }
 
+/* 11. TWO FAULTS FOUND LIVE ON AMARA'S RECEIPT, 2026-11-28 --------------- */
+{
+  const { themeFor } = await import("../../src/shared/docs/documentTheme.js");
+  const receipt = readDocument(readFileSync("scripts/__harness/fixtures/receipt-html.md", "utf8"), "x");
+  const def = pdfDefinition(receipt, themeFor("#1A7F3C"), { name: "Amara" });
+  const money = def.content.find((c) => c.table && c.table.body[0].length === 6);
+  const widths = money?.table.widths ?? [];
+  check(`NO AMOUNT IS BROKEN IN HALF: every column is as wide as its longest word (${widths.map((w) => Math.round(w)).join(", ")})`,
+    widths.length === 6 && widths[2] >= "₦400,000".length * 6.3 && widths[3] >= "₦400,000".length * 6.3 && widths[4] >= "₦400,000".length * 6.3);
+  check("the table still fits the page, padding included", widths.reduce((a, b) => a + b, 0) + widths.length * 16 <= 595.28 - 112 + 1);
+  const last = def.content[def.content.length - 1];
+  check("THE LAST ITEM HAS NO MARGIN BELOW IT, so it cannot start a blank page", Array.isArray(last.margin) ? last.margin[3] === 0 : true);
+}
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);
